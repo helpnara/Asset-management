@@ -1,7 +1,13 @@
+import Core
+import SwiftData
 import SwiftUI
 
 struct RootView: View {
     @State private var selection = RootView.initialTab
+    @State private var route = AppRoute.shared
+
+    @Query private var holdings: [Holding]
+    @Query private var sessions: [ReviewSession]
 
     var body: some View {
         TabView(selection: $selection) {
@@ -21,11 +27,28 @@ struct RootView: View {
                 .tabItem { Label("시뮬레이션", systemImage: "slider.horizontal.3") }
                 .tag(3)
 
-            ComingSoonView(title: "더보기", detail: "운용 원칙 · 유의사항 · 1페이지 내보내기 · 설정")
+            MoreView()
                 .tabItem { Label("더보기", systemImage: "ellipsis") }
                 .tag(4)
         }
         .tint(Color.ink)
+        .task {
+            // 시간대 변경·기기 이전에 대비해 앱이 뜰 때마다 다시 등록한다.
+            await ReviewScheduling.refresh(holdings: holdings, sessions: sessions)
+        }
+        .fullScreenCover(isPresented: $route.showReview) {
+            WeeklyReviewView()
+        }
+        .alert("이번 주 기록 완료",
+               isPresented: Binding(
+                   get: { route.totalOnlyMessage != nil },
+                   set: { if !$0 { route.totalOnlyMessage = nil } }
+               ),
+               presenting: route.totalOnlyMessage) { _ in
+            Button("확인", role: .cancel) {}
+        } message: { message in
+            Text(message)
+        }
     }
 
     /// CI 스크린샷이 화면마다 한 장씩 찍을 수 있도록 시작 탭을 실행 인자로 받는다.

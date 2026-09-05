@@ -38,6 +38,7 @@
 3. [도메인 · 데이터 모델](docs/03-data-model.md) — 엔티티, SwiftData 스키마, 파생 계산
 4. [기술 아키텍처](docs/04-architecture.md) — 모듈 구조, 프로젝션 엔진, 주간 알림, 보안, 테스트 전략
 5. [로드맵 · 리스크](docs/05-roadmap.md) — 마일스톤, 검증할 가정, 위험 요소
+6. [아이폰에 올리기](docs/06-testflight.md) — 맥 없이 TestFlight까지, 최초 1회 준비 절차
 
 참고: [기존 1페이지 계획서 구조 분석](docs/reference/one-pager-analysis.md) ·
 [아키텍처 결정 기록(ADR)](docs/adr/)

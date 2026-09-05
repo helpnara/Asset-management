@@ -87,6 +87,12 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 - SwiftData 스키마를 건드릴 때는 CloudKit 제약을 지킨다
   (유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널 — [ADR-0001](docs/adr/0001-swiftdata-cloudkit.md)).
 
+## 아이폰에 올리기
+
+사용자는 맥이 없다. `.github/workflows/testflight.yml` 을 수동 실행하면 macOS 러너가
+빌드·서명·업로드까지 하고 TestFlight로 설치한다. 최초 1회 준비 절차는
+[docs/06-testflight.md](docs/06-testflight.md) 에 있고, 저장소 시크릿 4개가 필요하다.
+
 ## 기억해 둘 것
 
 - **iPad 확장**: iPhone 버전이 어느 정도 완성되면 iPad로 넓히는 것이 사용자의 계획이다.
