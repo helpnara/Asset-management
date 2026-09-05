@@ -77,6 +77,7 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 
 - **금액에 `Double`을 쓰지 않는다.** `Money`(통화 최소 단위 정수), `Quantity`(스케일 10⁸),
   `Ratio`(basis point)만 쓴다. 이유는 [ADR-0003](docs/adr/0003-money-representation.md).
+  예외는 몬테카를로 하나뿐이고, 거기서도 정확한 숫자는 `Projection.run`(결정론)에서 가져온다.
 - **반올림은 `Decimals` 한 곳에서만** 일어난다. 기본은 은행가 반올림.
 - **숫자는 전부 고정폭 tabular, 우측 정렬.** `Font.figure(_:weight:)` 사용.
 - **SwiftData `@Model` 객체를 `async` 경계 너머로 넘기지 않는다.** 참조 타입이라

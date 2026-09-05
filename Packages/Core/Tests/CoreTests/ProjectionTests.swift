@@ -154,11 +154,23 @@ struct ProjectionTests {
 
     @Test("목표를 넘기지 못하면 마일스톤도 없다")
     func targetNotReached() {
-        var modest = input(years: 5, start: 10_000_000, monthly: 100_000, returnBP: 500)
+        var modest = input(years: 5, start: 10_000_000, monthly: 200_000, returnBP: 500)
         modest.targetAmount = Money(10_000_000_000, currency: .krw)
         let result = Projection.run(modest, calendar: calendar)
-        #expect(result.milestone(.targetReached) == nil)
-        #expect(result.milestone(.doubled) != nil)
+
+        #expect(result.last?.nominal == Money(26_380_819, currency: .krw))
+        #expect(result.milestone(.targetReached) == nil)   // 100억은 못 넘긴다
+        #expect(result.milestone(.doubled)?.year == 2029)  // 두 배는 넘긴다
+    }
+
+    @Test("아슬아슬하게 못 넘기면 마일스톤도 없다")
+    func doubledNotReached() {
+        // 월 10만이면 5년 뒤 19,571,813원. 두 배(2,000만)에 42만원 모자란다.
+        // 처음에 "당연히 두 배 되겠지" 하고 적었다가 틀렸던 자리다.
+        let tight = input(years: 5, start: 10_000_000, monthly: 100_000, returnBP: 500)
+        let result = Projection.run(tight, calendar: calendar)
+        #expect(result.last?.nominal == Money(19_571_813, currency: .krw))
+        #expect(result.milestone(.doubled) == nil)
     }
 
     @Test("연도로 지점을 찾을 수 있다 — 로드맵 타임라인이 쓴다")

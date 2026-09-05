@@ -77,26 +77,43 @@ extension Plan {
         cashEvents: [CashEvent] = [],
         calendar: Calendar = .current
     ) -> ProjectionResult {
+        Projection.run(projectionInput(from: balance, cashEvents: cashEvents, calendar: calendar),
+                       calendar: calendar)
+    }
+
+    /// 계산 직전의 입력. 시뮬레이션은 이걸 받아 손잡이만 바꿔 끼운다.
+    ///
+    /// `@Model` 은 `Sendable` 이 아니지만 `ProjectionInput` 은 값 타입이라
+    /// 어디로든 넘길 수 있다. 시뮬레이션이 Plan 을 들고 다니지 않는 이유다.
+    func projectionInput(
+        from balance: Money,
+        cashEvents: [CashEvent] = [],
+        calendar: Calendar = .current
+    ) -> ProjectionInput {
         let now = calendar.startOfDay(for: .now)
         let end = calendar.date(from: DateComponents(year: retirementYear, month: 12, day: 31)) ?? now
         let pending = cashEvents
             .filter { !$0.isAlreadyReflected && $0.date > now }
             .map { CashEventInput(date: $0.date, amount: $0.amount, label: $0.label) }
 
-        return Projection.run(
-            ProjectionInput(
-                startDate: now,
-                endDate: max(end, now),
-                startingBalance: balance,
-                monthlyContribution: monthlyContribution,
-                annualReturn: annualReturn,
-                annualContributionGrowth: contributionGrowth,
-                inflation: inflation,
-                cashEvents: pending,
-                targetAmount: targetAmountMinor > 0 ? targetAmount : nil
-            ),
-            calendar: calendar
+        return ProjectionInput(
+            startDate: now,
+            endDate: max(end, now),
+            startingBalance: balance,
+            monthlyContribution: monthlyContribution,
+            annualReturn: annualReturn,
+            annualContributionGrowth: contributionGrowth,
+            inflation: inflation,
+            cashEvents: pending,
+            targetAmount: targetAmountMinor > 0 ? targetAmount : nil
         )
+    }
+
+    /// 은퇴 연도만 바꾼 종료 시점. 시뮬레이션에서 기간 손잡이가 쓴다.
+    static func endDate(retirementYear: Int, notBefore start: Date,
+                        calendar: Calendar = .current) -> Date {
+        let end = calendar.date(from: DateComponents(year: retirementYear, month: 12, day: 31)) ?? start
+        return max(end, start)
     }
 
     /// 저장소에 하나뿐인 계획을 꺼내고, 없으면 만든다.

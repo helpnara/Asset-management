@@ -23,7 +23,7 @@ struct RootView: View {
                 .tabItem { Label("계획", systemImage: "calendar") }
                 .tag(2)
 
-            ComingSoonView(title: "시뮬레이션", detail: "월 적립액 · 은퇴 나이 · 기대수익률 What-if")
+            SimulationView()
                 .tabItem { Label("시뮬레이션", systemImage: "slider.horizontal.3") }
                 .tag(3)
 
@@ -64,28 +64,6 @@ struct RootView: View {
         case "simulation": return 3
         case "more": return 4
         default: return 0
-        }
-    }
-}
-
-struct ComingSoonView: View {
-    let title: String
-    let detail: String
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 10) {
-                Text("준비 중")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color.ink)
-                Text(detail)
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(Color.muted)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(28)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
