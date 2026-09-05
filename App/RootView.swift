@@ -3,33 +3,32 @@ import SwiftData
 import SwiftUI
 
 struct RootView: View {
-    @State private var selection = RootView.initialTab
     @State private var route = AppRoute.shared
 
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
 
     var body: some View {
-        TabView(selection: $selection) {
+        TabView(selection: $route.selectedTab) {
             DashboardView()
                 .tabItem { Label("현황판", systemImage: "chart.bar") }
-                .tag(0)
+                .tag(Tab.dashboard)
 
             AssetsView()
                 .tabItem { Label("자산", systemImage: "list.bullet") }
-                .tag(1)
+                .tag(Tab.assets)
 
             PlanView()
                 .tabItem { Label("계획", systemImage: "calendar") }
-                .tag(2)
+                .tag(Tab.plan)
 
             SimulationView()
                 .tabItem { Label("시뮬레이션", systemImage: "slider.horizontal.3") }
-                .tag(3)
+                .tag(Tab.simulation)
 
             MoreView()
                 .tabItem { Label("더보기", systemImage: "ellipsis") }
-                .tag(4)
+                .tag(Tab.more)
         }
         .tint(Color.ink)
         .task {
@@ -52,18 +51,27 @@ struct RootView: View {
         }
     }
 
+    /// 탭 번호를 여기저기 리터럴로 적으면 하나 끼워 넣을 때 조용히 어긋난다.
+    enum Tab {
+        static let dashboard = 0
+        static let assets = 1
+        static let plan = 2
+        static let simulation = 3
+        static let more = 4
+    }
+
     /// CI 스크린샷이 화면마다 한 장씩 찍을 수 있도록 시작 탭을 실행 인자로 받는다.
     /// `xcrun simctl launch <udid> <bundle> -startTab assets`
-    private static var initialTab: Int {
+    static var initialTab: Int {
         let arguments = ProcessInfo.processInfo.arguments
         guard let index = arguments.firstIndex(of: "-startTab"),
-              arguments.indices.contains(index + 1) else { return 0 }
+              arguments.indices.contains(index + 1) else { return Tab.dashboard }
         switch arguments[index + 1] {
-        case "assets": return 1
-        case "plan": return 2
-        case "simulation": return 3
-        case "more": return 4
-        default: return 0
+        case "assets": return Tab.assets
+        case "plan": return Tab.plan
+        case "simulation": return Tab.simulation
+        case "more": return Tab.more
+        default: return Tab.dashboard
         }
     }
 }

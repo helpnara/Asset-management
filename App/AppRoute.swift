@@ -10,6 +10,9 @@ final class AppRoute {
     static let shared = AppRoute()
 
     var showReview = false
+    /// 현황판 빈 상태에서 "구성원 추가"를 누르면 자산 탭으로 보낸다.
+    /// 탭 선택을 RootView 의 `@State` 로만 두면 다른 화면에서 바꿀 길이 없다.
+    var selectedTab = RootView.initialTab
     /// 알림에서 총액만 기록한 직후 보여줄 안내.
     var totalOnlyMessage: String?
 

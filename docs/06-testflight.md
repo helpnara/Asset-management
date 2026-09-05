@@ -98,7 +98,7 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 
 | 확인 | 왜 |
 |---|---|
-| 알림 권한을 허용했는가 | 알림이 이 앱의 유일한 시작 계기다 ([ADR-0005](adr/0005-manual-entry.md)) |
+| 첫 화면에서 **[토요일 알림 받기]** 를 눌렀는가 | 알림이 이 앱의 유일한 시작 계기다 ([ADR-0005](adr/0005-manual-entry.md)). 여기서 거절하면 토요일에 아무 일도 일어나지 않는다 |
 | 더보기 → 주간 점검 알림에서 요일·시각이 맞는가 | 기본은 토요일 오전 9시 |
 | 구성원 → 계좌 → 종목을 실제 값으로 넣었는가 | 시세를 가져오지 않으므로 직접 넣어야 한다 |
 | 전세보증금 같은 항목을 `고정`으로 뒀는가 | 매주 물어보는 항목이 줄어든다 |
@@ -110,7 +110,8 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `APP_STORE_CONNECT_KEY_P8 이 비어 있습니다` | 5단계 시크릿 누락. 이름 철자를 확인하세요 |
 | `No profiles for 'com.helpnara.slowrich' were found` | 2단계 앱 등록이 안 됐거나 번들 ID가 다릅니다 |
 | `Authentication credentials are missing or invalid` | API 키 액세스가 **App Manager** 인지 확인 |
-| 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다. 수출 규정 질문에 답해야 할 수도 있습니다 |
+| 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다. 수출 규정 질문은 `ITSAppUsesNonExemptEncryption: false` 로 미리 답해 뒀습니다 |
+| `Missing required icon file` | 앱 아이콘 누락. `App/Assets.xcassets/AppIcon.appiconset` 에 1024×1024 PNG(알파 없음)가 있어야 합니다 |
 | 빌드 번호 중복 오류 | 이미 올린 번호입니다. 다시 실행하면 새 번호가 붙습니다 |
 
 ## 아직 안 하는 것
@@ -118,4 +119,15 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 - **App Store 정식 출시** — 심사, 스크린샷, 개인정보 처리방침이 필요합니다.
   가족끼리 쓰는 동안은 TestFlight로 충분합니다.
 - **iCloud 동기화** — 스키마는 준비돼 있지만([ADR-0001](adr/0001-swiftdata-cloudkit.md))
-  켜지 않았습니다. 기기 하나에서 먼저 안정화한 뒤 켭니다.
+  켜지 않았습니다.
+
+  > ⚠️ **켤 거면 실제 데이터를 넣기 전에 켜는 편이 낫습니다.**
+  > 나중에 켜도 기존 로컬 데이터는 올라가지만, 그 마이그레이션을 검증할 방법이
+  > 원격 세션에는 없습니다. 몇 주치 기록을 쌓은 뒤에 처음 시도하는 것보다
+  > 빈 상태에서 켜고 확인하는 쪽이 잃을 것이 없습니다.
+  >
+  > 켜는 데 필요한 것: ① Apple Developer 계정에서 CloudKit 컨테이너
+  > `iCloud.com.helpnara.slowrich` 생성 ② `project.yml` 에 iCloud 자격(entitlement) 추가
+  > ③ `Persistence.makeContainer` 의 `ModelConfiguration` 에
+  > `cloudKitDatabase: .private("iCloud.com.helpnara.slowrich")` 지정.
+  > 계정이 승인되면 말씀해 주세요 — 한 번에 붙이겠습니다.

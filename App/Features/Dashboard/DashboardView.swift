@@ -453,15 +453,29 @@ struct DashboardView: View {
         .padding(.bottom, 8)
     }
 
+    /// 빈 상태는 다음 한 걸음을 **누를 수 있게** 둔다 (설계 2.7).
+    /// "자산 탭으로 가세요"라고 적어만 두면 거기서 멈추는 사람이 생긴다.
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("아직 등록된 자산이 없습니다")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color.ink)
-            Text("자산 탭에서 구성원을 먼저 추가하세요.\n한 명 · 한 종목만 넣어도 합계가 그려집니다.")
+            Text("구성원을 먼저 추가하세요.\n한 명 · 한 종목만 넣어도 합계가 그려집니다.")
                 .font(.system(size: 12.5))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(4)
+
+            Button {
+                AppRoute.shared.selectedTab = RootView.Tab.assets
+            } label: {
+                Label("구성원 추가하기", systemImage: "person.badge.plus")
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.ink)
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)

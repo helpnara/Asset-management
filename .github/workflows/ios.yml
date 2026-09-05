@@ -130,14 +130,16 @@ jobs:
             echo "찍음: $file ($*)"
           }
 
-          shoot 00-empty.png
-          shoot 01-dashboard.png -seedSampleData -startTab dashboard
-          shoot 02-assets.png    -seedSampleData -startTab assets
-          shoot 03-review.png    -seedSampleData -startTab dashboard -startReview
-          shoot 04-review-done.png -seedSampleData -startTab dashboard -showReviewComplete
-          shoot 05-plan.png        -seedSampleData -startTab plan
-          shoot 06-simulation.png  -seedSampleData -startTab simulation
-          shoot 07-more.png        -seedSampleData -startTab more
+          # 환영 화면은 첫 실행에만 뜬다. 나머지 장면은 -skipOnboarding 으로 건너뛴다.
+          shoot 00-welcome.png
+          shoot 01-empty.png       -skipOnboarding
+          shoot 02-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
+          shoot 03-assets.png      -skipOnboarding -seedSampleData -startTab assets
+          shoot 04-review.png      -skipOnboarding -seedSampleData -startTab dashboard -startReview
+          shoot 05-review-done.png -skipOnboarding -seedSampleData -startTab dashboard -showReviewComplete
+          shoot 06-plan.png        -skipOnboarding -seedSampleData -startTab plan
+          shoot 07-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
+          shoot 08-more.png        -skipOnboarding -seedSampleData -startTab more
 
           ls -la screenshots
 

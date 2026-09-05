@@ -16,6 +16,9 @@ targets:
     platform: iOS
     sources:
       - App
+      # 개인정보 명세는 번들에 그대로 들어가야 한다. 소스로 잡히면 안 된다.
+      - path: App/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - package: Core
         product: Core
@@ -26,6 +29,9 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # 암호화를 직접 쓰지 않는다. 없으면 TestFlight 에 올릴 때마다
+        # 수출 규정 질문에 손으로 답해야 한다.
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich
@@ -34,6 +40,7 @@ targets:
         SWIFT_VERSION: "6.0"
         # 1 = iPhone. iPad 확장 시 "1,2" 로 바꾼다 (로드맵 M7).
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
 
 schemes:
