@@ -13,6 +13,9 @@ final class AppRoute {
     /// 현황판 빈 상태에서 "구성원 추가"를 누르면 자산 탭으로 보낸다.
     /// 탭 선택을 RootView 의 `@State` 로만 두면 다른 화면에서 바꿀 길이 없다.
     var selectedTab = RootView.initialTab
+    /// 현황판의 [구성원 추가하기] 는 탭만 바꾸는 게 아니라 편집 시트까지 연다.
+    /// 탭으로 보내 놓고 다시 + 를 찾게 하면 "다음 한 걸음"이 두 걸음이 된다.
+    var wantsNewMember = false
     /// 알림에서 총액만 기록한 직후 보여줄 안내.
     var totalOnlyMessage: String?
 

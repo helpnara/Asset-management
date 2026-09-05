@@ -466,6 +466,7 @@ struct DashboardView: View {
                 .lineSpacing(4)
 
             Button {
+                AppRoute.shared.wantsNewMember = true
                 AppRoute.shared.selectedTab = RootView.Tab.assets
             } label: {
                 Label("구성원 추가하기", systemImage: "person.badge.plus")

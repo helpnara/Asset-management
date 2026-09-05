@@ -11,6 +11,7 @@ struct AssetsView: View {
     @State private var editingAccount: Account?
     @State private var editingHolding: Holding?
     @State private var isOrderingMembers = false
+    @State private var route = AppRoute.shared
 
     var body: some View {
         NavigationStack {
@@ -47,6 +48,11 @@ struct AssetsView: View {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .onChange(of: route.wantsNewMember, initial: true) { _, wants in
+                guard wants else { return }
+                route.wantsNewMember = false
+                addMember()
             }
             .sheet(isPresented: $isOrderingMembers) {
                 MemberOrderView(members: members)

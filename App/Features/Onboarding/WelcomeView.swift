@@ -14,8 +14,6 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 24)
-
             Text("느 린 부 자 의 기 록")
                 .eyebrowStyle()
             Text("매주 토요일,\n숫자 하나씩 적어 갑니다")
@@ -32,9 +30,9 @@ struct WelcomeView: View {
                 point("은퇴까지 이어 그립니다",
                       "적어 넣은 기록이 계획선 위인지 아래인지 궤적으로 보여 줍니다.")
             }
-            .padding(.top, 28)
+            .padding(.top, 30)
 
-            Spacer(minLength: 24)
+            Spacer(minLength: 20)
 
             VStack(spacing: 10) {
                 Button {
@@ -70,6 +68,7 @@ struct WelcomeView: View {
             }
         }
         .padding(.horizontal, 26)
+        .padding(.top, 56)
         .padding(.bottom, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Color.white)
