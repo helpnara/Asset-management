@@ -99,9 +99,15 @@ struct TrajectoryChart: View {
         .chartXAxis {
             AxisMarks(values: .stride(by: .year, count: xStride)) { value in
                 AxisGridLine().foregroundStyle(Color.rule.opacity(0.6))
-                AxisValueLabel(format: .dateTime.year(), centered: false)
-                    .font(.figure(8))
-                    .foregroundStyle(Color.faint)
+                // 한국어 로케일에서 .dateTime.year() 는 "2031년" 이 된다.
+                // 축 라벨은 8pt 라서 그 한 글자가 눈금끼리 부딪히게 만든다.
+                AxisValueLabel {
+                    if let date = value.as(Date.self) {
+                        Text(verbatim: "\(Calendar.current.component(.year, from: date))")
+                            .font(.figure(8))
+                            .foregroundStyle(Color.faint)
+                    }
+                }
             }
         }
         .frame(height: 168)

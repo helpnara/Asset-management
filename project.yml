@@ -29,6 +29,11 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: 느린 부자의 기록
+        # 한국어 전용 앱이다. 이걸 안 박아 두면 기기 언어가 영어일 때
+        # 날짜가 "Aug 29, 2026" 으로, DatePicker 같은 시스템 UI 도 영어로 나온다.
+        CFBundleDevelopmentRegion: ko
+        CFBundleLocalizations:
+          - ko
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
