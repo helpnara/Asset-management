@@ -25,6 +25,7 @@ struct MoreView: View {
         case milestones
         case security
         case export
+        case rates
     }
 
     var body: some View {
@@ -59,6 +60,14 @@ struct MoreView: View {
                     }
                 }
 
+                Section {
+                    NavigationLink(value: Destination.rates) {
+                        Label("환율", systemImage: "dollarsign.arrow.circlepath")
+                    }
+                } footer: {
+                    Text("환율도 직접 넣습니다. 자동으로 갱신되면 지난주와 이번주 사이의 증감에 내가 안 한 변화가 섞입니다.")
+                }
+
                 Section("자산") {
                     LabeledContent("등록한 종목", value: "\(holdings.count)건")
                     LabeledContent("매주 입력", value: "\(holdings.filter { $0.cadence == .weekly }.count)건")
@@ -90,6 +99,7 @@ struct MoreView: View {
                 case .milestones: MilestoneListView()
                 case .security: SecuritySettingsView()
                 case .export: ExportView()
+                case .rates: ExchangeRateView()
                 }
             }
         }
@@ -100,6 +110,7 @@ struct MoreView: View {
         if arguments.contains("-startHistory") { return [.history] }
         if arguments.contains("-startDiagnostics") { return [.diagnostics] }
         if arguments.contains("-startTodos") { return [.todos] }
+        if arguments.contains("-startRates") { return [.rates] }
         return []
     }
 

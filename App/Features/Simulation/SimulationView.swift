@@ -8,6 +8,7 @@ import SwiftUI
 /// 손잡이를 돌려도 저장되지 않는다. 마음에 들면 [계획에 반영]을 눌러야 넘어간다.
 /// 이 분리가 없으면 무심코 돌린 슬라이더가 계획을 덮어쓴다.
 struct SimulationView: View {
+    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -19,7 +20,12 @@ struct SimulationView: View {
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Query(sort: \Member.sortIndex) private var members: [Member]
 
+    @Query(sort: \Scenario.createdAt) private var scenarios: [Scenario]
+    @Environment(\.modelContext) private var modelContext
+
     @State private var knobs: Knobs?
+    @State private var isNamingScenario = false
+    @State private var scenarioName = ""
     @State private var outcome: SimulationOutcome?
     @State private var isCalculating = false
 
@@ -65,6 +71,7 @@ struct SimulationView: View {
                 knobCard(plan, current)
                 spreadCard
                 actionRow(plan, current)
+                scenarioCard(current)
                 disclaimer
             }
             .padding(14)
@@ -374,6 +381,96 @@ struct SimulationView: View {
         .opacity(changed ? 1 : 0.45)
     }
 
+    // MARK: - 시나리오
+
+    /// 손잡이 조합에 이름을 붙여 둔다. 저장은 계획을 바꾸지 않는다 —
+    /// [계획에 반영]과 헷갈리지 않도록 버튼을 멀리 두고 말도 다르게 쓴다.
+    private func scenarioCard(_ knobs: Knobs) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("시나리오")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Color.bodyText)
+                Spacer()
+                Button {
+                    scenarioName = ""
+                    isNamingScenario = true
+                } label: {
+                    Label("지금 조합 저장", systemImage: "bookmark")
+                        .font(.system(size: 12))
+                }
+                .disabled(outcome == nil)
+            }
+
+            if scenarios.isEmpty {
+                Text("마음에 든 조합에 이름을 붙여 두면 손잡이를 다시 돌리지 않아도 됩니다.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.faint)
+            } else {
+                ForEach(scenarios) { scenario in
+                    scenarioRow(scenario, current: knobs)
+                }
+            }
+        }
+        .padding(14)
+        .background(cardBackground)
+        .alert("시나리오 이름", isPresented: $isNamingScenario) {
+            TextField("월 500만 · 5년 더", text: $scenarioName)
+            Button("취소", role: .cancel) {}
+            Button("저장") { save(knobs) }
+        } message: {
+            Text("지금 손잡이 위치를 그대로 저장합니다. 계획은 바뀌지 않습니다.")
+        }
+    }
+
+    private func scenarioRow(_ scenario: Scenario, current: Knobs) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                self.knobs = Knobs(monthlyMinor: scenario.monthlyMinor,
+                                   retirementYear: scenario.retirementYear,
+                                   returnBP: scenario.returnBP,
+                                   volatilityBP: scenario.volatilityBP)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(scenario.name.isEmpty ? "이름 없음" : scenario.name)
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(Color.ink)
+                    Text(verbatim: "월 \(Won.abbreviated(Money(minorUnits: scenario.monthlyMinor, currency: .krw), suffix: "원")) · \(scenario.retirementYear)년 · \(PercentFormatter.oneDecimal(Decimal(scenario.returnBP) / 10000))%")
+                        .font(.figure(10))
+                        .foregroundStyle(Color.faint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Text(Won.compact(scenario.projected))
+                .font(.figure(12.5, weight: .medium))
+                .foregroundStyle(Color.ink)
+
+            Button {
+                modelContext.delete(scenario)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.ruleStrong)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func save(_ knobs: Knobs) {
+        let scenario = Scenario(
+            name: scenarioName.isEmpty ? "시나리오 \(scenarios.count + 1)" : scenarioName,
+            monthlyMinor: knobs.monthlyMinor,
+            retirementYear: knobs.retirementYear,
+            returnBP: knobs.returnBP,
+            volatilityBP: knobs.volatilityBP,
+            projectedMinor: outcome?.expected.minorUnits ?? 0
+        )
+        modelContext.insert(scenario)
+    }
+
     private var disclaimer: some View {
         // 변동성은 밴드에만 쓰고 계획에는 저장하지 않는다. 이걸 적어 두지 않으면
         // "반영을 눌렀는데 변동성이 안 남는다"는 오해가 생긴다.
@@ -445,7 +542,7 @@ struct SimulationView: View {
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
     private var currentBalance: Money {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw).netWorth
     }
 }
 

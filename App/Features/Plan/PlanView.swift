@@ -3,6 +3,7 @@ import SwiftData
 import SwiftUI
 
 struct PlanView: View {
+    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -291,7 +292,7 @@ struct PlanView: View {
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
     private var currentBalance: Money {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw).netWorth
     }
 
     private func percentRow(_ title: String, _ value: Binding<Int>,

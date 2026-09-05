@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 /// 내보내기는 다르다. iCloud 가 꺼져 있거나 계정에 문제가 생겼을 때
 /// 기록을 꺼낼 길이 하나도 없으면 몇 달치가 통째로 날아간다.
 struct ExportView: View {
+    @Query private var exchangeRates: [ExchangeRate]
     @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
@@ -72,7 +73,7 @@ struct ExportView: View {
 
         let page = OnePagerView(
             title: plans.first?.title ?? "우리 가족 노후자금 준비",
-            rollup: Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw),
+            rollup: Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw),
             members: members,
             snapshots: snapshots
         )

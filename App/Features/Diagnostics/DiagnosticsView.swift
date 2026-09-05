@@ -10,6 +10,7 @@ import SwiftUI
 /// 규칙은 막지 않고 알린다. 그래서 상태가 `위반` 이 아니라 `조치` 다 —
 /// 무엇을 하면 되는지까지 말해야 규칙이 산다 (설계 2.7).
 struct DiagnosticsView: View {
+    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -235,6 +236,6 @@ struct DiagnosticsView: View {
     }
 
     private var rollup: Rollup {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
+        Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw)
     }
 }

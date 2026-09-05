@@ -4,6 +4,7 @@ import SwiftUI
 
 /// 계속 입력하는 화면. 구성원 → 계좌 → 종목 3단.
 struct AssetsView: View {
+    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -208,8 +209,12 @@ struct AssetsView: View {
 
     // MARK: - 편집
 
+    /// 계좌 소계는 **원화 환산 뒤** 더한다. 통화가 섞인 계좌에서 그냥 더하면
+    /// 1,000달러가 1,000원으로 세어진다. 환율이 없는 종목은 빠진다.
     private func accountTotal(_ account: Account) -> Money {
-        account.sortedHoldings.map(\.value).total(in: .krw)
+        account.sortedHoldings
+            .compactMap { $0.convertedValue(rates: exchangeRates.lookup) }
+            .total(in: .krw)
     }
 
     /// 목록에서는 자릿수를 비교하는 게 목적이라 계좌 소계도 종목과 같은 원 단위로 적는다.
