@@ -98,28 +98,42 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: 시뮬레이터에서 실행
+      - name: 시뮬레이터에서 화면별 스크린샷
         run: |
-          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
-          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
-          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
-          echo "설치: $APP"
-          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          UDID="${{ steps.sim.outputs.udid }}"
+          BUNDLE=com.helpnara.slowrich
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
           # 상태 바를 고정한다. 그러지 않으면 시계가 매 실행 달라져
           # 스크린샷이 항상 "변경됨"으로 판정되고 커밋이 무의미하게 쌓인다.
-          xcrun simctl status_bar "${{ steps.sim.outputs.udid }}" override \
+          xcrun simctl status_bar "$UDID" override \
             --time "9:41" \
             --dataNetwork wifi --wifiMode active --wifiBars 3 \
             --cellularMode active --cellularBars 4 \
             --batteryState charged --batteryLevel 100
-          xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.helpnara.slowrich
-          # 첫 프레임이 그려질 때까지 잠깐 기다린다
-          sleep 6
 
-      - name: 스크린샷
-        run: |
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "설치: $APP"
+          xcrun simctl install "$UDID" "$APP"
+
           mkdir -p screenshots
-          xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot screenshots/01-root.png
+
+          # 앱을 켜기만 하면 빈 화면밖에 못 본다.
+          # 가상 데이터를 시드하고 탭을 지정해 화면마다 한 장씩 찍는다.
+          shoot() {
+            local file="$1"; shift
+            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" "$BUNDLE" "$@"
+            sleep 5
+            xcrun simctl io "$UDID" screenshot "screenshots/$file"
+            echo "찍음: $file ($*)"
+          }
+
+          shoot 00-empty.png
+          shoot 01-dashboard.png -seedSampleData -startTab dashboard
+          shoot 02-assets.png    -seedSampleData -startTab assets
+
           ls -la screenshots
 
       - name: 스크린샷을 브랜치에 커밋

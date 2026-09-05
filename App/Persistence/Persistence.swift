@@ -16,13 +16,25 @@ enum Persistence {
     /// CloudKit 동기화(ADR-0001)는 Apple Developer 계정이 생기면 켠다 —
     /// `ModelConfiguration(..., cloudKitDatabase: .private("iCloud.com.helpnara.slowrich"))`.
     /// 스키마는 이미 CloudKit 제약을 지키고 있어서 플래그만 바꾸면 된다.
-    static let container: ModelContainer = {
+    static let container: ModelContainer = makeContainer()
+
+    /// 실행 인자 `-seedSampleData` 가 있으면 인메모리 저장소에 가상 데이터를 채운다.
+    /// CI 스크린샷이 빈 화면만 찍지 않게 하려는 것이며, 릴리즈 빌드에는 들어가지 않는다.
+    static func makeContainer() -> ModelContainer {
         let schema = Persistence.schema
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let wantsSample = ProcessInfo.processInfo.arguments.contains("-seedSampleData")
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: wantsSample)
+
         do {
-            return try ModelContainer(for: schema, configurations: [configuration])
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            #if DEBUG
+            if wantsSample {
+                SampleData.seed(into: ModelContext(container))
+            }
+            #endif
+            return container
         } catch {
             fatalError("데이터 저장소를 열지 못했습니다: \(error)")
         }
-    }()
+    }
 }
