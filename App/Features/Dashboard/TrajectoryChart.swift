@@ -71,15 +71,12 @@ struct TrajectoryChart: View {
                 }
             }
 
+            // 목표선에는 주석을 달지 않는다. 차트 주석은 leading 이든 trailing 이든
+            // 가장자리에서 잘린다. 라벨은 범례 줄에 둔다.
             if targetMinor > 0 {
                 RuleMark(y: .value("목표", log10(max(Double(targetMinor), 1_000_000))))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
-                    .annotation(position: .top, alignment: .leading, spacing: 1) {
-                        Text("목표 \(KoreanAmountFormatter.compact(Money(minorUnits: targetMinor, currency: .krw)))")
-                            .font(.figure(8))
-                            .foregroundStyle(Color.ink)
-                    }
             }
 
             RuleMark(x: .value("오늘", today))

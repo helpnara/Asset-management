@@ -12,7 +12,7 @@ struct DashboardView: View {
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
     @State private var completedToShow: ReviewSession?
-    @State private var chartRange: ChartRange = .retirement
+    @AppStorage("dashboard.chartRange") private var chartRange: ChartRange = .retirement
 
     /// 은퇴까지만 보면 과거가 눌리고, 최근만 보면 큰 그림이 사라진다. 둘 다 필요하다.
     enum ChartRange: String, CaseIterable, Identifiable {
@@ -247,6 +247,10 @@ struct DashboardView: View {
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
                 legend(color: .dad, dashed: true, label: "예측")
+                if chartRange == .retirement, let target = plan?.targetAmount, !target.isZero {
+                    legend(color: .ink.opacity(0.55), dashed: true,
+                           label: "목표 \(KoreanAmountFormatter.compact(target))")
+                }
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -287,8 +291,9 @@ struct DashboardView: View {
 
     private var trajectorySummary: String? {
         guard let plan, let end = projection?.last, plan.monthlyContributionMinor > 0 else { return nil }
-        let nominal = KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원")
-        let real = KoreanAmountFormatter.abbreviated(end.real)
+        // 한 줄에 들어가야 읽힌다. 상세 자릿수는 계획 탭에서 본다.
+        let nominal = KoreanAmountFormatter.compact(end.nominal)
+        let real = KoreanAmountFormatter.compact(end.real)
         var line = "이대로 가면 \(String(plan.retirementYear))년에 \(nominal) · 오늘 돈으로 \(real)"
         if plan.targetAmountMinor > 0 {
             let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
