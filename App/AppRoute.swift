@@ -16,6 +16,8 @@ final class AppRoute {
     /// 현황판의 [구성원 추가하기] 는 탭만 바꾸는 게 아니라 편집 시트까지 연다.
     /// 탭으로 보내 놓고 다시 + 를 찾게 하면 "다음 한 걸음"이 두 걸음이 된다.
     var wantsNewMember = false
+    /// 현황판의 진단 요약을 누르면 더보기 탭의 진단 화면까지 밀어 넣는다.
+    var wantsDiagnostics = false
     /// 알림에서 총액만 기록한 직후 보여줄 안내.
     var totalOnlyMessage: String?
 

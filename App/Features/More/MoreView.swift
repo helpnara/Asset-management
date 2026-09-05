@@ -8,13 +8,15 @@ struct MoreView: View {
     @Query private var sessions: [ReviewSession]
     @Query private var holdings: [Holding]
 
+    @State private var route = AppRoute.shared
+
     /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
-    @State private var path: [Destination] = ProcessInfo.processInfo.arguments
-        .contains("-startHistory") ? [.history] : []
+    @State private var path: [Destination] = MoreView.initialPath
 
     enum Destination: Hashable {
         case history
         case notifications
+        case diagnostics
     }
 
     var body: some View {
@@ -31,6 +33,9 @@ struct MoreView: View {
                 Section("기록") {
                     NavigationLink(value: Destination.history) {
                         Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
+                    }
+                    NavigationLink(value: Destination.diagnostics) {
+                        Label("자산 진단", systemImage: "checklist")
                     }
                 }
 
@@ -57,13 +62,26 @@ struct MoreView: View {
             }
             .navigationTitle("더보기")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: route.wantsDiagnostics, initial: true) { _, wants in
+                guard wants else { return }
+                route.wantsDiagnostics = false
+                if path.last != .diagnostics { path.append(.diagnostics) }
+            }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
+                case .diagnostics: DiagnosticsView()
                 }
             }
         }
+    }
+
+    static var initialPath: [Destination] {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-startHistory") { return [.history] }
+        if arguments.contains("-startDiagnostics") { return [.diagnostics] }
+        return []
     }
 
     private var streak: Int {

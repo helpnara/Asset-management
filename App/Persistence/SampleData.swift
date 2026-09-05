@@ -30,10 +30,23 @@ enum SampleData {
         let dadInsurance = account("연금보험", "보험사 B", .insurance, dad, 1, context)
         holding("해지환급금", .insurance, .other, "KR", .accumulating, .monthly, 19_800_000, dadInsurance, 0, context)
 
-        let dadLease = account("전세보증금", "", .leaseDeposit, dad, 2, context)
+        // 한도가 있는 계좌 둘. 자산 진단의 "어느 계좌부터 채울지" 규칙이 이걸 읽는다.
+        // 연금저축은 다 채웠고 IRP 는 남아 있어, 다음 적립을 IRP 로 지목하게 된다.
+        // **한도 숫자도 예시다** — 앱은 세법을 따라가지 않는다.
+        let dadPension = account("연금저축", "증권사 A", .pensionSavings, dad, 2, context)
+        dadPension.annualLimitMinor = 6_000_000
+        dadPension.annualContributionMinor = 6_000_000
+        holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context)
+
+        let dadIRP = account("IRP", "증권사 A", .irp, dad, 3, context)
+        dadIRP.annualLimitMinor = 3_000_000
+        dadIRP.annualContributionMinor = 1_800_000
+        holding("채권 혼합형", .bond, .fund, "KR", .accumulating, .monthly, 18_500_000, dadIRP, 0, context)
+
+        let dadLease = account("전세보증금", "", .leaseDeposit, dad, 4, context)
         holding("보증금", .realEstate, .physical, "KR", .accumulating, .fixed, 100_000_000, dadLease, 0, context)
 
-        let dadLoan = account("마이너스통장", "은행 C", .loan, dad, 3, context)
+        let dadLoan = account("마이너스통장", "은행 C", .loan, dad, 5, context)
         holding("사용액", .cash, .cash, "KR", .accumulating, .weekly, 4_500_000, dadLoan, 0, context)
 
         // 엄마 — 국내 개별주만 (PFIC 회피)
@@ -60,6 +73,10 @@ enum SampleData {
         plan.inflationBP = 200
         plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
         plan.targetAmountMinor = 5_900_000_000
+
+        // 진단 기준 — 전부 예시 수치다. 실제 금액이 아니다.
+        plan.monthlySpendingMinor = 4_000_000
+        plan.monthlyIncomeMinor = 9_000_000
         context.insert(plan)
 
         let calendar = Calendar.current

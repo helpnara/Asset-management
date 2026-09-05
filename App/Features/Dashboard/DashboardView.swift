@@ -9,6 +9,7 @@ struct DashboardView: View {
     @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Query private var plans: [Plan]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Query private var accounts: [Account]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -42,6 +43,7 @@ struct DashboardView: View {
                         weeklyBar
                         roadmap
                         trajectory
+                        diagnosticsStrip
                         alerts
                         memberBreakdown
                         totals
@@ -371,6 +373,69 @@ struct DashboardView: View {
                 .padding(.vertical, 13)
                 Rectangle().fill(Color.rule).frame(height: 1)
             }
+        }
+    }
+
+    /// 진단 요약. 숫자 셋만 보여 주고 자세한 것은 진단 화면으로 넘긴다.
+    ///
+    /// 현황판에 여섯 규칙을 다 펼치면 매주 보는 화면이 무거워진다.
+    /// 여기서는 "할 일이 있는가"만 답한다.
+    @ViewBuilder
+    private var diagnosticsStrip: some View {
+        if let plan = plans.first {
+            let result = Diagnostics.run(plan.diagnosticsInput(
+                rollup: rollup,
+                accounts: accounts,
+                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents)
+            ))
+
+            Button {
+                AppRoute.shared.wantsDiagnostics = true
+                AppRoute.shared.selectedTab = RootView.Tab.more
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    sectionHeader("자산 진단")
+                    Rectangle().fill(Color.rule).frame(height: 1)
+
+                    HStack(spacing: 14) {
+                        diagnosisTally("조치", result.count(.act), .loss)
+                        diagnosisTally("주의", result.count(.watch), Color.dad)
+                        diagnosisTally("지킴", result.count(.pass), .gain)
+                        if result.count(.unknown) > 0 {
+                            diagnosisTally("입력 필요", result.count(.unknown), .faint)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.faint)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                    if let first = result.sorted.first, first.status != .pass {
+                        Text(first.title + " — " + first.headline)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.muted)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                    }
+                }
+                .padding(.bottom, 20)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func diagnosisTally(_ label: String, _ count: Int, _ color: Color) -> some View {
+        HStack(spacing: 4) {
+            Text(verbatim: "\(count)")
+                .font(.figure(15, weight: .bold))
+                .foregroundStyle(count > 0 ? color : Color.faint)
+            Text(label)
+                .font(.system(size: 10.5))
+                .foregroundStyle(Color.muted)
         }
     }
 

@@ -84,6 +84,19 @@ struct AccountEditView: View {
                 } footer: {
                     Text(accountFooter)
                 }
+
+                // 한도가 있는 계좌에만 나타난다. 일반 위탁 계좌에 한도 칸을 두면
+                // 채워야 할 것이 있는 것처럼 읽힌다.
+                if account.kind.hasContributionLimit {
+                    Section {
+                        MoneyField(title: "올해 납입액", minorUnits: $account.annualContributionMinor)
+                        MoneyField(title: "연간 한도", minorUnits: $account.annualLimitMinor)
+                    } header: {
+                        Text("연간 한도")
+                    } footer: {
+                        Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. **이 앱은 세법을 따라가지 않습니다** — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 납입액을 0으로 되돌립니다.")
+                    }
+                }
             }
             .navigationTitle("계좌")
             .navigationBarTitleDisplayMode(.inline)

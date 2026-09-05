@@ -143,6 +143,7 @@ jobs:
           shoot 07-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
           shoot 08-more.png        -skipOnboarding -seedSampleData -startTab more
           shoot 09-history.png     -skipOnboarding -seedSampleData -startTab more -startHistory
+          shoot 10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
 
           ls -la screenshots
 

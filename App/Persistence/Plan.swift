@@ -23,6 +23,27 @@ final class Plan {
     var inflationBP: Int = 200
     /// 은퇴 시점 목표 금액. 0이면 목표선을 그리지 않는다.
     var targetAmountMinor: Int = 0
+
+    // MARK: 진단 기준
+    //
+    // 전부 사용자가 고칠 수 있는 값이다. 기본값은 흔히 쓰는 수치일 뿐
+    // 정답이 아니다. CloudKit 제약 때문에 모두 기본값을 갖는다 (ADR-0001).
+
+    /// 은퇴 후 한 달 생활비. 0이면 은퇴 필요 자금을 판단하지 않는다.
+    var monthlySpendingMinor: Int = 0
+    /// 인출률. 400 = 4% (4% 규칙).
+    var withdrawalRateBP: Int = 400
+    /// 세후 월 소득. 저축률 계산에만 쓴다.
+    var monthlyIncomeMinor: Int = 0
+    /// 최소 저축률. 1000 = 10%.
+    var savingsFloorBP: Int = 1_000
+    /// 부동산 · 전세보증금 비중 상한. 3500 = 35%.
+    var illiquidCapBP: Int = 3_500
+    /// 미국 목표 비중. 6000 = 60%.
+    var usTargetBP: Int = 6_000
+    /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
+    var mixToleranceBP: Int = 500
+
     var createdAt: Date = Date.now
 
     init() {}
@@ -59,6 +80,13 @@ extension CashEvent {
 
 extension Plan {
     var annualReturn: Ratio { Ratio(basisPoints: annualReturnBP) }
+    var withdrawalRate: Ratio { Ratio(basisPoints: withdrawalRateBP) }
+    var savingsFloor: Ratio { Ratio(basisPoints: savingsFloorBP) }
+    var illiquidCap: Ratio { Ratio(basisPoints: illiquidCapBP) }
+    var usTarget: Ratio { Ratio(basisPoints: usTargetBP) }
+    var mixTolerance: Ratio { Ratio(basisPoints: mixToleranceBP) }
+    var monthlySpending: Money { Money(minorUnits: monthlySpendingMinor, currency: .krw) }
+    var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }
     var inflation: Ratio { Ratio(basisPoints: inflationBP) }
     var monthlyContribution: Money { Money(minorUnits: monthlyContributionMinor, currency: .krw) }
@@ -114,6 +142,52 @@ extension Plan {
                         calendar: Calendar = .current) -> Date {
         let end = calendar.date(from: DateComponents(year: retirementYear, month: 12, day: 31)) ?? start
         return max(end, start)
+    }
+
+    /// 진단에 넘길 입력을 만든다.
+    ///
+    /// `@Model` 은 여기서 끝난다 — 나가는 것은 값 타입뿐이라 계산이 영속 계층을
+    /// 모르고, 시뮬레이터 없이 테스트된다 (ADR-0002).
+    func diagnosticsInput(
+        rollup: Rollup,
+        accounts: [Account],
+        projection: ProjectionResult?,
+        calendar: Calendar = .current
+    ) -> DiagnosticsInput {
+        // 부동산 · 전세보증금 = 자산 − 투자자산.
+        // countsAsInvestable 이 false 인 것들이 정확히 이 몫이다.
+        let illiquid = rollup.assets - rollup.investable
+        let year = calendar.component(.year, from: .now)
+
+        return DiagnosticsInput(
+            netWorth: rollup.netWorth,
+            investable: rollup.investable,
+            illiquid: illiquid,
+            byCountry: rollup.byCountry,
+            monthlySpending: monthlySpending,
+            withdrawalRate: withdrawalRate,
+            monthlyIncome: monthlyIncome,
+            monthlyContribution: monthlyContribution,
+            savingsFloor: savingsFloor,
+            annualReturn: annualReturn,
+            illiquidCap: illiquidCap,
+            usTarget: usTarget,
+            mixTolerance: mixTolerance,
+            yearsToRetirement: yearsToRetirement,
+            projectedAtRetirement: projection?.last?.nominal,
+            doublingYear: projection?.milestone(.doubled)?.year,
+            currentYear: year,
+            limitAccounts: accounts
+                .filter { $0.kind.hasContributionLimit }
+                .map {
+                    LimitAccountInput(
+                        kind: $0.kind,
+                        name: $0.name,
+                        contributedThisYear: Money(minorUnits: $0.annualContributionMinor, currency: .krw),
+                        annualLimit: Money(minorUnits: $0.annualLimitMinor, currency: .krw)
+                    )
+                }
+        )
     }
 
     /// 저장소에 하나뿐인 계획을 꺼내고, 없으면 만든다.

@@ -47,6 +47,14 @@ final class Account {
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
 
+    /// 올해 이 계좌에 넣은 금액. 사용자가 직접 적는다 (ADR-0005 — 가져오지 않는다).
+    var annualContributionMinor: Int = 0
+    /// 연간 납입 한도. 0이면 진단에서 판단하지 않는다.
+    ///
+    /// **앱은 세법을 따라가지 않는다.** 한도가 바뀌면 사용자가 직접 고친다.
+    /// 여기에 숫자를 박아 두고 세법이 바뀌면, 앱이 조용히 틀린 조언을 하게 된다.
+    var annualLimitMinor: Int = 0
+
     var owner: Member?
 
     @Relationship(deleteRule: .cascade, inverse: \Holding.account)
