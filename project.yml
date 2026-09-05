@@ -18,6 +18,9 @@ targets:
       # PrivacyInfo.xcprivacy 도 이 glob 이 잡는다. XcodeGen 은 모르는 확장자를
       # 리소스 단계에 넣으므로 번들에 그대로 들어간다. 따로 또 적으면
       # 같은 파일이 두 번 잡혀 "Multiple commands produce" 로 빌드가 깨진다.
+      #
+      # .entitlements 는 XcodeGen 이 어느 빌드 단계에도 넣지 않으므로
+      # 여기 걸려도 번들에 복사되지 않는다. 서명 단계가 경로로만 읽는다.
       - App
     dependencies:
       - package: Core
@@ -29,6 +32,9 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # CloudKit 이 변경을 알리는 무음 푸시를 받으려면 필요하다.
+        UIBackgroundModes:
+          - remote-notification
         # 암호화를 직접 쓰지 않는다. 없으면 TestFlight 에 올릴 때마다
         # 수출 규정 질문에 손으로 답해야 한다.
         ITSAppUsesNonExemptEncryption: false
@@ -42,6 +48,14 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+      configs:
+        # aps-environment 는 빌드 구성마다 달라야 한다. Debug 에 production 을
+        # 넣으면 개발 프로파일 검증에서, Release 에 development 를 넣으면
+        # TestFlight 업로드에서 막힌다. 그래서 파일을 둘로 나눈다.
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: App/SlowRich.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: App/SlowRich.Release.entitlements
 
 schemes:
   SlowRich:

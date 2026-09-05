@@ -1,3 +1,4 @@
+import CloudKit
 import Core
 import SwiftData
 import SwiftUI
@@ -7,17 +8,30 @@ struct MoreView: View {
     @Query private var sessions: [ReviewSession]
     @Query private var holdings: [Holding]
 
+    /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
+    @State private var path: [Destination] = ProcessInfo.processInfo.arguments
+        .contains("-startHistory") ? [.history] : []
+
+    enum Destination: Hashable {
+        case history
+        case notifications
+    }
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section("점검") {
-                    NavigationLink {
-                        NotificationSettingsView()
-                    } label: {
+                    NavigationLink(value: Destination.notifications) {
                         Label("주간 점검 알림", systemImage: "bell")
                     }
                     LabeledContent("연속 기록", value: "\(streak)주")
                     LabeledContent("기록한 주", value: "\(sessions.filter(\.isComplete).count)주")
+                }
+
+                Section("기록") {
+                    NavigationLink(value: Destination.history) {
+                        Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
+                    }
                 }
 
                 Section("자산") {
@@ -27,8 +41,10 @@ struct MoreView: View {
                     LabeledContent("고정 (건너뜀)", value: "\(holdings.filter { $0.cadence == .fixed }.count)건")
                 }
 
+                SyncStatusSection()
+
                 Section {
-                    Text("준비 중 — 운용 원칙 · 유의사항 · 1페이지 내보내기 · CSV")
+                    Text("준비 중 — 운용 원칙 · 유의사항 · 1페이지 내보내기")
                         .font(.system(size: 12))
                         .foregroundStyle(Color.muted)
                 }
@@ -41,6 +57,12 @@ struct MoreView: View {
             }
             .navigationTitle("더보기")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: Destination.self) { destination in
+                switch destination {
+                case .history: PastRecordsView()
+                case .notifications: NotificationSettingsView()
+                }
+            }
         }
     }
 
@@ -131,5 +153,78 @@ struct NotificationSettingsView: View {
     private func reschedule() async {
         let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)
         await ReviewScheduling.refresh(input)
+    }
+}
+
+
+/// iCloud 동기화 상태.
+///
+/// "켜져 있다고 생각했는데 아니었다"가 이 앱에서 제일 위험한 상태다. 몇 달치
+/// 기록이 백업되고 있는 줄 알았는데 아니면 되돌릴 방법이 없다. 그래서 저장소가
+/// 실제로 열린 모드와 iCloud 계정 상태를 둘 다 보여 준다.
+struct SyncStatusSection: View {
+    @State private var accountStatus: CKAccountStatus?
+
+    var body: some View {
+        Section {
+            LabeledContent("저장 방식") {
+                Text(modeLabel)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(modeColor)
+            }
+            if case .cloudKit = Persistence.mode {
+                LabeledContent("iCloud 계정", value: accountLabel)
+            }
+        } header: {
+            Text("동기화")
+        } footer: {
+            Text(footer)
+        }
+        .task {
+            guard case .cloudKit = Persistence.mode else { return }
+            accountStatus = try? await CKContainer(identifier: Persistence.cloudKitContainerID)
+                .accountStatus()
+        }
+    }
+
+    private var modeLabel: String {
+        switch Persistence.mode {
+        case .cloudKit: return "iCloud 동기화"
+        case .localOnly: return "이 기기에만 저장"
+        case .inMemory: return "임시 (미리보기)"
+        }
+    }
+
+    private var modeColor: Color {
+        switch Persistence.mode {
+        case .cloudKit: return .gain
+        case .localOnly: return .loss
+        case .inMemory: return .muted
+        }
+    }
+
+    private var accountLabel: String {
+        switch accountStatus {
+        case .available: return "연결됨"
+        case .noAccount: return "로그인 안 됨"
+        case .restricted: return "제한됨"
+        case .couldNotDetermine: return "확인 불가"
+        case .temporarilyUnavailable: return "일시적으로 사용 불가"
+        case nil: return "확인 중"
+        @unknown default: return "알 수 없음"
+        }
+    }
+
+    private var footer: String {
+        switch Persistence.mode {
+        case .cloudKit where accountStatus == .available:
+            return "기록이 iCloud 개인 데이터베이스에 저장됩니다. 앱을 지우거나 기기를 바꿔도 남습니다. 애플도 내용을 볼 수 없습니다."
+        case .cloudKit:
+            return "설정 앱에서 iCloud에 로그인해야 동기화됩니다. 그전까지는 이 기기에만 저장됩니다."
+        case .localOnly:
+            return "iCloud를 붙이지 못했습니다. 기록은 이 기기에만 있고, 앱을 지우면 사라집니다. 앱을 다시 켜면 한 번 더 시도합니다."
+        case .inMemory:
+            return "가상 데이터입니다. 앱을 끄면 사라집니다."
+        }
     }
 }

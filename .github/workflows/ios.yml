@@ -131,8 +131,10 @@ jobs:
           }
 
           # 환영 화면은 첫 실행에만 뜬다. 나머지 장면은 -skipOnboarding 으로 건너뛴다.
-          shoot 00-welcome.png
-          shoot 01-empty.png       -skipOnboarding
+          # 시드를 안 쓰는 두 장면은 실제 저장소를 연다. CI 빌드에는 iCloud
+          # entitlement 가 없으므로 로컬 저장소로 명시해서 연다.
+          shoot 00-welcome.png     -localStoreOnly
+          shoot 01-empty.png       -localStoreOnly -skipOnboarding
           shoot 02-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
           shoot 03-assets.png      -skipOnboarding -seedSampleData -startTab assets
           shoot 04-review.png      -skipOnboarding -seedSampleData -startTab dashboard -startReview
@@ -140,6 +142,7 @@ jobs:
           shoot 06-plan.png        -skipOnboarding -seedSampleData -startTab plan
           shoot 07-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
           shoot 08-more.png        -skipOnboarding -seedSampleData -startTab more
+          shoot 09-history.png     -skipOnboarding -seedSampleData -startTab more -startHistory
 
           ls -la screenshots
 

@@ -13,7 +13,7 @@ struct SlowRichApp: App {
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
 
     init() {
-        let container = Persistence.container
+        let container = Persistence.shared.container
         self.container = container
         self.notifications = NotificationCoordinator(container: container)
 
