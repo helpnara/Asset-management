@@ -1,0 +1,60 @@
+# ADR-0003 · 금액·수량을 스케일드 정수로 저장
+
+**상태**: 채택 · 2026-09
+
+## 맥락
+
+이 앱은 30년치 복리를 360번 곱하고, 그 결과로 "은퇴 시점 59.1억" 같은 숫자를 보여줍니다.
+누적 오차가 눈에 보이면 신뢰를 잃습니다. 동시에 CloudKit은 저장 가능한 타입이 정해져
+있습니다: `Int64`, `Double`, `String`, `Date`, `Bytes`, `Bool`, `Reference`, `Asset`, `Location`.
+**`Decimal` 대응 타입이 없습니다.**
+
+즉 `Decimal` 속성은 CloudKit 미러링에서 `Double`로 매핑되며, 그 시점에 십진 정밀도가 사라집니다.
+
+## 결정
+
+영속 계층에는 **스케일드 정수(`Int`)** 로 저장합니다.
+
+| 값 | 저장 형태 | 스케일 |
+|---|---|---|
+| 금액 | `amountMinor: Int` + `currencyCode` | 통화 최소 단위 (KRW: 1원, USD: 0.01달러) |
+| 수량 | `quantityScaled: Int` | 고정 10⁸ (소수점 8자리 — 암호화폐 대응) |
+| 비율 | `rateBP: Int` | basis point (10⁴ = 100%) |
+
+도메인 계층에서는 값 타입으로 감싸서 **화면 코드가 raw `Int`를 보지 않게** 합니다.
+
+```swift
+public struct Money: Hashable, Sendable {
+    public let minorUnits: Int
+    public let currency: CurrencyCode
+    // +, -, ×(비율), 반올림 정책, 통화 불일치 시 컴파일/런타임 방어
+}
+
+public struct Quantity: Hashable, Sendable {
+    public let scaled: Int          // scale = 8
+}
+```
+
+- 곱셈·나눗셈 등 중간 계산은 `Decimal`로 올려서 수행하고, 저장 시점에만 정수로 내립니다.
+- 반올림 정책은 한 곳(`Money.rounded(_:)`)에만 두고 `.bankers`를 기본으로 씁니다.
+- **`Double`은 금액에 절대 쓰지 않습니다.** 예외는 수익률·확률 같은 통계값뿐입니다.
+
+## 대안
+
+| 대안 | 기각 이유 |
+|---|---|
+| `Decimal` 속성 그대로 사용 | CloudKit에서 `Double`로 내려가 정밀도 손실. 조용히 틀리는 것이 가장 나쁘다 |
+| `Double` 사용 | 30년 복리 누적에서 오차가 보인다. 금액에 부동소수점은 원칙적으로 금지 |
+| 문자열로 저장 | 정렬·집계 쿼리 불가, 파싱 비용 |
+| `Data`로 인코딩 | 디버깅 불가, 쿼리 불가 |
+
+## 결과
+
+- `Int64` 범위: 원 단위로 약 9.2 × 10¹⁸원까지. 가구 자산 규모에서 충분합니다.
+- 수량 스케일 10⁸에서 표현 가능한 최대 수량 약 9.2 × 10¹⁰. 충분합니다.
+- **오버플로 방어가 필요합니다.** 곱셈은 `multipliedReportingOverflow`를 쓰거나
+  `Decimal` 경유로 수행하고, 비정상 입력은 명시적으로 실패시킵니다.
+- 통화가 다른 `Money` 끼리의 연산은 타입 레벨에서 막고, 환산은 명시적 함수로만 허용합니다.
+
+### 검증 과제 (M0)
+스케일드 `Int` 값을 CloudKit에 쓰고 다른 기기에서 읽었을 때 **비트 단위로 동일한지** 확인.
