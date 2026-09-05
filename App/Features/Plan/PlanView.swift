@@ -7,7 +7,9 @@ struct PlanView: View {
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @State private var editingEvent: CashEvent?
+    @State private var editingIncome: IncomeStream?
 
     var body: some View {
         NavigationStack {
@@ -21,6 +23,7 @@ struct PlanView: View {
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(item: $editingEvent) { CashEventEditView(event: $0) }
+            .sheet(item: $editingIncome) { IncomeStreamEditView(stream: $0) }
         }
     }
 
@@ -60,17 +63,80 @@ struct PlanView: View {
                 Text("0으로 두면 목표선을 그리지 않습니다.")
             }
 
+            retirementSection(plan)
+            incomeSection(plan)
             cashEventSection
 
             Section("이대로 가면") {
                 summary(plan)
             }
 
-            Section {
-                Text("준비 중 — 구성원별 적립 계획 · 연금 · 마일스톤 직접 편집")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.muted)
+        }
+    }
+
+    /// 은퇴 이후. 이걸 넣어야 궤적이 은퇴에서 멈추지 않고 이어진다.
+    private func retirementSection(_ plan: Plan) -> some View {
+        @Bindable var plan = plan
+        return Section {
+            MoneyField(title: "은퇴 후 월 생활비", minorUnits: $plan.monthlySpendingMinor)
+            Stepper(value: $plan.horizonYear,
+                    in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
+                Text(verbatim: "\(plan.horizonYear)년까지 본다")
             }
+        } header: {
+            Text("은퇴 이후")
+        } footer: {
+            Text("생활비를 넣으면 궤적이 은퇴에서 멈추지 않고 인출 구간까지 이어집니다. 0으로 두면 은퇴 시점에서 끝납니다. 오늘 돈 기준으로 적으세요 — 물가는 앱이 태웁니다.")
+        }
+    }
+
+    private func incomeSection(_ plan: Plan) -> some View {
+        Section {
+            ForEach(incomes) { stream in
+                Button {
+                    editingIncome = stream
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(stream.label.isEmpty ? "이름 없음" : stream.label)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.ink)
+                            HStack(spacing: 5) {
+                                Text(verbatim: stream.endYear > 0
+                                     ? "\(stream.startYear)~\(stream.endYear)년"
+                                     : "\(stream.startYear)년부터 종신")
+                                    .font(.figure(10))
+                                    .foregroundStyle(Color.faint)
+                                if !stream.isInflationLinked {
+                                    StatusBadge(text: "물가 미연동")
+                                }
+                            }
+                        }
+                        Spacer()
+                        Text(KoreanAmountFormatter.abbreviated(stream.monthlyAmount, suffix: "원"))
+                            .font(.figure(12.5, weight: .medium))
+                            .foregroundStyle(Color.ink)
+                    }
+                }
+            }
+            .onDelete { offsets in
+                for index in offsets where incomes.indices.contains(index) {
+                    context.delete(incomes[index])
+                }
+            }
+
+            Button {
+                let stream = IncomeStream(startYear: plan.retirementYear, sortIndex: incomes.count)
+                context.insert(stream)
+                editingIncome = stream
+            } label: {
+                Label("은퇴 후 소득 추가", systemImage: "plus")
+                    .font(.system(size: 12.5))
+            }
+        } header: {
+            Text("은퇴 후 소득")
+        } footer: {
+            Text("국민연금 · 퇴직연금 · 개인연금 · 임대소득. 생활비에서 이만큼을 빼고 나머지를 자산에서 꺼냅니다. 물가연동 여부가 30년 뒤 결과를 절반으로 가릅니다.")
         }
     }
 
@@ -126,7 +192,7 @@ struct PlanView: View {
 
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
-        let result = plan.projection(from: currentBalance, cashEvents: cashEvents)
+        let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes)
         if let end = result.last {
             LabeledContent {
                 Text(KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원"))
@@ -146,6 +212,31 @@ struct PlanView: View {
                         .font(.figure(13, weight: .medium))
                         .foregroundStyle(end.nominal.minorUnits >= plan.targetAmountMinor
                                          ? Color.gain : Color.loss)
+                }
+            }
+            depletionRow(plan, result)
+        }
+    }
+
+    /// 이 앱에서 가장 무거운 한 줄이다.
+    ///
+    /// 그래서 **추정할 수 없으면 만들지 않는다.** 은퇴 후 생활비를 넣지 않으면
+    /// 인출 자체를 가정하지 않으므로 이 줄도 나오지 않는다.
+    @ViewBuilder
+    private func depletionRow(_ plan: Plan, _ result: ProjectionResult) -> some View {
+        if plan.monthlySpendingMinor > 0 {
+            if let depletion = result.depletion {
+                let year = Calendar.current.component(.year, from: depletion)
+                LabeledContent("자산 고갈") {
+                    Text(verbatim: "\(year)년 (은퇴 \(year - plan.retirementYear)년 뒤)")
+                        .font(.figure(13, weight: .medium))
+                        .foregroundStyle(Color.loss)
+                }
+            } else {
+                LabeledContent("자산 고갈") {
+                    Text(verbatim: "\(plan.horizonYear)년까지 안 바닥남")
+                        .font(.figure(13, weight: .medium))
+                        .foregroundStyle(Color.gain)
                 }
             }
         }

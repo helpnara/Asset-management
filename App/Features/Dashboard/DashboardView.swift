@@ -10,6 +10,7 @@ struct DashboardView: View {
     @Query private var plans: [Plan]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Query private var accounts: [Account]
+    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -201,9 +202,17 @@ struct DashboardView: View {
                                label: milestone.kind.label, isNow: false, isGoal: false))
         }
 
-        if let end = projection.years.last {
-            stops.append(.init(year: end.year, amount: end.endBalance,
+        // 마지막 정거장은 **은퇴 시점**이다. 인출 구간까지 그리기 시작하면서
+        // years.last 가 은퇴 후 30년 뒤가 됐다 — 거기에 "은퇴" 라벨을 붙이면 틀린다.
+        if let atRetirement = projection.years.last(where: { $0.year <= plan.retirementYear }) {
+            stops.append(.init(year: atRetirement.year, amount: atRetirement.endBalance,
                                label: "은퇴", isNow: false, isGoal: true))
+        }
+        // 바닥나는 해가 있으면 그것도 정거장이다. 이 앱에서 가장 무거운 한 점이다.
+        if let depletion = projection.depletion {
+            let year = Calendar.current.component(.year, from: depletion)
+            stops.append(.init(year: year, amount: .zero(.krw),
+                               label: "자산 고갈", isNow: false, isGoal: false))
         }
 
         // 같은 해에 여러 개가 걸리면 앞의 것만 남긴다.
@@ -228,7 +237,7 @@ struct DashboardView: View {
     private var plan: Plan? { plans.first }
 
     private var projection: ProjectionResult? {
-        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents)
+        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes)
     }
 
     /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.
@@ -331,7 +340,9 @@ struct DashboardView: View {
     }
 
     private var trajectorySummary: String? {
-        guard let plan, let end = projection?.last, plan.monthlyContributionMinor > 0 else { return nil }
+        guard let plan, plan.monthlyContributionMinor > 0,
+              let end = projection?.point(inYear: plan.retirementYear) ?? projection?.last
+        else { return nil }
         // 한 줄에 들어가야 읽힌다. 상세 자릿수는 계획 탭에서 본다.
         let nominal = KoreanAmountFormatter.compact(end.nominal)
         let real = KoreanAmountFormatter.compact(end.real)
@@ -339,6 +350,9 @@ struct DashboardView: View {
         if plan.targetAmountMinor > 0 {
             let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
             line += " · 목표의 \(PercentFormatter.oneDecimal(ratio))%"
+        }
+        if let depletion = projection?.depletion {
+            line += " · \(String(Calendar.current.component(.year, from: depletion)))년 고갈"
         }
         return line
     }
@@ -386,7 +400,7 @@ struct DashboardView: View {
             let result = Diagnostics.run(plan.diagnosticsInput(
                 rollup: rollup,
                 accounts: accounts,
-                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents)
+                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes)
             ))
 
             Button {

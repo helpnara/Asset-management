@@ -182,3 +182,162 @@ struct ProjectionTests {
         #expect(result.point(inYear: 2099, calendar: calendar) == nil)
     }
 }
+
+// MARK: - 은퇴 이후
+
+/// 노후 준비 앱인데 은퇴 이후가 비어 있으면 절반만 만든 것이다.
+/// 여기 숫자는 전부 파이썬으로 따로 굴려 대조했다.
+@Suite("Projection — 은퇴 후 인출")
+struct RetirementDrawdownTests {
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return calendar
+    }
+
+    private func date(_ text: String) -> Date {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: text)!
+    }
+
+    /// 은퇴 즉시 인출을 시작하는 40년짜리 입력.
+    private func drawdown(
+        start: Int = 1_000_000_000,
+        spending: Int,
+        incomes: [IncomeStreamInput] = []
+    ) -> ProjectionInput {
+        let begin = date("2026-01-01")
+        return ProjectionInput(
+            startDate: begin,
+            endDate: calendar.date(byAdding: .year, value: 40, to: begin)!,
+            startingBalance: Money(start, currency: .krw),
+            monthlyContribution: .zero(.krw),
+            annualReturn: Ratio(basisPoints: 500),
+            inflation: Ratio(basisPoints: 200),
+            retirementDate: begin,
+            monthlyRetirementSpending: Money(spending, currency: .krw),
+            incomes: incomes
+        )
+    }
+
+    private func income(_ amount: Int, from year: Int, linked: Bool = true) -> IncomeStreamInput {
+        IncomeStreamInput(label: "연금", monthlyAmount: Money(amount, currency: .krw),
+                          startYear: year, endYear: nil, isInflationLinked: linked)
+    }
+
+    @Test("생활비를 안 넣으면 인출하지 않는다 — 예전 동작 그대로다")
+    func noSpendingNoWithdrawal() {
+        let result = Projection.run(drawdown(spending: 0), calendar: calendar)
+        #expect(result.depletion == nil)
+        #expect(result.last?.nominal == Money(7_039_988_676, currency: .krw))
+    }
+
+    @Test("꺼내 쓰면 언젠가 바닥난다")
+    func depletes() {
+        // 10억에서 월 500만(오늘 돈)을 꺼내면 273개월 뒤 바닥난다.
+        // 물가 2%를 태우므로 생활비는 해마다 커진다 — 그래서 22.8년이다.
+        let result = Projection.run(drawdown(spending: 5_000_000), calendar: calendar)
+        #expect(result.depletion == date("2048-10-01"))
+        #expect(result.last?.nominal == .zero(.krw))
+    }
+
+    @Test("연금이 있으면 그만큼만 꺼낸다")
+    func pensionReducesWithdrawal() {
+        // 생활비 500만 − 연금 200만 = 순인출 300만. 40년을 버티고도 10.2억이 남는다.
+        let result = Projection.run(
+            drawdown(spending: 5_000_000, incomes: [income(2_000_000, from: 2026)]),
+            calendar: calendar
+        )
+        #expect(result.depletion == nil)
+        #expect(result.last?.nominal == Money(1_021_954_446, currency: .krw))
+    }
+
+    @Test("물가연동이 안 되는 연금은 갈수록 힘이 빠진다")
+    func fixedPensionErodes() {
+        // 같은 200만이라도 액면가가 고정이면 오늘 돈으로는 계속 줄어든다.
+        // 40년이면 버티느냐 바닥나느냐가 갈린다 — 이 차이를 안 보여주면 거짓말이다.
+        let linked = Projection.run(
+            drawdown(spending: 5_000_000, incomes: [income(2_000_000, from: 2026, linked: true)]),
+            calendar: calendar
+        )
+        let fixed = Projection.run(
+            drawdown(spending: 5_000_000, incomes: [income(2_000_000, from: 2026, linked: false)]),
+            calendar: calendar
+        )
+        #expect(linked.depletion == nil)
+        #expect(fixed.depletion == date("2065-12-01"))
+    }
+
+    @Test("연금이 생활비보다 많아도 자산이 늘지는 않는다")
+    func surplusIsNotSaved() {
+        // 남는 연금을 자산에 더하면 은퇴 후 저축을 가정하는 셈이다.
+        // 여기서 낙관을 더할 이유가 없다 — 인출 0과 결과가 같아야 한다.
+        let surplus = Projection.run(
+            drawdown(spending: 1_000_000, incomes: [income(3_000_000, from: 2026)]),
+            calendar: calendar
+        )
+        let none = Projection.run(drawdown(spending: 0), calendar: calendar)
+        #expect(surplus.last?.nominal == none.last?.nominal)
+    }
+
+    @Test("아직 시작 안 한 연금은 세지 않는다")
+    func pensionStartYear() {
+        // 2040년부터 나오는 연금은 그때까지 아무 도움이 안 된다. 바닥나는 것을
+        // 막지는 못하고 8년쯤 늦출 뿐이다 — 처음에 "연금이 있으니 버티겠지" 하고
+        // 적었다가 둘 다 0으로 끝나는 것을 파이썬으로 확인하고 고친 자리다.
+        let later = Projection.run(
+            drawdown(spending: 5_000_000, incomes: [income(2_000_000, from: 2040)]),
+            calendar: calendar
+        )
+        let never = Projection.run(drawdown(spending: 5_000_000), calendar: calendar)
+
+        #expect(never.depletion == date("2048-10-01"))
+        #expect(later.depletion == date("2056-02-01"))
+        #expect(later.depletion! > never.depletion!)
+    }
+
+    @Test("연말 결산은 인출까지 세어야 앞뒤가 맞는다")
+    func yearIdentityWithWithdrawal() {
+        let result = Projection.run(
+            drawdown(spending: 3_000_000, incomes: [income(1_000_000, from: 2026)]),
+            calendar: calendar
+        )
+        var previous = Money(1_000_000_000, currency: .krw)
+        for year in result.years {
+            // 연말 = 연초 + 적립 + 목돈 + 수익 − 인출. 정의상 항상 맞아야 한다.
+            #expect(previous + year.contributed + year.cashEvents + year.gain - year.withdrawn
+                    == year.endBalance)
+            previous = year.endBalance
+        }
+        #expect(result.years.contains { !$0.withdrawn.isZero })
+    }
+
+    @Test("적립 구간과 인출 구간이 한 궤적에 이어진다")
+    func twoPhases() {
+        let begin = date("2026-01-01")
+        let input = ProjectionInput(
+            startDate: begin,
+            endDate: calendar.date(byAdding: .year, value: 40, to: begin)!,
+            startingBalance: Money(100_000_000, currency: .krw),
+            monthlyContribution: Money(2_000_000, currency: .krw),
+            annualReturn: Ratio(basisPoints: 500),
+            inflation: Ratio(basisPoints: 200),
+            retirementDate: calendar.date(byAdding: .year, value: 20, to: begin)!,
+            monthlyRetirementSpending: Money(4_000_000, currency: .krw),
+            incomes: [income(1_500_000, from: 2046)]
+        )
+        let result = Projection.run(input, calendar: calendar)
+
+        // 정점은 은퇴 직후가 아니라 한참 뒤(2056)에 온다. 처음에는 수익이
+        // 순인출보다 커서 계속 오르다가, 물가가 생활비를 밀어 올리면서 꺾인다.
+        // "은퇴하면 바로 줄어든다"는 직관이 틀리는 자리다.
+        let peak = result.points.map(\.nominal).max()!
+        #expect(result.last?.nominal == Money(1_065_867_606, currency: .krw))
+        #expect(result.last!.nominal < peak)
+        #expect(result.depletion == nil)
+    }
+}

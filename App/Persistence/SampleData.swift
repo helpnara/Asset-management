@@ -77,6 +77,19 @@ enum SampleData {
         // 진단 기준 — 전부 예시 수치다. 실제 금액이 아니다.
         plan.monthlySpendingMinor = 4_000_000
         plan.monthlyIncomeMinor = 9_000_000
+        plan.horizonYear = plan.retirementYear + 35
+
+        // 은퇴 후 소득 — 전부 예시 수치다.
+        // 하나는 물가연동(국민연금), 하나는 확정형이라 갈수록 힘이 빠진다.
+        let pension = IncomeStream(label: "국민연금", monthlyAmountMinor: 1_400_000,
+                                   startYear: plan.retirementYear + 2, sortIndex: 0)
+        context.insert(pension)
+
+        let privatePension = IncomeStream(label: "개인연금 (확정)", monthlyAmountMinor: 600_000,
+                                          startYear: plan.retirementYear, sortIndex: 1)
+        privatePension.endYear = plan.retirementYear + 20
+        privatePension.isInflationLinked = false
+        context.insert(privatePension)
         context.insert(plan)
 
         let calendar = Calendar.current

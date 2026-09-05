@@ -12,6 +12,7 @@ struct SimulationView: View {
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     @State private var knobs: Knobs?
     @State private var outcome: SimulationOutcome?
@@ -49,7 +50,7 @@ struct SimulationView: View {
 
     @ViewBuilder
     private func content(_ plan: Plan) -> some View {
-        let baseline = plan.projectionInput(from: currentBalance, cashEvents: cashEvents)
+        let baseline = plan.projectionInput(from: currentBalance, cashEvents: cashEvents, incomes: incomes)
         let current = knobs ?? Knobs(plan)
 
         ScrollView {
@@ -290,11 +291,35 @@ struct SimulationView: View {
                 spreadRow("예상", outcome.expected, Color.ink)
                 Divider().overlay(Color.rule)
                 spreadRow("잘 풀리면 (상위 10%)", outcome.high, Color.gain)
+                if outcome.hasDrawdown {
+                    Divider().overlay(Color.rule)
+                    depletionRow(outcome)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 4)
             .background(cardBackground)
         }
+    }
+
+    /// 은퇴 후 인출까지 그릴 때만 나온다. 추정할 수 없으면 만들지 않는다.
+    private func depletionRow(_ outcome: SimulationOutcome) -> some View {
+        HStack {
+            Text("자산 고갈")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.muted)
+            Spacer()
+            if let year = outcome.depletionYear {
+                Text(verbatim: "\(year)년")
+                    .font(.figure(14, weight: .medium))
+                    .foregroundStyle(Color.loss)
+            } else {
+                Text("끝까지 안 바닥남")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.gain)
+            }
+        }
+        .padding(.vertical, 10)
     }
 
     private func spreadRow(_ label: String, _ amount: Money, _ color: Color) -> some View {
@@ -376,25 +401,39 @@ struct SimulationView: View {
         isCalculating = true
         defer { isCalculating = false }
 
-        let adjusted = Self.adjust(baseline, with: knobs)
-        let volatility = Ratio(basisPoints: knobs.volatilityBP)
         let calendar = Calendar.current
+        let adjusted = Self.adjust(baseline, with: knobs, calendar: calendar)
+        let volatility = Ratio(basisPoints: knobs.volatilityBP)
+        let retirementYear = knobs.retirementYear
 
         let computed = await Task.detached(priority: .userInitiated) {
             SimulationOutcome.make(baseline: baseline, adjusted: adjusted,
-                         volatility: volatility, calendar: calendar)
+                                   volatility: volatility, retirementYear: retirementYear,
+                                   calendar: calendar)
         }.value
 
         guard !Task.isCancelled else { return }
         outcome = computed
     }
 
-    static func adjust(_ input: ProjectionInput, with knobs: Knobs) -> ProjectionInput {
+    /// 은퇴 연도 손잡이는 **은퇴 시점**을 옮긴다. 지평선(`endDate`)은 그만큼 같이
+    /// 밀어서 인출 구간의 길이를 유지한다. 은퇴만 5년 미루고 지평선을 그대로 두면
+    /// "5년 더 벌고 5년 덜 쓴다"가 되어 손잡이가 두 가지 일을 하게 된다.
+    static func adjust(_ input: ProjectionInput, with knobs: Knobs,
+                       calendar: Calendar = .current) -> ProjectionInput {
         var adjusted = input
         adjusted.monthlyContribution = Money(minorUnits: knobs.monthlyMinor, currency: .krw)
         adjusted.annualReturn = Ratio(basisPoints: knobs.returnBP)
-        adjusted.endDate = Plan.endDate(retirementYear: knobs.retirementYear,
-                                        notBefore: input.startDate)
+        adjusted.retirementDate = Plan.endDate(retirementYear: knobs.retirementYear,
+                                               notBefore: input.startDate, calendar: calendar)
+
+        let drawdownMonths = calendar.dateComponents([.month],
+                                                     from: input.retirementDate,
+                                                     to: input.endDate).month ?? 0
+        adjusted.endDate = drawdownMonths > 0
+            ? (calendar.date(byAdding: .month, value: drawdownMonths, to: adjusted.retirementDate)
+               ?? adjusted.retirementDate)
+            : adjusted.retirementDate
         return adjusted
     }
 
@@ -434,11 +473,17 @@ struct SimulationOutcome: Sendable {
     var successProbability: Double?
     /// 몇 번 굴렸는지. 화면의 "n번 중 m번" 문구가 이걸 읽는다.
     var paths: Int
+    /// 잔고가 0이 되는 해. nil 이면 지평선까지 버틴다. 인출을 가정하지 않으면
+    /// 계산하지 않으므로 그때도 nil 이다.
+    var depletionYear: Int?
+    /// 인출 구간을 그리고 있는가. 이게 false 면 고갈 줄을 아예 보여주지 않는다.
+    var hasDrawdown: Bool
 
     static func make(
         baseline input: ProjectionInput,
         adjusted: ProjectionInput,
         volatility: Ratio,
+        retirementYear: Int,
         calendar: Calendar
     ) -> SimulationOutcome {
         let deterministic = Projection.run(adjusted, calendar: calendar)
@@ -476,8 +521,14 @@ struct SimulationOutcome: Sendable {
                 }
             }
 
-        let end = deterministic.last?.nominal ?? adjusted.startingBalance
-        let planEnd = plain.last?.nominal ?? input.startingBalance
+        // 헤드라인은 **은퇴 시점** 값이다. 인출 구간까지 그리기 시작하면서
+        // `last` 가 은퇴 후 30년 뒤 잔고가 됐다 — 그걸 "2049년 예상"이라고
+        // 보여주면 통째로 다른 숫자다.
+        let end = deterministic.point(inYear: retirementYear, calendar: calendar)?.nominal
+            ?? deterministic.last?.nominal ?? adjusted.startingBalance
+        let planYear = calendar.component(.year, from: input.retirementDate)
+        let planEnd = plain.point(inYear: planYear, calendar: calendar)?.nominal
+            ?? plain.last?.nominal ?? input.startingBalance
 
         return SimulationOutcome(
             bands: bands,
@@ -488,7 +539,9 @@ struct SimulationOutcome: Sendable {
             expectedReal: deterministic.last?.real ?? end,
             delta: end - planEnd,
             successProbability: monteCarlo.successProbability,
-            paths: monteCarlo.paths
+            paths: monteCarlo.paths,
+            depletionYear: deterministic.depletion.map { calendar.component(.year, from: $0) },
+            hasDrawdown: adjusted.endDate > adjusted.retirementDate
         )
     }
 }

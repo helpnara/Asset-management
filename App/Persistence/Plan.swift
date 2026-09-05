@@ -44,6 +44,10 @@ final class Plan {
     /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
     var mixToleranceBP: Int = 500
 
+    /// 궤적을 어디까지 그릴 것인가. 은퇴 이후 인출 구간의 끝이다.
+    /// 기본은 은퇴 후 35년 — 65세 은퇴면 100세까지 본다.
+    var horizonYear: Int = Calendar.current.component(.year, from: .now) + 23 + 35
+
     var createdAt: Date = Date.now
 
     init() {}
@@ -70,6 +74,47 @@ final class CashEvent {
         self.label = label
         self.amountMinor = amountMinor
         self.sortIndex = sortIndex
+    }
+}
+
+/// 은퇴 후 들어오는 소득. 국민연금 · 퇴직연금 · 개인연금 · 임대소득.
+///
+/// **금액은 오늘 돈 기준으로 적는다.** "65세부터 월 150만원"의 150만원은
+/// 지금 물가로 말한 것이지 20년 뒤의 액면가가 아니다.
+@Model
+final class IncomeStream {
+    var id: UUID = UUID()
+    var label: String = ""
+    /// 오늘 돈 기준 월 수령액.
+    var monthlyAmountMinor: Int = 0
+    var startYear: Int = Calendar.current.component(.year, from: .now) + 20
+    /// 0이면 종신.
+    var endYear: Int = 0
+    /// 물가에 연동되는가. 국민연금은 연동되고 확정형 개인연금은 안 된다.
+    /// 30년이면 이 차이가 결과를 절반으로 가른다.
+    var isInflationLinked: Bool = true
+    var sortIndex: Int = 0
+
+    init(label: String = "", monthlyAmountMinor: Int = 0, startYear: Int? = nil,
+         sortIndex: Int = 0) {
+        self.label = label
+        self.monthlyAmountMinor = monthlyAmountMinor
+        self.startYear = startYear ?? (Calendar.current.component(.year, from: .now) + 20)
+        self.sortIndex = sortIndex
+    }
+}
+
+extension IncomeStream {
+    var monthlyAmount: Money { Money(minorUnits: monthlyAmountMinor, currency: .krw) }
+
+    var input: IncomeStreamInput {
+        IncomeStreamInput(
+            label: label,
+            monthlyAmount: monthlyAmount,
+            startYear: startYear,
+            endYear: endYear > 0 ? endYear : nil,
+            isInflationLinked: isInflationLinked
+        )
     }
 }
 
@@ -103,10 +148,14 @@ extension Plan {
     func projection(
         from balance: Money,
         cashEvents: [CashEvent] = [],
+        incomes: [IncomeStream] = [],
         calendar: Calendar = .current
     ) -> ProjectionResult {
-        Projection.run(projectionInput(from: balance, cashEvents: cashEvents, calendar: calendar),
-                       calendar: calendar)
+        Projection.run(
+            projectionInput(from: balance, cashEvents: cashEvents,
+                            incomes: incomes, calendar: calendar),
+            calendar: calendar
+        )
     }
 
     /// 계산 직전의 입력. 시뮬레이션은 이걸 받아 손잡이만 바꿔 끼운다.
@@ -116,24 +165,34 @@ extension Plan {
     func projectionInput(
         from balance: Money,
         cashEvents: [CashEvent] = [],
+        incomes: [IncomeStream] = [],
         calendar: Calendar = .current
     ) -> ProjectionInput {
         let now = calendar.startOfDay(for: .now)
-        let end = calendar.date(from: DateComponents(year: retirementYear, month: 12, day: 31)) ?? now
+        let retirement = Plan.endDate(retirementYear: retirementYear, notBefore: now, calendar: calendar)
+        // 은퇴 후 생활비를 넣지 않았으면 은퇴 시점에서 멈춘다. 인출을 가정하지
+        // 않는 궤적에 20년을 더 그려 봐야 그냥 계속 오르는 선일 뿐이다.
+        let horizon = monthlySpendingMinor > 0
+            ? Plan.endDate(retirementYear: max(horizonYear, retirementYear),
+                           notBefore: retirement, calendar: calendar)
+            : retirement
         let pending = cashEvents
             .filter { !$0.isAlreadyReflected && $0.date > now }
             .map { CashEventInput(date: $0.date, amount: $0.amount, label: $0.label) }
 
         return ProjectionInput(
             startDate: now,
-            endDate: max(end, now),
+            endDate: horizon,
             startingBalance: balance,
             monthlyContribution: monthlyContribution,
             annualReturn: annualReturn,
             annualContributionGrowth: contributionGrowth,
             inflation: inflation,
             cashEvents: pending,
-            targetAmount: targetAmountMinor > 0 ? targetAmount : nil
+            targetAmount: targetAmountMinor > 0 ? targetAmount : nil,
+            retirementDate: retirement,
+            monthlyRetirementSpending: monthlySpending,
+            incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input)
         )
     }
 
@@ -154,6 +213,10 @@ extension Plan {
         projection: ProjectionResult?,
         calendar: Calendar = .current
     ) -> DiagnosticsInput {
+        // 진단의 "은퇴 시점 예상"은 궤적의 끝이 아니라 **은퇴 시점**이어야 한다.
+        // 인출 구간까지 그리기 시작하면서 끝값이 은퇴 후 30년 뒤 잔고가 됐다.
+        let atRetirement = projection?.point(inYear: retirementYear, calendar: calendar)?.nominal
+            ?? projection?.last?.nominal
         // 부동산 · 전세보증금 = 자산 − 투자자산.
         // countsAsInvestable 이 false 인 것들이 정확히 이 몫이다.
         let illiquid = rollup.assets - rollup.investable
@@ -174,7 +237,7 @@ extension Plan {
             usTarget: usTarget,
             mixTolerance: mixTolerance,
             yearsToRetirement: yearsToRetirement,
-            projectedAtRetirement: projection?.last?.nominal,
+            projectedAtRetirement: atRetirement,
             doublingYear: projection?.milestone(.doubled)?.year,
             currentYear: year,
             limitAccounts: accounts
