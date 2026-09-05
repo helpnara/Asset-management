@@ -1,0 +1,131 @@
+name: iOS 빌드 · 테스트 · 스크린샷
+
+# 이 저장소는 Linux 원격 세션에서 개발되므로 여기서는 컴파일할 수 없다.
+# 이 워크플로가 그 역할을 대신한다: 푸시할 때마다 macOS 러너에서 빌드하고,
+# 시뮬레이터 스크린샷을 screenshots/ 에 커밋해 다음 세션이 눈으로 확인할 수 있게 한다.
+
+on:
+  push:
+    branches: ["claude/**", main]
+    paths-ignore:
+      - "screenshots/**"
+      - "docs/**"
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core 계산 로직 테스트
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 툴체인 확인
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: swift test
+        working-directory: Packages/Core
+        run: swift test --enable-code-coverage
+
+  app:
+    name: 앱 빌드 · 스크린샷
+    runs-on: macos-15
+    needs: core
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 스크린샷을 되돌려 커밋해야 하므로 푸시 가능한 체크아웃
+          persist-credentials: true
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: Xcode 프로젝트 생성
+        run: xcodegen generate
+
+      - name: 시뮬레이터 고르기
+        id: sim
+        run: |
+          # 러너 이미지마다 있는 기기가 달라서 이름을 박지 않고 골라 쓴다
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c "
+          import json,sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime: continue
+              for d in devices:
+                  if not d.get('isAvailable'): continue
+                  if 'iPhone' not in d['name']: continue
+                  best = d  # 목록 뒤쪽일수록 최신 기기
+          if best is None:
+              sys.exit('사용 가능한 iPhone 시뮬레이터가 없습니다')
+          print(best['udid'])
+          ")
+          NAME=$(xcrun simctl list devices -j | python3 -c "
+          import json,sys
+          data=json.load(sys.stdin)['devices']
+          for _, ds in data.items():
+              for d in ds:
+                  if d['udid']=='$UDID': print(d['name'])
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "선택한 시뮬레이터: $NAME ($UDID)"
+
+      - name: 빌드
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Assetly.xcodeproj \
+            -scheme Assetly \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: 시뮬레이터에서 실행
+        run: |
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "설치: $APP"
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.helpnara.assetly
+          # 첫 프레임이 그려질 때까지 잠깐 기다린다
+          sleep 6
+
+      - name: 스크린샷
+        run: |
+          mkdir -p screenshots
+          xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot screenshots/01-root.png
+          ls -la screenshots
+
+      - name: 스크린샷을 브랜치에 커밋
+        run: |
+          if git diff --quiet -- screenshots; then
+            echo "스크린샷 변화 없음 — 커밋하지 않는다"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add screenshots
+          git commit -m "chore: 시뮬레이터 스크린샷 갱신 (${{ steps.sim.outputs.name }}) [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: 빌드 산출물 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: warn

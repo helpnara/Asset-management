@@ -19,6 +19,14 @@ SwiftUI·SwiftData는 애초에 Apple 플랫폼 전용이라 Linux Swift로도 �
 **컴파일할 수 없는 코드에 지어낸 기댓값을 넣지 마세요.** 수치 기댓값은 반드시
 독립적으로 계산해서 확인한 뒤 적습니다(실제로 이 규칙 덕에 복리 테스트 오류를 잡았습니다).
 
+**그래서 CI가 컴파일러 역할을 합니다.** `.github/workflows/ios.yml`이 푸시할 때마다
+GitHub Actions의 macOS 러너에서 빌드·테스트하고, 시뮬레이터 스크린샷을 `screenshots/`에
+되돌려 커밋합니다. 원격 세션에서는 **푸시한 뒤 CI 결과와 그 스크린샷으로 확인**하세요.
+
+- 실패 로그: GitHub MCP 도구 `actions_list` / `get_job_logs`
+- 화면 확인: `git pull` 후 `screenshots/*.png` 를 Read
+- 문서·마크다운만 고친 푸시는 CI를 돌리지 않습니다 (`paths-ignore`)
+
 macOS에서 작업하면 아래 명령이 전부 동작합니다.
 
 ## 처음 시작 (macOS)
