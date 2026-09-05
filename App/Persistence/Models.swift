@@ -44,7 +44,6 @@ final class Account {
     var name: String = ""
     var institution: String = ""
     var kindRaw: String = AccountKind.general.rawValue
-    var currencyCode: String = "KRW"
     var isArchived: Bool = false
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
@@ -79,7 +78,6 @@ final class Holding {
     var assetClassRaw: String = AssetClass.equity.rawValue
     var instrumentTypeRaw: String = InstrumentType.stock.rawValue
     var listingCountryCode: String = "KR"
-    var currencyCode: String = "KRW"
     var statusRaw: String = HoldingStatus.accumulating.rawValue
     var cadenceRaw: String = EntryCadence.weekly.rawValue
 
@@ -165,9 +163,9 @@ extension Holding {
         set { cadenceRaw = newValue.rawValue }
     }
 
-    /// 사용자가 적어 넣은 그대로. **이 종목의 통화**다 — 원이 아닐 수 있다.
-    /// 합계에 넣기 전에 반드시 `convertedValue(rates:)` 를 통과시킨다.
-    var value: Money { Money(minorUnits: valueMinor, currency: CurrencyCode(currencyCode)) }
+    /// 사용자가 적어 넣은 그대로. **언제나 원화다** — 해외 종목도 원화로 환산해서
+    /// 적는다. 환율을 앱이 다루지 않는 이유는 ADR-0005 에 적혀 있다.
+    var value: Money { Money(minorUnits: valueMinor, currency: .krw) }
 
     /// 미국 세적자가 한국 상장 ETF를 들고 있는가 (PFIC).
     /// 저장은 막지 않고 경고만 한다 — 예외는 항상 있고 사용자가 자기 돈의 주인이다.
@@ -178,28 +176,15 @@ extension Holding {
             && listingCountryCode == "KR"
     }
 
-    /// 기준 통화(원)로 환산한 평가액.
-    ///
-    /// 환산은 **여기 한 곳에서만** 일어난다. `Valuation.rollUp` 은 이미 환산된
-    /// 값만 받으므로(precondition), 이 문을 통과하지 않은 금액은 합계에 못 들어간다.
-    /// 환율을 못 찾으면 `nil` 을 돌려준다 — 1:1 로 넘기면 달러가 원으로 둔갑한다.
-    func convertedValue(rates: [String: Decimal]) -> Money? {
-        let currency = CurrencyCode(currencyCode)
-        guard currency != .krw else { return value }
-        guard let rate = rates[currency.code], rate > 0 else { return nil }
-        return Money(minorUnits: valueMinor, currency: currency).converted(to: .krw, rate: rate)
-    }
-
     /// 계산 계층으로 넘길 납작한 값 타입 (ADR-0002).
-    func position(rates: [String: Decimal] = [:]) -> Position? {
+    func position() -> Position? {
         guard let account, let owner = account.owner else { return nil }
-        guard let converted = convertedValue(rates: rates) else { return nil }
         return Position(
             memberID: owner.id,
             accountID: account.id,
             assetClass: assetClass,
             countryCode: listingCountryCode,
-            value: converted,
+            value: value,
             isLiability: account.kind.isLiability,
             countsAsInvestable: account.kind.countsAsInvestable
         )

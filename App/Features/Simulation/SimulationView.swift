@@ -8,7 +8,6 @@ import SwiftUI
 /// 손잡이를 돌려도 저장되지 않는다. 마음에 들면 [계획에 반영]을 눌러야 넘어간다.
 /// 이 분리가 없으면 무심코 돌린 슬라이더가 계획을 덮어쓴다.
 struct SimulationView: View {
-    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -542,7 +541,7 @@ struct SimulationView: View {
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
     private var currentBalance: Money {
-        Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw).netWorth
+        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
     }
 }
 

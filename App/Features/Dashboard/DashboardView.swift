@@ -3,7 +3,6 @@ import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
-    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -31,7 +30,7 @@ struct DashboardView: View {
     }
 
     private var rollup: Rollup {
-        Valuation.rollUp(holdings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw)
+        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
     }
 
     var body: some View {

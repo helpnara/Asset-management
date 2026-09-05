@@ -10,7 +10,6 @@ import SwiftUI
 ///
 /// 목표는 자산 24건을 3분 안에 끝내는 것이다 (ADR-0005).
 struct WeeklyReviewView: View {
-    @Query private var exchangeRates: [ExchangeRate]
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -282,7 +281,7 @@ struct WeeklyReviewView: View {
         let allHoldings = members
             .flatMap { $0.sortedAccounts }
             .flatMap { $0.sortedHoldings }
-        let rollup = Valuation.rollUp(allHoldings.compactMap { $0.position(rates: exchangeRates.lookup) }, base: .krw)
+        let rollup = Valuation.rollUp(allHoldings.compactMap { $0.position() }, base: .krw)
 
         let previous = sessions
             .filter { $0.isComplete && $0.weekAnchor < anchor }

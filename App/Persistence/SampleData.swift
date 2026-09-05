@@ -27,18 +27,6 @@ enum SampleData {
         holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly, 26_400_000, dadBrokerage, 1, context)
         holding("국내 대형주", .equity, .stock, "KR", .frozen, .weekly, 9_100_000, dadBrokerage, 2, context)
 
-        // 달러로 적는 종목 하나. 환율을 넣어야 합계에 들어간다.
-        let usEtf = Holding(name: "해외 ETF C", assetClass: .equity, instrumentType: .etf,
-                            listingCountryCode: "US", status: .accumulating, cadence: .weekly,
-                            valueMinor: 800_000, account: dadBrokerage, sortIndex: 3)
-        usEtf.currencyCode = "USD"          // 8,000.00 달러
-        usEtf.lastEnteredValueMinor = 780_000
-        context.insert(usEtf)
-
-        let usdRate = ExchangeRate(code: "USD")
-        usdRate.rateScaled = 1_380 * ExchangeRate.scale   // 예시 환율이다
-        context.insert(usdRate)
-
         let dadInsurance = account("연금보험", "보험사 B", .insurance, dad, 1, context)
         holding("해지환급금", .insurance, .other, "KR", .accumulating, .monthly, 19_800_000, dadInsurance, 0, context)
 

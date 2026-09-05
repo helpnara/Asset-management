@@ -88,6 +88,9 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   원격 세션에서 검증할 수 있는 범위가 사라진다.
 - **외부 네트워크 요청을 추가하지 않는다.** 시세·환율을 가져오지 않는 것은 의도된 설계다
   ([ADR-0005](docs/adr/0005-manual-entry.md)).
+- **모든 금액은 원화다.** 통화별 입력과 환율 환산은 만들었다가 걷어냈다 — 사용자가
+  해외 종목도 원화로 환산해서 적기 때문이다. `Money` 는 통화를 들고 다니지만
+  이 앱은 `.krw` 하나만 쓴다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
 - SwiftData 스키마를 건드릴 때는 CloudKit 제약을 지킨다
   (유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널 — [ADR-0001](docs/adr/0001-swiftdata-cloudkit.md)).
@@ -97,6 +100,10 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 사용자는 맥이 없다. `.github/workflows/testflight.yml` 을 수동 실행하면 macOS 러너가
 빌드·서명·업로드까지 하고 TestFlight로 설치한다. 최초 1회 준비 절차는
 [docs/06-testflight.md](docs/06-testflight.md) 에 있고, 저장소 시크릿 4개가 필요하다.
+
+**iCloud 컨테이너(`iCloud.com.helpnara.slowrich`)를 먼저 만들어야 한다.**
+앱이 iCloud 자격을 요구하도록 설정돼 있어서, 없으면 아카이브가 서명에서 막힌다.
+App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있다.
 
 ## 기억해 둘 것
 

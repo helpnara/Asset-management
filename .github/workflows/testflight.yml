@@ -31,6 +31,10 @@ jobs:
       - name: Xcode 프로젝트 생성
         run: xcodegen generate
 
+      # 깨진 계산이 아이폰까지 가면 안 된다. 20초짜리 관문이다.
+      - name: 계산 로직 테스트
+        run: cd Packages/Core && swift test
+
       - name: App Store Connect API 키 준비
         env:
           KEY: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
@@ -111,3 +115,6 @@ jobs:
           echo "빌드 ${{ github.run_number }} 를 TestFlight 에 올렸습니다."
           echo "애플이 처리하는 데 5~15분 걸립니다. TestFlight 앱에서 설치하세요."
           echo "변경 사항: ${{ inputs.notes }}"
+          echo ""
+          echo "처음이라면 docs/06-testflight.md 의 8~9단계(테스터 등록·설치)와"
+          echo "'CloudKit 스키마 배포' 를 잊지 마세요."

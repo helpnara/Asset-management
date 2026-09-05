@@ -1,0 +1,127 @@
+name: App Store 스크린샷 (6.9")
+
+# App Store 는 6.9" 아이폰 스크린샷을 요구한다 (1320×2868).
+# 평소 CI 는 가장 최신 iPhone 을 골라 찍으므로 그 크기가 아닐 수 있다.
+# 이 워크플로는 **Pro Max 계열만** 골라 제출용 크기로 찍는다.
+#
+# 손으로 실행할 때만 돈다 (docs/07-app-store.md 4단계).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  shoot:
+    name: 제출용 스크린샷
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: Xcode 프로젝트 생성
+        run: xcodegen generate
+
+      - name: 6.9" 시뮬레이터 고르기
+        id: sim
+        run: |
+          set -euo pipefail
+          # Pro Max 만 본다. 다른 기종은 크기가 안 맞아 업로드에서 거부된다.
+          read -r UDID NAME <<< "$(xcrun simctl list devices available --json | python3 -c "
+          import json, re, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              m = re.search(r'iOS-(\d+)-(\d+)', runtime)
+              version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+              for d in devices:
+                  name = d.get('name', '')
+                  if not d.get('isAvailable') or 'Pro Max' not in name:
+                      continue
+                  n = re.match(r'iPhone (\d+)', name)
+                  if not n:
+                      continue
+                  key = (version, int(n.group(1)))
+                  if best is None or key > best[0]:
+                      best = (key, d['udid'], name)
+          if best is None:
+              sys.exit('Pro Max 시뮬레이터를 찾지 못했습니다')
+          print(best[1], best[2])
+          ")"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "선택한 시뮬레이터: $NAME ($UDID)"
+
+      - name: 빌드
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SlowRich.xcodeproj \
+            -scheme SlowRich \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: 찍기
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          BUNDLE=com.helpnara.slowrich
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" \
+            --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 \
+            --batteryState charged --batteryLevel 100
+
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p screenshots/appstore
+
+          shoot() {
+            local file="$1"; shift
+            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" "$BUNDLE" "$@"
+            sleep 5
+            xcrun simctl io "$UDID" screenshot "screenshots/appstore/$file"
+            echo "찍음: $file"
+          }
+
+          # App Store 에 올릴 순서 그대로 번호를 붙인다.
+          shoot 1-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
+          shoot 2-review.png      -skipOnboarding -seedSampleData -startTab dashboard -startReview
+          shoot 3-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
+          shoot 4-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
+          shoot 5-plan.png        -skipOnboarding -seedSampleData -startTab plan
+
+          echo "--- 크기 확인 (App Store 는 1320×2868 을 기대한다) ---"
+          for f in screenshots/appstore/*.png; do
+            python3 -c "
+          import struct, sys
+          with open('$f','rb') as fh:
+              fh.read(16)
+              w, h = struct.unpack('>II', fh.read(8))
+          print('$f', f'{w}×{h}')
+          "
+          done
+
+      - name: 브랜치에 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A screenshots/appstore
+          if git diff --cached --quiet; then
+            echo "바뀐 것이 없습니다."
+            exit 0
+          fi
+          git commit -m "chore: App Store 제출용 스크린샷 (6.9\") [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: 산출물 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: appstore-screenshots
+          path: screenshots/appstore/

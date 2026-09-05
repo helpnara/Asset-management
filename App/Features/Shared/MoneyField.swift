@@ -8,8 +8,6 @@ struct MoneyField: View {
     let title: String
     @Binding var minorUnits: Int
     var placeholder: String = "0"
-    /// 표시할 단위. 원이 아니면 뒤에 붙는 글자가 바뀐다.
-    var unit: String = "원"
 
     private static let maxDigits = 15
 
@@ -23,7 +21,7 @@ struct MoneyField: View {
                 .multilineTextAlignment(.trailing)
                 .font(.figure(17))
                 .foregroundStyle(Color.ink)
-            Text(unit)
+            Text("원")
                 .font(.system(size: 13))
                 .foregroundStyle(Color.muted)
         }

@@ -135,33 +135,17 @@ struct HoldingEditView: View {
             Form {
                 Section {
                     TextField("종목 이름 (VOO · 삼성전자 …)", text: $holding.name)
-                    MoneyField(title: "평가액", minorUnits: $holding.valueMinor,
-                               unit: holding.currencyCode == "KRW" ? "원" : holding.currencyCode)
+                    MoneyField(title: "평가액", minorUnits: $holding.valueMinor)
                 } footer: {
                     // 해외 종목을 달러로 적어 넣으면 합계가 조용히 1,400배 틀린다.
                     // 다중 통화(환율 직접 입력)는 M5 이고, 그전까지는 여기서 못을 박는다.
                     //
                     // 문자열 변수를 넘기면 Text 가 마크다운을 해석하지 않아 별표가 그대로 보인다.
                     // 굵게 쓰려면 리터럴이어야 하므로 분기를 문자열이 아니라 뷰로 나눈다.
-                    if holding.currencyCode == "KRW" {
+                    if holding.listingCountryCode == "KR" {
                         Text("시세를 가져오지 않습니다. 매주 직접 적어 넣는 이 숫자가 기준입니다.")
                     } else {
-                        Text("시세를 가져오지 않습니다. **\(holding.currencyCode) 단위로** 적으세요 — 원화 환산은 환율로 앱이 합니다.")
-                    }
-                }
-
-                Section {
-                    Picker("통화", selection: $holding.currencyCode) {
-                        Text("원 (KRW)").tag("KRW")
-                        Text("달러 (USD)").tag("USD")
-                        Text("엔 (JPY)").tag("JPY")
-                        Text("유로 (EUR)").tag("EUR")
-                    }
-                } footer: {
-                    if holding.currencyCode == "KRW" {
-                        Text("원화 종목입니다.")
-                    } else {
-                        Text("**[더보기 → 환율]에서 환율을 넣어야 합계에 들어갑니다.** 넣기 전까지 이 종목은 총자산에서 빠집니다 — 1:1로 세면 통화가 둔갑하기 때문입니다.")
+                        Text("시세를 가져오지 않습니다. 해외 종목도 **원화로 환산한 금액**을 적어 주세요. 이 앱의 모든 금액은 원화입니다.")
                     }
                 }
 
