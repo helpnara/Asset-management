@@ -55,8 +55,7 @@ struct SimulationView: View {
         ScrollView {
             VStack(spacing: 14) {
                 headline(plan, current)
-                chartCard(plan)
-                if plan.targetAmountMinor > 0 { successCard }
+                chartCard(plan, changed: current != Knobs(plan))
                 knobCard(plan, current)
                 spreadCard
                 actionRow(plan, current)
@@ -119,24 +118,32 @@ struct SimulationView: View {
 
     // MARK: - 차트
 
-    private func chartCard(_ plan: Plan) -> some View {
+    private func chartCard(_ plan: Plan, changed: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            // 손잡이를 안 돌렸으면 계획선은 예상선과 완전히 겹친다.
+            // 그 위에 점선을 덧그리면 실선이 점선처럼 보여서 차트가 망가진다.
             SimulationChart(
                 bands: outcome?.bands ?? [],
-                baseline: outcome?.baseline ?? [],
+                baseline: changed ? (outcome?.baseline ?? []) : [],
                 targetMinor: plan.targetAmountMinor
             )
-            legend(plan)
+            legend(plan, changed: changed)
+            if plan.targetAmountMinor > 0 {
+                Divider().overlay(Color.rule).padding(.vertical, 2)
+                successGauge
+            }
         }
         .padding(14)
         .background(cardBackground)
     }
 
-    private func legend(_ plan: Plan) -> some View {
+    private func legend(_ plan: Plan, changed: Bool) -> some View {
         HStack(spacing: 12) {
             legendItem(color: Color.dad, label: "예상", dashed: false)
             legendItem(color: Color.dad.opacity(0.35), label: "10~90%", dashed: false)
-            legendItem(color: Color.faint, label: "계획 그대로", dashed: true)
+            if changed {
+                legendItem(color: Color.faint, label: "계획 그대로", dashed: true)
+            }
             Spacer(minLength: 0)
             if plan.targetAmountMinor > 0 {
                 Text("목표 " + KoreanAmountFormatter.compact(plan.targetAmount))
@@ -160,7 +167,7 @@ struct SimulationView: View {
     // MARK: - 성공 확률
 
     @ViewBuilder
-    private var successCard: some View {
+    private var successGauge: some View {
         if let outcome, let probability = outcome.successProbability {
             let percent = Int((probability * 100).rounded())
             VStack(alignment: .leading, spacing: 8) {
@@ -192,8 +199,6 @@ struct SimulationView: View {
                     .font(.figure(10.5))
                     .foregroundStyle(Color.faint)
             }
-            .padding(14)
-            .background(cardBackground)
         }
     }
 
@@ -214,7 +219,7 @@ struct SimulationView: View {
                 range: 0...max(5_000_000, plan.monthlyContributionMinor * 2),
                 step: 100_000,
                 baselineValue: plan.monthlyContributionMinor,
-                display: { KoreanAmountFormatter.grouped($0) + "원" }
+                display: { KoreanAmountFormatter.abbreviated(Money(minorUnits: $0, currency: .krw), suffix: "원") }
             )
             slider(
                 title: "은퇴 연도",

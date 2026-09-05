@@ -141,9 +141,10 @@ struct SimulationChart: View {
         return "\(amount)"
     }
 
+    /// 23년 구간에서 10년 간격이면 눈금이 두 개만 남아 언제쯤인지 가늠이 안 된다.
     private var xStride: Int {
         guard let first = bands.first?.date, let last = bands.last?.date else { return 5 }
         let years = Calendar.current.dateComponents([.year], from: first, to: last).year ?? 0
-        return years < 8 ? 2 : (years < 20 ? 5 : 10)
+        return years < 8 ? 2 : (years < 32 ? 5 : 10)
     }
 }
