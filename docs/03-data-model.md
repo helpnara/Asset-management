@@ -14,20 +14,21 @@ Household ──┬── Member ──┬── Account ──── Holding �
              ├── Principle        (운용 원칙 + 자동 점검 규칙)
              ├── Advisory         (유의사항 · 기한 있는 할 일)
              ├── Scenario ──── Assumptions   (시나리오별 가정)
-             └── Snapshot ──── SnapshotLine  (일별 실제 기록)
-
-캐시(동기화 대상 아님):  QuoteCache,  FXRateCache
+             ├── ReviewSession                (주간 점검 1회)
+             └── Snapshot ──── SnapshotLine  (주간 실제 기록)
 ```
 
 ## 3.2 설계 원칙
 
-1. **보유 자산의 평가액이 진실의 원천이다.** 거래 내역은 선택 기능이며,
-   거래가 하나도 없어도 앱은 완전히 동작한다. 거래는 평균단가·수익률을 *도와줄 뿐*이다.
-2. **금액은 스케일드 정수로 저장한다.** → [ADR-0003](adr/0003-money-representation.md)
-3. **enum은 `String` rawValue로 저장한다.** 스키마 안정성과 CloudKit 호환 때문.
-4. **모든 속성에 기본값을, 모든 관계를 옵셔널로.** CloudKit 미러링 제약.
+1. **보유 자산의 평가액이 진실의 원천이다.** 사용자가 매주 직접 적는 그 숫자다.
+   거래 내역은 선택 기능이며, 거래가 하나도 없어도 앱은 완전히 동작한다.
+2. **시세를 저장할 자리를 두지 않는다.** 외부에서 가져오지 않으므로 캐시가 없다.
+   → [ADR-0005](adr/0005-manual-entry.md)
+3. **금액은 스케일드 정수로 저장한다.** → [ADR-0003](adr/0003-money-representation.md)
+4. **enum은 `String` rawValue로 저장한다.** 스키마 안정성과 CloudKit 호환 때문.
+5. **모든 속성에 기본값을, 모든 관계를 옵셔널로.** CloudKit 미러링 제약.
    → [ADR-0001](adr/0001-swiftdata-cloudkit.md)
-5. **계산 결과는 저장하지 않는다.** 단, 일별 스냅샷과 프로젝션 캐시는 예외
+6. **계산 결과는 저장하지 않는다.** 단, 주간 스냅샷과 프로젝션 캐시는 예외
    (재계산 비용과 과거 사실 보존 때문).
 
 ## 3.3 SwiftData 스키마 (스케치)
@@ -120,17 +121,17 @@ final class Holding {
     var listingCountryCode: String = "KR"       // PFIC 판정에 사용
     var currencyCode: String = "KRW"
     var statusRaw: String = HoldingStatus.accumulating.rawValue
+    var cadenceRaw: String = EntryCadence.weekly.rawValue   // 주간 점검 대상 여부
 
     // 평가 방식 — valuationModeRaw 에 따라 사용하는 필드가 달라진다
-    var valuationModeRaw: String = ValuationMode.quantityTimesQuote.rawValue
+    var valuationModeRaw: String = ValuationMode.manualTotal.rawValue
     var quantityScaled: Int = 0                 // scale 8
     var manualUnitPriceMinor: Int = 0
-    var manualValueMinor: Int = 0               // 평가액 직접 입력
+    var manualValueMinor: Int = 0               // 평가액 직접 입력 (기본)
     var costBasisMinor: Int = 0                 // 매입원가 합계 (거래에서 재계산 가능)
 
-    var lastQuoteMinor: Int = 0                 // 마지막으로 성공한 시세 (오프라인용 캐시)
-    var lastQuoteAt: Date?
-    var lastEditedValueAt: Date?                // 수동 갱신 시각 — "언제 마지막으로 손봤나"
+    var lastEnteredValueMinor: Int = 0          // 직전 점검에서 적어 넣은 값 (증감 표시용)
+    var lastEnteredAt: Date?                    // 마지막으로 적어 넣은 시각
     var note: String = ""                       // 1페이지의 ※ 주석
     var sortIndex: Int = 0
     var account: Account?
@@ -155,9 +156,14 @@ enum InstrumentType: String, Codable, CaseIterable {
 }
 
 enum ValuationMode: String, Codable, CaseIterable {
-    case quantityTimesQuote     // 수량 × 자동 시세
+    case manualTotal            // 평가액 직접 입력 — 기본이자 대부분
     case quantityTimesManual    // 수량 × 직접 입력 단가
-    case manualTotal            // 평가액 직접 입력 (보험 해지환급금, 보증금 등)
+}
+
+enum EntryCadence: String, Codable, CaseIterable {
+    case weekly     // 매주 점검 대상
+    case monthly    // 월 1회만 (연금보험 해지환급금 등)
+    case fixed      // 값이 잘 안 바뀜 — 점검에서 자동으로 건너뜀 (전세보증금 등)
 }
 ```
 
@@ -367,13 +373,36 @@ final class AssetClassAssumption {
 }
 ```
 
-### 3.3.11 스냅샷 (실제 기록)
+### 3.3.11 주간 점검 세션
+
+```swift
+@Model
+final class ReviewSession {
+    var id: UUID = UUID()
+    var scheduledFor: Date = Date.now       // 그 주 토요일 (주 단위로 정규화)
+    var startedAt: Date?
+    var completedAt: Date?
+    var enteredCount: Int = 0
+    var totalCount: Int = 0
+    var isTotalOnly: Bool = false           // 알림에서 총액만 적고 넘어간 주
+    var totalOnlyValueMinor: Int = 0
+    var note: String = ""
+    var snapshotID: UUID?                   // 완료 시 만들어진 스냅샷
+}
+```
+
+- 주 1건. 건너뛴 주는 세션이 없거나 `completedAt == nil` 로 남는다.
+- **연속 기록 주차** = `completedAt != nil` 인 세션이 끊기지 않고 이어진 수.
+- `isTotalOnly` 인 주는 궤적에 점은 찍히되 구성원·자산군 분해가 비어 있고,
+  다음 점검에서 채워지면 그 주로 소급 배분한다.
+
+### 3.3.12 스냅샷 (실제 기록)
 
 ```swift
 @Model
 final class Snapshot {
     var id: UUID = UUID()
-    var date: Date = Date.now                       // 일 단위로 정규화
+    var date: Date = Date.now                       // 점검일 (주 단위로 정규화)
     var totalNetWorthMinor: Int = 0
     var investableMinor: Int = 0
     var liabilityMinor: Int = 0
@@ -394,9 +423,10 @@ final class SnapshotLine {
 }
 ```
 
-- 하루 1건. 앱 실행 시 또는 BGAppRefresh로 기록.
+- **주 1건.** 주간 점검을 완료할 때만 만들어진다. 자동 생성하지 않는다.
 - 구성원·자산군·국가 3축으로 분해해 두면 과거 배분 추이도 그릴 수 있다.
 - 개별 종목 단위로는 저장하지 않는다(용량). 필요해지면 별도 테이블로 확장.
+- 궤적의 "실제" 선은 이 스냅샷을 이은 것이다. 빠진 주는 선을 잇되 점은 찍지 않는다.
 
 ## 3.4 파생 계산 (저장하지 않음)
 
@@ -405,9 +435,8 @@ final class SnapshotLine {
 ```
 holding.value =
   switch valuationMode
-    .quantityTimesQuote  → quantity × (quote ?? lastQuote) × fx(holding.currency → base)
+    .manualTotal         → manualValue × fx(holding.currency → base)
     .quantityTimesManual → quantity × manualUnitPrice × fx
-    .manualTotal         → manualValue × fx
 
 account.value    = Σ holdings.value       (isLiability 이면 음수로 집계)
 member.value     = Σ accounts.value
@@ -429,6 +458,21 @@ countryWeight      = Σ(listingCountry) / investable
 - 종목 단순 수익률 = `(평가액 − 원가) / 원가` — 거래 내역이 있을 때만
 - 가구 전체 **XIRR** — 외부 현금흐름(입금/출금/적립)과 현재 평가액으로 계산.
   Newton–Raphson, 발산 시 이분법 폴백. → [ADR-0002](adr/0002-projection-engine.md)
+
+### 3.4.5 계획 대비 실적
+
+점검 완료 화면과 현황판의 핵심 숫자.
+
+```
+planned(t)   = 기본 시나리오 프로젝션의 t 시점 값
+actual(t)    = t 주의 스냅샷 총액
+gap(t)       = actual(t) − planned(t)
+gapRate(t)   = gap(t) / planned(t)
+```
+
+계획선의 기준 시점은 **계획 수립일에 고정**한다. 가정을 바꿀 때마다 과거 계획선까지
+움직이면 "계획보다 앞서 있다"는 말이 의미를 잃는다. 가정을 바꾸면 그 시점부터 새 계획선을
+그리고, 이전 계획선은 옅게 남긴다.
 
 ### 3.4.4 원칙 점검
 

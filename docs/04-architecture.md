@@ -10,7 +10,7 @@
 | 영속성 | SwiftData | Core Data보다 모델 정의가 짧고 CloudKit 미러링을 그대로 쓴다 |
 | 동기화 | CloudKit private DB | 서버 없이 기기 간 동기화. 계정 시스템 불필요 |
 | 차트 | Swift Charts | 밴드(`AreaMark`) + 선 + 기준선 조합을 표준으로 지원 |
-| 동시성 | Swift Concurrency | 시세 조회·시뮬레이션을 `async`/`actor`로 |
+| 동시성 | Swift Concurrency | 몬테카를로 시뮬레이션을 `async`/`actor`로 |
 | 테스트 | Swift Testing | 계산 로직 중심. XCTest는 UI 테스트에만 |
 | 의존성 | 없음 (v1) | 외부 패키지 없이 간다. 필요해지면 그때 추가 |
 
@@ -37,17 +37,16 @@ Assetly.xcodeproj
 │   │   ├─ Migration/       VersionedSchema, MigrationPlan
 │   │   └─ Mapping/         @Model ↔ Core 값 타입 변환
 │   │
-│   ├─ Services/            외부 세계 어댑터. Ports 구현
-│   │   ├─ Quotes/          Yahoo / Upbit / Manual
-│   │   ├─ FX/              환율
+│   ├─ Services/            기기 서비스 어댑터. Ports 구현
+│   │   ├─ Scheduling/      주간 점검 알림 (UNUserNotificationCenter)
 │   │   ├─ ImportExport/    CSV
-│   │   └─ Notifications/   기한 알림
+│   │   └─ Export/          1페이지 PDF/PNG 렌더
 │   │
 │   ├─ DesignSystem/        색·타이포·숫자 포맷·공용 컴포넌트·차트 스타일
 │   │
 │   └─ Features/            화면. 위 패키지에만 의존
 │       ├─ Dashboard/       현황판 + 1페이지 렌더러
-│       ├─ Assets/          자산 목록 · 연속 입력 모드 · 편집
+│       ├─ Assets/          자산 목록 · 주간 점검 · 점검 완료 · 편집
 │       ├─ Plan/            적립 · 연금 · 목돈 · 마일스톤 · 가정
 │       ├─ Simulation/      What-if
 │       └─ More/            원칙 · 유의사항 · 내보내기 · 설정
@@ -84,7 +83,8 @@ Features ─→ DesignSystem
    SwiftUI View
 ```
 
-- 화면은 **캐시된 마지막 값으로 먼저 그린다.** 시세 조회와 몬테카를로는 그 뒤에 채운다.
+- 화면은 **마지막 점검 값으로 즉시 그린다.** 네트워크를 기다리는 자리가 없다.
+  백그라운드로 채우는 것은 몬테카를로뿐이다.
 - What-if 슬라이더는 드래그 중 **결정론적 프로젝션만** 재계산하고(수 ms),
   손을 떼면 몬테카를로를 돌린다. 60fps 유지를 위한 핵심 트릭.
 
@@ -122,29 +122,33 @@ public struct ProjectionResult: Sendable {
 4. 은퇴 이후면 `생활비 − 연금소득` 만큼 인출
 5. 잔고 0 도달 시 고갈 나이 기록
 
-## 4.5 시세 · 환율
+## 4.5 주간 점검 알림
+
+외부 데이터를 가져오지 않으므로 네트워크 계층이 없습니다. 대신 **알림이 이 앱의 유일한 외부 트리거**이며,
+알림이 도달하지 않으면 앱이 죽습니다. 그만큼 방어적으로 만듭니다.
 
 ```swift
-public protocol QuoteProviding: Sendable {
-    func quotes(for symbols: [Symbol]) async throws -> [Symbol: Quote]
-}
-public protocol FXProviding: Sendable {
-    func rate(from: CurrencyCode, to: CurrencyCode, on: Date) async throws -> Decimal
+public protocol ReviewScheduling: Sendable {
+    func scheduleWeekly(weekday: Int, hour: Int, minute: Int) async throws
+    func scheduleFollowUp(after: Date) async throws     // 미입력 시 재알림
+    func cancelAll() async
 }
 ```
 
-| 대상 | v1 방식 | 비고 |
-|---|---|---|
-| 미국 주식·ETF | 공개 시세 API | 무료 티어 한도와 약관 확인 필요 (→ 리스크 R2) |
-| 암호화폐 | 거래소 공개 API | 인증 불필요 |
-| 환율 | 공개 환율 API | 일 1회로 충분 |
-| 국내 주식·ETF | **수동 입력** | 안정적인 무료 소스가 없다 (→ 리스크 R2) |
-| 연금보험·보증금 등 | **수동 입력** | 애초에 시세가 없다 |
+- `UNCalendarNotificationTrigger(dateMatching: .init(weekday: 7, hour: 9), repeats: true)` — 기본 토요일 9시
+- **재알림**: 토요일 알림 후 24시간 안에 점검이 완료되지 않으면 일요일 같은 시각에 1회 더.
+  두 번째도 놓치면 그 주는 조용히 넘어간다(잔소리하지 않는다).
+- 알림 권한 거부 상태를 앱이 알고 있어야 한다. 거부되어 있으면 현황판 상단에
+  "알림이 꺼져 있어 토요일에 알려드릴 수 없습니다" 배너를 띄운다.
+- 알림 본문에 금액을 넣을지는 설정으로 고른다(잠금 화면 노출).
+- 확장 알림의 **총액 빠른 입력**은 `UNTextInputNotificationAction`으로 받고,
+  App Group 없이 앱 프로세스에서 처리한다(Notification Content Extension은 v1에 쓰지 않는다).
+- 알림 재등록은 앱 실행 시마다 idempotent하게 수행한다. 시간대 변경·기기 이전에 대비.
 
-- 어댑터는 교체 가능해야 한다. 제공자가 막히면 구현체만 갈아 끼운다.
-- 실패는 조용히 넘긴다. **마지막 성공 시세를 계속 쓰고 "N일 전 시세" 라고 표시한다.**
-- 갱신 주기: 포그라운드 진입 시 + 최소 15분 간격. 배터리·한도 보호.
-- 사용자가 제공자 API 키를 직접 넣을 수 있게 한다 (Keychain 저장).
+### 통화 환산
+외부 환율 API를 쓰지 않습니다. 사용자가 기준 환율을 설정에서 직접 넣고, 점검 화면에서
+원하면 그 주 환율을 갱신합니다. 대부분의 보유 자산은 원화 평가액으로 직접 적히므로
+환산이 필요한 경우 자체가 드뭅니다.
 
 ## 4.6 보안 · 프라이버시
 
@@ -155,7 +159,7 @@ public protocol FXProviding: Sendable {
 | 화면 가리기 | 앱 전환기 스냅샷 블러, 금액 가리기 토글 |
 | 파일 보호 | `NSFileProtectionComplete` |
 | 비밀 값 | API 키만 Keychain. 사용자 금융 데이터는 Keychain에 넣지 않음 |
-| 네트워크 | 시세·환율 조회만. 요청에 개인 식별 정보 없음. ATS 기본값 유지 |
+| 네트워크 | **없음.** iCloud 동기화 외에 어떤 아웃바운드 요청도 하지 않는다 |
 | 로그 | 릴리즈 빌드에서 금액·종목명 로깅 금지. 크래시 리포터에도 미포함 |
 | 백업 | CSV 내보내기 시 공유 시트로만 전달. 자동 업로드 없음 |
 
@@ -176,8 +180,9 @@ App Store 제출 시 개인정보 처리방침과 App Privacy(“데이터 미�
 |---|---|---|
 | Core (Money/Portfolio/Rules) | Swift Testing 단위 테스트 | 커버리지 높게. 경계값(0, 음수, 대금액) 필수 |
 | Projection | 알려진 입력 → 손계산 기대값 비교, 몬테카를로는 통계적 성질 검증 | 회귀 방지 |
+| Review | 연속 기록 계산(건너뛴 주, 총액만 기록한 주, 시간대 경계) | 경계 조건 필수 |
 | Persistence | 인메모리 `ModelContainer` | 마이그레이션 포함 |
-| Services | 프로토콜 목(mock) + 저장된 응답 픽스처 | 네트워크 없이 |
+| Services | 프로토콜 목(mock) · 알림 등록은 가짜 스케줄러로 | 시간 관련은 `Clock` 주입 |
 | Features | 스냅샷 테스트(1페이지 렌더 포함) | 레이아웃 회귀 방지 |
 | E2E | 온보딩 → 입력 → 현황판 확인 1개 시나리오 | 최소한만 |
 
