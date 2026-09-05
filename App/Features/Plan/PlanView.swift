@@ -3,6 +3,10 @@ import SwiftData
 import SwiftUI
 
 struct PlanView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Environment(\.modelContext) private var context
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
@@ -38,7 +42,7 @@ struct PlanView: View {
             Section {
                 if plan.usesMemberContributions {
                     LabeledContent("매월 적립 합계") {
-                        Text(KoreanAmountFormatter.abbreviated(
+                        Text(Won.abbreviated(
                             plan.effectiveMonthlyContribution(members: members), suffix: "원"))
                             .font(.figure(15, weight: .semibold))
                             .foregroundStyle(Color.ink)
@@ -149,7 +153,7 @@ struct PlanView: View {
                             }
                         }
                         Spacer()
-                        Text(KoreanAmountFormatter.abbreviated(stream.monthlyAmount, suffix: "원"))
+                        Text(Won.abbreviated(stream.monthlyAmount, suffix: "원"))
                             .font(.figure(12.5, weight: .medium))
                             .foregroundStyle(Color.ink)
                     }
@@ -198,7 +202,7 @@ struct PlanView: View {
                         }
                         Spacer()
                         Text((event.isInflow ? "+" : "−")
-                             + KoreanAmountFormatter.grouped(abs(event.amountMinor)))
+                             + Won.grouped(abs(event.amountMinor)))
                             .font(.figure(12.5, weight: .medium))
                             .foregroundStyle(event.isAlreadyReflected ? Color.faint
                                              : (event.isInflow ? Color.gain : Color.loss))
@@ -231,14 +235,14 @@ struct PlanView: View {
         let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
         if let end = result.last {
             LabeledContent {
-                Text(KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원"))
+                Text(Won.abbreviated(end.nominal, suffix: "원"))
                     .font(.figure(15, weight: .semibold))
                     .foregroundStyle(Color.ink)
             } label: {
                 Text(verbatim: "\(plan.retirementYear)년 예상")
             }
             LabeledContent("오늘 돈 기준") {
-                Text(KoreanAmountFormatter.abbreviated(end.real, suffix: "원"))
+                Text(Won.abbreviated(end.real, suffix: "원"))
                     .font(.figure(13))
                     .foregroundStyle(Color.muted)
             }

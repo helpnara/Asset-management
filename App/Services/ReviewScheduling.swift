@@ -7,6 +7,9 @@ enum ReviewSettings {
     static let hourKey = "review.hour"
     static let minuteKey = "review.minute"
     static let followUpKey = "review.followUp"
+    /// 주간 알림에 지난주 총액을 함께 보여줄 것인가.
+    /// 알림은 잠긴 화면에도 뜬다 — 기본은 표시하지 않음이다.
+    static let notificationAmountKey = "review.showsAmount"
 
     /// 7 = 토요일
     static let defaultWeekday = 7
@@ -18,6 +21,9 @@ enum ReviewSettings {
     static var minute: Int { value(minuteKey, defaultMinute) }
     static var followUpEnabled: Bool {
         UserDefaults.standard.object(forKey: followUpKey) as? Bool ?? true
+    }
+    static var showsAmountInNotification: Bool {
+        UserDefaults.standard.bool(forKey: notificationAmountKey)
     }
 
     private static func value(_ key: String, _ fallback: Int) -> Int {
@@ -37,11 +43,17 @@ enum ReviewScheduling {
     struct Input: Sendable {
         var itemCount: Int
         var completedAnchors: [Date]
+        /// 지난 점검의 총액. 알림에 금액을 보여주기로 했을 때만 쓴다.
+        var lastTotalMinor: Int
 
         @MainActor
         init(holdings: [Holding], sessions: [ReviewSession]) {
             self.itemCount = holdings.filter { $0.cadence != .fixed }.count
-            self.completedAnchors = sessions.filter(\.isComplete).map(\.weekAnchor)
+            let completed = sessions.filter(\.isComplete)
+            self.completedAnchors = completed.map(\.weekAnchor)
+            self.lastTotalMinor = completed
+                .max { $0.weekAnchor < $1.weekAnchor }?
+                .totalValueMinor ?? 0
         }
     }
 
@@ -57,7 +69,8 @@ enum ReviewScheduling {
             hour: ReviewSettings.hour,
             minute: ReviewSettings.minute,
             itemCount: itemCount,
-            streak: streak
+            streak: streak,
+            lastTotalMinor: ReviewSettings.showsAmountInNotification ? input.lastTotalMinor : 0
         )
 
         let thisWeek = ReviewWeek.anchor(for: .now)

@@ -5,6 +5,10 @@ import SwiftUI
 import UserNotifications
 
 struct MoreView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Query private var sessions: [ReviewSession]
     @Query private var holdings: [Holding]
 
@@ -19,6 +23,8 @@ struct MoreView: View {
         case diagnostics
         case todos
         case milestones
+        case security
+        case export
     }
 
     var body: some View {
@@ -27,6 +33,9 @@ struct MoreView: View {
                 Section("점검") {
                     NavigationLink(value: Destination.notifications) {
                         Label("주간 점검 알림", systemImage: "bell")
+                    }
+                    NavigationLink(value: Destination.security) {
+                        Label("잠금 · 가리기", systemImage: "lock")
                     }
                     LabeledContent("연속 기록", value: "\(streak)주")
                     LabeledContent("기록한 주", value: "\(sessions.filter(\.isComplete).count)주")
@@ -45,6 +54,9 @@ struct MoreView: View {
                     NavigationLink(value: Destination.milestones) {
                         Label("내 마일스톤", systemImage: "flag")
                     }
+                    NavigationLink(value: Destination.export) {
+                        Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
+                    }
                 }
 
                 Section("자산") {
@@ -55,12 +67,6 @@ struct MoreView: View {
                 }
 
                 SyncStatusSection()
-
-                Section {
-                    Text("준비 중 — 운용 원칙 · 유의사항 · 1페이지 내보내기")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.muted)
-                }
 
                 Section {
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
@@ -82,6 +88,8 @@ struct MoreView: View {
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
                 case .milestones: MilestoneListView()
+                case .security: SecuritySettingsView()
+                case .export: ExportView()
                 }
             }
         }
@@ -164,6 +172,12 @@ struct NotificationSettingsView: View {
                 Toggle("다음날 한 번 더 알림", isOn: $followUpEnabled)
             } footer: {
                 Text("점검일에 적지 않으면 다음날 같은 시각에 한 번만 더 부릅니다. 그것도 놓치면 조용히 넘어갑니다.")
+            }
+
+            Section {
+                Text("알림에 금액을 보여줄지는 [잠금 · 가리기]에서 정합니다. 알림은 잠긴 화면에도 뜹니다.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.muted)
             }
         }
         .navigationTitle("주간 점검 알림")

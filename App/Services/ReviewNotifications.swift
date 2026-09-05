@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import UserNotifications
 
@@ -59,12 +60,24 @@ enum ReviewNotifications {
 
     /// 매주 같은 요일·시각에 반복. 앱이 뜰 때마다 다시 등록해도 안전하다
     /// (같은 식별자를 덮어쓴다) — 시간대 변경이나 기기 이전에 대비한 것이다.
-    static func scheduleWeekly(weekday: Int, hour: Int, minute: Int, itemCount: Int, streak: Int) async {
+    static func scheduleWeekly(
+        weekday: Int, hour: Int, minute: Int,
+        itemCount: Int, streak: Int,
+        lastTotalMinor: Int = 0
+    ) async {
         let content = UNMutableNotificationContent()
         content.title = "이번 주 점검 — \(itemCount)건"
-        content.body = streak > 0
+        var body = streak > 0
             ? "지난주 대비 얼마나 늘었는지 지금 기록하세요. \(streak)주 연속 기록 중"
             : "지난주 대비 얼마나 늘었는지 지금 기록하세요."
+        // 알림은 잠긴 화면에도 뜬다. 0이면 설정이 꺼져 있거나 기록이 없는 것이므로
+        // 어느 쪽이든 금액을 쓰지 않는다.
+        if lastTotalMinor > 0 {
+            let amount = KoreanAmountFormatter.abbreviated(
+                Money(minorUnits: lastTotalMinor, currency: .krw), suffix: "원")
+            body += " (지난주 \(amount))"
+        }
+        content.body = body
         content.categoryIdentifier = Identifier.category
         content.sound = .default
 

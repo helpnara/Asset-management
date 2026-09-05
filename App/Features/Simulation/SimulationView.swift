@@ -8,6 +8,10 @@ import SwiftUI
 /// 손잡이를 돌려도 저장되지 않는다. 마음에 들면 [계획에 반영]을 눌러야 넘어간다.
 /// 이 분리가 없으면 무심코 돌린 슬라이더가 계획을 덮어쓴다.
 struct SimulationView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Environment(\.modelContext) private var context
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
@@ -83,7 +87,7 @@ struct SimulationView: View {
                 .foregroundStyle(Color.muted)
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(outcome.map { KoreanAmountFormatter.abbreviated($0.expected, suffix: "원") } ?? "—")
+                Text(outcome.map { Won.abbreviated($0.expected, suffix: "원") } ?? "—")
                     .font(.figure(26, weight: .bold))
                     .foregroundStyle(Color.ink)
                 if isCalculating {
@@ -102,7 +106,7 @@ struct SimulationView: View {
             }
 
             if let outcome {
-                Text("오늘 돈으로 \(KoreanAmountFormatter.abbreviated(outcome.expectedReal, suffix: "원"))")
+                Text("오늘 돈으로 \(Won.abbreviated(outcome.expectedReal, suffix: "원"))")
                     .font(.figure(11.5))
                     .foregroundStyle(Color.muted)
             }
@@ -113,7 +117,7 @@ struct SimulationView: View {
     }
 
     private func deltaText(_ delta: Money) -> String {
-        let size = KoreanAmountFormatter.abbreviated(
+        let size = Won.abbreviated(
             Money(minorUnits: abs(delta.minorUnits), currency: .krw), suffix: "원")
         return "계획보다 " + size + (delta.minorUnits > 0 ? " 많다" : " 적다")
     }
@@ -148,7 +152,7 @@ struct SimulationView: View {
             }
             Spacer(minLength: 0)
             if plan.targetAmountMinor > 0 {
-                Text("목표 " + KoreanAmountFormatter.compact(plan.targetAmount))
+                Text("목표 " + Won.compact(plan.targetAmount))
                     .font(.figure(9.5))
                     .foregroundStyle(Color.muted)
             }
@@ -206,8 +210,8 @@ struct SimulationView: View {
 
     private func hitCountText(_ probability: Double, of paths: Int) -> String {
         let hits = Int((probability * Double(paths)).rounded())
-        return KoreanAmountFormatter.grouped(paths) + "번 굴려 "
-            + KoreanAmountFormatter.grouped(hits) + "번 목표를 넘겼습니다"
+        return Won.grouped(paths) + "번 굴려 "
+            + Won.grouped(hits) + "번 목표를 넘겼습니다"
     }
 
     // MARK: - 손잡이
@@ -221,7 +225,7 @@ struct SimulationView: View {
                 range: 0...max(5_000_000, plan.monthlyContributionMinor * 2),
                 step: 100_000,
                 baselineValue: plan.monthlyContributionMinor,
-                display: { KoreanAmountFormatter.abbreviated(Money(minorUnits: $0, currency: .krw), suffix: "원") }
+                display: { Won.abbreviated(Money(minorUnits: $0, currency: .krw), suffix: "원") }
             )
             slider(
                 title: "은퇴 연도",
@@ -329,7 +333,7 @@ struct SimulationView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(Color.muted)
             Spacer()
-            Text(KoreanAmountFormatter.abbreviated(amount, suffix: "원"))
+            Text(Won.abbreviated(amount, suffix: "원"))
                 .font(.figure(14, weight: .medium))
                 .foregroundStyle(color)
         }

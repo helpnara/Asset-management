@@ -23,7 +23,7 @@ struct DiagnosticsCriteriaView: View {
                     if let required = Diagnostics.requiredNestEgg(
                         monthlySpending: plan.monthlySpending,
                         withdrawalRate: plan.withdrawalRate) {
-                        Text("필요 자금 \(KoreanAmountFormatter.abbreviated(required, suffix: "원")) — 연 생활비를 인출률로 나눈 값입니다. 4%면 25배, 3.5%면 약 28.6배가 됩니다.")
+                        Text("필요 자금 \(Won.abbreviated(required, suffix: "원")) — 연 생활비를 인출률로 나눈 값입니다. 4%면 25배, 3.5%면 약 28.6배가 됩니다.")
                     } else {
                         Text("월 생활비를 넣으면 필요 자금을 계산합니다. 지금 쓰는 생활비에서 출퇴근·교육비를 빼고 의료비를 더하면 대략 맞습니다.")
                     }

@@ -27,7 +27,7 @@ struct RoadmapStrip: View {
                             .tracking(1)
                             .foregroundStyle(stop.isNow ? Color.dad : Color.faint)
 
-                        Text(KoreanAmountFormatter.compact(stop.amount))
+                        Text(Won.compact(stop.amount))
                             .font(.figure(stop.isNow || stop.isGoal ? 15 : 13,
                                           weight: stop.isNow || stop.isGoal ? .bold : .semibold))
                             .foregroundStyle(amountColor(stop))

@@ -14,6 +14,10 @@ import SwiftUI
 /// 여기 넣는 것은 그 시점의 **총액**이다. 종목별 분해까지 되살릴 수는 없고,
 /// 그건 애초에 궤적이 요구하는 것도 아니다.
 struct PastRecordsView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Environment(\.modelContext) private var context
     @Query(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
     @Query private var sessions: [ReviewSession]
@@ -68,14 +72,14 @@ struct PastRecordsView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Color.ink)
                 if snapshot.liabilitiesMinor != 0 {
-                    Text("부채 " + KoreanAmountFormatter.abbreviated(
+                    Text("부채 " + Won.abbreviated(
                         Money(minorUnits: snapshot.liabilitiesMinor, currency: .krw), suffix: "원"))
                         .font(.figure(10))
                         .foregroundStyle(Color.faint)
                 }
             }
             Spacer()
-            Text(KoreanAmountFormatter.abbreviated(
+            Text(Won.abbreviated(
                 Money(minorUnits: snapshot.netWorthMinor, currency: .krw), suffix: "원"))
                 .font(.figure(13.5, weight: .medium))
                 .foregroundStyle(Color.ink)

@@ -10,6 +10,10 @@ import SwiftUI
 ///
 /// 목표는 자산 24건을 3분 안에 끝내는 것이다 (ADR-0005).
 struct WeeklyReviewView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
 
@@ -155,7 +159,7 @@ struct WeeklyReviewView: View {
                                     background: holding.status.badgeBackground)
                     }
                 }
-                Text("지난주 \(KoreanAmountFormatter.grouped(holding.lastEnteredValueMinor))")
+                Text("지난주 \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.system(size: 9.5))
                     .foregroundStyle(Color.faint)
             }
@@ -247,7 +251,7 @@ struct WeeklyReviewView: View {
 
     private func valueText(_ holding: Holding) -> Binding<String> {
         Binding(
-            get: { holding.valueMinor == 0 ? "" : KoreanAmountFormatter.grouped(holding.valueMinor) },
+            get: { holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor) },
             set: { holding.valueMinor = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0 }
         )
     }
@@ -258,7 +262,7 @@ struct WeeklyReviewView: View {
         guard delta != 0 else { return "변동 없음" }
         let percent = Decimal(abs(delta)) / Decimal(holding.lastEnteredValueMinor)
         let sign = delta > 0 ? "+" : "-"
-        return "\(sign)\(KoreanAmountFormatter.grouped(abs(delta))) · \(PercentFormatter.oneDecimal(percent))%"
+        return "\(sign)\(Won.grouped(abs(delta))) · \(PercentFormatter.oneDecimal(percent))%"
     }
 
     /// 부채는 늘어나는 것이 나쁜 일이다. 같은 +112,500 이라도 자산이면 초록,

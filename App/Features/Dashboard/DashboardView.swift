@@ -3,6 +3,10 @@ import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
@@ -100,11 +104,11 @@ struct DashboardView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("가 족 총 자 산").eyebrowStyle().padding(.bottom, 7)
-            Text(KoreanAmountFormatter.abbreviated(rollup.netWorth, suffix: "원"))
+            Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                 .font(.figure(38, weight: .semibold))
                 .foregroundStyle(Color.ink)
             if !rollup.liabilities.isZero {
-                Text("자산 \(KoreanAmountFormatter.abbreviated(rollup.assets)) · 부채 \(KoreanAmountFormatter.abbreviated(rollup.liabilities))")
+                Text("자산 \(Won.abbreviated(rollup.assets)) · 부채 \(Won.abbreviated(rollup.liabilities))")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
@@ -309,7 +313,7 @@ struct DashboardView: View {
                 legend(color: .dad, dashed: true, label: "예측")
                 if chartRange == .retirement, let target = plan?.targetAmount, !target.isZero {
                     legend(color: .ink.opacity(0.55), dashed: true,
-                           label: "목표 \(KoreanAmountFormatter.compact(target))")
+                           label: "목표 \(Won.compact(target))")
                 }
                 Spacer()
             }
@@ -354,8 +358,8 @@ struct DashboardView: View {
               let end = projection?.point(inYear: plan.retirementYear) ?? projection?.last
         else { return nil }
         // 한 줄에 들어가야 읽힌다. 상세 자릿수는 계획 탭에서 본다.
-        let nominal = KoreanAmountFormatter.compact(end.nominal)
-        let real = KoreanAmountFormatter.compact(end.real)
+        let nominal = Won.compact(end.nominal)
+        let real = Won.compact(end.real)
         var line = "이대로 가면 \(String(plan.retirementYear))년에 \(nominal) · 오늘 돈으로 \(real)"
         if plan.targetAmountMinor > 0 {
             let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
@@ -389,7 +393,7 @@ struct DashboardView: View {
                         }
                     }
                     Spacer(minLength: 0)
-                    Text(KoreanAmountFormatter.abbreviated(rollup.byMember[member.id] ?? .zero(.krw)))
+                    Text(Won.abbreviated(rollup.byMember[member.id] ?? .zero(.krw)))
                         .font(.figure(15, weight: .semibold))
                         .foregroundStyle(Color.member(member.colorIndex))
                 }
@@ -519,7 +523,7 @@ struct DashboardView: View {
                     .font(.system(size: 12, weight: emphasized ? .medium : .regular))
                     .foregroundStyle(emphasized ? Color.ink : Color.muted)
                 Spacer()
-                Text(KoreanAmountFormatter.full(money))
+                Text(Won.full(money))
                     .font(.figure(12.5, weight: emphasized ? .bold : .medium))
                     .foregroundStyle(Color.ink)
             }

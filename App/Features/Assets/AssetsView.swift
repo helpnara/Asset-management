@@ -4,6 +4,10 @@ import SwiftUI
 
 /// 계속 입력하는 화면. 구성원 → 계좌 → 종목 3단.
 struct AssetsView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     @Environment(\.modelContext) private var context
     @Query(sort: \Member.sortIndex) private var members: [Member]
 
@@ -211,7 +215,7 @@ struct AssetsView: View {
     /// 목록에서는 자릿수를 비교하는 게 목적이라 계좌 소계도 종목과 같은 원 단위로 적는다.
     /// 부채는 부호로 구분한다 — 같은 4,500,000 이 자산인지 빚인지 헷갈리면 안 된다.
     private func signedAmount(_ minorUnits: Int, _ isLiability: Bool) -> String {
-        (isLiability ? "-" : "") + KoreanAmountFormatter.grouped(minorUnits)
+        (isLiability ? "-" : "") + Won.grouped(minorUnits)
     }
 
     private func addMember() {

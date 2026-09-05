@@ -85,7 +85,7 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
         try? context.save()
 
         ReviewNotifications.cancelFollowUp()
-        let amount = KoreanAmountFormatter.abbreviated(
+        let amount = Won.abbreviated(
             Money(minorUnits: value, currency: .krw), suffix: "원"
         )
         AppRoute.shared.totalOnlyMessage =

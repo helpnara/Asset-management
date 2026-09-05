@@ -7,6 +7,10 @@ import SwiftUI
 /// 손으로 적는 수고에 값을 붙이는 자리다. 끝낸 직후 이번 주 변화와
 /// 연속 기록을 즉시 보여준다 (ADR-0005).
 struct ReviewCompleteView: View {
+    // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
+    // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+
     let session: ReviewSession
 
     @Environment(\.dismiss) private var dismiss
@@ -57,7 +61,7 @@ struct ReviewCompleteView: View {
             Text("이 번 주 변 화").eyebrowStyle().padding(.bottom, 7)
 
             if isFirstEver {
-                Text(KoreanAmountFormatter.abbreviated(total, suffix: "원"))
+                Text(Won.abbreviated(total, suffix: "원"))
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text("첫 기록입니다. 다음 주부터 증감이 보입니다.")
@@ -65,10 +69,10 @@ struct ReviewCompleteView: View {
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
             } else {
-                Text(KoreanAmountFormatter.abbreviated(change, suffix: "원", sign: .always))
+                Text(Won.abbreviated(change, suffix: "원", sign: .always))
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(session.changeMinor < 0 ? Color.loss : Color.gain)
-                Text("가족 총자산 \(KoreanAmountFormatter.abbreviated(total)) · \(session.enteredCount)건 입력")
+                Text("가족 총자산 \(Won.abbreviated(total)) · \(session.enteredCount)건 입력")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
@@ -141,7 +145,7 @@ struct ReviewCompleteView: View {
                             .font(.system(size: 12.5))
                             .foregroundStyle(Color.ink)
                         Spacer()
-                        Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: line.valueMinor, currency: .krw)))
+                        Text(Won.abbreviated(Money(minorUnits: line.valueMinor, currency: .krw)))
                             .font(.figure(12.5, weight: .medium))
                             .foregroundStyle(Color.member(line.sortIndex))
                     }
