@@ -136,6 +136,27 @@ struct DiagnosticsTests {
                 .diagnosis(.countryMix)?.status == .act)
     }
 
+    @Test("비중끼리의 차이는 퍼센트포인트로 쓴다")
+    func countryMixUsesPercentagePoints() throws {
+        // 목표 60%, 실제 38.6% 의 간격은 21.4%p 이지 21.4% 가 아니다.
+        // "21.4% 적다" 로 쓰면 "60%의 21.4%" = 12.8%p 로 읽힌다.
+        // 스크린샷을 보고 잡은 자리다.
+        let result = Diagnostics.run(input(us: 270_200_000, kr: 429_800_000))   // 미국 38.6%
+        let diagnosis = try #require(result.diagnosis(.countryMix))
+        #expect(diagnosis.action.contains("21.4%p"))
+        #expect(!diagnosis.action.contains("21.4% "))
+    }
+
+    @Test("게이지의 1.0 은 목표다 — 절대 비중이 아니다")
+    func countryMixGaugeIsRelativeToTarget() throws {
+        // 다른 규칙은 progress 1.0 이 곧 기준선이다. 국가 배분만 절대 비중을
+        // 넣으면 기준선이 "미국 100%" 라는 아무 의미 없는 곳을 가리킨다.
+        let result = Diagnostics.run(input(us: 420_000_000, kr: 280_000_000))   // 60.0% = 목표
+        let diagnosis = try #require(result.diagnosis(.countryMix))
+        let progress = try #require(diagnosis.progress)
+        #expect(abs(progress - 1.0) < 0.001)
+    }
+
     @Test("목표를 바꾸면 판정도 따라 바뀐다 — 사용자가 정하는 값이다")
     func countryMixIsConfigurable() {
         let holdings = (us: 560_000_000, kr: 140_000_000)   // 미국 80%

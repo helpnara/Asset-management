@@ -374,13 +374,13 @@ public enum Diagnostics {
         } else if abs(drift) <= tolerance * 2 {
             status = .watch
             action = drift > 0
-                ? "미국이 목표보다 \(percent(drift)) 많습니다. 파는 대신 다음 적립을 한국 쪽에 넣어 맞추세요 — 팔면 세금이 붙습니다."
-                : "미국이 목표보다 \(percent(-drift)) 적습니다. 다음 적립을 미국 쪽에 넣으세요."
+                ? "미국이 목표보다 \(points(drift)) 많습니다. 파는 대신 다음 적립을 한국 쪽에 넣어 맞추세요 — 팔면 세금이 붙습니다."
+                : "미국이 목표보다 \(points(-drift)) 적습니다. 다음 적립을 미국 쪽에 넣으세요."
         } else {
             status = .act
             action = drift > 0
-                ? "미국이 목표보다 \(percent(drift)) 많습니다. 적립만으로 되돌리기 어려운 폭이면 일부 조정을 고려하되, 세금과 수수료를 먼저 계산해 보세요."
-                : "미국이 목표보다 \(percent(-drift)) 적습니다. 적립 방향을 미국 쪽으로 돌리세요."
+                ? "미국이 목표보다 \(points(drift)) 많습니다. 적립만으로 되돌리기 어려운 폭이면 일부 조정을 고려하되, 세금과 수수료를 먼저 계산해 보세요."
+                : "미국이 목표보다 \(points(-drift)) 적습니다. 적립 방향을 미국 쪽으로 돌리세요."
         }
 
         return Diagnosis(
@@ -388,7 +388,10 @@ public enum Diagnostics {
             status: status,
             headline: "미국 \(percent(us)) · 한국 \(percent(kr)) (목표 미국 \(PercentFormatter.oneDecimal(input.usTarget.fraction))% ±\(PercentFormatter.oneDecimal(input.mixTolerance.fraction))%p)",
             action: action,
-            progress: us
+            // 게이지의 1.0 은 **목표**다. 절대 비중(us)을 그대로 넣으면 1.0 이
+            // "미국 100%" 를 뜻하게 되어 기준선이 아무 의미도 없는 곳을 가리킨다.
+            // 다른 규칙과 같은 눈금이어야 눈이 한 번에 읽는다.
+            progress: target > 0 ? us / target : nil
         )
     }
 
@@ -546,6 +549,14 @@ public enum Diagnostics {
 
     private static func percent(_ value: Double) -> String {
         PercentFormatter.oneDecimal(Decimals.fromDouble(value)) + "%"
+    }
+
+    /// 비중끼리의 **차이**는 퍼센트가 아니라 퍼센트포인트다.
+    ///
+    /// 목표 60%, 실제 38.6% 의 간격은 21.4%p 이지 21.4% 가 아니다.
+    /// 21.4% 라고 쓰면 "60%의 21.4%" 로 읽혀 12.8%p 로 오해된다.
+    private static func points(_ value: Double) -> String {
+        PercentFormatter.oneDecimal(Decimals.fromDouble(value)) + "%p"
     }
 
     private static func decimalToDouble(_ value: Decimal) -> Double {
