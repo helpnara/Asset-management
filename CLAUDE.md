@@ -37,9 +37,9 @@ cd Asset-management
 git checkout claude/iphone-asset-management-design-7aafjc
 
 brew install xcodegen        # 최초 1회
-xcodegen generate            # Assetly.xcodeproj 생성
+xcodegen generate            # SlowRich.xcodeproj 생성
 cd Packages/Core && swift test && cd -   # 계산 로직 테스트 (수 초)
-open Assetly.xcodeproj       # ⌘R 로 실행
+open SlowRich.xcodeproj       # ⌘R 로 실행
 ```
 
 `claude` 를 이 디렉터리에서 실행하면 `CLAUDE.md` 를 읽고 이어서 작업합니다.
@@ -55,12 +55,12 @@ xcodegen generate
 cd Packages/Core && swift test
 
 # 3) 앱 빌드
-xcodebuild -scheme Assetly -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -scheme SlowRich -destination 'platform=iOS Simulator,name=iPhone 16' build
 
 # 4) 시뮬레이터에서 실행하고 스크린샷
 xcrun simctl boot 'iPhone 16'
-xcrun simctl install booted <경로>/Assetly.app
-xcrun simctl launch booted com.helpnara.assetly
+xcrun simctl install booted <경로>/SlowRich.app
+xcrun simctl launch booted com.helpnara.slowrich
 xcrun simctl io booted screenshot shot.png
 ```
 
@@ -92,5 +92,7 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 - **iPad 확장**: iPhone 버전이 어느 정도 완성되면 iPad로 넓히는 것이 사용자의 계획이다.
   착수 조건과 준비 사항은 [로드맵 M7](docs/05-roadmap.md#m7--ipad-확장-iphone-버전이-안정된-뒤).
   M1~M5 화면을 만들 때 고정 폭 레이아웃에 못 박지 않는다.
-- **앱 이름은 아직 미정**이다. `Assetly`는 빌드용 식별자로 쓰는 임시 코드명이고,
-  표시 이름은 `노후자금 현황판`이다. 정해지면 `project.yml`과 번들 ID를 함께 바꾼다.
+- **앱 이름은 `느린 부자의 기록`** 이다. 빌드용 식별자는 `SlowRich`,
+  번들 ID는 `com.helpnara.slowrich`.
+  화면 상단의 `우리 가족 노후자금 준비` 는 앱 이름이 아니라 **계획 제목**이며
+  사용자가 바꿀 수 있는 값이다 (`Household.title`). 둘을 섞지 않는다.

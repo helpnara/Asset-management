@@ -1,4 +1,4 @@
-name: Assetly
+name: SlowRich
 options:
   bundleIdPrefix: com.helpnara
   deploymentTarget:
@@ -11,7 +11,7 @@ packages:
     path: Packages/Core
 
 targets:
-  Assetly:
+  SlowRich:
     type: application
     platform: iOS
     sources:
@@ -22,13 +22,13 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: 노후자금 현황판
+        CFBundleDisplayName: 느린 부자의 기록
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.assetly
+        PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
@@ -37,10 +37,10 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: YES
 
 schemes:
-  Assetly:
+  SlowRich:
     build:
       targets:
-        Assetly: all
+        SlowRich: all
     run:
       config: Debug
     test:

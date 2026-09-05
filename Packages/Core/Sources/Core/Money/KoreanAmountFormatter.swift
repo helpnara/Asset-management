@@ -80,7 +80,7 @@ public enum KoreanAmountFormatter {
     }
 
     /// `1234567` → `1,234,567`
-    static func grouped(_ value: Int) -> String {
+    public static func grouped(_ value: Int) -> String {
         let isNegative = value < 0
         var head = String(value.magnitude)
         var tail = ""

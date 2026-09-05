@@ -27,3 +27,12 @@ extension Color {
         )
     }
 }
+
+extension Color {
+    /// 구성원 색. 1페이지의 아빠·엄마·아들·딸 순서 그대로.
+    static let memberPalette: [Color] = [.dad, .mom, .son, .daughter]
+
+    static func member(_ index: Int) -> Color {
+        memberPalette[((index % memberPalette.count) + memberPalette.count) % memberPalette.count]
+    }
+}

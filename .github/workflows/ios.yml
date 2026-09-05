@@ -90,8 +90,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -project Assetly.xcodeproj \
-            -scheme Assetly \
+            -project SlowRich.xcodeproj \
+            -scheme SlowRich \
             -configuration Debug \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build \
@@ -112,7 +112,7 @@ jobs:
             --dataNetwork wifi --wifiMode active --wifiBars 3 \
             --cellularMode active --cellularBars 4 \
             --batteryState charged --batteryLevel 100
-          xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.helpnara.assetly
+          xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.helpnara.slowrich
           # 첫 프레임이 그려질 때까지 잠깐 기다린다
           sleep 6
 
