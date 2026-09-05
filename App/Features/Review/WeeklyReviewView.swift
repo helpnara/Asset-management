@@ -38,8 +38,16 @@ struct WeeklyReviewView: View {
                             let rows = queue(for: member)
                             if !rows.isEmpty {
                                 Section {
-                                    ForEach(rows) { holding in
-                                        row(holding).id(holding.id)
+                                    // 계좌마다 소제목을 단다. 증권사 앱을 옮겨가며 적으므로
+                                    // 지금 어느 계좌를 보고 있는지가 보여야 한다.
+                                    ForEach(member.sortedAccounts) { account in
+                                        let items = account.sortedHoldings.filter { $0.cadence != .fixed }
+                                        if !items.isEmpty {
+                                            accountLabel(account)
+                                            ForEach(items) { holding in
+                                                row(holding).id(holding.id)
+                                            }
+                                        }
                                     }
                                 } header: {
                                     memberHeader(member, count: rows.count)
@@ -107,6 +115,26 @@ struct WeeklyReviewView: View {
         .padding(.vertical, 8)
         .background(Color.surface)
         .overlay(Rectangle().fill(Color.rule).frame(height: 1), alignment: .bottom)
+    }
+
+    private func accountLabel(_ account: Account) -> some View {
+        HStack(spacing: 6) {
+            Text(account.name.isEmpty ? account.kind.label : account.name)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.muted)
+            if !account.institution.isEmpty {
+                Text(account.institution)
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Color.faint)
+            }
+            if account.kind.isLiability {
+                StatusBadge(text: "부채", foreground: .loss, background: Color(hex: 0xF5E6E8))
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 5)
     }
 
     private func visitedCount(_ member: Member) -> Int {
@@ -233,12 +261,15 @@ struct WeeklyReviewView: View {
         return "\(sign)\(KoreanAmountFormatter.grouped(abs(delta))) · \(PercentFormatter.oneDecimal(percent))%"
     }
 
+    /// 부채는 늘어나는 것이 나쁜 일이다. 같은 +112,500 이라도 자산이면 초록,
+    /// 마이너스통장이면 빨강이어야 한다.
     private func deltaColor(_ holding: Holding) -> Color {
+        guard holding.lastEnteredValueMinor != 0 else { return .faint }
         let delta = holding.valueMinor - holding.lastEnteredValueMinor
-        if holding.lastEnteredValueMinor == 0 { return .faint }
-        if delta > 0 { return .gain }
-        if delta < 0 { return .loss }
-        return .faint
+        guard delta != 0 else { return .faint }
+        let isLiability = holding.account?.kind.isLiability ?? false
+        let isGood = isLiability ? delta < 0 : delta > 0
+        return isGood ? .gain : .loss
     }
 
     private func finish() {
@@ -259,12 +290,26 @@ struct WeeklyReviewView: View {
         session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
         context.insert(session)
 
-        context.insert(Snapshot(
+        let snapshot = Snapshot(
             weekAnchor: anchor,
             netWorthMinor: rollup.netWorth.minorUnits,
             investableMinor: rollup.investable.minorUnits,
             liabilitiesMinor: rollup.liabilities.minorUnits
-        ))
+        )
+        context.insert(snapshot)
+
+        // 구성원별 분해를 함께 남긴다. 이게 없으면 나중에 이 점검을 다시 열었을 때
+        // 총액은 그때 값인데 구성원별은 현재 값이라 합이 안 맞는다.
+        for (position, member) in members.enumerated() {
+            let line = SnapshotLine(
+                memberID: member.id,
+                memberName: member.name,
+                valueMinor: (rollup.byMember[member.id] ?? .zero(.krw)).minorUnits,
+                sortIndex: position
+            )
+            line.snapshot = snapshot
+            context.insert(line)
+        }
 
         // 다음 주 증감 표시의 기준이 된다.
         for holding in queue {

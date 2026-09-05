@@ -51,14 +51,22 @@ enum SampleData {
         holding("국내 바이오주", .equity, .stock, "KR", .accumulating, .weekly, 5_600_000, daughterBrokerage, 0, context)
         holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_800_000, daughterBrokerage, 1, context)
 
-        seedPastReviews(into: context)
+        seedPastReviews(members: [dad, mom, son, daughter], into: context)
     }
 
     /// 지난 점검 기록. 연속 기록과 주간 증감이 화면에 실제로 보이게 한다.
     /// 이번 주는 일부러 비워 둬서 "지금 입력" 상태를 확인할 수 있게 한다.
-    private static func seedPastReviews(into context: ModelContext) {
+    private static func seedPastReviews(members: [Member], into context: ModelContext) {
         let thisWeek = ReviewWeek.anchor(for: .now)
         let calendar = Calendar.current
+        let weeklyCount = members
+            .flatMap { $0.sortedAccounts }
+            .flatMap { $0.sortedHoldings }
+            .filter { $0.cadence != .fixed }
+            .count
+        // 구성원별 비중. 마지막 사람이 나머지를 받아 합이 총액과 정확히 맞는다.
+        let weights = [1990, 20, 292, 74]
+        let totalWeight = weights.reduce(0, +)
         var running = 231_400_000
 
         for weeksAgo in stride(from: 12, through: 1, by: -1) {
@@ -66,17 +74,32 @@ enum SampleData {
             let previous = running
             running += 500_000 + weeksAgo * 37_000
 
-            let session = ReviewSession(weekAnchor: anchor, totalCount: 12)
-            session.enteredCount = 12
+            let session = ReviewSession(weekAnchor: anchor, totalCount: weeklyCount)
+            session.enteredCount = weeklyCount
             session.completedAt = anchor
             session.totalValueMinor = running
             session.previousTotalValueMinor = previous
             context.insert(session)
 
-            context.insert(Snapshot(weekAnchor: anchor,
+            let snapshot = Snapshot(weekAnchor: anchor,
                                     netWorthMinor: running,
                                     investableMinor: running - 100_000_000,
-                                    liabilitiesMinor: 4_500_000))
+                                    liabilitiesMinor: 4_500_000)
+            context.insert(snapshot)
+
+            var assigned = 0
+            for (position, member) in members.enumerated() {
+                let isLast = position == members.count - 1
+                let value = isLast
+                    ? running - assigned
+                    : running * weights[position % weights.count] / totalWeight
+                assigned += value
+
+                let line = SnapshotLine(memberID: member.id, memberName: member.name,
+                                        valueMinor: value, sortIndex: position)
+                line.snapshot = snapshot
+                context.insert(line)
+            }
         }
     }
 

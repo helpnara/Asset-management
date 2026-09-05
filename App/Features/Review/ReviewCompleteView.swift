@@ -10,8 +10,14 @@ struct ReviewCompleteView: View {
     let session: ReviewSession
 
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var sessions: [ReviewSession]
+    @Query private var snapshots: [Snapshot]
+
+    /// 화면의 모든 숫자를 이 스냅샷 하나에서 읽는다.
+    /// 현재 값과 섞으면 과거 점검을 열었을 때 총액과 구성원별 합이 어긋난다.
+    private var snapshot: Snapshot? {
+        snapshots.first { $0.weekAnchor == session.weekAnchor }
+    }
 
     private var streak: Int {
         ReviewWeek.streak(
@@ -109,36 +115,40 @@ struct ReviewCompleteView: View {
         }
     }
 
+    @ViewBuilder
     private var memberSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("구성원별")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.ink)
-                Spacer()
-                Text("이번 주 기준")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.faint)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 22)
-            .padding(.bottom, 8)
-
-            Rectangle().fill(Color.rule).frame(height: 1)
-
-            ForEach(members) { member in
-                HStack {
-                    Text(member.name.isEmpty ? "이름 없음" : member.name)
-                        .font(.system(size: 12.5))
+        let lines = snapshot?.sortedLines ?? []
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("구성원별")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(Color.ink)
                     Spacer()
-                    Text(KoreanAmountFormatter.abbreviated(memberTotal(member)))
-                        .font(.figure(12.5, weight: .medium))
-                        .foregroundStyle(Color.member(member.colorIndex))
+                    Text("이 점검 시점 기준")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.faint)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 11)
+                .padding(.top, 22)
+                .padding(.bottom, 8)
+
                 Rectangle().fill(Color.rule).frame(height: 1)
+
+                ForEach(lines) { line in
+                    HStack {
+                        Text(line.memberName.isEmpty ? "이름 없음" : line.memberName)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(Color.ink)
+                        Spacer()
+                        Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: line.valueMinor, currency: .krw)))
+                            .font(.figure(12.5, weight: .medium))
+                            .foregroundStyle(Color.member(line.sortIndex))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 11)
+                    Rectangle().fill(Color.rule).frame(height: 1)
+                }
             }
         }
     }
@@ -168,13 +178,4 @@ struct ReviewCompleteView: View {
         return formatter.string(from: ReviewWeek.nextSaturday(after: .now))
     }
 
-    private func memberTotal(_ member: Member) -> Money {
-        member.sortedAccounts
-            .flatMap { account in
-                account.sortedHoldings.map { holding in
-                    account.kind.isLiability ? -holding.value : holding.value
-                }
-            }
-            .total(in: .krw)
-    }
 }
