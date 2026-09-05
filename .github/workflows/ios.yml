@@ -54,29 +54,34 @@ jobs:
       - name: 시뮬레이터 고르기
         id: sim
         run: |
-          # 러너 이미지마다 있는 기기가 달라서 이름을 박지 않고 골라 쓴다
-          UDID=$(xcrun simctl list devices available -j \
-            | python3 -c "
-          import json,sys
+          # 러너 이미지마다 있는 기기가 달라 이름을 박지 않는다.
+          # 다만 SE·mini 는 화면이 좁아 설계 기준(390pt급)과 어긋나므로 제외한다.
+          read -r UDID NAME <<< "$(xcrun simctl list devices available -j | python3 -c "
+          import json, re, sys
           data = json.load(sys.stdin)['devices']
+          rank = {'': 3, ' Pro': 2, ' Plus': 1, ' Pro Max': 0}
           best = None
           for runtime, devices in data.items():
-              if 'iOS' not in runtime: continue
+              if 'iOS' not in runtime:
+                  continue
+              m = re.search(r'iOS-(\\d+)-(\\d+)', runtime)
+              version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
               for d in devices:
-                  if not d.get('isAvailable'): continue
-                  if 'iPhone' not in d['name']: continue
-                  best = d  # 목록 뒤쪽일수록 최신 기기
+                  name = d.get('name', '')
+                  if not d.get('isAvailable') or not name.startswith('iPhone'):
+                      continue
+                  if 'SE' in name or 'mini' in name:
+                      continue
+                  n = re.match(r'iPhone (\\d+)(.*)$', name)
+                  if not n:
+                      continue
+                  key = (version, int(n.group(1)), rank.get(n.group(2), 0))
+                  if best is None or key > best[0]:
+                      best = (key, d['udid'], name)
           if best is None:
-              sys.exit('사용 가능한 iPhone 시뮬레이터가 없습니다')
-          print(best['udid'])
-          ")
-          NAME=$(xcrun simctl list devices -j | python3 -c "
-          import json,sys
-          data=json.load(sys.stdin)['devices']
-          for _, ds in data.items():
-              for d in ds:
-                  if d['udid']=='$UDID': print(d['name'])
-          ")
+              sys.exit('쓸 만한 iPhone 시뮬레이터를 찾지 못했습니다')
+          print(best[1], best[2])
+          ")"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "선택한 시뮬레이터: $NAME ($UDID)"
@@ -100,6 +105,13 @@ jobs:
           APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           echo "설치: $APP"
           xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          # 상태 바를 고정한다. 그러지 않으면 시계가 매 실행 달라져
+          # 스크린샷이 항상 "변경됨"으로 판정되고 커밋이 무의미하게 쌓인다.
+          xcrun simctl status_bar "${{ steps.sim.outputs.udid }}" override \
+            --time "9:41" \
+            --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 \
+            --batteryState charged --batteryLevel 100
           xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.helpnara.assetly
           # 첫 프레임이 그려질 때까지 잠깐 기다린다
           sleep 6
