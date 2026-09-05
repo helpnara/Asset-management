@@ -73,7 +73,9 @@ public enum KoreanAmountFormatter {
     }
 
     private static func foreign(_ money: Money, sign: SignStyle) -> String {
-        let whole = abs(money.minorUnits) / Int(truncating: NSDecimalNumber(decimal: Decimals.powerOfTen(money.currency.minorUnitExponent)))
+        var divisor = 1
+        for _ in 0..<money.currency.minorUnitExponent { divisor *= 10 }
+        let whole = abs(money.minorUnits) / divisor
         return signPrefix(money.minorUnits, sign) + grouped(whole) + " " + money.currency.code
     }
 

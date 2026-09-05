@@ -4,7 +4,7 @@ import SwiftUI
 /// 화면은 그 문서의 연장이지 새 브랜드가 아니다 (docs/reference/one-pager-analysis.md).
 extension Color {
     static let ink = Color(hex: 0x0B1017)      // 제목 · 큰 숫자
-    static let body = Color(hex: 0x33414F)     // 본문
+    static let bodyText = Color(hex: 0x33414F) // 본문
     static let muted = Color(hex: 0x68747F)    // 라벨 · 보조
     static let faint = Color(hex: 0x98A3AC)    // 희미함
     static let rule = Color(hex: 0xE3E8EB)     // 괘선

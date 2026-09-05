@@ -22,3 +22,4 @@ Package.resolved
 
 # XcodeGen 생성물 — project.yml이 원본이다
 *.xcodeproj
+App/Info.plist

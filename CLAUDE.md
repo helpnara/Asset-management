@@ -21,6 +21,21 @@ SwiftUI·SwiftData는 애초에 Apple 플랫폼 전용이라 Linux Swift로도 �
 
 macOS에서 작업하면 아래 명령이 전부 동작합니다.
 
+## 처음 시작 (macOS)
+
+```bash
+git clone https://github.com/helpnara/Asset-management.git
+cd Asset-management
+git checkout claude/iphone-asset-management-design-7aafjc
+
+brew install xcodegen        # 최초 1회
+xcodegen generate            # Assetly.xcodeproj 생성
+cd Packages/Core && swift test && cd -   # 계산 로직 테스트 (수 초)
+open Assetly.xcodeproj       # ⌘R 로 실행
+```
+
+`claude` 를 이 디렉터리에서 실행하면 `CLAUDE.md` 를 읽고 이어서 작업합니다.
+
 ## 빌드 · 테스트 (macOS)
 
 ```bash

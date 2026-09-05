@@ -40,7 +40,7 @@ struct MoneyTests {
             Money(24_096_260, currency: .krw),
         ]
         #expect(holdings.total(in: .krw).minorUnits == 102_986_857)
-        #expect([Money].init().total(in: .krw) == Money.zero(.krw))
+        #expect(([] as [Money]).total(in: .krw) == Money.zero(.krw))
     }
 
     @Test("뺄셈으로 부채와 증감을 표현한다")
