@@ -80,7 +80,7 @@ struct AssetsView: View {
         Button {
             editingAccount = account
         } label: {
-            HStack {
+            HStack(spacing: 6) {
                 Text(account.name.isEmpty ? account.kind.label : account.name)
                     .font(.system(size: 13))
                     .foregroundStyle(Color.ink)
@@ -89,10 +89,15 @@ struct AssetsView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(Color.faint)
                 }
+                if account.kind.isLiability {
+                    StatusBadge(text: "부채", foreground: .loss, background: Color(hex: 0xF5E6E8))
+                } else if !account.kind.countsAsInvestable {
+                    StatusBadge(text: "투자자산 제외")
+                }
                 Spacer()
-                Text(KoreanAmountFormatter.abbreviated(accountTotal(account)))
+                Text(signedAmount(accountTotal(account).minorUnits, account.kind.isLiability))
                     .font(.figure(12.5, weight: .medium))
-                    .foregroundStyle(Color.ink)
+                    .foregroundStyle(account.kind.isLiability ? Color.loss : Color.ink)
             }
         }
 
@@ -135,14 +140,16 @@ struct AssetsView: View {
                                     background: Color(hex: 0xF5E6E8))
                     }
                 }
-                Text("\(holding.assetClass.label) · \(holding.listingCountryCode) · \(holding.cadence.label)")
+                // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
+                // 목록에서 실제로 궁금한 것은 상품 종류다.
+                Text("\(holding.instrumentType.label) · \(holding.listingCountryCode) · \(holding.cadence.label)")
                     .font(.system(size: 9.5))
                     .foregroundStyle(Color.faint)
             }
             Spacer(minLength: 8)
-            Text(KoreanAmountFormatter.grouped(holding.valueMinor))
+            Text(signedAmount(holding.valueMinor, holding.account?.kind.isLiability ?? false))
                 .font(.figure(12.5))
-                .foregroundStyle(Color.ink)
+                .foregroundStyle((holding.account?.kind.isLiability ?? false) ? Color.loss : Color.ink)
         }
         .padding(.leading, 12)
     }
@@ -172,6 +179,12 @@ struct AssetsView: View {
 
     private func accountTotal(_ account: Account) -> Money {
         account.sortedHoldings.map(\.value).total(in: .krw)
+    }
+
+    /// 목록에서는 자릿수를 비교하는 게 목적이라 계좌 소계도 종목과 같은 원 단위로 적는다.
+    /// 부채는 부호로 구분한다 — 같은 4,500,000 이 자산인지 빚인지 헷갈리면 안 된다.
+    private func signedAmount(_ minorUnits: Int, _ isLiability: Bool) -> String {
+        (isLiability ? "-" : "") + KoreanAmountFormatter.grouped(minorUnits)
     }
 
     private func addMember() {

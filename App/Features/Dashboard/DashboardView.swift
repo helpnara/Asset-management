@@ -24,6 +24,7 @@ struct DashboardView: View {
                         Rectangle().fill(Color.rule).frame(height: 1)
                             .padding(.horizontal, 20)
                         weeklyBar
+                        alerts
                         memberBreakdown
                         totals
                     }
@@ -83,6 +84,32 @@ struct DashboardView: View {
         .padding(.top, 16)
     }
 
+    /// 경고는 목록 안에 묻으면 스크롤해야 보인다. 현황판 위쪽에 올린다 (설계 2.2.4).
+    @ViewBuilder
+    private var alerts: some View {
+        let violations = holdings.filter(\.violatesPFIC)
+        if !violations.isEmpty {
+            HStack(alignment: .top, spacing: 9) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.loss)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("세적 제약 — 한국 상장 ETF \(violations.count)건")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                    Text(violations.map(\.name).joined(separator: " · ") + " · PFIC 대상")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Color.muted)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 11)
+            .background(Color(hex: 0xFDF7F8))
+            .padding(.top, 12)
+        }
+    }
+
     private var memberBreakdown: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader("구성원", trailing: "\(members.count)명")
@@ -132,9 +159,9 @@ struct DashboardView: View {
         if let korea, let usa, !rollup.investable.isZero {
             VStack(spacing: 7) {
                 HStack {
-                    Text("한국 \(percentText(korea))")
+                    Text("한국 \(PercentFormatter.oneDecimal(korea))")
                     Spacer()
-                    Text("미국 \(percentText(usa))")
+                    Text("미국 \(PercentFormatter.oneDecimal(usa))")
                 }
                 .font(.system(size: 10.5))
                 .foregroundStyle(Color.muted)
@@ -157,10 +184,6 @@ struct DashboardView: View {
         CGFloat(NSDecimalNumber(decimal: value).doubleValue)
     }
 
-    private func percentText(_ value: Decimal) -> String {
-        let tenths = NSDecimalNumber(decimal: value * 1000).intValue
-        return "\(tenths / 10).\(abs(tenths % 10))"
-    }
 
     private func totalRow(_ label: String, _ money: Money, emphasized: Bool = false) -> some View {
         VStack(spacing: 0) {

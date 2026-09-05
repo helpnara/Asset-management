@@ -49,3 +49,30 @@ struct KoreanAmountFormatterTests {
         #expect(KoreanAmountFormatter.grouped(-1_234_567) == "-1,234,567")
     }
 }
+
+@Suite("PercentFormatter — 비중 표기")
+struct PercentFormatterTests {
+
+    @Test("소수 첫째 자리까지 적는다")
+    func oneDecimal() {
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "0.702")!) == "70.2")
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "0.298")!) == "29.8")
+        #expect(PercentFormatter.oneDecimal(0) == "0.0")
+        #expect(PercentFormatter.oneDecimal(1) == "100.0")
+    }
+
+    @Test("나누어떨어지지 않는 비중도 0.0 이 되지 않는다")
+    func repeatingDecimal() {
+        // 실제로 이 경우에 화면이 "한국 0.0 / 미국 0.0" 으로 나왔다.
+        let korea = Decimal(63_900_000) / Decimal(142_050_000)   // 0.449841…
+        let usa = Decimal(78_150_000) / Decimal(142_050_000)     // 0.550158…
+        #expect(PercentFormatter.oneDecimal(korea) == "45.0")
+        #expect(PercentFormatter.oneDecimal(usa) == "55.0")
+    }
+
+    @Test("아주 작은 비중은 0.0 으로 내려간다")
+    func tiny() {
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "0.0004")!) == "0.0")
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "0.0006")!) == "0.1")
+    }
+}
