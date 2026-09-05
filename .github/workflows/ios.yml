@@ -112,13 +112,15 @@ jobs:
 
       - name: 스크린샷을 브랜치에 커밋
         run: |
-          if git diff --quiet -- screenshots; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 새 스크린샷은 추적되지 않는 파일이라 git diff 로는 보이지 않는다.
+          # 먼저 스테이지에 올린 뒤 --cached 로 비교해야 첫 커밋이 빠지지 않는다.
+          git add -A screenshots
+          if git diff --cached --quiet; then
             echo "스크린샷 변화 없음 — 커밋하지 않는다"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add screenshots
           git commit -m "chore: 시뮬레이터 스크린샷 갱신 (${{ steps.sim.outputs.name }}) [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
 
