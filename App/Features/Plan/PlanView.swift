@@ -67,7 +67,7 @@ struct PlanView: View {
             }
 
             Section {
-                Text("준비 중 — 구성원별 적립 계획 · 연금 · 목돈 이벤트 · 마일스톤")
+                Text("준비 중 — 구성원별 적립 계획 · 연금 · 마일스톤 직접 편집")
                     .font(.system(size: 12))
                     .foregroundStyle(Color.muted)
             }

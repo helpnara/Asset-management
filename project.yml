@@ -15,10 +15,10 @@ targets:
     type: application
     platform: iOS
     sources:
+      # PrivacyInfo.xcprivacy 도 이 glob 이 잡는다. XcodeGen 은 모르는 확장자를
+      # 리소스 단계에 넣으므로 번들에 그대로 들어간다. 따로 또 적으면
+      # 같은 파일이 두 번 잡혀 "Multiple commands produce" 로 빌드가 깨진다.
       - App
-      # 개인정보 명세는 번들에 그대로 들어가야 한다. 소스로 잡히면 안 된다.
-      - path: App/PrivacyInfo.xcprivacy
-        buildPhase: resources
     dependencies:
       - package: Core
         product: Core

@@ -124,7 +124,16 @@ struct HoldingEditView: View {
                     TextField("종목 이름 (VOO · 삼성전자 …)", text: $holding.name)
                     MoneyField(title: "평가액", minorUnits: $holding.valueMinor)
                 } footer: {
-                    Text("시세를 가져오지 않습니다. 매주 직접 적어 넣는 이 숫자가 기준입니다.")
+                    // 해외 종목을 달러로 적어 넣으면 합계가 조용히 1,400배 틀린다.
+                    // 다중 통화(환율 직접 입력)는 M5 이고, 그전까지는 여기서 못을 박는다.
+                    //
+                    // 문자열 변수를 넘기면 Text 가 마크다운을 해석하지 않아 별표가 그대로 보인다.
+                    // 굵게 쓰려면 리터럴이어야 하므로 분기를 문자열이 아니라 뷰로 나눈다.
+                    if holding.listingCountryCode == "KR" {
+                        Text("시세를 가져오지 않습니다. 매주 직접 적어 넣는 이 숫자가 기준입니다.")
+                    } else {
+                        Text("시세를 가져오지 않습니다. 해외 종목도 **원화로 환산한 금액**을 적어 주세요. 통화별 입력은 아직 없습니다.")
+                    }
                 }
 
                 Section("분류") {
