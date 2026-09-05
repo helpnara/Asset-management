@@ -129,6 +129,7 @@ struct NotificationSettingsView: View {
     }
 
     private func reschedule() async {
-        await ReviewScheduling.refresh(holdings: holdings, sessions: sessions)
+        let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)
+        await ReviewScheduling.refresh(input)
     }
 }

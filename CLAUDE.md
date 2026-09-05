@@ -79,6 +79,10 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   `Ratio`(basis point)만 쓴다. 이유는 [ADR-0003](docs/adr/0003-money-representation.md).
 - **반올림은 `Decimals` 한 곳에서만** 일어난다. 기본은 은행가 반올림.
 - **숫자는 전부 고정폭 tabular, 우측 정렬.** `Font.figure(_:weight:)` 사용.
+- **SwiftData `@Model` 객체를 `async` 경계 너머로 넘기지 않는다.** 참조 타입이라
+  `Sendable` 이 아니어서 Swift 6 가 "sending ... risks causing data races" 로 막는다.
+  화면 쪽에서 필요한 값(Int·Date·Money 등)만 뽑아 `Sendable` 구조체로 건넨다.
+  `@preconcurrency` 로 검사를 끄지 않는다 — 세 번 밟고 세 번 다 값으로 풀었다.
 - **`Core`는 SwiftUI·SwiftData를 import하지 않는다.** 이 경계가 깨지면 테스트가 느려지고
   원격 세션에서 검증할 수 있는 범위가 사라진다.
 - **외부 네트워크 요청을 추가하지 않는다.** 시세·환율을 가져오지 않는 것은 의도된 설계다

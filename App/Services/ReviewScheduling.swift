@@ -29,11 +29,27 @@ enum ReviewSettings {
 /// 알림 등록을 한곳에서 한다. 앱이 뜰 때마다 부르며 여러 번 불러도 안전하다.
 enum ReviewScheduling {
 
-    static func refresh(holdings: [Holding], sessions: [ReviewSession]) async {
+    /// 액터 경계를 건너는 입력.
+    ///
+    /// SwiftData `@Model` 은 참조 타입이라 `Sendable` 이 아니다. 모델 배열을 그대로
+    /// async 함수에 넘기면 Swift 6 가 데이터 경합으로 막는다. 화면 쪽에서 필요한
+    /// 값만 뽑아 이 구조체로 건넨다.
+    struct Input: Sendable {
+        var itemCount: Int
+        var completedAnchors: [Date]
+
+        @MainActor
+        init(holdings: [Holding], sessions: [ReviewSession]) {
+            self.itemCount = holdings.filter { $0.cadence != .fixed }.count
+            self.completedAnchors = sessions.filter(\.isComplete).map(\.weekAnchor)
+        }
+    }
+
+    static func refresh(_ input: Input) async {
         guard await ReviewNotifications.authorizationStatus() != .denied else { return }
 
-        let itemCount = holdings.filter { $0.cadence != .fixed }.count
-        let completed = sessions.filter(\.isComplete).map(\.weekAnchor)
+        let itemCount = input.itemCount
+        let completed = input.completedAnchors
         let streak = ReviewWeek.streak(completedAnchors: completed, asOf: .now)
 
         await ReviewNotifications.scheduleWeekly(

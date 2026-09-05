@@ -34,7 +34,8 @@ struct RootView: View {
         .tint(Color.ink)
         .task {
             // 시간대 변경·기기 이전에 대비해 앱이 뜰 때마다 다시 등록한다.
-            await ReviewScheduling.refresh(holdings: holdings, sessions: sessions)
+            let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)
+            await ReviewScheduling.refresh(input)
         }
         .fullScreenCover(isPresented: $route.showReview) {
             WeeklyReviewView()
