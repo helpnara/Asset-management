@@ -8,6 +8,7 @@ struct DashboardView: View {
     @Query private var sessions: [ReviewSession]
     @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Query private var plans: [Plan]
+    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -39,6 +40,7 @@ struct DashboardView: View {
                         Rectangle().fill(Color.rule).frame(height: 1)
                             .padding(.horizontal, 20)
                         weeklyBar
+                        roadmap
                         trajectory
                         alerts
                         memberBreakdown
@@ -182,12 +184,49 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - 로드맵
+
+    /// 오늘 · 자동 판정된 교차점 · 은퇴 목표를 연도순으로 늘어놓는다.
+    private var roadmapStops: [RoadmapStrip.Stop] {
+        guard let plan, let projection else { return [] }
+        var stops: [RoadmapStrip.Stop] = [
+            .init(year: Calendar.current.component(.year, from: .now),
+                  amount: rollup.netWorth, label: "지금", isNow: true, isGoal: false)
+        ]
+
+        for milestone in projection.milestones where milestone.year > stops[0].year {
+            stops.append(.init(year: milestone.year, amount: milestone.balance,
+                               label: milestone.kind.label, isNow: false, isGoal: false))
+        }
+
+        if let end = projection.years.last {
+            stops.append(.init(year: end.year, amount: end.endBalance,
+                               label: "은퇴", isNow: false, isGoal: true))
+        }
+
+        // 같은 해에 여러 개가 걸리면 앞의 것만 남긴다.
+        var seen = Set<Int>()
+        return stops.sorted { $0.year < $1.year }.filter { seen.insert($0.year).inserted }
+    }
+
+    @ViewBuilder
+    private var roadmap: some View {
+        if roadmapStops.count > 1 {
+            VStack(alignment: .leading, spacing: 0) {
+                sectionHeader("전체 자산 로드맵",
+                              trailing: plan.map { "\($0.yearsToRetirement)년 남음" } ?? "")
+                RoadmapStrip(stops: roadmapStops)
+                    .padding(.bottom, 4)
+            }
+        }
+    }
+
     // MARK: - 궤적
 
     private var plan: Plan? { plans.first }
 
     private var projection: ProjectionResult? {
-        plan?.projection(from: rollup.netWorth)
+        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents)
     }
 
     /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.

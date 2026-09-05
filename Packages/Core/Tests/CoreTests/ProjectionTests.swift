@@ -98,6 +98,69 @@ struct ProjectionTests {
         #expect(result.last?.nominal == Money(30_000_000, currency: .krw))
     }
 
+    @Test("목돈이 들어오면 남은 기간만큼 함께 굴러간다")
+    func cashEvent() {
+        var withEvent = input(years: 10, start: 100_000_000, monthly: 1_000_000, returnBP: 800)
+        withEvent.cashEvents = [
+            CashEventInput(date: date("2027-01-01"), amount: Money(100_000_000, currency: .krw),
+                           label: "전세보증금 전환")
+        ]
+        let result = Projection.run(withEvent, calendar: calendar)
+        let plain = Projection.run(input(years: 10, start: 100_000_000, monthly: 1_000_000, returnBP: 800),
+                                   calendar: calendar)
+
+        #expect(result.last?.nominal == Money(598_362_328, currency: .krw))
+        // 1억이 9년 굴러 2억이 된다. 목돈을 빼놓고 그린 궤적은 궤적이 아니다.
+        #expect((result.last!.nominal - plain.last!.nominal) == Money(201_186_627, currency: .krw))
+    }
+
+    @Test("기간 밖의 목돈은 무시한다")
+    func cashEventOutOfRange() {
+        var late = input(years: 5, start: 100_000_000, monthly: 0, returnBP: 800)
+        late.cashEvents = [
+            CashEventInput(date: date("2040-01-01"), amount: Money(500_000_000, currency: .krw))
+        ]
+        let plain = Projection.run(input(years: 5, start: 100_000_000, monthly: 0, returnBP: 800),
+                                   calendar: calendar)
+        #expect(Projection.run(late, calendar: calendar).last?.nominal == plain.last?.nominal)
+    }
+
+    @Test("연도별 결산이 앞뒤로 이어진다")
+    func yearSummaries() {
+        let result = Projection.run(input(years: 5, start: 100_000_000, monthly: 1_000_000, returnBP: 800),
+                                    calendar: calendar)
+        #expect(!result.years.isEmpty)
+
+        // 연말 잔고 = 연초 + 적립 + 목돈 + 수익. 정의상 항상 맞아야 한다.
+        var previous = Money(100_000_000, currency: .krw)
+        for year in result.years {
+            #expect(previous + year.contributed + year.cashEvents + year.gain == year.endBalance)
+            previous = year.endBalance
+        }
+        #expect(result.years.last?.endBalance == result.last?.nominal)
+    }
+
+    @Test("수익이 적립금을 넘어서는 해를 찾는다")
+    func returnsExceedContribution() {
+        let result = Projection.run(input(years: 20, start: 100_000_000, monthly: 1_000_000, returnBP: 800),
+                                    calendar: calendar)
+        let crossing = result.milestone(.returnsExceedContribution)
+        #expect(crossing != nil)
+        // 2026-01 시작이면 2029년에 복리가 내 손을 앞지른다.
+        // 첫 해(2026)는 11개월짜리 부분 연도라 판정에서 빼기 때문에,
+        // 12개월 블록으로 세는 "4년차"와는 한 해 어긋난다. 달력 연도가 기준이다.
+        #expect(crossing?.year == 2029)
+    }
+
+    @Test("목표를 넘기지 못하면 마일스톤도 없다")
+    func targetNotReached() {
+        var modest = input(years: 5, start: 10_000_000, monthly: 100_000, returnBP: 500)
+        modest.targetAmount = Money(10_000_000_000, currency: .krw)
+        let result = Projection.run(modest, calendar: calendar)
+        #expect(result.milestone(.targetReached) == nil)
+        #expect(result.milestone(.doubled) != nil)
+    }
+
     @Test("연도로 지점을 찾을 수 있다 — 로드맵 타임라인이 쓴다")
     func pointInYear() {
         let result = Projection.run(input(years: 5, start: 100_000_000, monthly: 0, returnBP: 800),

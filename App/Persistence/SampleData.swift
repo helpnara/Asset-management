@@ -61,6 +61,19 @@ enum SampleData {
         plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
         plan.targetAmountMinor = 5_900_000_000
         context.insert(plan)
+
+        let calendar = Calendar.current
+        let deposit = CashEvent(
+            date: calendar.date(byAdding: .month, value: 3, to: .now) ?? .now,
+            label: "전세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
+        )
+        context.insert(deposit)
+
+        let severance = CashEvent(
+            date: calendar.date(byAdding: .month, value: 18, to: .now) ?? .now,
+            label: "퇴직금 유입", amountMinor: 70_000_000, sortIndex: 1
+        )
+        context.insert(severance)
     }
 
     /// 지난 점검 기록. 연속 기록과 주간 증감이 화면에 실제로 보이게 한다.

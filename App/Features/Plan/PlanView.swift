@@ -6,6 +6,8 @@ struct PlanView: View {
     @Environment(\.modelContext) private var context
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
+    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @State private var editingEvent: CashEvent?
 
     var body: some View {
         NavigationStack {
@@ -18,6 +20,7 @@ struct PlanView: View {
             }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $editingEvent) { CashEventEditView(event: $0) }
         }
     }
 
@@ -57,6 +60,8 @@ struct PlanView: View {
                 Text("0으로 두면 목표선을 그리지 않습니다.")
             }
 
+            cashEventSection
+
             Section("이대로 가면") {
                 summary(plan)
             }
@@ -69,9 +74,59 @@ struct PlanView: View {
         }
     }
 
+    private var cashEventSection: some View {
+        Section {
+            ForEach(cashEvents) { event in
+                Button {
+                    editingEvent = event
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(event.label.isEmpty ? "이름 없음" : event.label)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.ink)
+                            HStack(spacing: 5) {
+                                Text(event.date, format: .dateTime.year().month())
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Color.faint)
+                                if event.isAlreadyReflected {
+                                    StatusBadge(text: "이미 반영됨")
+                                }
+                            }
+                        }
+                        Spacer()
+                        Text((event.isInflow ? "+" : "−")
+                             + KoreanAmountFormatter.grouped(abs(event.amountMinor)))
+                            .font(.figure(12.5, weight: .medium))
+                            .foregroundStyle(event.isAlreadyReflected ? Color.faint
+                                             : (event.isInflow ? Color.gain : Color.loss))
+                    }
+                }
+            }
+            .onDelete { offsets in
+                for index in offsets where cashEvents.indices.contains(index) {
+                    context.delete(cashEvents[index])
+                }
+            }
+
+            Button {
+                let event = CashEvent(date: .now, label: "", sortIndex: cashEvents.count)
+                context.insert(event)
+                editingEvent = event
+            } label: {
+                Label("목돈 이벤트 추가", systemImage: "plus")
+                    .font(.system(size: 12.5))
+            }
+        } header: {
+            Text("목돈 이벤트")
+        } footer: {
+            Text("퇴직금 유입, 전세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 23년 복리에서는 목돈 하나가 결과를 크게 바꿉니다.")
+        }
+    }
+
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
-        let result = plan.projection(from: currentBalance)
+        let result = plan.projection(from: currentBalance, cashEvents: cashEvents)
         if let end = result.last {
             LabeledContent {
                 Text(KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원"))
