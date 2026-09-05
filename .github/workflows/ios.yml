@@ -134,6 +134,7 @@ jobs:
           shoot 01-dashboard.png -seedSampleData -startTab dashboard
           shoot 02-assets.png    -seedSampleData -startTab assets
           shoot 03-review.png    -seedSampleData -startTab dashboard -startReview
+          shoot 04-review-done.png -seedSampleData -startTab dashboard -showReviewComplete
 
           ls -la screenshots
 

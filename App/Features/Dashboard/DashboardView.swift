@@ -9,6 +9,7 @@ struct DashboardView: View {
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
+    @State private var completedToShow: ReviewSession?
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -34,10 +35,22 @@ struct DashboardView: View {
                     }
                 }
             }
+            .fullScreenCover(item: $completedToShow) { session in
+                ReviewCompleteView(session: session)
+            }
             .background(Color.white)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()
+            }
+            .task {
+                // 완료 화면은 11번 눌러야 도달하므로 CI 스크린샷이 찍을 수 없다.
+                // 실행 인자로 마지막 점검 결과를 바로 띄운다.
+                if ProcessInfo.processInfo.arguments.contains("-showReviewComplete") {
+                    completedToShow = sessions
+                        .filter(\.isComplete)
+                        .max { $0.weekAnchor < $1.weekAnchor }
+                }
             }
         }
     }

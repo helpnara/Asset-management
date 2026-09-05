@@ -98,6 +98,11 @@ enum SampleData {
         let holding = Holding(name: name, assetClass: assetClass, instrumentType: instrumentType,
                               listingCountryCode: country, status: status, cadence: cadence,
                               valueMinor: valueMinor, account: account, sortIndex: sortIndex)
+        // 지난주 값이 있어야 증감이 화면에 보인다. 오른 것과 내린 것을 섞는다.
+        holding.lastEnteredValueMinor = sortIndex % 2 == 0
+            ? valueMinor - valueMinor / 40      // 이번 주 상승
+            : valueMinor + valueMinor / 60      // 이번 주 하락
+        holding.lastEnteredAt = Calendar.current.date(byAdding: .day, value: -7, to: .now)
         context.insert(holding)
     }
 }
