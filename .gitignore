@@ -19,3 +19,6 @@ Package.resolved
 *.private.json
 *.private.csv
 /PersonalData/
+
+# XcodeGen 생성물 — project.yml이 원본이다
+*.xcodeproj
