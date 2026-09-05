@@ -42,4 +42,13 @@ enum Decimals {
     static func powerOfTen(_ exponent: Int) -> Decimal {
         Decimal(sign: .plus, exponent: exponent, significand: 1)
     }
+
+    /// `Double` 을 소수 12자리로 고정해 `Decimal` 로 옮긴다.
+    ///
+    /// `Decimal(someDouble)` 은 2진 부동소수의 잡음을 그대로 들고 온다.
+    /// 수익률처럼 Double 로 계산할 수밖에 없는 값(12제곱근 등)을 금액 계산에
+    /// 들이기 전 이 문을 통과시킨다.
+    static func fromDouble(_ value: Double) -> Decimal {
+        Decimal(string: String(format: "%.12f", value)) ?? Decimal(0)
+    }
 }

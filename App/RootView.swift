@@ -19,7 +19,7 @@ struct RootView: View {
                 .tabItem { Label("자산", systemImage: "list.bullet") }
                 .tag(1)
 
-            ComingSoonView(title: "계획", detail: "적립 계획 · 연금 · 목돈 이벤트 · 마일스톤")
+            PlanView()
                 .tabItem { Label("계획", systemImage: "calendar") }
                 .tag(2)
 

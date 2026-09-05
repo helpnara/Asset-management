@@ -52,6 +52,15 @@ enum SampleData {
         holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_800_000, daughterBrokerage, 1, context)
 
         seedPastReviews(members: [dad, mom, son, daughter], into: context)
+
+        let plan = Plan()
+        plan.monthlyContributionMinor = 4_100_000
+        plan.annualReturnBP = 800
+        plan.contributionGrowthBP = 300
+        plan.inflationBP = 200
+        plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
+        plan.targetAmountMinor = 5_900_000_000
+        context.insert(plan)
     }
 
     /// 지난 점검 기록. 연속 기록과 주간 증감이 화면에 실제로 보이게 한다.

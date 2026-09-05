@@ -8,7 +8,7 @@ enum Persistence {
     /// 걸린다("static property is not concurrency-safe"). 계산 프로퍼티는 매번 새 인스턴스를
     /// 돌려주므로 공유 가변 상태가 아니다.
     static var schema: Schema {
-        Schema([Member.self, Account.self, Holding.self, ReviewSession.self, Snapshot.self, SnapshotLine.self])
+        Schema([Member.self, Account.self, Holding.self, ReviewSession.self, Snapshot.self, SnapshotLine.self, Plan.self])
     }
 
     /// 지금은 기기 로컬 전용이다.

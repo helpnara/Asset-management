@@ -6,6 +6,8 @@ struct DashboardView: View {
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
+    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Query private var plans: [Plan]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -29,6 +31,7 @@ struct DashboardView: View {
                         Rectangle().fill(Color.rule).frame(height: 1)
                             .padding(.horizontal, 20)
                         weeklyBar
+                        trajectory
                         alerts
                         memberBreakdown
                         totals
@@ -169,6 +172,100 @@ struct DashboardView: View {
             .background(Color(hex: 0xFDF7F8))
             .padding(.top, 12)
         }
+    }
+
+    // MARK: - 궤적
+
+    private var plan: Plan? { plans.first }
+
+    private var projection: ProjectionResult? {
+        plan?.projection(from: rollup.netWorth)
+    }
+
+    /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.
+    private var trajectoryPoints: [TrajectoryChart.Point] {
+        var result = snapshots.map {
+            TrajectoryChart.Point(date: $0.weekAnchor, minor: $0.netWorthMinor, series: .actual)
+        }
+        // 예측선은 오늘에서 출발한다. 과거 마지막 점과 이어 붙어 끊겨 보이지 않는다.
+        if let projection {
+            let monthly = projection.points.enumerated()
+                .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
+                .map { TrajectoryChart.Point(date: $0.element.date,
+                                             minor: $0.element.nominal.minorUnits,
+                                             series: .projected) }
+            result.append(contentsOf: monthly)
+        }
+        return result
+    }
+
+    @ViewBuilder
+    private var trajectory: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader("순자산 궤적", trailing: plan.map { "은퇴 \($0.retirementYear)년" } ?? "")
+            TrajectoryChart(
+                points: trajectoryPoints,
+                today: Calendar.current.startOfDay(for: .now),
+                targetMinor: plan?.targetAmountMinor ?? 0
+            )
+            .padding(.horizontal, 16)
+
+            HStack(spacing: 14) {
+                legend(color: .ink, dashed: false, label: "실제 기록")
+                legend(color: .dad, dashed: true, label: "예측")
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+
+            if let summary = trajectorySummary {
+                Text(summary)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Color.bodyText)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                Text(assumptionLine)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.faint)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+            }
+        }
+    }
+
+    private func legend(color: Color, dashed: Bool, label: String) -> some View {
+        HStack(spacing: 5) {
+            Rectangle()
+                .fill(dashed ? Color.clear : color)
+                .overlay {
+                    if dashed {
+                        Rectangle().fill(color).frame(width: 5)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .frame(width: 14, height: 2)
+            Text(label)
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.muted)
+        }
+    }
+
+    private var trajectorySummary: String? {
+        guard let plan, let end = projection?.last, plan.monthlyContributionMinor > 0 else { return nil }
+        let nominal = KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원")
+        let real = KoreanAmountFormatter.abbreviated(end.real)
+        var line = "이대로 가면 \(plan.retirementYear)년에 \(nominal) · 오늘 돈으로 \(real)"
+        if plan.targetAmountMinor > 0 {
+            let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
+            line += " · 목표의 \(PercentFormatter.oneDecimal(ratio))%"
+        }
+        return line
+    }
+
+    private var assumptionLine: String {
+        guard let plan else { return "" }
+        return "연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))% 가정 · 입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다"
     }
 
     private var memberBreakdown: some View {
