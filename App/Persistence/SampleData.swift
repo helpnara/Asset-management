@@ -90,6 +90,26 @@ enum SampleData {
         privatePension.endYear = plan.retirementYear + 20
         privatePension.isInflationLinked = false
         context.insert(privatePension)
+
+        // 유의사항 · 할 일 — 전부 예시다.
+        let limitTodo = TodoItem(title: "연금저축 한도 채우기", category: .limit, sortIndex: 0)
+        limitTodo.dueDate = Calendar.current.date(byAdding: .day, value: 26, to: .now)
+        limitTodo.repeatsYearly = true
+        limitTodo.detail = "12월 말까지 넣어야 올해 세액공제에 들어갑니다."
+        context.insert(limitTodo)
+
+        let taxTodo = TodoItem(title: "아이 계좌 해외 ETF 정리 검토", category: .tax, sortIndex: 1)
+        taxTodo.detail = "미국 세적이라 한국 상장 ETF 는 PFIC 로 분류됩니다."
+        context.insert(taxTodo)
+
+        let leaseTodo = TodoItem(title: "전세 만기 6개월 전 알아보기", category: .deadline, sortIndex: 2)
+        leaseTodo.dueDate = Calendar.current.date(byAdding: .day, value: 120, to: .now)
+        context.insert(leaseTodo)
+
+        // 직접 찍은 마일스톤
+        let college = UserMilestone(year: Calendar.current.component(.year, from: .now) + 14,
+                                    label: "첫째 대학 입학", sortIndex: 0)
+        context.insert(college)
         context.insert(plan)
 
         let calendar = Calendar.current

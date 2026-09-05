@@ -8,6 +8,7 @@ struct PlanView: View {
     @Query private var holdings: [Holding]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
     @State private var editingEvent: CashEvent?
     @State private var editingIncome: IncomeStream?
 
@@ -35,11 +36,25 @@ struct PlanView: View {
             }
 
             Section {
-                MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
+                if plan.usesMemberContributions {
+                    LabeledContent("매월 적립 합계") {
+                        Text(KoreanAmountFormatter.abbreviated(
+                            plan.effectiveMonthlyContribution(members: members), suffix: "원"))
+                            .font(.figure(15, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                    }
+                } else {
+                    MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
+                }
                 percentRow("적립액 연 증가율", $plan.contributionGrowthBP, range: 0...1000, step: 50)
+                Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
             } footer: {
-                Text("가구 전체의 월 적립 합계입니다. 구성원별 배분은 다음 단계에서 나눕니다.")
+                Text(plan.usesMemberContributions
+                     ? "아래에서 사람마다 넣습니다. 합계가 궤적에 쓰입니다."
+                     : "가구 전체의 월 적립 합계입니다. 사람마다 나누고 싶으면 위 스위치를 켜세요.")
             }
+
+            if plan.usesMemberContributions { memberContributionSection }
 
             Section {
                 percentRow("연 기대수익률", $plan.annualReturnBP, range: 0...1500, step: 25)
@@ -71,6 +86,27 @@ struct PlanView: View {
                 summary(plan)
             }
 
+        }
+    }
+
+    /// 구성원별 적립. 합계 하나로도 궤적은 똑같이 그려진다 — 나누는 이유는
+    /// "누가 얼마를 넣고 있는가"가 가족이 함께 보는 화면에서 의미를 갖기 때문이다.
+    private var memberContributionSection: some View {
+        Section {
+            ForEach(members) { member in
+                @Bindable var member = member
+                MoneyField(title: member.name.isEmpty ? "이름 없음" : member.name,
+                           minorUnits: $member.monthlyContributionMinor)
+            }
+            if members.isEmpty {
+                Text("자산 탭에서 구성원을 먼저 추가하세요.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.muted)
+            }
+        } header: {
+            Text("구성원별 월 적립")
+        } footer: {
+            Text("여기 합계가 궤적과 진단의 저축률에 쓰입니다. 아이 계좌에 넣는 돈도 가구 적립입니다 — 빼놓으면 저축률이 실제보다 낮게 나옵니다.")
         }
     }
 
@@ -192,7 +228,7 @@ struct PlanView: View {
 
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
-        let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes)
+        let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
         if let end = result.last {
             LabeledContent {
                 Text(KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원"))

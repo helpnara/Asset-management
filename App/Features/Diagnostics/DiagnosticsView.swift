@@ -16,6 +16,7 @@ struct DiagnosticsView: View {
     @Query private var accounts: [Account]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var expanded: Set<String> = []
     @State private var isEditingCriteria = false
@@ -41,7 +42,9 @@ struct DiagnosticsView: View {
         let result = Diagnostics.run(plan.diagnosticsInput(
             rollup: rollup,
             accounts: accounts,
-            projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes)
+            projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
+                                        incomes: incomes, members: members),
+            members: members
         ))
 
         ScrollView {

@@ -11,6 +11,7 @@ struct DashboardView: View {
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Query private var accounts: [Account]
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Query(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -208,6 +209,15 @@ struct DashboardView: View {
             stops.append(.init(year: atRetirement.year, amount: atRetirement.endBalance,
                                label: "은퇴", isNow: false, isGoal: true))
         }
+        // 사용자가 직접 찍은 것도 정거장이다. 자동 판정이 담지 못하는 것들 —
+        // 아이 대학 입학, 전세 만기. 금액은 그 해의 예상 자산에서 가져온다.
+        for milestone in userMilestones where milestone.year > stops[0].year {
+            let amount = projection.point(inYear: milestone.year)?.nominal ?? .zero(.krw)
+            stops.append(.init(year: milestone.year, amount: amount,
+                               label: milestone.label.isEmpty ? "마일스톤" : milestone.label,
+                               isNow: false, isGoal: false))
+        }
+
         // 바닥나는 해가 있으면 그것도 정거장이다. 이 앱에서 가장 무거운 한 점이다.
         if let depletion = projection.depletion {
             let year = Calendar.current.component(.year, from: depletion)
@@ -237,7 +247,7 @@ struct DashboardView: View {
     private var plan: Plan? { plans.first }
 
     private var projection: ProjectionResult? {
-        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes)
+        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes, members: members)
     }
 
     /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.
@@ -400,7 +410,9 @@ struct DashboardView: View {
             let result = Diagnostics.run(plan.diagnosticsInput(
                 rollup: rollup,
                 accounts: accounts,
-                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes)
+                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
+                                            incomes: incomes, members: members),
+                members: members
             ))
 
             Button {

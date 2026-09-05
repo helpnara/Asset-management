@@ -144,6 +144,7 @@ jobs:
           shoot 08-more.png        -skipOnboarding -seedSampleData -startTab more
           shoot 09-history.png     -skipOnboarding -seedSampleData -startTab more -startHistory
           shoot 10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
+          shoot 11-todos.png       -skipOnboarding -seedSampleData -startTab more -startTodos
 
           ls -la screenshots
 

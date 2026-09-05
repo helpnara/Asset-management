@@ -44,6 +44,12 @@ final class Plan {
     /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
     var mixToleranceBP: Int = 500
 
+    /// 월 적립을 구성원별로 나눠 넣는가. 켜면 Member 의 몫을 합해서 쓴다.
+    ///
+    /// 합계 하나로도 궤적은 똑같이 그려진다. 나누는 이유는 "누가 얼마를 넣고
+    /// 있는가"가 가족이 함께 보는 화면에서 의미를 갖기 때문이다.
+    var usesMemberContributions: Bool = false
+
     /// 궤적을 어디까지 그릴 것인가. 은퇴 이후 인출 구간의 끝이다.
     /// 기본은 은퇴 후 35년 — 65세 은퇴면 100세까지 본다.
     var horizonYear: Int = Calendar.current.component(.year, from: .now) + 23 + 35
@@ -149,13 +155,21 @@ extension Plan {
         from balance: Money,
         cashEvents: [CashEvent] = [],
         incomes: [IncomeStream] = [],
+        members: [Member] = [],
         calendar: Calendar = .current
     ) -> ProjectionResult {
         Projection.run(
-            projectionInput(from: balance, cashEvents: cashEvents,
-                            incomes: incomes, calendar: calendar),
+            projectionInput(from: balance, cashEvents: cashEvents, incomes: incomes,
+                            members: members, calendar: calendar),
             calendar: calendar
         )
+    }
+
+    /// 실제로 굴릴 월 적립액. 구성원별로 나눠 넣고 있으면 그 합이다.
+    func effectiveMonthlyContribution(members: [Member]) -> Money {
+        guard usesMemberContributions else { return monthlyContribution }
+        return Money(minorUnits: members.reduce(0) { $0 + $1.monthlyContributionMinor },
+                     currency: .krw)
     }
 
     /// 계산 직전의 입력. 시뮬레이션은 이걸 받아 손잡이만 바꿔 끼운다.
@@ -166,6 +180,7 @@ extension Plan {
         from balance: Money,
         cashEvents: [CashEvent] = [],
         incomes: [IncomeStream] = [],
+        members: [Member] = [],
         calendar: Calendar = .current
     ) -> ProjectionInput {
         let now = calendar.startOfDay(for: .now)
@@ -184,7 +199,7 @@ extension Plan {
             startDate: now,
             endDate: horizon,
             startingBalance: balance,
-            monthlyContribution: monthlyContribution,
+            monthlyContribution: effectiveMonthlyContribution(members: members),
             annualReturn: annualReturn,
             annualContributionGrowth: contributionGrowth,
             inflation: inflation,
@@ -211,6 +226,7 @@ extension Plan {
         rollup: Rollup,
         accounts: [Account],
         projection: ProjectionResult?,
+        members: [Member] = [],
         calendar: Calendar = .current
     ) -> DiagnosticsInput {
         // 진단의 "은퇴 시점 예상"은 궤적의 끝이 아니라 **은퇴 시점**이어야 한다.
@@ -230,7 +246,7 @@ extension Plan {
             monthlySpending: monthlySpending,
             withdrawalRate: withdrawalRate,
             monthlyIncome: monthlyIncome,
-            monthlyContribution: monthlyContribution,
+            monthlyContribution: effectiveMonthlyContribution(members: members),
             savingsFloor: savingsFloor,
             annualReturn: annualReturn,
             illiquidCap: illiquidCap,

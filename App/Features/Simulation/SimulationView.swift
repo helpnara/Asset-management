@@ -13,6 +13,7 @@ struct SimulationView: View {
     @Query private var holdings: [Holding]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var knobs: Knobs?
     @State private var outcome: SimulationOutcome?
@@ -50,7 +51,7 @@ struct SimulationView: View {
 
     @ViewBuilder
     private func content(_ plan: Plan) -> some View {
-        let baseline = plan.projectionInput(from: currentBalance, cashEvents: cashEvents, incomes: incomes)
+        let baseline = plan.projectionInput(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
         let current = knobs ?? Knobs(plan)
 
         ScrollView {

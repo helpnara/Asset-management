@@ -15,6 +15,8 @@ final class Member {
     var birthMonth: Int = 1
     var taxResidencyRaw: String = TaxResidency.korea.rawValue
     var targetRetirementAge: Int = 65
+    /// 이 사람 몫의 월 적립액. 계획 탭에서 "구성원별로 나눠 넣기"를 켰을 때만 쓴다.
+    var monthlyContributionMinor: Int = 0
     var colorIndex: Int = 0
     var sortIndex: Int = 0
     var createdAt: Date = Date.now

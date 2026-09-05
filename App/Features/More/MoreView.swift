@@ -17,6 +17,8 @@ struct MoreView: View {
         case history
         case notifications
         case diagnostics
+        case todos
+        case milestones
     }
 
     var body: some View {
@@ -36,6 +38,12 @@ struct MoreView: View {
                     }
                     NavigationLink(value: Destination.diagnostics) {
                         Label("자산 진단", systemImage: "checklist")
+                    }
+                    NavigationLink(value: Destination.todos) {
+                        Label("유의사항 · 할 일", systemImage: "note.text")
+                    }
+                    NavigationLink(value: Destination.milestones) {
+                        Label("내 마일스톤", systemImage: "flag")
                     }
                 }
 
@@ -72,6 +80,8 @@ struct MoreView: View {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
                 case .diagnostics: DiagnosticsView()
+                case .todos: TodoListView()
+                case .milestones: MilestoneListView()
                 }
             }
         }
@@ -81,6 +91,7 @@ struct MoreView: View {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-startHistory") { return [.history] }
         if arguments.contains("-startDiagnostics") { return [.diagnostics] }
+        if arguments.contains("-startTodos") { return [.todos] }
         return []
     }
 

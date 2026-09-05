@@ -7,6 +7,7 @@ struct RootView: View {
 
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
+    @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
     var body: some View {
         TabView(selection: $route.selectedTab) {
@@ -35,6 +36,11 @@ struct RootView: View {
             // 시간대 변경·기기 이전에 대비해 앱이 뜰 때마다 다시 등록한다.
             let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)
             await ReviewScheduling.refresh(input)
+
+            // 기한 알림은 주간 점검과 따로 건다. 시간대 변경·기기 이전에 대비해
+            // 여기서도 통째로 다시 건다.
+            let todoInput = TodoNotifications.Input(items: todos)
+            await TodoNotifications.refresh(todoInput)
         }
         .fullScreenCover(isPresented: $route.showReview) {
             WeeklyReviewView()
