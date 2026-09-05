@@ -8,10 +8,9 @@ struct AssetsView: View {
     @Query(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var editingMember: Member?
-    @State private var newAccountOwner: Member?
     @State private var editingAccount: Account?
-    @State private var newHoldingAccount: Account?
     @State private var editingHolding: Holding?
+    @State private var isOrderingMembers = false
 
     var body: some View {
         NavigationStack {
@@ -25,13 +24,32 @@ struct AssetsView: View {
             .navigationTitle("자산")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        addMember()
-                    } label: {
-                        Label("구성원 추가", systemImage: "person.badge.plus")
+                ToolbarItem(placement: .topBarLeading) {
+                    if !members.isEmpty {
+                        EditButton()
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            addMember()
+                        } label: {
+                            Label("구성원 추가", systemImage: "person.badge.plus")
+                        }
+                        if members.count > 1 {
+                            Button {
+                                isOrderingMembers = true
+                            } label: {
+                                Label("구성원 순서", systemImage: "arrow.up.arrow.down")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $isOrderingMembers) {
+                MemberOrderView(members: members)
             }
             .sheet(item: $editingMember) { MemberEditView(member: $0) }
             .sheet(item: $editingAccount) { AccountEditView(account: $0) }
@@ -110,6 +128,9 @@ struct AssetsView: View {
         }
         .onDelete { offsets in
             delete(offsets, from: account)
+        }
+        .onMove { offsets, destination in
+            move(offsets, to: destination, in: account)
         }
 
         Button {
@@ -209,6 +230,55 @@ struct AssetsView: View {
         let items = account.sortedHoldings
         for index in offsets where items.indices.contains(index) {
             context.delete(items[index])
+        }
+    }
+
+    private func move(_ offsets: IndexSet, to destination: Int, in account: Account) {
+        var items = account.sortedHoldings
+        items.move(fromOffsets: offsets, toOffset: destination)
+        for (position, holding) in items.enumerated() {
+            holding.sortIndex = position
+        }
+    }
+}
+
+/// 구성원 순서. 목록이 섹션으로 나뉘어 있어 제자리 드래그가 어려우므로 따로 뺐다.
+struct MemberOrderView: View {
+    let members: [Member]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(members) { member in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.member(member.colorIndex))
+                            .frame(width: 10, height: 10)
+                        Text(member.name.isEmpty ? "이름 없음" : member.name)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.ink)
+                        Text(member.roleNote)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.faint)
+                    }
+                }
+                .onMove { offsets, destination in
+                    var items = members
+                    items.move(fromOffsets: offsets, toOffset: destination)
+                    for (position, member) in items.enumerated() {
+                        member.sortIndex = position
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("구성원 순서")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("완료") { dismiss() }.fontWeight(.semibold)
+                }
+            }
         }
     }
 }
