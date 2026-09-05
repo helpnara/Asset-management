@@ -43,8 +43,11 @@ struct PlanView: View {
             }
 
             Section("기간") {
-                Stepper("은퇴 목표 \(plan.retirementYear)년", value: $plan.retirementYear,
-                        in: currentYear...(currentYear + 60))
+                Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
+                    // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
+                    // 연도에는 자릿수 구분을 넣지 않는다.
+                    Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                }
                 LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
             }
 
@@ -70,10 +73,12 @@ struct PlanView: View {
     private func summary(_ plan: Plan) -> some View {
         let result = plan.projection(from: currentBalance)
         if let end = result.last {
-            LabeledContent("\(plan.retirementYear)년 예상") {
+            LabeledContent {
                 Text(KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원"))
                     .font(.figure(15, weight: .semibold))
                     .foregroundStyle(Color.ink)
+            } label: {
+                Text(verbatim: "\(plan.retirementYear)년 예상")
             }
             LabeledContent("오늘 돈 기준") {
                 Text(KoreanAmountFormatter.abbreviated(end.real, suffix: "원"))

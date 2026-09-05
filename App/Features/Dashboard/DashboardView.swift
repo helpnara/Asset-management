@@ -12,6 +12,14 @@ struct DashboardView: View {
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
     @State private var completedToShow: ReviewSession?
+    @State private var chartRange: ChartRange = .retirement
+
+    /// 은퇴까지만 보면 과거가 눌리고, 최근만 보면 큰 그림이 사라진다. 둘 다 필요하다.
+    enum ChartRange: String, CaseIterable, Identifiable {
+        case recent = "최근 3년"
+        case retirement = "은퇴까지"
+        var id: String { rawValue }
+    }
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -199,14 +207,40 @@ struct DashboardView: View {
         return result
     }
 
+    /// 최근 3년을 볼 때는 목표선(수십억)을 그리지 않는다. 그리면 나머지가 다 눌린다.
+    private var visiblePoints: [TrajectoryChart.Point] {
+        guard chartRange == .recent else { return trajectoryPoints }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        guard
+            let from = calendar.date(byAdding: .year, value: -3, to: today),
+            let to = calendar.date(byAdding: .year, value: 3, to: today)
+        else { return trajectoryPoints }
+        return trajectoryPoints.filter { $0.date >= from && $0.date <= to }
+    }
+
     @ViewBuilder
     private var trajectory: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("순자산 궤적", trailing: plan.map { "은퇴 \($0.retirementYear)년" } ?? "")
+            HStack(alignment: .firstTextBaseline) {
+                Text("순자산 궤적")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.ink)
+                Spacer()
+                Picker("기간", selection: $chartRange) {
+                    ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 168)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 10)
+
             TrajectoryChart(
-                points: trajectoryPoints,
+                points: visiblePoints,
                 today: Calendar.current.startOfDay(for: .now),
-                targetMinor: plan?.targetAmountMinor ?? 0
+                targetMinor: chartRange == .retirement ? (plan?.targetAmountMinor ?? 0) : 0
             )
             .padding(.horizontal, 16)
 
@@ -255,7 +289,7 @@ struct DashboardView: View {
         guard let plan, let end = projection?.last, plan.monthlyContributionMinor > 0 else { return nil }
         let nominal = KoreanAmountFormatter.abbreviated(end.nominal, suffix: "원")
         let real = KoreanAmountFormatter.abbreviated(end.real)
-        var line = "이대로 가면 \(plan.retirementYear)년에 \(nominal) · 오늘 돈으로 \(real)"
+        var line = "이대로 가면 \(String(plan.retirementYear))년에 \(nominal) · 오늘 돈으로 \(real)"
         if plan.targetAmountMinor > 0 {
             let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
             line += " · 목표의 \(PercentFormatter.oneDecimal(ratio))%"

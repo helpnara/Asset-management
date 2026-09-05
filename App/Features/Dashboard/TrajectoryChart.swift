@@ -30,8 +30,10 @@ struct TrajectoryChart: View {
     let today: Date
     let targetMinor: Int
 
+    /// 1·3 배수를 함께 둔다. 10의 거듭제곱만 쓰면 로그 축에서 눈금이 하나만 남는다.
     private static let ticks: [Int] = [
-        1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000
+        1_000_000, 3_000_000, 10_000_000, 30_000_000,
+        100_000_000, 300_000_000, 1_000_000_000, 3_000_000_000, 10_000_000_000
     ]
 
     var body: some View {
@@ -56,13 +58,24 @@ struct TrajectoryChart: View {
                     lineCap: .round,
                     dash: point.series == .actual ? [] : [4, 3]
                 ))
+
+                // 은퇴까지를 보면 과거 몇 달은 전체 폭의 1%도 안 되어 선이 사라진다.
+                // 점을 함께 찍어야 "실제로 적어 온 기록"이 눈에 남는다.
+                if point.series == .actual {
+                    PointMark(
+                        x: .value("시점", point.date),
+                        y: .value("순자산", point.logValue)
+                    )
+                    .foregroundStyle(Color.ink)
+                    .symbolSize(20)
+                }
             }
 
             if targetMinor > 0 {
                 RuleMark(y: .value("목표", log10(max(Double(targetMinor), 1_000_000))))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
-                    .annotation(position: .top, alignment: .trailing) {
+                    .annotation(position: .top, alignment: .leading, spacing: 1) {
                         Text("목표 \(KoreanAmountFormatter.compact(Money(minorUnits: targetMinor, currency: .krw)))")
                             .font(.figure(8))
                             .foregroundStyle(Color.ink)
@@ -129,9 +142,12 @@ struct TrajectoryChart: View {
             .filter { domain.contains($0) }
     }
 
+    /// 눈금은 정확한 거듭제곱이라 소수를 붙이지 않는다. `1.0억` 이 아니라 `1억`.
     private func tickLabel(_ logValue: Double) -> String {
         let amount = Int(pow(10, logValue).rounded())
-        return KoreanAmountFormatter.compact(Money(minorUnits: amount, currency: .krw))
+        if amount >= 100_000_000 { return "\(amount / 100_000_000)억" }
+        if amount >= 10_000 { return "\(amount / 10_000)만" }
+        return "\(amount)"
     }
 
     /// 기간이 길면 눈금을 성기게 둔다.
