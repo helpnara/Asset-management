@@ -133,6 +133,7 @@ jobs:
           shoot 00-empty.png
           shoot 01-dashboard.png -seedSampleData -startTab dashboard
           shoot 02-assets.png    -seedSampleData -startTab assets
+          shoot 03-review.png    -seedSampleData -startTab dashboard -startReview
 
           ls -la screenshots
 

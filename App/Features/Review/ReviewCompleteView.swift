@@ -1,0 +1,180 @@
+import Core
+import SwiftData
+import SwiftUI
+
+/// 점검 완료 — 입력의 보상.
+///
+/// 손으로 적는 수고에 값을 붙이는 자리다. 끝낸 직후 이번 주 변화와
+/// 연속 기록을 즉시 보여준다 (ADR-0005).
+struct ReviewCompleteView: View {
+    let session: ReviewSession
+
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Query private var sessions: [ReviewSession]
+
+    private var streak: Int {
+        ReviewWeek.streak(
+            completedAnchors: sessions.filter(\.isComplete).map(\.weekAnchor),
+            asOf: .now
+        )
+    }
+
+    private var change: Money { Money(minorUnits: session.changeMinor, currency: .krw) }
+    private var total: Money { Money(minorUnits: session.totalValueMinor, currency: .krw) }
+    private var isFirstEver: Bool { session.previousTotalValueMinor == 0 }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    headline
+                    Rectangle().fill(Color.rule).frame(height: 1)
+                    streakSection
+                    memberSection
+                    footer
+                }
+            }
+            .background(Color.white)
+            .navigationTitle("점검 완료")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("닫기") { dismiss() }.fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("이 번 주 변 화").eyebrowStyle().padding(.bottom, 7)
+
+            if isFirstEver {
+                Text(KoreanAmountFormatter.abbreviated(total, suffix: "원"))
+                    .font(.figure(34, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                Text("첫 기록입니다. 다음 주부터 증감이 보입니다.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.muted)
+                    .padding(.top, 9)
+            } else {
+                Text(KoreanAmountFormatter.abbreviated(change, suffix: "원", sign: .always))
+                    .font(.figure(34, weight: .semibold))
+                    .foregroundStyle(session.changeMinor < 0 ? Color.loss : Color.gain)
+                Text("가족 총자산 \(KoreanAmountFormatter.abbreviated(total)) · \(session.enteredCount)건 입력")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.muted)
+                    .padding(.top, 9)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 24)
+    }
+
+    private var streakSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("연속 기록")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.ink)
+                Spacer()
+                Text("\(streak)주")
+                    .font(.figure(13, weight: .bold))
+                    .foregroundStyle(Color.ink)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 12)
+
+            HStack(spacing: 4) {
+                ForEach(0..<min(max(streak, 1), 16), id: \.self) { offset in
+                    Rectangle()
+                        .fill(Color.ink.opacity(0.25 + 0.75 * Double(offset + 1) / Double(max(streak, 1))))
+                        .frame(width: 9, height: 9)
+                        .cornerRadius(1.5)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+
+            Text(streak <= 1
+                 ? "다음 토요일에 또 적으면 연속 기록이 시작됩니다."
+                 : "\(streak)주째 거르지 않았습니다.")
+                .font(.system(size: 10))
+                .foregroundStyle(Color.faint)
+                .padding(.horizontal, 20)
+                .padding(.top, 9)
+        }
+    }
+
+    private var memberSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("구성원별")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.ink)
+                Spacer()
+                Text("이번 주 기준")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.faint)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 8)
+
+            Rectangle().fill(Color.rule).frame(height: 1)
+
+            ForEach(members) { member in
+                HStack {
+                    Text(member.name.isEmpty ? "이름 없음" : member.name)
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(Color.ink)
+                    Spacer()
+                    Text(KoreanAmountFormatter.abbreviated(memberTotal(member)))
+                        .font(.figure(12.5, weight: .medium))
+                        .foregroundStyle(Color.member(member.colorIndex))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 11)
+                Rectangle().fill(Color.rule).frame(height: 1)
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 10) {
+            Button {
+                dismiss()
+            } label: {
+                Text("현황판에서 보기")
+                    .font(.system(size: 13.5, weight: .medium))
+                    .foregroundStyle(Color.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
+            }
+            Text("다음 점검 \(nextReviewText) 토요일")
+                .font(.system(size: 10))
+                .foregroundStyle(Color.faint)
+        }
+        .padding(20)
+    }
+
+    private var nextReviewText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM.dd"
+        return formatter.string(from: ReviewWeek.nextSaturday(after: .now))
+    }
+
+    private func memberTotal(_ member: Member) -> Money {
+        member.sortedAccounts
+            .flatMap { account in
+                account.sortedHoldings.map { holding in
+                    account.kind.isLiability ? -holding.value : holding.value
+                }
+            }
+            .total(in: .krw)
+    }
+}

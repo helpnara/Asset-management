@@ -5,6 +5,10 @@ import SwiftUI
 struct DashboardView: View {
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
+    @Query private var sessions: [ReviewSession]
+
+    /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
+    @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -32,7 +36,22 @@ struct DashboardView: View {
             }
             .background(Color.white)
             .navigationBarHidden(true)
+            .fullScreenCover(isPresented: $isReviewing) {
+                WeeklyReviewView()
+            }
         }
+    }
+
+    private var completedAnchors: [Date] {
+        sessions.filter(\.isComplete).map(\.weekAnchor)
+    }
+
+    private var streak: Int {
+        ReviewWeek.streak(completedAnchors: completedAnchors, asOf: .now)
+    }
+
+    private var didReviewThisWeek: Bool {
+        completedAnchors.contains(ReviewWeek.anchor(for: .now))
     }
 
     private var header: some View {
@@ -66,22 +85,51 @@ struct DashboardView: View {
         .padding(.vertical, 20)
     }
 
+    /// 루틴으로 되돌리는 자리. 헤더 바로 아래, 궤적보다 위 (설계 2.2.0).
     private var weeklyBar: some View {
         HStack(spacing: 10) {
+            Image(systemName: didReviewThisWeek ? "checkmark.circle" : "calendar")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(didReviewThisWeek ? Color.gain : Color.ink)
+
             VStack(alignment: .leading, spacing: 2) {
-                Text("아직 점검 기록이 없습니다")
+                Text(weeklyTitle)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.ink)
-                Text("매주 토요일에 알려드립니다")
+                Text(weeklySubtitle)
                     .font(.system(size: 10))
                     .foregroundStyle(Color.muted)
             }
             Spacer(minLength: 0)
+
+            if !didReviewThisWeek {
+                Button {
+                    isReviewing = true
+                } label: {
+                    Text("지금 입력")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .overlay(Rectangle().stroke(Color.ink, lineWidth: 1))
+                }
+            }
         }
         .padding(13)
         .background(Color.surface)
         .padding(.horizontal, 20)
         .padding(.top, 16)
+    }
+
+    private var weeklyTitle: String {
+        if didReviewThisWeek { return "이번 주 점검 완료" }
+        let days = ReviewWeek.daysUntilReview(from: .now)
+        return days == 0 ? "오늘이 점검일입니다" : "이번 주 점검 · 토요일까지 D-\(days)"
+    }
+
+    private var weeklySubtitle: String {
+        if streak == 0 { return "매주 토요일 오전에 알려드립니다" }
+        return "\(streak)주 연속 기록 중"
     }
 
     /// 경고는 목록 안에 묻으면 스크롤해야 보인다. 현황판 위쪽에 올린다 (설계 2.2.4).

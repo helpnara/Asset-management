@@ -50,6 +50,34 @@ enum SampleData {
         let daughterBrokerage = account("증여계좌", "증권사 D", .general, daughter, 0, context)
         holding("국내 바이오주", .equity, .stock, "KR", .accumulating, .weekly, 5_600_000, daughterBrokerage, 0, context)
         holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_800_000, daughterBrokerage, 1, context)
+
+        seedPastReviews(into: context)
+    }
+
+    /// 지난 점검 기록. 연속 기록과 주간 증감이 화면에 실제로 보이게 한다.
+    /// 이번 주는 일부러 비워 둬서 "지금 입력" 상태를 확인할 수 있게 한다.
+    private static func seedPastReviews(into context: ModelContext) {
+        let thisWeek = ReviewWeek.anchor(for: .now)
+        let calendar = Calendar.current
+        var running = 231_400_000
+
+        for weeksAgo in stride(from: 12, through: 1, by: -1) {
+            guard let anchor = calendar.date(byAdding: .day, value: -7 * weeksAgo, to: thisWeek) else { continue }
+            let previous = running
+            running += 500_000 + weeksAgo * 37_000
+
+            let session = ReviewSession(weekAnchor: anchor, totalCount: 12)
+            session.enteredCount = 12
+            session.completedAt = anchor
+            session.totalValueMinor = running
+            session.previousTotalValueMinor = previous
+            context.insert(session)
+
+            context.insert(Snapshot(weekAnchor: anchor,
+                                    netWorthMinor: running,
+                                    investableMinor: running - 100_000_000,
+                                    liabilitiesMinor: 4_500_000))
+        }
     }
 
     @discardableResult
