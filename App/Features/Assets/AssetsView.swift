@@ -25,6 +25,10 @@ struct AssetsView: View {
     @State private var editingHolding: Holding?
     @State private var isOrderingMembers = false
     @State private var route = AppRoute.shared
+    /// CI 가 목표 비중 화면을 찍을 수 있게 하는 갈고리. 이 화면이 이번 묶음에서
+    /// 가장 새롭고 계산이 많은데, 그림이 없으면 확인할 방법이 없다.
+    @State private var showTargets = ProcessInfo.processInfo.arguments
+        .contains("-startTargetWeights")
 
     /// 펼쳐 둔 계좌·구성원의 UUID. 기기마다 따로 기억된다 — 접힘은 원래
     /// 기기별로 다른 게 자연스럽다.
@@ -78,6 +82,9 @@ struct AssetsView: View {
             .sheet(item: $editingMember) { MemberEditView(member: $0) }
             .sheet(item: $editingAccount) { AccountEditView(account: $0) }
             .sheet(item: $editingHolding) { HoldingEditView(holding: $0) }
+            .navigationDestination(isPresented: $showTargets) {
+                if let member = members.first { TargetWeightView(member: member) }
+            }
         }
     }
 

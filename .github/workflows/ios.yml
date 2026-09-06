@@ -196,6 +196,8 @@ jobs:
           # 빌드 13 에서 필드 수만큼 네 개가 생겼다 (docs/08-feedback.md 2번).
           shoot 12-plan-keyboard.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField
           shoot 13-principles.png  -skipOnboarding -seedSampleData -startTab more -startPrinciples
+          # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).
+          shoot 14-target-weights.png -skipOnboarding -seedSampleData -startTab assets -startTargetWeights
 
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**
