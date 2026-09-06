@@ -53,8 +53,9 @@ Identifiers·App Store Connect 자체가 열리지 않습니다. 그동안 준�
 
 ### 2단계 · iCloud 컨테이너 먼저 만들기 ⚠️
 
-**App ID 보다 이걸 먼저 만듭니다.** 순서를 거꾸로 하면 App ID 를 만들었다가
-컨테이너를 만들고 다시 App ID 로 돌아와 연결해야 해서 왕복이 한 번 더 생깁니다.
+**App ID 보다 이걸 먼저 만듭니다.** App ID 는 만든 뒤 편집 화면으로 다시 들어가야
+컨테이너를 연결할 수 있는데(3단계), 그때 고를 컨테이너가 이미 있어야 합니다.
+없으면 거기서 또 나갔다 와야 합니다.
 
 이 앱은 iCloud 자격을 **요구하도록** 설정돼 있습니다
 (`App/SlowRich.entitlements`). 컨테이너가 없으면 프로비저닝 프로파일에 그 자격을
@@ -76,7 +77,7 @@ Identifiers·App Store Connect 자체가 열리지 않습니다. 그동안 준�
 
 ---
 
-### 3단계 · App ID 만들기
+### 3단계 · App ID 만들기 + 컨테이너 연결
 
 <https://developer.apple.com/account/resources/identifiers/list>
 
@@ -87,15 +88,31 @@ Identifiers·App Store Connect 자체가 열리지 않습니다. 그동안 준�
 | Description | `SlowRich` |
 | Bundle ID | **Explicit** 을 고르고 `com.helpnara.slowrich` |
 
-같은 화면 아래 **Capabilities** 목록에서 두 개를 체크합니다.
-**지금 안 하면 서명 단계에서 막히고 다시 돌아와야 합니다.**
+`Explicit` 과 `Wildcard` 중 **반드시 Explicit** 입니다.
+Wildcard 로는 iCloud 와 푸시를 쓸 수 없습니다.
 
-- ☑ **iCloud** → 오른쪽 **Configure** → 2단계에서 만든
-  `iCloud.com.helpnara.slowrich` 체크 → Continue
-- ☑ **Push Notifications** — CloudKit 이 변경을 알리는 무음 푸시에 필요합니다.
-  따로 설정할 것은 없고 체크만 하면 됩니다
+같은 화면 아래 **Capabilities** 목록에서 두 개를 체크합니다.
+
+- ☑ **iCloud**
+- ☑ **Push Notifications**
 
 **Continue → Register**
+
+#### ⚠️ 컨테이너 연결은 등록한 **뒤에** 한다
+
+**만드는 화면에서는 iCloud 컨테이너를 고를 수 없습니다.** 체크박스만 있고
+`Configure` 버튼이 없는 것이 정상입니다. 등록을 마쳐야 나타납니다.
+
+1. `Identifiers` 목록으로 돌아가 방금 만든 `SlowRich` 를 클릭 (편집 화면)
+2. **iCloud** 줄의 **Configure**(또는 **Edit**) 클릭
+3. 2단계에서 만든 `iCloud.com.helpnara.slowrich` 체크 → **Continue**
+4. **Save** — 기존 프로파일에 영향을 준다는 경고가 뜨면 **Confirm**
+
+편집 화면의 iCloud 줄에 컨테이너가 표시되면 연결된 것입니다.
+아무것도 안 보이면 저장이 안 된 것이니 다시 하세요.
+
+> 2단계(컨테이너 생성)를 먼저 해 두는 이유가 여기입니다. 안 해 뒀으면
+> Configure 를 눌러도 고를 것이 없어 또 나갔다 와야 합니다.
 
 ### 4단계 · App Store Connect에 앱 등록
 
@@ -231,7 +248,8 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 |---|---|
 | `APP_STORE_CONNECT_KEY_P8 이 비어 있습니다` | 7단계 시크릿 누락. 이름 철자를 확인하세요 |
 | `No profiles for 'com.helpnara.slowrich' were found` | 3단계 App ID 등록이 안 됐거나 번들 ID가 다릅니다 |
-| `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2단계**를 안 했거나 3단계에서 Configure 로 연결하지 않았습니다 |
+| `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2단계**를 안 했거나, 3단계에서 App ID 를 **등록한 뒤 편집 화면으로 다시 들어가 Configure 로 연결**하지 않았습니다 |
+| App ID 만드는 화면에 `Configure` 버튼이 없다 | 정상입니다. 등록을 마치고 목록에서 그 App ID 를 다시 열면 나타납니다 |
 | `Provisioning profile doesn't include the aps-environment entitlement` | 3단계에서 **Push Notifications** 를 체크하지 않았습니다 |
 | `Authentication credentials are missing or invalid` | API 키 액세스가 **App Manager** 인지 확인 |
 | `Missing required icon file` | 앱 아이콘 누락. `App/Assets.xcassets/AppIcon.appiconset` 에 1024×1024 PNG(알파 없음)가 있어야 합니다 |
