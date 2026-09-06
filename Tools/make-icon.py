@@ -4,87 +4,114 @@
     python3 Tools/make-icon.py
 
 `App/Assets.xcassets/AppIcon.appiconset/icon-1024.png` 를 덮어쓴다.
+의존성: Pillow (`pip install pillow`)
 
 ── 왜 이 그림인가 ────────────────────────────────────────────────
-앱 이름은 "느린 부자의 기록"이고, 화면의 핵심은 로그축 위에 그려지는
-완만한 상승 궤적이다. 아이콘을 그 궤적 자체로 만들었다 —
-앱이 하는 일을 그대로 그린 것이다.
+**펼친 책 위에 그려진 상승 곡선.** 앱 이름 그대로다 —
 
-  · 곡선      로그축에서 복리가 그리는 완만한 상승
-  · 점 다섯   매주 적어 넣은 기록
-  · 점선      목표선. 마지막 기록이 막 닿는 높이에 둔다
+  · 책     "기록". 매주 손으로 적어 넣는 행위
+  · 곡선   "느린 부자". 로그축에서 복리가 그리는 완만한 상승
+  · 끝점   지금 내가 서 있는 자리
 
-색은 전부 앱의 팔레트(App/DesignSystem/Palette.swift)에서 가져왔다.
+블로그 아이콘(Moat연구소)의 색과 상단 마크를 이어받았다.
+색은 블로그 이미지에서 직접 뽑은 값이다.
 
-── 기술적으로 주의할 것 ──────────────────────────────────────────
-1. 4배로 그린 뒤 줄인다. 안티에일리어싱을 얻는 가장 단순한 방법.
-2. 굵은 폴리라인을 쓰지 않는다. PIL 의 line(joint="curve") 은 이음매에
-   지저러기를 남긴다 — 실제로 첫 시도에서 곡선 가장자리가 털처럼 나왔다.
-   원을 촘촘히 겹쳐 그리면 이음매가 완벽하게 둥글다.
-3. **알파 채널이 있으면 App Store 가 반려한다.** RGB 로 저장한다.
-4. iOS 가 모서리를 둥글게 깎으므로 내용은 가장자리에서 띄운다.
+── 아이콘 크기에서 살아남게 하려고 지킨 것 ──────────────────────
+아이콘은 홈 화면에서 60pt 로 그려진다. 그 크기에서 죽는 것들이 있다.
 
-의존성: Pillow (`pip install pillow`)
+1. **글자를 넣지 않는다.** 60pt 에서 한글은 읽히지 않는다 (Apple HIG).
+2. **가는 선과 잔detail 을 넣지 않는다.** 점선·그림자·사진은 뭉갠다.
+3. **원을 그려 넣지 않는다.** iOS 가 이미 모서리를 깎는다. 안에 원을 그리면
+   네 귀퉁이가 어중간하게 남아 '스티커'처럼 보인다.
+4. **꽉 찬 도형 하나로 읽히게.** 여기서는 책 실루엣이 그 역할을 하고,
+   곡선은 크림색으로 그 안에서 뚫려 보인다 — 하나의 마크가 된다.
+
+── 만들면서 실패한 것 ───────────────────────────────────────────
+· 굵은 폴리라인(`line(joint="curve")`)은 이음매에 지저러기를 남긴다.
+  원을 촘촘히 겹쳐 그린다.
+· 곡선을 책의 모서리에서 모서리로 그으면 **취소선처럼 읽힌다.**
+  양 끝을 안쪽으로 넣고 곡률을 분명히 준다.
+· 막대 차트를 책 안에 넣어 봤더니 등뼈 틈과 겹쳐 무슨 도형인지 알 수 없었다.
+· 알파 채널이 있으면 App Store 가 반려한다. RGB 로 저장한다.
 """
 
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-# 4배로 그린 뒤 줄인다.
-SUPERSAMPLE = 4096
+SUPERSAMPLE = 3072          # 3배로 그린 뒤 줄여 안티에일리어싱을 얻는다
 FINAL = 1024
 
-# App/DesignSystem/Palette.swift 와 같은 값이다.
-INK = (11, 16, 23)        # Color.ink      — 배경
-LINE = (127, 178, 204)    # Color.dad 계열 — 궤적
-DOT = (244, 247, 248)     # Color.surface  — 매주의 기록
-FAINT = (48, 64, 78)      # 목표선
+# 블로그 아이콘에서 직접 뽑은 색.
+GREEN = (47, 57, 37)        # #2F3925 — 제목 글자 · 배지
+CREAM = (250, 242, 229)     # #FAF2E5 — 바탕
 
 OUTPUT = Path("App/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
 
+# 책의 비율. 바깥 위 모서리가 들리고 등뼈 쪽이 내려앉은 펼친 책 모양이다.
+HALF = 0.335                # 등뼈에서 바깥 모서리까지
+TOP_OUTER, TOP_SPINE = 0.335, 0.415
+BOTTOM_SPINE, BOTTOM_OUTER = 0.760, 0.665
+CORNER = 0.020              # 모서리를 둥글리는 정도
+LINE_WIDTH = 0.046
 
-def curve(t: float) -> tuple[float, float]:
-    """t(0~1) 에서의 좌표.
 
-    지수 0.70 이 "처음엔 가파르고 뒤로 갈수록 완만한" 모양을 만든다.
-    로그축에서 복리가 그리는 선이 딱 이렇게 생겼다.
+def scale(value: float) -> float:
+    return value * SUPERSAMPLE
 
-    가로 0.19~0.81, 세로 0.745~0.29 안에 둔다 — iOS 가 모서리를 깎으므로
-    가장자리까지 채우면 잘린다.
-    """
-    return (
-        SUPERSAMPLE * (0.19 + 0.62 * t),
-        SUPERSAMPLE * (0.745 - 0.455 * (t ** 0.70)),
-    )
+
+def curve(p0, p1, p2, steps: int = 300):
+    """2차 베지에. p1 이 당기는 점이다."""
+    out = []
+    for i in range(steps + 1):
+        t = i / steps
+        u = 1 - t
+        out.append((u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0],
+                    u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]))
+    return out
+
+
+def stroke(pen, points, width: float, fill) -> None:
+    """원을 촘촘히 겹쳐 선을 그린다. 이음매가 원리적으로 둥글다."""
+    radius = scale(width) / 2
+    for x, y in points:
+        pen.ellipse([scale(x) - radius, scale(y) - radius,
+                     scale(x) + radius, scale(y) + radius], fill=fill)
 
 
 def draw() -> Image.Image:
-    image = Image.new("RGB", (SUPERSAMPLE, SUPERSAMPLE), INK)
+    image = Image.new("RGB", (SUPERSAMPLE, SUPERSAMPLE), CREAM)
     pen = ImageDraw.Draw(image)
 
-    # 목표선 — 마지막 기록보다 살짝 위. "거의 닿았다"로 읽힌다.
-    target_y = int(curve(1.0)[1] - SUPERSAMPLE * 0.055)
-    x = int(SUPERSAMPLE * 0.15)
-    while x < SUPERSAMPLE * 0.855:
-        pen.rounded_rectangle(
-            [x, target_y - SUPERSAMPLE // 420, x + SUPERSAMPLE // 60, target_y + SUPERSAMPLE // 420],
-            radius=SUPERSAMPLE // 840,
-            fill=FAINT,
-        )
-        x += SUPERSAMPLE // 34
+    # 펼친 책 — 좌우 페이지를 따로 그린다. 사이의 크림 틈이 등뼈가 된다.
+    for side in (-1, 1):
+        outer_top = (0.5 + side * HALF, TOP_OUTER)
+        spine_top = (0.5 + side * 0.022, TOP_SPINE)
+        spine_bottom = (0.5 + side * 0.022, BOTTOM_SPINE)
+        outer_bottom = (0.5 + side * HALF, BOTTOM_OUTER)
 
-    # 궤적. 원을 촘촘히 겹쳐 그린다 (위 주의사항 2번).
-    width = SUPERSAMPLE // 30
-    for step in range(3001):
-        px, py = curve(step / 3000)
-        pen.ellipse([px - width, py - width, px + width, py + width], fill=LINE)
+        outline = curve(outer_top, (0.5 + side * HALF * 0.55, TOP_OUTER + 0.012),
+                        spine_top, steps=120)
+        outline += [spine_bottom]
+        outline += curve(spine_bottom, (0.5 + side * HALF * 0.55, BOTTOM_OUTER + 0.030),
+                         outer_bottom, steps=120)
 
-    # 매주 적어 넣은 기록.
-    radius = SUPERSAMPLE // 42
-    for t in (0.0, 0.25, 0.5, 0.75, 1.0):
-        px, py = curve(t)
-        pen.ellipse([px - radius, py - radius, px + radius, py + radius], fill=DOT)
+        polygon = [(scale(x), scale(y)) for x, y in outline]
+        pen.polygon(polygon, fill=GREEN)
+        # 같은 색 굵은 윤곽선을 덧그려 모서리를 둥글린다.
+        pen.line(polygon + [polygon[0]], fill=GREEN,
+                 width=int(scale(CORNER)), joint="curve")
+        stroke(pen, outline, CORNER, GREEN)
+
+    # 페이지 위에 그려진 상승 곡선. 양 끝을 안쪽으로 넣어 취소선으로 안 읽히게 한다.
+    rise = curve((0.275, 0.660), (0.415, 0.505), (0.730, 0.470))
+    stroke(pen, rise, LINE_WIDTH, CREAM)
+
+    # 지금 내가 서 있는 자리.
+    x, y = rise[-1]
+    radius = scale(0.040)
+    pen.ellipse([scale(x) - radius, scale(y) - radius,
+                 scale(x) + radius, scale(y) + radius], fill=CREAM)
 
     return image.resize((FINAL, FINAL), Image.LANCZOS)
 
