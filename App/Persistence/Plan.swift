@@ -212,6 +212,7 @@ extension Plan {
             inflation: inflation,
             cashEvents: pending,
             targetAmount: targetAmountMinor > 0 ? targetAmount : nil,
+            annualIncome: Money(minorUnits: monthlyIncomeMinor * 12, currency: .krw),
             retirementDate: retirement,
             monthlyRetirementSpending: monthlySpending,
             incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input)

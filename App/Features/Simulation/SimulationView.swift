@@ -5,8 +5,11 @@ import SwiftUI
 /// What-if — "월 30만원 더 넣으면 얼마나 달라지나"에 답하는 화면.
 ///
 /// 계획 탭이 **가정을 정하는 곳**이라면 여기는 **가정을 흔들어 보는 곳**이다.
-/// 손잡이를 돌려도 저장되지 않는다. 마음에 들면 [계획에 반영]을 눌러야 넘어간다.
-/// 이 분리가 없으면 무심코 돌린 슬라이더가 계획을 덮어쓴다.
+///
+/// **이 화면은 계획을 쓰지 않는다.** 예전에는 [계획에 반영]·[되돌리기] 버튼이
+/// 있었는데, 계획 수립은 계획 탭이 하고 여기는 "지금 자산에서 손잡이를 돌리면
+/// 무슨 일이 나는지" 를 보는 곳이라 걷어냈다 (docs/08-feedback.md 3번).
+/// 쓰는 경로가 없으니 무심코 돌린 슬라이더가 계획을 덮어쓸 일도 없다.
 struct SimulationView: View {
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
@@ -69,7 +72,6 @@ struct SimulationView: View {
                 chartCard(plan, changed: current != Knobs(plan))
                 knobCard(plan, current)
                 spreadCard
-                actionRow(plan, current)
                 scenarioCard(current)
                 disclaimer
             }
@@ -347,45 +349,10 @@ struct SimulationView: View {
         .padding(.vertical, 10)
     }
 
-    // MARK: - 반영 · 되돌리기
-
-    @ViewBuilder
-    private func actionRow(_ plan: Plan, _ knobs: Knobs) -> some View {
-        let changed = knobs != Knobs(plan)
-        HStack(spacing: 10) {
-            Button {
-                self.knobs = Knobs(plan)
-            } label: {
-                Text("되돌리기")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-            }
-            .buttonStyle(.bordered)
-            .tint(Color.muted)
-
-            Button {
-                plan.monthlyContributionMinor = knobs.monthlyMinor
-                plan.retirementYear = knobs.retirementYear
-                plan.annualReturnBP = knobs.returnBP
-            } label: {
-                Text("계획에 반영")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.onInk)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.ink)
-        }
-        .disabled(!changed)
-        .opacity(changed ? 1 : 0.45)
-    }
-
     // MARK: - 시나리오
 
     /// 손잡이 조합에 이름을 붙여 둔다. 저장은 계획을 바꾸지 않는다 —
-    /// [계획에 반영]과 헷갈리지 않도록 버튼을 멀리 두고 말도 다르게 쓴다.
+    /// 저장해도 계획은 바뀌지 않는다 — 조합에 이름을 붙여 두는 것뿐이다.
     private func scenarioCard(_ knobs: Knobs) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {

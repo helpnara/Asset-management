@@ -85,6 +85,9 @@ public struct ProjectionInput: Sendable, Hashable {
     public var cashEvents: [CashEventInput]
     /// 마일스톤 판정에 쓴다. nil이면 목표 도달을 찾지 않는다.
     public var targetAmount: Money?
+    /// 오늘 돈 기준 연 소득. `수익 > 연봉` 마일스톤에만 쓴다.
+    /// 0이면 그 마일스톤을 찾지 않는다.
+    public var annualIncome: Money
 
     /// 은퇴 시점. 이 날짜까지는 적립하고, 이후로는 인출한다.
     ///
@@ -113,6 +116,7 @@ public struct ProjectionInput: Sendable, Hashable {
         inflation: Ratio = .zero,
         cashEvents: [CashEventInput] = [],
         targetAmount: Money? = nil,
+        annualIncome: Money? = nil,
         retirementDate: Date? = nil,
         monthlyRetirementSpending: Money? = nil,
         incomes: [IncomeStreamInput] = []
@@ -129,6 +133,7 @@ public struct ProjectionInput: Sendable, Hashable {
             inflation: inflation,
             cashEvents: cashEvents,
             targetAmount: targetAmount,
+            annualIncome: annualIncome,
             retirementDate: retirementDate,
             monthlyRetirementSpending: monthlyRetirementSpending,
             incomes: incomes
@@ -145,6 +150,7 @@ public struct ProjectionInput: Sendable, Hashable {
         inflation: Ratio = .zero,
         cashEvents: [CashEventInput] = [],
         targetAmount: Money? = nil,
+        annualIncome: Money? = nil,
         retirementDate: Date? = nil,
         monthlyRetirementSpending: Money? = nil,
         incomes: [IncomeStreamInput] = []
@@ -172,6 +178,7 @@ public struct ProjectionInput: Sendable, Hashable {
         self.inflation = inflation
         self.cashEvents = cashEvents
         self.targetAmount = targetAmount
+        self.annualIncome = annualIncome ?? .zero(currency)
     }
 }
 
@@ -199,6 +206,8 @@ public enum MilestoneKind: String, Sendable, Hashable, CaseIterable {
     case returnsExceedContribution
     /// 시작 자산의 두 배.
     case doubled
+    /// 한 해 수익이 연봉을 넘어선 첫 해. **돈이 나보다 많이 버는 순간**이다.
+    case returnsExceedSalary
     /// 목표 금액 도달.
     case targetReached
 
@@ -206,6 +215,7 @@ public enum MilestoneKind: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .returnsExceedContribution: return "수익 > 적립금"
         case .doubled: return "자산 2배"
+        case .returnsExceedSalary: return "수익 > 연봉"
         case .targetReached: return "목표 달성"
         }
     }
@@ -214,6 +224,7 @@ public enum MilestoneKind: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .returnsExceedContribution: return "복리가 적립보다 많이 번다"
         case .doubled: return "시작 자산의 두 배"
+        case .returnsExceedSalary: return "돈이 나보다 많이 번다"
         case .targetReached: return "은퇴 목표 금액에 닿는다"
         }
     }
@@ -451,6 +462,22 @@ public enum Projection {
         if !input.startingBalance.isZero,
            let hit = years.first(where: { $0.endBalance >= doubled }) {
             result.append(Milestone(kind: .doubled, year: hit.year, balance: hit.endBalance))
+        }
+
+        // 연봉은 가만히 있지 않는다. **적립액 증가율과 같은 속도로 오른다고 본다** —
+        // 그 값이 원래 "연봉 상승률" 이다. 오늘 돈 기준 연봉을 그 해까지 올린 뒤
+        // 그 해 명목 수익과 견준다.
+        if !input.annualIncome.isZero, let firstYear = years.first?.year {
+            var salary = input.annualIncome
+            let step = Decimal(1) + input.annualContributionGrowth.fraction
+            for summary in years {
+                if summary.year > firstYear { salary = salary.scaled(by: step) }
+                // 첫 해는 부분 연도라 수익이 덜 잡힌다. 판정에서 뺀다.
+                guard summary.year > firstYear, summary.gain >= salary else { continue }
+                result.append(Milestone(kind: .returnsExceedSalary,
+                                        year: summary.year, balance: summary.endBalance))
+                break
+            }
         }
 
         if let target = input.targetAmount, !target.isZero,

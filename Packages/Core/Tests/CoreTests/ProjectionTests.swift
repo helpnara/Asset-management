@@ -488,3 +488,68 @@ struct ReturnProfileTests {
         #expect(AccountKind.receivable.defaultCadence == .fixed)
     }
 }
+
+// MARK: - 수익 > 연봉
+
+/// 로드맵의 뼈대 여섯 칸 중 하나 (docs/08-feedback.md 5번).
+/// **기댓값은 파이썬으로 따로 계산해 대조했다** (CLAUDE.md 규칙).
+@Suite("Projection — 수익 > 연봉 마일스톤")
+struct SalaryMilestoneTests {
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return calendar
+    }
+
+    private func date(_ text: String) -> Date {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: text)!
+    }
+
+    private func input(years: Int, start: Int, incomeMinor: Int, growthBP: Int = 0) -> ProjectionInput {
+        ProjectionInput(
+            startDate: date("2026-01-01"),
+            endDate: calendar.date(byAdding: .year, value: years, to: date("2026-01-01"))!,
+            startingBalance: Money(start, currency: .krw),
+            monthlyContribution: .zero(.krw),
+            annualReturn: Ratio(basisPoints: 800),
+            annualContributionGrowth: Ratio(basisPoints: growthBP),
+            annualIncome: incomeMinor > 0 ? Money(incomeMinor, currency: .krw) : nil
+        )
+    }
+
+    @Test("한 해 수익이 연봉을 넘어선 첫 해를 찾는다")
+    func findsTheYear() {
+        let result = Projection.run(input(years: 5, start: 1_000_000_000,
+                                          incomeMinor: 36_000_000), calendar: calendar)
+        let hit = result.milestone(.returnsExceedSalary)
+        // 2026년은 부분 연도라 뺀다. 2027년 수익 85,847,653 이 연봉 3,600만을 넘는다.
+        #expect(hit?.year == 2027)
+        #expect(hit?.balance == Money(1_158_943_323, currency: .krw))
+    }
+
+    @Test("연봉을 안 넣으면 판단하지 않는다")
+    func noIncomeNoMilestone() {
+        let result = Projection.run(input(years: 5, start: 1_000_000_000, incomeMinor: 0),
+                                    calendar: calendar)
+        #expect(result.milestone(.returnsExceedSalary) == nil)
+    }
+
+    @Test("연봉은 가만히 있지 않는다 — 적립액 증가율과 같은 속도로 오른다")
+    func salaryGrows() {
+        // 연봉이 오르면 넘어서는 해가 늦어지거나 아예 안 온다.
+        let flat = Projection.run(input(years: 5, start: 1_000_000_000,
+                                        incomeMinor: 80_000_000), calendar: calendar)
+        let rising = Projection.run(input(years: 5, start: 1_000_000_000,
+                                          incomeMinor: 80_000_000, growthBP: 2_000),
+                                    calendar: calendar)
+        let flatYear = flat.milestone(.returnsExceedSalary)?.year
+        let risingYear = rising.milestone(.returnsExceedSalary)?.year
+        #expect(flatYear != nil)
+        #expect(risingYear == nil || risingYear! >= flatYear!)
+    }
+}

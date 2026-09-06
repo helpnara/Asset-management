@@ -194,17 +194,36 @@ struct DashboardView: View {
 
     // MARK: - 로드맵
 
-    /// 오늘 · 자동 판정된 교차점 · 은퇴 목표를 연도순으로 늘어놓는다.
+    /// **뼈대 여섯 칸으로 고정한다.** 지금 · 자산 2배 · 수익 > 적립금 ·
+    /// 수익 > 연봉 · 목표 달성 · 은퇴.
+    ///
+    /// 예전에는 사용자 마일스톤까지 같은 줄에 섞었다. 그것만 개수 제한이 없어서
+    /// 인생 이벤트가 늘수록 로드맵이 길어지고 읽기 어려워졌다
+    /// (docs/08-feedback.md 5번). 인생 이벤트는 아래 순자산 궤적의 x축에 찍는다.
+    ///
+    /// **오지 않는 칸도 지우지 않는다.** 목표를 못 넘기면 `목표 달성` 이 없고
+    /// `자산 2배` 는 이미 지났을 수 있는데, 그때마다 칸이 사라지면 뼈대가
+    /// 흔들려서 매번 다른 그림이 된다. 자리를 지키고 상태만 적는다.
     private var roadmapStops: [RoadmapStrip.Stop] {
         guard let plan, let projection else { return [] }
+        let thisYear = Calendar.current.component(.year, from: .now)
+
         var stops: [RoadmapStrip.Stop] = [
-            .init(year: Calendar.current.component(.year, from: .now),
-                  amount: rollup.netWorth, label: "지금", isNow: true, isGoal: false)
+            .init(year: thisYear, amount: rollup.netWorth, label: "지금", isNow: true, isGoal: false)
         ]
 
-        for milestone in projection.milestones where milestone.year > stops[0].year {
-            stops.append(.init(year: milestone.year, amount: milestone.balance,
-                               label: milestone.kind.label, isNow: false, isGoal: false))
+        // 뼈대의 순서는 **의미의 순서**다. 연도로 정렬하지 않는다 — 그러면
+        // 달성 여부에 따라 칸이 앞뒤로 튀어 매번 다른 그림이 된다.
+        for kind in [MilestoneKind.doubled, .returnsExceedContribution,
+                     .returnsExceedSalary, .targetReached] {
+            if let hit = projection.milestone(kind) {
+                stops.append(.init(year: hit.year, amount: hit.balance,
+                                   label: kind.label, isNow: false, isGoal: false,
+                                   state: hit.year <= thisYear ? .passed : .ahead))
+            } else {
+                stops.append(.init(year: nil, amount: nil, label: kind.label,
+                                   isNow: false, isGoal: false, state: .never))
+            }
         }
 
         // 마지막 정거장은 **은퇴 시점**이다. 인출 구간까지 그리기 시작하면서
@@ -213,25 +232,29 @@ struct DashboardView: View {
             stops.append(.init(year: atRetirement.year, amount: atRetirement.endBalance,
                                label: "은퇴", isNow: false, isGoal: true))
         }
-        // 사용자가 직접 찍은 것도 정거장이다. 자동 판정이 담지 못하는 것들 —
-        // 아이 대학 입학, 전세 만기. 금액은 그 해의 예상 자산에서 가져온다.
-        for milestone in userMilestones where milestone.year > stops[0].year {
-            let amount = projection.point(inYear: milestone.year)?.nominal ?? .zero(.krw)
-            stops.append(.init(year: milestone.year, amount: amount,
-                               label: milestone.label.isEmpty ? "마일스톤" : milestone.label,
-                               isNow: false, isGoal: false))
-        }
+        return stops
+    }
 
-        // 바닥나는 해가 있으면 그것도 정거장이다. 이 앱에서 가장 무거운 한 점이다.
-        if let depletion = projection.depletion {
-            let year = Calendar.current.component(.year, from: depletion)
-            stops.append(.init(year: year, amount: .zero(.krw),
-                               label: "자산 고갈", isNow: false, isGoal: false))
+    /// 인생 이벤트(아이 대학 입학, 전세 만기 …)를 궤적의 x축 눈금으로 옮겼다.
+    /// 로드맵에 섞으면 개수가 늘수록 뼈대가 길어진다 (docs/08-feedback.md 5번).
+    private var milestoneMarks: [TrajectoryChart.EventMark] {
+        let calendar = Calendar.current
+        let thisYear = calendar.component(.year, from: .now)
+        return userMilestones.compactMap { milestone in
+            guard milestone.year >= thisYear,
+                  let date = calendar.date(from: DateComponents(year: milestone.year, month: 1, day: 1))
+            else { return nil }
+            return TrajectoryChart.EventMark(
+                date: date,
+                label: milestone.label.isEmpty ? "마일스톤" : milestone.label
+            )
         }
+    }
 
-        // 같은 해에 여러 개가 걸리면 앞의 것만 남긴다.
-        var seen = Set<Int>()
-        return stops.sorted { $0.year < $1.year }.filter { seen.insert($0.year).inserted }
+    /// 바닥나는 해. 정거장으로 넣지 않고 **머리글 옆 경고**로 뺀다 —
+    /// 여섯 칸의 뼈대를 흔들지 않으면서, 일어난다면 가장 무거운 한 점이다.
+    private var depletionYear: Int? {
+        projection?.depletion.map { Calendar.current.component(.year, from: $0) }
     }
 
     @ViewBuilder
@@ -240,6 +263,12 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("전체 자산 로드맵",
                               trailing: plan.map { "\($0.yearsToRetirement)년 남음" } ?? "")
+                if let depletionYear {
+                    Text("\(String(depletionYear))년에 바닥납니다")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.loss)
+                        .padding(.bottom, 6)
+                }
                 RoadmapStrip(stops: roadmapStops)
                     .padding(.bottom, 4)
             }
@@ -304,7 +333,8 @@ struct DashboardView: View {
             TrajectoryChart(
                 points: visiblePoints,
                 today: Calendar.current.startOfDay(for: .now),
-                targetMinor: chartRange == .retirement ? (plan?.targetAmountMinor ?? 0) : 0
+                targetMinor: chartRange == .retirement ? (plan?.targetAmountMinor ?? 0) : 0,
+                events: milestoneMarks
             )
             .padding(.horizontal, 16)
 

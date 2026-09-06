@@ -26,9 +26,18 @@ struct TrajectoryChart: View {
         var logValue: Double { log10(max(Double(minor), 1_000_000)) }
     }
 
+    /// 인생 이벤트. 로드맵의 뼈대를 흔들지 않으면서 "그 사건이 궤적의 어디쯤
+    /// 오는가" 를 보여주는 자리다 (docs/08-feedback.md 5번).
+    struct EventMark: Identifiable, Hashable {
+        let date: Date
+        let label: String
+        var id: String { "\(label)-\(date.timeIntervalSince1970)" }
+    }
+
     let points: [Point]
     let today: Date
     let targetMinor: Int
+    var events: [EventMark] = []
 
     /// 1·3 배수를 함께 둔다. 10의 거듭제곱만 쓰면 로그 축에서 눈금이 하나만 남는다.
     private static let ticks: [Int] = [
@@ -79,11 +88,27 @@ struct TrajectoryChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
             }
 
+            // 인생 이벤트는 x축에 눈금으로 선다. 개수가 늘어도 눈금이 촘촘해질
+            // 뿐, 로드맵의 여섯 칸은 그대로다.
+            ForEach(events) { event in
+                RuleMark(x: .value("이벤트", event.date))
+                    .foregroundStyle(Color.muted.opacity(0.35))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                    .annotation(position: .bottom, alignment: .center, spacing: 1) {
+                        Text(event.label)
+                            .font(.system(size: 7.5))
+                            .foregroundStyle(Color.faint)
+                            .lineLimit(1)
+                    }
+            }
+
             RuleMark(x: .value("오늘", today))
                 .foregroundStyle(Color.ink)
                 .lineStyle(StrokeStyle(lineWidth: 1))
         }
         .chartYScale(domain: domain)
+        // 궤적을 벗어난 선이 아래 카드 위에 그려지지 않게 한다.
+        .chartPlotStyle { plot in plot.clipped() }
         .chartYAxis {
             AxisMarks(values: tickValues) { value in
                 AxisGridLine().foregroundStyle(Color.rule)
