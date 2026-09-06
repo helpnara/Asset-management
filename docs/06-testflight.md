@@ -251,8 +251,9 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2단계**를 안 했거나, 3단계에서 App ID 를 **등록한 뒤 편집 화면으로 다시 들어가 Configure 로 연결**하지 않았습니다 |
 | App ID 만드는 화면에 `Configure` 버튼이 없다 | 정상입니다. 등록을 마치고 목록에서 그 App ID 를 다시 열면 나타납니다 |
 | `Provisioning profile doesn't include the aps-environment entitlement` | 3단계에서 **Push Notifications** 를 체크하지 않았습니다 |
-| `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되고 있었습니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. `project.yml` 의 Release 설정이 `Apple Distribution` 인지 확인하세요 — 기기를 등록해서 우회할 문제가 아닙니다 |
-| `No profiles for 'com.helpnara.slowrich' were found` (위 오류와 함께) | 같은 원인입니다. 워크플로의 `서명 설정 확인` 단계 출력에서 `CODE_SIGN_IDENTITY` 가 `Apple Distribution` 으로 나오는지 보세요 |
+| `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되려 한 것입니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. 지금은 아카이브를 `CODE_SIGNING_ALLOWED=NO` 로 굽고 내보내기에서만 서명하므로 이 오류가 나면 안 됩니다 |
+| `conflicting provisioning settings ... Apple Distribution has been manually specified` | 자동 서명일 때는 인증서를 직접 지정할 수 없습니다. `project.yml` 에서 `CODE_SIGN_IDENTITY` 를 지우세요 |
+| `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 내보내기에서 서명은 됐는데 자격이 안 붙었습니다. 3단계에서 App ID 에 iCloud/Push 를 켜고 컨테이너를 연결했는지 확인하세요. 업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다 |
 | `Authentication credentials are missing or invalid` | API 키 액세스가 **App Manager** 인지 확인 |
 | `Missing required icon file` | 앱 아이콘 누락. `App/Assets.xcassets/AppIcon.appiconset` 에 1024×1024 PNG(알파 없음)가 있어야 합니다 |
 | 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다 |

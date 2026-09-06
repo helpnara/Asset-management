@@ -61,19 +61,17 @@ targets:
           CODE_SIGN_ENTITLEMENTS: App/SlowRich.entitlements
         Release:
           CODE_SIGN_ENTITLEMENTS: App/SlowRich.Release.entitlements
-          # 아카이브는 **배포용** 인증서로 서명해야 한다.
+          # 인증서를 여기서 지정하지 않는다.
           #
-          # 이걸 안 넣으면 Xcode 기본값인 개발용(`iPhone Developer`)이 걸리고,
-          # xcodebuild 가 `iOS App Development` 프로파일을 찾는다. 개발용 프로파일은
-          # **등록된 기기가 있어야** 만들어지므로 CI 에서 이런 오류가 난다:
-          #   "Your team has no devices from which to generate a provisioning profile"
-          # 기기를 등록해서 우회할 게 아니라, 애초에 배포용으로 서명해야 맞다.
-          #
-          # 기본값이 `CODE_SIGN_IDENTITY[sdk=iphoneos*]` 로 **SDK 한정**이라
-          # 한정 없는 키만 적으면 기본값이 이긴다. 둘 다 적는다.
+          # 자동 서명(Automatic)일 때 `CODE_SIGN_IDENTITY` 를 직접 넣으면
+          # Xcode 가 충돌로 보고 막는다:
+          #   "automatically signed for development, but a conflicting code
+          #    signing identity Apple Distribution has been manually specified"
+          # 자동 서명은 아카이브 단계에서 **개발용**을 고르고, 개발용 프로파일은
+          # 등록된 기기가 있어야 만들어진다. 그래서 CI 에서는 아카이브를
+          # 서명 없이 굽고 내보내기 단계에서 배포용으로 서명한다
+          # (.github/workflows/testflight.yml).
           CODE_SIGN_STYLE: Automatic
-          CODE_SIGN_IDENTITY: Apple Distribution
-          "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Distribution
 
 schemes:
   SlowRich:
@@ -84,3 +82,6 @@ schemes:
       config: Debug
     test:
       config: Debug
+    # 아카이브는 Release 로 굽는다. 비워 두면 XcodeGen 기본값에 기대게 된다.
+    archive:
+      config: Release
