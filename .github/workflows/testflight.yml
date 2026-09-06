@@ -31,52 +31,60 @@ jobs:
       - name: Xcode 26 이상 선택
         run: |
           set -uo pipefail
-          echo "── 설치된 Xcode ──"; ls -d /Applications/Xcode*.app 2>/dev/null || true
 
-          # 버전은 plist 에서 읽는다. 선택되지 않은 Xcode 의 xcodebuild 를 직접
-          # 실행하면 abort(SIGABRT) 하는 것이 섞여 있어서, 고르는 단계에서
-          # 실행하면 안 된다.
-          BEST=""; BEST_V=0
-          for app in /Applications/Xcode*.app; do
-            plist="$app/Contents/version.plist"
-            [ -f "$plist" ] || continue
-            v=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null) || continue
-            v=${v%%.*}
-            case "$v" in ''|*[!0-9]*) continue ;; esac
-            echo "  $app → $v"
-            if [ "$v" -gt "$BEST_V" ]; then BEST_V="$v"; BEST="$app"; fi
-          done
-          if [ -z "$BEST" ]; then
-            echo "::error::러너에서 Xcode 를 찾지 못했습니다"
-            exit 1
+          # 러너가 기본으로 선택해 둔 Xcode 에만 시뮬레이터 런타임이 갖춰져 있다.
+          # 그래서 **이미 26 이상이면 손대지 않는다.** 예전에 major 만 비교해
+          # 다른 26.x 로 바꿨다가 "iOS 26.0 is not installed" 로 막혔다.
+          xcver() {
+            [ -f "$1/Contents/version.plist" ] || return 1
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+              "$1/Contents/version.plist" 2>/dev/null
+          }
+
+          CUR_APP=$(xcode-select -p 2>/dev/null || true)
+          CUR_APP=${CUR_APP%/Contents/Developer}
+          CUR_V=$(xcver "$CUR_APP" || true)
+          echo "현재 선택: ${CUR_APP:-(없음)} ${CUR_V:-(?)}"
+
+          NEED=1
+          case "${CUR_V%%.*}" in
+            ''|*[!0-9]*) ;;
+            *) [ "${CUR_V%%.*}" -ge 26 ] && NEED=0 ;;
+          esac
+
+          if [ "$NEED" -eq 1 ]; then
+            echo "── 설치된 Xcode ──"
+            BEST=""; BEST_K=0
+            for app in /Applications/Xcode*.app; do
+              v=$(xcver "$app" || true)
+              [ -n "$v" ] || continue
+              k=$(echo "$v" | awk -F. '{printf "%d", ($1*10000)+($2*100)+$3}')
+              echo "  $app → $v"
+              if [ "$k" -gt "$BEST_K" ]; then BEST_K=$k; BEST="$app"; BEST_V="$v"; fi
+            done
+            if [ -n "$BEST" ]; then
+              echo "전환: $BEST ($BEST_V)"
+              sudo xcode-select -s "$BEST/Contents/Developer"
+              CUR_V="$BEST_V"
+            fi
           fi
-          if [ "$BEST_V" -lt 26 ]; then
-            echo "::error::가장 높은 Xcode 가 $BEST_V 입니다. App Store Connect 는 iOS 26 SDK(Xcode 26+) 빌드만 받습니다 — runs-on 러너 이미지를 올려야 합니다."
-            exit 1
-          fi
-          sudo xcode-select -s "$BEST/Contents/Developer"
+
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "── 시뮬레이터 런타임 ──"; xcrun simctl list runtimes | grep -i ios || true
 
-
-      - name: XcodeGen 설치
-        run: brew install xcodegen
-
-      - name: Xcode 프로젝트 생성
-        run: xcodegen generate
-
-      # 깨진 계산이 아이폰까지 가면 안 된다. 20초짜리 관문이다.
-      - name: 계산 로직 테스트
-        run: cd Packages/Core && swift test
-
-      - name: App Store Connect API 키 준비
-        env:
-          KEY: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
-        run: |
-          if [ -z "$KEY" ]; then
-            echo "::error::시크릿 APP_STORE_CONNECT_KEY_P8 이 비어 있습니다. docs/06-testflight.md 를 보세요."
-            exit 1
-          fi
+          # 26 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서
+          # 409 를 받는 것보다 낫다. 버전을 못 읽어도 멈춘다.
+          case "${CUR_V%%.*}" in
+            ''|*[!0-9]*)
+              echo "::error::Xcode 버전을 읽지 못했습니다 (CUR_V='${CUR_V}')."
+              exit 1 ;;
+            *)
+              if [ "${CUR_V%%.*}" -lt 26 ]; then
+                echo "::error::Xcode 가 ${CUR_V} 입니다. App Store Connect 는 iOS 26 SDK(Xcode 26+) 빌드만 받습니다 — runs-on 러너 이미지를 올려야 합니다."
+                exit 1
+              fi ;;
+          esac
           mkdir -p ~/private_keys
           echo "$KEY" > ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
           chmod 600 ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8

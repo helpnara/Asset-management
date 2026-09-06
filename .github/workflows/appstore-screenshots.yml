@@ -20,26 +20,47 @@ jobs:
       - name: 최신 Xcode 선택
         run: |
           set -uo pipefail
-          echo "── 설치된 Xcode ──"; ls -d /Applications/Xcode*.app 2>/dev/null || true
 
-          # 버전은 plist 에서 읽는다. 선택되지 않은 Xcode 의 xcodebuild 를 직접
-          # 실행하면 abort(SIGABRT) 하는 것이 섞여 있어서, 고르는 단계에서
-          # 실행하면 안 된다.
-          BEST=""; BEST_V=0
-          for app in /Applications/Xcode*.app; do
-            plist="$app/Contents/version.plist"
-            [ -f "$plist" ] || continue
-            v=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null) || continue
-            v=${v%%.*}
-            case "$v" in ''|*[!0-9]*) continue ;; esac
-            echo "  $app → $v"
-            if [ "$v" -gt "$BEST_V" ]; then BEST_V="$v"; BEST="$app"; fi
-          done
-          if [ -n "$BEST" ]; then
-            sudo xcode-select -s "$BEST/Contents/Developer"
+          # 러너가 기본으로 선택해 둔 Xcode 에만 시뮬레이터 런타임이 갖춰져 있다.
+          # 그래서 **이미 26 이상이면 손대지 않는다.** 예전에 major 만 비교해
+          # 다른 26.x 로 바꿨다가 "iOS 26.0 is not installed" 로 막혔다.
+          xcver() {
+            [ -f "$1/Contents/version.plist" ] || return 1
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+              "$1/Contents/version.plist" 2>/dev/null
+          }
+
+          CUR_APP=$(xcode-select -p 2>/dev/null || true)
+          CUR_APP=${CUR_APP%/Contents/Developer}
+          CUR_V=$(xcver "$CUR_APP" || true)
+          echo "현재 선택: ${CUR_APP:-(없음)} ${CUR_V:-(?)}"
+
+          NEED=1
+          case "${CUR_V%%.*}" in
+            ''|*[!0-9]*) ;;
+            *) [ "${CUR_V%%.*}" -ge 26 ] && NEED=0 ;;
+          esac
+
+          if [ "$NEED" -eq 1 ]; then
+            echo "── 설치된 Xcode ──"
+            BEST=""; BEST_K=0
+            for app in /Applications/Xcode*.app; do
+              v=$(xcver "$app" || true)
+              [ -n "$v" ] || continue
+              k=$(echo "$v" | awk -F. '{printf "%d", ($1*10000)+($2*100)+$3}')
+              echo "  $app → $v"
+              if [ "$k" -gt "$BEST_K" ]; then BEST_K=$k; BEST="$app"; BEST_V="$v"; fi
+            done
+            if [ -n "$BEST" ]; then
+              echo "전환: $BEST ($BEST_V)"
+              sudo xcode-select -s "$BEST/Contents/Developer"
+              CUR_V="$BEST_V"
+            fi
           fi
+
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "── 시뮬레이터 런타임 ──"; xcrun simctl list runtimes | grep -i ios || true
 
 
       - name: XcodeGen 설치
