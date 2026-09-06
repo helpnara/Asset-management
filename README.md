@@ -63,6 +63,7 @@
 5. [로드맵 · 리스크](docs/05-roadmap.md) — 마일스톤 진행 상황, 검증할 가정, 위험 요소
 6. [아이폰에 올리기 (TestFlight)](docs/06-testflight.md) — 맥 없이 내 폰까지, 최초 1회 준비 절차
 7. [App Store 출시](docs/07-app-store.md) — 심사 통과까지 단계별로
+8. [실기기 피드백](docs/08-feedback.md) — 아이폰에서 써 보며 나온, 고칠 것들
 8. [개인정보 처리방침](docs/privacy-policy.md) — 앱이 무엇을 모으지 않는지
 
 참고: [기존 1페이지 계획서 구조 분석](docs/reference/one-pager-analysis.md) ·
