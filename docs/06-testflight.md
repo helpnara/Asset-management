@@ -264,7 +264,8 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `Provisioning profile doesn't include the aps-environment entitlement` | 3단계에서 **Push Notifications** 를 체크하지 않았습니다 |
 | `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되려 한 것입니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. 지금은 아카이브를 `CODE_SIGNING_ALLOWED=NO` 로 굽고 내보내기에서만 서명하므로 이 오류가 나면 안 됩니다 |
 | `conflicting provisioning settings ... Apple Distribution has been manually specified` | 자동 서명일 때는 인증서를 직접 지정할 수 없습니다. `project.yml` 에서 `CODE_SIGN_IDENTITY` 를 지우세요 |
-| `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 내보내기에서 서명은 됐는데 자격이 안 붙었습니다. 3단계에서 App ID 에 iCloud/Push 를 켜고 컨테이너를 연결했는지 확인하세요. 업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다 |
+| `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 서명은 됐는데 자격이 안 붙었습니다. **업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다.** `아카이브 entitlement 확인` 단계는 통과했는데 여기서 걸렸다면 내보내기 문제, 아카이브 단계에서 이미 걸렸다면 `CODE_SIGN_ENTITLEMENTS` 문제입니다 |
+| `아카이브 단계에서 이미 iCloud 자격이 빠졌습니다` | 아카이브가 entitlements 를 안 박은 것입니다. 서명을 완전히 끄면(`CODE_SIGNING_ALLOWED=NO`) Xcode 의 `ProcessProductPackaging` 이 건너뛰어져 이렇게 됩니다. 애드혹 서명(`CODE_SIGN_IDENTITY=-`)이어야 합니다 |
 | `Authentication credentials are missing or invalid` | 시크릿 세 개(`KEY_P8` · `KEY_ID` · `ISSUER_ID`)가 서로 맞는 짝인지 확인. 키를 새로 만들었으면 셋 중 둘이 바뀝니다 |
 | `Cloud signing permission error` | **API 키 액세스가 `Admin` 이 아닙니다.** App Manager 로는 서명 자산을 만들 수 없습니다. 5단계를 다시 보고 키를 새로 만드세요 |
 | `Cloud signing permission error` (키가 Admin 인데도) | App Store Connect → **비즈니스**(또는 계약·세금·거래) 에서 동의하지 않은 계약이 있는지 확인하세요. 미동의 계약이 있으면 클라우드 서명이 막힙니다 |
