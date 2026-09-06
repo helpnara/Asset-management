@@ -27,7 +27,10 @@ struct DiagnosticsTests {
         yearsToRetirement: Int = 23,
         projected: Int? = nil,
         doublingYear: Int? = nil,
-        accounts: [LimitAccountInput] = []
+        accounts: [LimitAccountInput] = [],
+        drifting: Int = 0,
+        untargeted: Int = 0,
+        totalHoldings: Int = 0
     ) -> DiagnosticsInput {
         DiagnosticsInput(
             netWorth: won(netWorth),
@@ -37,6 +40,9 @@ struct DiagnosticsTests {
             monthlySpending: won(monthlySpending),
             withdrawalRate: Ratio(basisPoints: withdrawalBP),
             monthlyIncome: won(monthlyIncome),
+            driftingHoldings: drifting,
+            untargetedHoldings: untargeted,
+            totalHoldings: totalHoldings,
             monthlyContribution: won(monthlyContribution),
             savingsFloor: Ratio(basisPoints: savingsFloorBP),
             annualReturn: Ratio(basisPoints: returnBP),
@@ -266,7 +272,7 @@ struct DiagnosticsTests {
 
     // MARK: - 목록
 
-    @Test("여섯 가지를 모두 돌려주고, 할 일이 위로 온다")
+    @Test("일곱 가지를 모두 돌려주고, 할 일이 위로 온다")
     func ordering() {
         let result = Diagnostics.run(input(
             illiquid: 400_000_000,              // act
@@ -289,5 +295,39 @@ struct DiagnosticsTests {
             #expect(!diagnosis.action.isEmpty)
             #expect(!diagnosis.rationale.isEmpty)
         }
+    }
+
+    // MARK: - 7) 목표 비중
+
+    @Test("종목이 없으면 판단하지 않는다")
+    func targetWeightsUnknown() {
+        let result = Diagnostics.run(input(totalHoldings: 0))
+        #expect(result.diagnoses.first { $0.kind == .targetWeights }?.status == .unknown)
+    }
+
+    @Test("목표를 안 정한 종목이 있으면 그것부터 말한다")
+    func untargetedComesFirst() {
+        // 어긋난 것이 없어도 목표가 없으면 조치다. 목표가 없으면 어긋났는지도
+        // 알 수 없기 때문이다 — 모든 종목에 목표가 있어야 한다는 입장이다.
+        let result = Diagnostics.run(input(drifting: 0, untargeted: 3, totalHoldings: 10))
+        let diagnosis = result.diagnoses.first { $0.kind == .targetWeights }
+        #expect(diagnosis?.status == .act)
+        #expect(diagnosis?.progress == 0.7)
+    }
+
+    @Test("전부 목표 안이면 지킴")
+    func allOnTrack() {
+        let result = Diagnostics.run(input(drifting: 0, untargeted: 0, totalHoldings: 8))
+        let diagnosis = result.diagnoses.first { $0.kind == .targetWeights }
+        #expect(diagnosis?.status == .pass)
+        #expect(diagnosis?.progress == 1)
+    }
+
+    @Test("절반 넘게 어긋나면 주의가 아니라 조치다")
+    func manyDriftsEscalate() {
+        let few = Diagnostics.run(input(drifting: 2, untargeted: 0, totalHoldings: 10))
+        let many = Diagnostics.run(input(drifting: 5, untargeted: 0, totalHoldings: 10))
+        #expect(few.diagnoses.first { $0.kind == .targetWeights }?.status == .watch)
+        #expect(many.diagnoses.first { $0.kind == .targetWeights }?.status == .act)
     }
 }

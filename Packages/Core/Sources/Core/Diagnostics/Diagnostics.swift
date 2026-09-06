@@ -45,6 +45,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
     case taxAdvantagedOrder  // 4) 세제혜택 계좌 채우는 순서
     case doublingTime        // 5) 72의 법칙
     case savingsRate         // 6) 선저축 비율
+    case targetWeights       // 7) 목표 비중 유지
 
     public var id: String { rawValue }
 
@@ -56,6 +57,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
         case .taxAdvantagedOrder: return "세제혜택 계좌"
         case .doublingTime: return "자산이 두 배 되는 시점"
         case .savingsRate: return "선저축 비율"
+        case .targetWeights: return "목표 비중"
         }
     }
 
@@ -74,6 +76,8 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
             return "복리가 얼마나 느리고 확실한지 보는 눈금입니다. 이 숫자가 은퇴까지 몇 번 도는지가 실제 준비의 크기입니다."
         case .savingsRate:
             return "쓰고 남은 돈을 모으면 남지 않습니다. 노후 준비는 수익률보다 저축률이 먼저 결정합니다."
+        case .targetWeights:
+            return "주식·ETF 투자는 **비중을 유지하면서 규모를 키우는 것**입니다. 오르내리다 보면 저절로 한쪽으로 기울고, 그걸 놓치면 어느새 다른 포트폴리오가 됩니다."
         }
     }
 }
@@ -133,6 +137,12 @@ public struct DiagnosticsInput: Sendable {
     public var withdrawalRate: Ratio
     /// 세후 월 소득. 0이면 저축률을 판단하지 않는다.
     public var monthlyIncome: Money
+    /// 목표에서 벗어난 종목 수 (주의 · 조치).
+    public var driftingHoldings: Int
+    /// 목표를 아직 안 정한 종목 수. **이것도 알림거리다** — 모든 종목에
+    /// 목표가 있어야 한다는 것이 이 앱의 입장이다 (docs/08-feedback.md 14번).
+    public var untargetedHoldings: Int
+    public var totalHoldings: Int
     public var monthlyContribution: Money
     /// 최소 저축률. 10%면 1000bp.
     public var savingsFloor: Ratio
@@ -163,6 +173,9 @@ public struct DiagnosticsInput: Sendable {
         monthlySpending: Money,
         withdrawalRate: Ratio,
         monthlyIncome: Money,
+        driftingHoldings: Int = 0,
+        untargetedHoldings: Int = 0,
+        totalHoldings: Int = 0,
         monthlyContribution: Money,
         savingsFloor: Ratio,
         annualReturn: Ratio,
@@ -182,6 +195,9 @@ public struct DiagnosticsInput: Sendable {
         self.monthlySpending = monthlySpending
         self.withdrawalRate = withdrawalRate
         self.monthlyIncome = monthlyIncome
+        self.driftingHoldings = driftingHoldings
+        self.untargetedHoldings = untargetedHoldings
+        self.totalHoldings = totalHoldings
         self.monthlyContribution = monthlyContribution
         self.savingsFloor = savingsFloor
         self.annualReturn = annualReturn
@@ -227,7 +243,8 @@ public enum Diagnostics {
             countryMix(input),
             taxAdvantagedOrder(input),
             doublingTime(input),
-            savingsRate(input)
+            savingsRate(input),
+            targetWeights(input)
         ])
     }
 
@@ -565,5 +582,49 @@ public enum Diagnostics {
 
     private static func format(_ value: Double) -> String {
         value == value.rounded() ? "\(Int(value))" : "\(value)"
+    }
+
+    // MARK: - 7) 목표 비중
+
+    /// 목표에서 벗어난 종목이 있는가. **목표를 안 정한 것도 센다.**
+    ///
+    /// 이 앱은 "좋고 나쁨을 판정하지 않는다" 를 원칙으로 두지만, 목표 비중은
+    /// 사용자가 스스로 정한 기준이다. 그 기준에서 얼마나 벗어났는지를 말하는
+    /// 것은 판정이 아니라 **거울**이다.
+    private static func targetWeights(_ input: DiagnosticsInput) -> Diagnosis {
+        guard input.totalHoldings > 0 else {
+            return Diagnosis(kind: .targetWeights, status: .unknown,
+                             headline: "종목을 먼저 등록하세요",
+                             action: "종목마다 목표 비중을 정해 두면 어긋날 때 알려 드립니다.",
+                             progress: nil)
+        }
+
+        if input.untargetedHoldings > 0 {
+            let done = input.totalHoldings - input.untargetedHoldings
+            return Diagnosis(
+                kind: .targetWeights, status: .act,
+                headline: "목표 비중을 안 정한 종목이 \(input.untargetedHoldings)개 있습니다",
+                action: "자산 탭 → 구성원 → 목표 비중에서 정하세요. 목표가 없으면 어긋났는지도 알 수 없습니다.",
+                progress: Double(done) / Double(input.totalHoldings)
+            )
+        }
+
+        guard input.driftingHoldings > 0 else {
+            return Diagnosis(
+                kind: .targetWeights, status: .pass,
+                headline: "모든 종목이 목표 비중 안에 있습니다",
+                action: "이대로 두면 됩니다. 적립만 계속하세요.",
+                progress: 1
+            )
+        }
+
+        let onTrack = input.totalHoldings - input.driftingHoldings
+        return Diagnosis(
+            kind: .targetWeights,
+            status: input.driftingHoldings * 2 >= input.totalHoldings ? .act : .watch,
+            headline: "목표에서 벗어난 종목이 \(input.driftingHoldings)개 있습니다",
+            action: "파는 대신 **다음 적립을 모자란 쪽에 넣어** 맞춰 가세요. 목표 비중 화면이 얼마씩 넣을지 계산해 줍니다.",
+            progress: Double(onTrack) / Double(input.totalHoldings)
+        )
     }
 }

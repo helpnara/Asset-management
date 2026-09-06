@@ -94,6 +94,21 @@ extension Member {
         return seen
     }
 
+    /// 비중을 재는 대상 종목 (부채 계좌 제외, 값이 있는 것).
+    var investableHoldings: [Holding] {
+        sortedAccounts
+            .filter { !$0.isArchived && !$0.kind.isLiability }
+            .flatMap(\.sortedHoldings)
+            .filter { $0.valueMinor != 0 }
+    }
+
+    var investableHoldingCount: Int { investableHoldings.count }
+
+    /// 목표를 아직 안 정한 종목 수. **이것도 알림거리다.**
+    var untargetedHoldingCount: Int {
+        investableHoldings.filter { $0.targetWeightBP == nil }.count
+    }
+
     /// 목표에서 벗어난 종목 수. 주간 점검 완료 화면이 한 줄로 읽는다.
     func driftingHoldingCount(tolerance: Allocation.Tolerance) -> Int {
         usedAssetClasses.reduce(0) { count, assetClass in

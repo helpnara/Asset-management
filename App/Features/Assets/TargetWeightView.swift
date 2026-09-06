@@ -39,6 +39,26 @@ struct TargetWeightView: View {
             } footer: {
                 Text("전세보증금·예적금·현금까지 **가진 돈 전부**를 어떻게 나눠 두었는지 봅니다. 자산군을 누르면 그 안의 종목 비중이 열립니다.")
             }
+            if !splitSuggestion.isEmpty {
+                Section {
+                    ForEach(splitSuggestion, id: \.label) { row in
+                        HStack {
+                            Text(row.label)
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(Color.bodyText)
+                            Spacer()
+                            Text(Won.abbreviated(row.amount, suffix: "원"))
+                                .font(.figure(13, weight: .semibold))
+                                .foregroundStyle(Color.ink)
+                        }
+                    }
+                } header: {
+                    Text("이번 달 적립을 이렇게 나누면")
+                        .textCase(nil)
+                } footer: {
+                    Text("**파는 이야기는 하지 않습니다.** 매도는 세금과 수수료가 들고, 무엇을 팔지는 앱이 판단할 일이 아닙니다. 넣는 돈으로 맞춰 가면 목표에 가장 가까워집니다.")
+                }
+            }
         }
         .navigationTitle("목표 비중")
         .navigationBarTitleDisplayMode(.inline)
@@ -49,6 +69,18 @@ struct TargetWeightView: View {
                     .foregroundStyle(Color.muted)
             }
         }
+    }
+
+    /// **팔지 않고 적립으로 맞춘다.** 이번 달 이 사람 몫의 적립을 자산군별로
+    /// 얼마씩 넣으면 목표에 가장 가까워지는지 계산한다
+    /// (docs/08-feedback.md 14번).
+    private var splitSuggestion: [(label: String, amount: Money)] {
+        let monthly = member.monthlyContributionMinor + member.employerMatchMinor
+        guard monthly > 0 else { return [] }
+        return Allocation.contributionSplit(
+            classSlices,
+            contribution: Money(minorUnits: monthly, currency: .krw)
+        )
     }
 
     // MARK: - 1층 · 자산군
