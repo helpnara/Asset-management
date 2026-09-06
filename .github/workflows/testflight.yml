@@ -30,16 +30,26 @@ jobs:
       # 보는 것보다 낫다 (실제로 그렇게 한 번 돌았다).
       - name: Xcode 26 이상 선택
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          echo "── 설치된 Xcode ──"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+
+          # 버전은 plist 에서 읽는다. 선택되지 않은 Xcode 의 xcodebuild 를 직접
+          # 실행하면 abort(SIGABRT) 하는 것이 섞여 있어서, 고르는 단계에서
+          # 실행하면 안 된다.
           BEST=""; BEST_V=0
           for app in /Applications/Xcode*.app; do
-            [ -x "$app/Contents/Developer/usr/bin/xcodebuild" ] || continue
-            v=$("$app/Contents/Developer/usr/bin/xcodebuild" -version 2>/dev/null \
-                | head -1 | sed -E 's/^Xcode ([0-9]+).*/\1/')
+            plist="$app/Contents/version.plist"
+            [ -f "$plist" ] || continue
+            v=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null) || continue
+            v=${v%%.*}
             case "$v" in ''|*[!0-9]*) continue ;; esac
-            if [ "$v" -gt "$BEST_V" ]; then BEST_V=$v; BEST="$app"; fi
+            echo "  $app → $v"
+            if [ "$v" -gt "$BEST_V" ]; then BEST_V="$v"; BEST="$app"; fi
           done
-          [ -n "$BEST" ] || { echo "::error::러너에서 Xcode 를 찾지 못했습니다"; exit 1; }
+          if [ -z "$BEST" ]; then
+            echo "::error::러너에서 Xcode 를 찾지 못했습니다"
+            exit 1
+          fi
           if [ "$BEST_V" -lt 26 ]; then
             echo "::error::가장 높은 Xcode 가 $BEST_V 입니다. App Store Connect 는 iOS 26 SDK(Xcode 26+) 빌드만 받습니다 — runs-on 러너 이미지를 올려야 합니다."
             exit 1
