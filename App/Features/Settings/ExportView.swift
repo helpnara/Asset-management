@@ -14,11 +14,15 @@ struct ExportView: View {
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
     @Query private var plans: [Plan]
+    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Query(sort: \Principle.order) private var principles: [Principle]
+    @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
     @Environment(\.modelContext) private var context
 
     @State private var isRendering = false
-    @State private var rendered: ExportedImage?
+    @State private var rendered: PDFFile?
     @State private var backup: JSONFile?
 
     var body: some View {
@@ -28,7 +32,7 @@ struct ExportView: View {
                     render()
                 } label: {
                     HStack {
-                        Label("1페이지 이미지 만들기", systemImage: "doc.richtext")
+                        Label("1페이지 PDF 만들기", systemImage: "doc.richtext")
                         Spacer()
                         if isRendering { ProgressView().controlSize(.small) }
                     }
@@ -36,15 +40,14 @@ struct ExportView: View {
                 .disabled(isRendering || members.isEmpty)
 
                 if let rendered {
-                    ShareLink(item: rendered, preview: SharePreview("우리 가족 노후자금 준비",
-                                                                    image: rendered.image)) {
+                    ShareLink(item: rendered, preview: SharePreview(rendered.name)) {
                         Label("공유 · 저장", systemImage: "square.and.arrow.up")
                     }
                 }
             } header: {
                 Text("1페이지")
             } footer: {
-                Text("현재 값으로 A4 한 장을 그립니다. 가족에게 보여주거나 인쇄할 때 씁니다. 금액 가리기가 켜져 있으면 가려진 채로 그려집니다.")
+                Text("현재 값으로 A4 한 장을 그립니다. **PDF 라 인쇄해도 선명하고 글자를 고를 수 있습니다.** 화면이 어두운 모드여도 종이는 흰색으로 나옵니다.")
             }
 
             Section {
@@ -92,18 +95,46 @@ struct ExportView: View {
         isRendering = true
         defer { isRendering = false }
 
+        let plan = plans.first
+        let calendar = Calendar.current
+        let rollup = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
+        let projection = plan?.projection(from: rollup.netWorth, cashEvents: cashEvents,
+                                          incomes: incomes, members: members)
+
         let page = OnePagerView(
-            title: plans.first?.title ?? "우리 가족 노후자금 준비",
-            rollup: Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw),
+            title: plan?.title ?? "우리 가족 노후자금 준비",
+            asOfNote: plan?.asOfNote ?? "",
+            startedOn: plan?.startedOn,
+            retirementYear: plan?.retirementYear ?? calendar.component(.year, from: .now) + 23,
+            declaration: plan?.declaration ?? "",
+            rollup: rollup,
             members: members,
-            snapshots: snapshots
+            snapshots: snapshots,
+            milestones: projection?.milestones ?? [],
+            cashEvents: cashEvents.filter { !$0.isAlreadyReflected },
+            principles: principles,
+            todos: todos,
+            usShare: rollup.countryShare("US"),
+            nextReview: ReviewWeek.nextSaturday(after: .now, calendar: calendar)
         )
+
+        // **PDF 로 뽑는다.** 원본이 PDF 였고, 인쇄가 선명하고 글자를 고를 수 있다.
+        // `ImageRenderer` 가 CGPDFContext 에 그려 주므로 뷰는 하나로 쓴다.
         let renderer = ImageRenderer(content: page)
-        // 2배로 그린다. 1배면 인쇄했을 때 글자가 뭉갠다.
-        renderer.scale = 2
-        if let image = renderer.uiImage {
-            rendered = ExportedImage(image: Image(uiImage: image), data: image.pngData() ?? Data())
+        // `CGDataConsumer` 는 `NSMutableData` 로만 받는다.
+        let buffer = NSMutableData()
+        renderer.render { size, draw in
+            guard let consumer = CGDataConsumer(data: buffer) else { return }
+            var box = CGRect(origin: .zero, size: size)
+            guard let context = CGContext(consumer: consumer, mediaBox: &box, nil) else { return }
+            context.beginPDFPage(nil)
+            draw(context)
+            context.endPDFPage()
+            context.closePDF()
         }
+        let data = buffer as Data
+        guard !data.isEmpty else { return }
+        rendered = PDFFile(data: data, name: "\(plan?.title ?? "노후자금") 1페이지.pdf")
     }
 
     // MARK: - CSV
@@ -159,6 +190,18 @@ struct CSVFile: Transferable {
     }
 }
 
+/// 1페이지 PDF. 이미지가 아니라 PDF 인 이유는 인쇄가 선명하고 글자를
+/// 고를 수 있기 때문이다 (docs/08-feedback.md 10번).
+struct PDFFile: Transferable {
+    let data: Data
+    let name: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .pdf) { $0.data }
+            .suggestedFileName { $0.name }
+    }
+}
+
 /// 전체 백업 파일. 되살리는 기능은 없지만, **꺼내 둘 수는 있어야 한다.**
 struct JSONFile: Transferable {
     let data: Data
@@ -167,15 +210,5 @@ struct JSONFile: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .json) { $0.data }
             .suggestedFileName { $0.name }
-    }
-}
-
-struct ExportedImage: Transferable {
-    let image: Image
-    let data: Data
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .png) { $0.data }
-            .suggestedFileName("노후자금 1페이지.png")
     }
 }

@@ -17,6 +17,15 @@ final class Member {
     var targetRetirementAge: Int = 65
     /// 이 사람 몫의 월 적립액. 계획 탭에서 "구성원별로 나눠 넣기"를 켰을 때만 쓴다.
     var monthlyContributionMinor: Int = 0
+    /// 회사가 넣어 주는 몫. `monthlyContributionMinor` 는 **본인 부담**이라는
+    /// 뜻 그대로 두었으므로 이미 적어 둔 값을 고칠 필요가 없다.
+    ///
+    /// 궤적에는 합계가 쓰이고, **저축률 진단에는 본인 부담만** 쓴다 —
+    /// 회사가 넣어 주는 돈을 내 저축으로 세면 저축률이 부풀려진다
+    /// (docs/08-feedback.md 10번).
+    var employerMatchMinor: Int = 0
+    /// 그 사람에게만 걸리는 한도·재검토 시점. 1페이지 구성원 카드의 `※` 줄.
+    var note: String = ""
     var colorIndex: Int = 0
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
@@ -59,6 +68,15 @@ final class Account {
     /// 예금마다 금리가 다르므로 계좌 단위로 적을 수 있어야 한다
     /// (docs/08-feedback.md 11번).
     var expectedReturnBP: Int?
+    /// 만기일. ISA 만기처럼 기한이 있는 계좌에 적는다. 1페이지의 유의사항과
+    /// 푸터가 읽는다.
+    var maturesOn: Date?
+    /// 소유자 UUID. 관계(`owner`)와 **함께** 들고 다닌다.
+    ///
+    /// 공유로 넘어갈 때 레코드를 커스텀 존으로 옮기게 되는데, 그때 관계만
+    /// 있으면 옮기다 끊어져도 복구할 근거가 없다. ADR-0004 가 이걸 하라고
+    /// 적어 두고도 안 돼 있었다 (docs/08-feedback.md 13번).
+    var ownerID: UUID?
 
     var owner: Member?
 
@@ -67,6 +85,7 @@ final class Account {
 
     init(name: String = "", institution: String = "",
          kind: AccountKind = .general, owner: Member? = nil, sortIndex: Int = 0) {
+        self.ownerID = owner?.id
         self.name = name
         self.institution = institution
         self.kindRaw = kind.rawValue
@@ -96,11 +115,14 @@ final class Holding {
     var createdAt: Date = Date.now
 
     var account: Account?
+    /// 계좌 UUID. `Account.ownerID` 와 같은 이유로 관계와 함께 들고 다닌다.
+    var accountID: UUID?
 
     init(name: String = "", assetClass: AssetClass = .equity,
          instrumentType: InstrumentType = .stock, listingCountryCode: String = "KR",
          status: HoldingStatus = .accumulating, cadence: EntryCadence = .weekly,
          valueMinor: Int = 0, account: Account? = nil, sortIndex: Int = 0) {
+        self.accountID = account?.id
         self.name = name
         self.assetClassRaw = assetClass.rawValue
         self.instrumentTypeRaw = instrumentType.rawValue

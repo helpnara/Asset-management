@@ -12,6 +12,14 @@ final class Plan {
     var title: String = "우리 가족 노후자금 준비"
     /// 계획을 세운 해. 로드맵 타임라인의 왼쪽 끝.
     var startYear: Int = Calendar.current.component(.year, from: .now)
+    /// 계획을 시작한 날. "언제부터 체계적으로 관리했는지" 를 1페이지에 적는다.
+    /// 연도만으로는 그걸 알 수 없다 (docs/08-feedback.md 10번).
+    var startedOn: Date?
+    /// 기준 시점 라벨 — `2026.08 기준 · 이사 후 자산` 같은 선언.
+    /// **같은 자산을 두 번 세지 않기 위한 것**이라 1페이지 머리에 크게 적는다.
+    var asOfNote: String = ""
+    /// 1페이지 맨 아래 한 줄. `계획은 끝났다. 이제는 시간이 일한다.`
+    var declaration: String = ""
     /// 은퇴 목표 연도. 궤적은 여기서 멈춘다.
     var retirementYear: Int = Calendar.current.component(.year, from: .now) + 23
 

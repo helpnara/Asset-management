@@ -27,6 +27,10 @@ struct BackupDocument: Codable, Sendable {
     var scenarios: [ScenarioData]
     var reviewSessions: [ReviewSessionData]
     var snapshots: [SnapshotData]
+    var principles: [PrincipleData]
+    /// 변경 이력은 **백업에는 넣고 1페이지에는 안 넣는다.** 이력에 금액이
+    /// 남으므로 남에게 건네는 문서에 들어가면 안 된다 (docs/08-feedback.md 13번).
+    var changeLog: [ChangeLogData]
 
     struct PlanData: Codable, Sendable {
         var id: UUID
@@ -167,6 +171,24 @@ struct BackupDocument: Codable, Sendable {
         var lines: [SnapshotLineData]
     }
 
+    struct PrincipleData: Codable, Sendable {
+        var id: UUID
+        var order: Int
+        var title: String
+        var detail: String
+        var reviewNote: String
+        var createdAt: Date
+    }
+
+    struct ChangeLogData: Codable, Sendable {
+        var id: UUID
+        var at: Date
+        var actor: String
+        var kind: String
+        var subject: String
+        var summary: String
+    }
+
     struct SnapshotLineData: Codable, Sendable {
         var id: UUID
         var memberID: UUID
@@ -300,6 +322,15 @@ extension BackupDocument {
                                                   valueMinor: $0.valueMinor,
                                                   sortIndex: $0.sortIndex)
                              })
+            },
+            principles: all(Principle.self).sorted { $0.order < $1.order }.map {
+                PrincipleData(id: $0.id, order: $0.order, title: $0.title,
+                              detail: $0.detail, reviewNote: $0.reviewNote,
+                              createdAt: $0.createdAt)
+            },
+            changeLog: all(ChangeLog.self).sorted { $0.at < $1.at }.map {
+                ChangeLogData(id: $0.id, at: $0.at, actor: $0.actor,
+                              kind: $0.kindRaw, subject: $0.subject, summary: $0.summary)
             }
         )
     }

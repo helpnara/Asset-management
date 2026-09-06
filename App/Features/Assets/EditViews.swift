@@ -38,6 +38,25 @@ struct MemberEditView: View {
                     }
                 }
 
+                Section {
+                    MoneyField(title: "월 적립 (본인 부담)",
+                               minorUnits: $member.monthlyContributionMinor)
+                    MoneyField(title: "회사 매칭", minorUnits: $member.employerMatchMinor)
+                } header: {
+                    Text("월 적립")
+                } footer: {
+                    Text("궤적에는 **합계**가 쓰이고, 저축률 진단에는 **본인 부담만** 씁니다. 회사가 넣어 주는 돈을 내 저축으로 세면 저축률이 실제보다 높게 나옵니다.")
+                }
+
+                Section {
+                    TextField("이 사람에게만 해당하는 메모", text: $member.note, axis: .vertical)
+                        .lineLimit(1...4)
+                } header: {
+                    Text("주석")
+                } footer: {
+                    Text("한도·재검토 시점처럼 그 사람에게만 걸리는 것을 적습니다. 1페이지 구성원 카드에 `※` 로 나갑니다.")
+                }
+
                 Section("표시 색") {
                     Picker("색", selection: $member.colorIndex) {
                         ForEach(0..<Color.memberPalette.count, id: \.self) { index in

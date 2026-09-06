@@ -19,6 +19,7 @@ struct MoreView: View {
 
     enum Destination: Hashable {
         case history
+        case principles
         case notifications
         case diagnostics
         case todos
@@ -50,6 +51,9 @@ struct MoreView: View {
                     }
                     NavigationLink(value: Destination.todos) {
                         Label("유의사항 · 할 일", systemImage: "note.text")
+                    }
+                    NavigationLink(value: Destination.principles) {
+                        Label("운용 원칙", systemImage: "list.number")
                     }
                     NavigationLink(value: Destination.milestones) {
                         Label("내 마일스톤", systemImage: "flag")
@@ -89,6 +93,7 @@ struct MoreView: View {
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
                 case .milestones: MilestoneListView()
+                case .principles: PrincipleListView()
                 case .security: SecuritySettingsView()
                 case .export: ExportView()
                 }
@@ -101,6 +106,7 @@ struct MoreView: View {
         if arguments.contains("-startHistory") { return [.history] }
         if arguments.contains("-startDiagnostics") { return [.diagnostics] }
         if arguments.contains("-startTodos") { return [.todos] }
+        if arguments.contains("-startPrinciples") { return [.principles] }
         return []
     }
 

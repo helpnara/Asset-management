@@ -35,8 +35,18 @@ struct PlanView: View {
     private func form(_ plan: Plan) -> some View {
         @Bindable var plan = plan
         return Form {
-            Section("계획 제목") {
+            Section {
                 TextField("우리 가족 노후자금 준비", text: $plan.title)
+                DatePicker("계획 시작일",
+                           selection: Binding(get: { plan.startedOn ?? .now },
+                                              set: { plan.startedOn = $0 }),
+                           displayedComponents: .date)
+                TextField("2026.08 기준 · 이사 후 자산", text: $plan.asOfNote)
+                TextField("계획은 끝났다. 이제는 시간이 일한다.", text: $plan.declaration)
+            } header: {
+                Text("계획 제목")
+            } footer: {
+                Text("**기준 시점**은 같은 자산을 두 번 세지 않기 위한 선언입니다. 아래 한 줄은 1페이지 맨 밑에 들어갑니다. 셋 다 1페이지에만 쓰이고 계산은 건드리지 않습니다.")
             }
 
             Section {

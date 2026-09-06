@@ -195,6 +195,7 @@ jobs:
           # 키보드가 올라온 상태. `완료` 버튼이 **하나만** 뜨는지 보는 컷이다 —
           # 빌드 13 에서 필드 수만큼 네 개가 생겼다 (docs/08-feedback.md 2번).
           shoot 12-plan-keyboard.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField
+          shoot 13-principles.png  -skipOnboarding -seedSampleData -startTab more -startPrinciples
 
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**
