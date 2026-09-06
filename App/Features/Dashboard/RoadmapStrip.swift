@@ -14,7 +14,10 @@ import SwiftUI
 struct RoadmapStrip: View {
 
     /// 이 정거장이 지나갔는가, 앞에 있는가, 오지 않는가.
-    enum State: Hashable {
+    ///
+    /// `State` 라는 이름은 쓸 수 없다 — 중첩 타입이 SwiftUI 의 `@State` 를
+    /// 가려서 `enum 'State' cannot be used as an attribute` 가 난다.
+    enum Arrival: Hashable {
         case passed     // 이미 지났다
         case ahead      // 앞에 있다
         case never      // 이 계획으로는 오지 않는다
@@ -28,7 +31,7 @@ struct RoadmapStrip: View {
         let label: String
         let isNow: Bool
         let isGoal: Bool
-        var state: State = .ahead
+        var state: Arrival = .ahead
 
         var id: String { "\(label)-\(year.map(String.init) ?? "—")" }
     }
