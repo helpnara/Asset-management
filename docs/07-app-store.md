@@ -82,6 +82,21 @@ App Store Connect → 앱 → **App 개인정보 보호** → **시작하기**
 `PrivacyInfo.xcprivacy` 도 같은 내용으로 이미 들어 있습니다
 (`NSPrivacyTracking: false`, 수집 항목 없음, UserDefaults 사용 사유 `CA92.1`).
 
+## 3-1단계 · 앱 아이콘
+
+이미 들어 있습니다 (`App/Assets.xcassets/AppIcon.appiconset/icon-1024.png`).
+바꾸고 싶으면 `Tools/make-icon.py` 를 고쳐서 다시 돌리세요 —
+결과물만 커밋돼 있으면 색 하나 바꾸는 데도 코드를 다시 써야 합니다.
+
+```bash
+pip install pillow
+python3 Tools/make-icon.py
+```
+
+**App Store 가 반려하는 조건 둘:**
+- 알파 채널이 있으면 안 됩니다 (스크립트가 `assert` 로 막습니다)
+- 모서리를 직접 둥글게 깎으면 안 됩니다 — iOS 가 알아서 합니다
+
 ## 4단계 · 스크린샷
 
 **필수는 6.9" 아이폰 한 종류**입니다 (iPhone 16/17 Pro Max 계열, 1320×2868).

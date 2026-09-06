@@ -68,6 +68,7 @@ xcrun simctl io booted screenshot shot.png
 
 ```
 docs/            설계 문서. 코드보다 이게 먼저다
+Tools/           일회성 생성 스크립트 (앱 아이콘 등). 결과물은 커밋하되 만드는 법도 남긴다
 App/             앱 타깃 (SwiftUI). macOS에서만 빌드된다
 Packages/Core/   순수 Swift. Foundation 외 의존 없음 → 어디서나 테스트된다 (ADR-0002)
 project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
