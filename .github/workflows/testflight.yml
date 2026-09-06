@@ -96,7 +96,10 @@ jobs:
           </plist>
           PLIST
 
-      - name: IPA 내보내기
+      # 여기서 애플 서버에 배포용 인증서와 App Store 프로파일을 만든다.
+      # `Cloud signing permission error` 가 나면 코드 문제가 아니라 **API 키 권한**이다 —
+      # 키 액세스가 `Admin` 이어야 한다 (App Manager 로는 서명 자산을 못 만든다).
+      - name: IPA 내보내기 (여기서 배포용 서명)
         run: |
           set -o pipefail
           xcodebuild -exportArchive \
@@ -106,7 +109,11 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            || {
+              echo "::error::내보내기 실패. 'Cloud signing permission error' 라면 API 키 액세스가 Admin 이 아닙니다 — docs/06-testflight.md 5단계를 보세요."
+              exit 1
+            }
           ls -la build/export
 
       # 서명 없이 구운 아카이브를 내보내기에서 서명했으므로, **entitlement 가

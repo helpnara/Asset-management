@@ -143,7 +143,18 @@ Wildcard 로는 iCloud 와 푸시를 쓸 수 없습니다.
 | 항목 | 값 |
 |---|---|
 | 이름 | `GitHub Actions` |
-| 액세스 | **App Manager** |
+| 액세스 | **Admin** ⚠️ |
+
+> ⚠️ **App Manager 로는 안 됩니다.** 이 키로 애플 서버에서 배포용 인증서와
+> 프로비저닝 프로파일을 만들어야 하는데, 그건 `Certificates, Identifiers &
+> Profiles` 접근 권한이 있어야 합니다. **App Manager 에는 그 권한이 없습니다** —
+> 앱은 관리할 수 있어도 서명 자산은 못 만듭니다. 그 상태로 배포하면
+> `Cloud signing permission error` 로 막힙니다.
+>
+> 이미 App Manager 로 만들었다면 **키를 새로 만드세요.** 키의 액세스 권한은
+> 나중에 바꿀 수 없습니다. 새 키를 만들면 `키 ID` 와 `.p8` 이 바뀌므로
+> 7단계의 시크릿 두 개(`APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_KEY_P8`)를
+> 새 값으로 고칩니다. 발급자 ID 는 그대로입니다. 옛 키는 **해지(Revoke)** 해 둡니다.
 
 **생성**을 누르면 `AuthKey_XXXXXXXXXX.p8` 파일을 **딱 한 번** 받을 수 있습니다.
 다시 못 받으니 잘 보관하세요.
@@ -254,7 +265,9 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되려 한 것입니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. 지금은 아카이브를 `CODE_SIGNING_ALLOWED=NO` 로 굽고 내보내기에서만 서명하므로 이 오류가 나면 안 됩니다 |
 | `conflicting provisioning settings ... Apple Distribution has been manually specified` | 자동 서명일 때는 인증서를 직접 지정할 수 없습니다. `project.yml` 에서 `CODE_SIGN_IDENTITY` 를 지우세요 |
 | `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 내보내기에서 서명은 됐는데 자격이 안 붙었습니다. 3단계에서 App ID 에 iCloud/Push 를 켜고 컨테이너를 연결했는지 확인하세요. 업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다 |
-| `Authentication credentials are missing or invalid` | API 키 액세스가 **App Manager** 인지 확인 |
+| `Authentication credentials are missing or invalid` | 시크릿 세 개(`KEY_P8` · `KEY_ID` · `ISSUER_ID`)가 서로 맞는 짝인지 확인. 키를 새로 만들었으면 셋 중 둘이 바뀝니다 |
+| `Cloud signing permission error` | **API 키 액세스가 `Admin` 이 아닙니다.** App Manager 로는 서명 자산을 만들 수 없습니다. 5단계를 다시 보고 키를 새로 만드세요 |
+| `Cloud signing permission error` (키가 Admin 인데도) | App Store Connect → **비즈니스**(또는 계약·세금·거래) 에서 동의하지 않은 계약이 있는지 확인하세요. 미동의 계약이 있으면 클라우드 서명이 막힙니다 |
 | `Missing required icon file` | 앱 아이콘 누락. `App/Assets.xcassets/AppIcon.appiconset` 에 1024×1024 PNG(알파 없음)가 있어야 합니다 |
 | 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다 |
 | 빌드 번호 중복 오류 | 이미 올린 번호입니다. 다시 실행하면 새 번호가 붙습니다 |
