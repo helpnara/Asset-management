@@ -227,7 +227,27 @@ jobs:
             exit 0
           fi
           git commit -m "chore: 시뮬레이터 스크린샷 갱신 (${{ steps.sim.outputs.name }}) [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
+
+          # 촬영은 7분쯤 걸린다. 그동안 사람이 브랜치에 뭔가 푸시하면 이 push 가
+          # `[rejected] (fetch first)` 로 밀려서, **찍어 놓고도 못 올리는** 일이
+          # 벌어진다. 실제로 두 번 그랬다. 리베이스하고 다시 민다.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:${{ github.ref_name }}; then
+              echo "올렸습니다 (시도 $attempt)"
+              exit 0
+            fi
+            echo "밀렸습니다. 원격을 당겨 리베이스하고 다시 시도합니다 ($attempt/3)"
+            git fetch origin ${{ github.ref_name }}
+            # 스크린샷은 러너가 새로 찍은 것이 항상 옳다. 충돌하면 우리 것을 쓴다.
+            git rebase -X ours origin/${{ github.ref_name }} || {
+              git rebase --abort || true
+              sleep $((attempt * 5))
+              continue
+            }
+            sleep $((attempt * 5))
+          done
+          echo "::error::스크린샷을 세 번 시도했지만 올리지 못했습니다."
+          exit 1
 
       - name: 빌드 산출물 보관
         if: always()
