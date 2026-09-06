@@ -110,7 +110,7 @@ struct TargetWeightView: View {
                     .foregroundStyle(Color.ink)
                 if let slice { DriftBadge(status: slice.status) }
                 Spacer()
-                actualAndTarget(slice)
+                actualAndTarget(slice, rawTargetBP: existing(assetClass)?.targetBP)
                 Stepper("", value: binding(for: assetClass), in: 0...10_000, step: 250)
                     .labelsHidden()
             }
@@ -157,7 +157,7 @@ struct TargetWeightView: View {
                     .foregroundStyle(Color.bodyText)
                 if let slice { DriftBadge(status: slice.status) }
                 Spacer()
-                actualAndTarget(slice)
+                actualAndTarget(slice, rawTargetBP: holding.targetWeightBP)
                 Stepper("", value: Binding(
                     get: { holding.targetWeightBP ?? 0 },
                     set: { holding.targetWeightBP = $0 }
@@ -190,20 +190,25 @@ struct TargetWeightView: View {
 
     // MARK: - 부품
 
+    /// 실제 비중과 **지금 적어 둔 목표**를 나란히 보여준다.
+    ///
+    /// 목표는 `slice.target`(정규화된 판정용)이 아니라 **입력값 그대로**를 쓴다.
+    /// 정규화한 값은 목표 합이 0일 때 nil 이 되는데, 그러면 `+` 를 누르며
+    /// 목표를 세우는 동안 **지금 몇 %인지가 안 보인다.** 그 상태로는 화면을
+    /// 쓸 수 없다.
     @ViewBuilder
-    private func actualAndTarget(_ slice: Allocation.Slice?) -> some View {
-        if let slice {
-            HStack(spacing: 3) {
+    private func actualAndTarget(_ slice: Allocation.Slice?, rawTargetBP: Int?) -> some View {
+        HStack(spacing: 4) {
+            if let slice {
                 Text("\(PercentFormatter.oneDecimal(slice.actual))%")
                     .font(.figure(12, weight: .medium))
                     .foregroundStyle(Color.ink)
-                if let target = slice.target {
-                    Text("/ \(PercentFormatter.oneDecimal(target))%")
-                        .font(.figure(10))
-                        .foregroundStyle(Color.faint)
-                }
             }
+            Text(rawTargetBP.map { "→ \(PercentFormatter.oneDecimal(Decimal($0) / 10_000))%" } ?? "→ —")
+                .font(.figure(11, weight: .medium))
+                .foregroundStyle(rawTargetBP == nil ? Color.faint : Color.dad)
         }
+        .frame(minWidth: 96, alignment: .trailing)
     }
 
     /// 합계는 늘 보인다. 100%가 아니면 눈에 띄게 적되 막지는 않는다.

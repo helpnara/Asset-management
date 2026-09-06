@@ -44,7 +44,7 @@ enum SampleData {
         holding("채권 혼합형", .bond, .fund, "KR", .accumulating, .monthly, 18_500_000, dadIRP, 0, context)
 
         let dadLease = account("전세보증금", "", .leaseDeposit, dad, 4, context)
-        holding("보증금", .realEstate, .physical, "KR", .accumulating, .fixed, 100_000_000, dadLease, 0, context)
+        holding("보증금", .leaseDeposit, .physical, "KR", .accumulating, .fixed, 100_000_000, dadLease, 0, context)
 
         let dadLoan = account("마이너스통장", "은행 C", .loan, dad, 5, context)
         holding("사용액", .cash, .cash, "KR", .accumulating, .weekly, 4_500_000, dadLoan, 0, context)

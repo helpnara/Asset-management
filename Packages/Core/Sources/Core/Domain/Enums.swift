@@ -154,6 +154,10 @@ public enum AssetClass: String, Codable, Sendable, CaseIterable, Identifiable {
     /// "기타" 로 뭉개진다 (docs/08-feedback.md 7번).
     case commodity
     case realEstate
+    /// 전세보증금. `realEstate` 에 섞으면 "집을 얼마나 갖고 있나" 와
+    /// "돌려받을 보증금이 얼마인가" 가 한 칸이 된다 — 성격이 다른 돈이다
+    /// (docs/08-feedback.md 14번).
+    case leaseDeposit
     case insurance
     case other
 
@@ -168,6 +172,7 @@ public enum AssetClass: String, Codable, Sendable, CaseIterable, Identifiable {
         case .crypto: return "암호화폐"
         case .commodity: return "금 · 원자재"
         case .realEstate: return "부동산"
+        case .leaseDeposit: return "전세보증금"
         case .insurance: return "보험"
         case .other: return "기타"
         }
