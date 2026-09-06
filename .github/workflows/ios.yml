@@ -192,6 +192,9 @@ jobs:
           shoot 09-history.png     -skipOnboarding -seedSampleData -startTab more -startHistory
           shoot 10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
           shoot 11-todos.png       -skipOnboarding -seedSampleData -startTab more -startTodos
+          # 키보드가 올라온 상태. `완료` 버튼이 **하나만** 뜨는지 보는 컷이다 —
+          # 빌드 13 에서 필드 수만큼 네 개가 생겼다 (docs/08-feedback.md 2번).
+          shoot 12-plan-keyboard.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField
 
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**

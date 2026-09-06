@@ -7,9 +7,13 @@ import SwiftUI
 ///
 /// **숫자 키패드에는 return 키가 없다.** 그래서 내리는 길을 부품이 직접 내준다 —
 /// 키보드 위 `완료` 버튼이다. 이게 없으면 계획 탭처럼 시트도 내비게이션 바도
-/// 없는 화면에서 **키패드가 탭 바를 덮은 채 빠져나갈 수 없다**
-/// (docs/08-feedback.md 2번). 이 부품이 6개 파일 14곳에서 쓰이므로
-/// 여기 한 곳을 고치면 전부 함께 낫는다.
+/// 없는 화면에서 키패드가 탭 바를 덮은 채 빠져나갈 수 없다
+/// (docs/08-feedback.md 2번).
+///
+/// **`완료` 는 포커스를 가진 필드만 내놓는다.** SwiftUI 는 화면 안의
+/// `placement: .keyboard` 툴바를 **전부 합쳐서** 한 줄에 늘어놓기 때문에,
+/// 부품마다 무조건 선언하면 필드 수만큼 `완료` 가 생긴다. 빌드 13 에서
+/// 계획 탭에 네 개가 떴다.
 struct MoneyField: View {
     let title: String
     @Binding var minorUnits: Int
@@ -32,9 +36,11 @@ struct MoneyField: View {
                 .focused($isFocused)
                 .toolbar {
                     ToolbarItemGroup(placement: .keyboard) {
-                        Spacer()
-                        Button("완료") { isFocused = false }
-                            .font(.system(size: 15, weight: .semibold))
+                        if isFocused {
+                            Spacer()
+                            Button("완료") { isFocused = false }
+                                .font(.system(size: 15, weight: .semibold))
+                        }
                     }
                 }
             Text("원")
@@ -45,6 +51,21 @@ struct MoneyField: View {
         // 겨냥하는 것보다 손이 편하다.
         .contentShape(Rectangle())
         .onTapGesture { isFocused = true }
+        .onAppear {
+            // CI 가 키보드 올라온 상태를 찍을 수 있게 하는 갈고리.
+            // 이게 없으면 `완료` 버튼이 제대로 붙었는지 그림으로 확인할 방법이
+            // 없다 — 실제로 빌드 13 에서 네 개가 생긴 것을 사용자가 먼저 봤다.
+            if MoneyField.shouldAutoFocus { isFocused = true }
+        }
+    }
+
+    /// 실행 인자로 켜고, **맨 처음 나타나는 한 곳만** 포커스를 잡는다.
+    @MainActor private static var didAutoFocus = false
+    @MainActor private static var shouldAutoFocus: Bool {
+        guard ProcessInfo.processInfo.arguments.contains("-focusMoneyField"),
+              !didAutoFocus else { return false }
+        didAutoFocus = true
+        return true
     }
 
     private var text: Binding<String> {
