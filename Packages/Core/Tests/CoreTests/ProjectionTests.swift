@@ -341,3 +341,150 @@ struct RetirementDrawdownTests {
         #expect(result.depletion == nil)
     }
 }
+
+// MARK: - 수익률 프로필
+
+/// 순자산을 통째로 한 수익률에 굴리던 것을 덩어리로 나눴다
+/// (docs/08-feedback.md 11번).
+///
+/// **기댓값은 파이썬으로 따로 계산해 대조했다** (CLAUDE.md 규칙).
+/// 월마다 은행가 반올림이 들어가서 `1억 × 1.08¹⁰` 같은 손 계산과는 어긋난다.
+@Suite("Projection — 수익률 프로필")
+struct ReturnProfileTests {
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return calendar
+    }
+
+    private func date(_ text: String) -> Date {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: text)!
+    }
+
+    private func bucket(_ profile: ReturnProfile, _ amount: Int, _ bp: Int) -> BalanceBucket {
+        BalanceBucket(profile: profile,
+                      amount: Money(amount, currency: .krw),
+                      annualReturn: Ratio(basisPoints: bp))
+    }
+
+    private func input(years: Int, buckets: [BalanceBucket],
+                       monthly: Int = 0, returnBP: Int = 800) -> ProjectionInput {
+        ProjectionInput(
+            startDate: date("2026-01-01"),
+            endDate: calendar.date(byAdding: .year, value: years, to: date("2026-01-01"))!,
+            buckets: buckets,
+            monthlyContribution: Money(monthly, currency: .krw),
+            annualReturn: Ratio(basisPoints: returnBP)
+        )
+    }
+
+    @Test("덩어리마다 자기 속도로 자란다")
+    func eachBucketGrowsAtItsOwnRate() {
+        let result = Projection.run(
+            input(years: 10, buckets: [
+                bucket(.investment, 100_000_000, 800),
+                bucket(.lowYield, 50_000_000, 200),
+                bucket(.fixed, 200_000_000, 0)
+            ]),
+            calendar: calendar
+        )
+        // 215,892,496 + 60,949,720 + 200,000,000
+        #expect(result.last?.nominal == Money(476_842_216, currency: .krw))
+    }
+
+    @Test("전세보증금은 23년이 지나도 그대로다 — 이 항목의 요지다")
+    func fixedBucketDoesNotGrow() {
+        let result = Projection.run(
+            input(years: 23, buckets: [bucket(.fixed, 200_000_000, 0)]),
+            calendar: calendar
+        )
+        #expect(result.last?.nominal == Money(200_000_000, currency: .krw))
+
+        // 예전처럼 전액을 8% 로 굴리면 11.7억이 됐다. 그 차이가 이 변경의 이유다.
+        let asInvestment = Projection.run(
+            input(years: 23, buckets: [bucket(.investment, 200_000_000, 800)]),
+            calendar: calendar
+        )
+        #expect(asInvestment.last?.nominal == Money(1_174_292_735, currency: .krw))
+    }
+
+    @Test("덩어리를 안 나누면 전액이 투자자산이다 — 예전 동작 그대로다")
+    func legacyInitIsAllInvestment() {
+        let legacy = ProjectionInput(
+            startDate: date("2026-01-01"),
+            endDate: calendar.date(byAdding: .year, value: 10, to: date("2026-01-01"))!,
+            startingBalance: Money(100_000_000, currency: .krw),
+            monthlyContribution: .zero(.krw),
+            annualReturn: Ratio(basisPoints: 800)
+        )
+        #expect(legacy.buckets.count == 1)
+        #expect(legacy.buckets[0].profile == .investment)
+        #expect(legacy.startingBalance == Money(100_000_000, currency: .krw))
+        #expect(Projection.run(legacy, calendar: calendar).last?.nominal
+                == Money(215_892_496, currency: .krw))
+    }
+
+    @Test("투자자산 덩어리가 없어도 적립은 0%로 굴지 않는다")
+    func contributionsLandInTheInvestmentBucket() {
+        // 전세보증금만 있는 초기 상태. 투자자산 덩어리가 없으면 적립이 고정
+        // 덩어리로 들어가 한 푼도 안 불어난다. 그래서 빈 투자자산을 만들어 둔다.
+        let onlyFixed = input(years: 1, buckets: [bucket(.fixed, 0, 0)], monthly: 1_000_000)
+        #expect(onlyFixed.buckets.contains { $0.profile == .investment })
+
+        let result = Projection.run(onlyFixed, calendar: calendar)
+        // 월 100만을 열두 번 넣고 연 8% 로 굴린 값. 원금 1,200만보다 크다.
+        #expect(result.last?.nominal == Money(12_513_886, currency: .krw))
+    }
+
+    @Test("인출은 투자자산부터 꺼내고, 마르면 다음 덩어리로 넘어간다")
+    func drawdownStartsWithInvestment() {
+        let start = date("2026-01-01")
+        let input = ProjectionInput(
+            startDate: start,
+            endDate: calendar.date(byAdding: .month, value: 3, to: start)!,
+            buckets: [
+                BalanceBucket(profile: .investment, amount: Money(10_000_000, currency: .krw),
+                              annualReturn: .zero),
+                BalanceBucket(profile: .fixed, amount: Money(20_000_000, currency: .krw),
+                              annualReturn: .zero)
+            ],
+            monthlyContribution: .zero(.krw),
+            annualReturn: .zero,
+            retirementDate: start,                       // 시작하자마자 인출 구간
+            monthlyRetirementSpending: Money(5_000_000, currency: .krw)
+        )
+        let result = Projection.run(input, calendar: calendar)
+
+        // 1개월 투자 500만 남음 · 2개월 투자 0 · 3개월 고정에서 500만 빠져 1,500만
+        #expect(result.last?.nominal == Money(15_000_000, currency: .krw))
+        // 투자자산이 마른 것이지 전체가 바닥난 것은 아니므로 고갈이 아니다.
+        #expect(result.depletion == nil)
+    }
+
+    @Test("계좌 종류가 프로필을 정한다")
+    func accountKindMapsToProfile() {
+        #expect(AccountKind.general.returnProfile == .investment)
+        #expect(AccountKind.irp.returnProfile == .investment)
+        #expect(AccountKind.deposit.returnProfile == .lowYield)
+        #expect(AccountKind.insurance.returnProfile == .lowYield)
+        #expect(AccountKind.realEstate.returnProfile == .realEstate)
+        #expect(AccountKind.leaseDeposit.returnProfile == .fixed)
+        #expect(AccountKind.receivable.returnProfile == .fixed)
+        // 받을 돈은 자산이지만 굴러가는 돈이 아니다.
+        #expect(AccountKind.receivable.countsAsInvestable == false)
+        #expect(AccountKind.receivable.isLiability == false)
+    }
+
+    @Test("계좌 종류가 점검 주기 기본값도 정한다")
+    func accountKindMapsToCadence() {
+        #expect(AccountKind.general.defaultCadence == .weekly)
+        #expect(AccountKind.insurance.defaultCadence == .monthly)
+        #expect(AccountKind.leaseDeposit.defaultCadence == .fixed)
+        #expect(AccountKind.receivable.defaultCadence == .fixed)
+    }
+}

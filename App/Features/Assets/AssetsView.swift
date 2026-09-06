@@ -231,7 +231,10 @@ struct AssetsView: View {
     }
 
     private func addHolding(to account: Account) {
-        let holding = Holding(name: "", account: account, sortIndex: account.sortedHoldings.count)
+        // 점검 주기는 계좌 종류가 정해 준다. 새 종목이 무조건 `매주` 라서
+        // 전세보증금까지 매주 물어봤다 (docs/08-feedback.md 의 Claude 질문 1).
+        let holding = Holding(name: "", cadence: account.kind.defaultCadence,
+                              account: account, sortIndex: account.sortedHoldings.count)
         context.insert(holding)
         editingHolding = holding
     }

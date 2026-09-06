@@ -527,6 +527,13 @@ struct SimulationView: View {
         var adjusted = input
         adjusted.monthlyContribution = Money(minorUnits: knobs.monthlyMinor, currency: .krw)
         adjusted.annualReturn = Ratio(basisPoints: knobs.returnBP)
+        // **수익률 손잡이는 투자자산에만 걸린다.** 덩어리마다 자기 수익률을
+        // 들고 다니므로 여기서 같이 갈아 끼우지 않으면 손잡이를 돌려도
+        // 궤적이 안 움직인다. 전세보증금까지 함께 올리면 안 되므로
+        // 투자자산 덩어리만 바꾼다 (docs/08-feedback.md 11번).
+        for index in adjusted.buckets.indices where adjusted.buckets[index].profile == .investment {
+            adjusted.buckets[index].annualReturn = adjusted.annualReturn
+        }
         adjusted.retirementDate = Plan.endDate(retirementYear: knobs.retirementYear,
                                                notBefore: input.startDate, calendar: calendar)
 

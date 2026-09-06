@@ -55,10 +55,28 @@ public struct IncomeStreamInput: Sendable, Hashable {
     }
 }
 
+/// 프로필이 같은 돈 한 덩어리.
+///
+/// 순자산을 통째로 한 수익률에 굴리면 전세보증금까지 복리로 불어난다
+/// (docs/08-feedback.md 11번). 그래서 덩어리로 나눠 각자의 속도로 굴린다.
+public struct BalanceBucket: Sendable, Hashable {
+    public var profile: ReturnProfile
+    public var amount: Money
+    public var annualReturn: Ratio
+
+    public init(profile: ReturnProfile, amount: Money, annualReturn: Ratio) {
+        self.profile = profile
+        self.amount = amount
+        self.annualReturn = annualReturn
+    }
+}
+
 public struct ProjectionInput: Sendable, Hashable {
     public var startDate: Date
     public var endDate: Date
-    public var startingBalance: Money
+    /// 프로필별로 나뉜 시작 잔고. 적립과 목돈은 투자자산 덩어리로 들어가고,
+    /// 은퇴 후 인출은 투자자산부터 꺼낸다.
+    public var buckets: [BalanceBucket]
     public var monthlyContribution: Money
     public var annualReturn: Ratio
     /// 적립액의 연 증가율 (연봉 상승률).
@@ -78,6 +96,13 @@ public struct ProjectionInput: Sendable, Hashable {
     /// 은퇴 후 소득. 생활비에서 이만큼을 뺀 나머지를 자산에서 꺼낸다.
     public var incomes: [IncomeStreamInput]
 
+    /// 모든 덩어리의 합. 화면이 읽는 "지금 얼마" 는 여전히 이 값이다.
+    public var startingBalance: Money {
+        guard let first = buckets.first else { return .zero(.krw) }
+        return buckets.dropFirst().reduce(first.amount) { $0 + $1.amount }
+    }
+
+    /// 덩어리를 나누지 않는 경우. **전액을 투자자산으로 본다** — 예전 동작 그대로다.
     public init(
         startDate: Date,
         endDate: Date,
@@ -92,12 +117,55 @@ public struct ProjectionInput: Sendable, Hashable {
         monthlyRetirementSpending: Money? = nil,
         incomes: [IncomeStreamInput] = []
     ) {
+        self.init(
+            startDate: startDate,
+            endDate: endDate,
+            buckets: [BalanceBucket(profile: .investment,
+                                    amount: startingBalance,
+                                    annualReturn: annualReturn)],
+            monthlyContribution: monthlyContribution,
+            annualReturn: annualReturn,
+            annualContributionGrowth: annualContributionGrowth,
+            inflation: inflation,
+            cashEvents: cashEvents,
+            targetAmount: targetAmount,
+            retirementDate: retirementDate,
+            monthlyRetirementSpending: monthlyRetirementSpending,
+            incomes: incomes
+        )
+    }
+
+    public init(
+        startDate: Date,
+        endDate: Date,
+        buckets: [BalanceBucket],
+        monthlyContribution: Money,
+        annualReturn: Ratio,
+        annualContributionGrowth: Ratio = .zero,
+        inflation: Ratio = .zero,
+        cashEvents: [CashEventInput] = [],
+        targetAmount: Money? = nil,
+        retirementDate: Date? = nil,
+        monthlyRetirementSpending: Money? = nil,
+        incomes: [IncomeStreamInput] = []
+    ) {
+        // **적립과 목돈이 들어갈 자리는 투자자산이다.** 하나도 없으면(전세보증금만
+        // 있는 초기 상태 등) 빈 덩어리를 만들어 둔다. 이게 없으면 적립이 고정
+        // 덩어리로 들어가 0% 로 굴러간다.
+        var resolved = buckets
+        if !resolved.contains(where: { $0.profile == .investment }) {
+            let currency = resolved.first?.amount.currency ?? .krw
+            resolved.insert(BalanceBucket(profile: .investment,
+                                          amount: .zero(currency),
+                                          annualReturn: annualReturn), at: 0)
+        }
+        let currency = resolved[0].amount.currency
         self.retirementDate = retirementDate ?? endDate
-        self.monthlyRetirementSpending = monthlyRetirementSpending ?? .zero(startingBalance.currency)
+        self.monthlyRetirementSpending = monthlyRetirementSpending ?? .zero(currency)
         self.incomes = incomes
         self.startDate = startDate
         self.endDate = endDate
-        self.startingBalance = startingBalance
+        self.buckets = resolved
         self.monthlyContribution = monthlyContribution
         self.annualReturn = annualReturn
         self.annualContributionGrowth = annualContributionGrowth
@@ -210,7 +278,13 @@ public enum Projection {
             return ProjectionResult(points: [single], years: [], milestones: [], depletion: nil)
         }
 
-        let growth = monthlyFactor(annual: input.annualReturn)
+        // 덩어리마다 자기 속도로 굴린다. 적립·목돈이 들어가고 인출이 먼저
+        // 빠져나가는 곳은 투자자산이다.
+        let growths = input.buckets.map { monthlyFactor(annual: $0.annualReturn) }
+        let order = input.buckets.indices.sorted {
+            input.buckets[$0].profile.drawdownOrder < input.buckets[$1].profile.drawdownOrder
+        }
+        let inflowIndex = input.buckets.firstIndex { $0.profile == .investment } ?? 0
         let inflation = monthlyFactor(annual: input.inflation)
         let contributionStep = Decimal(1) + input.annualContributionGrowth.fraction
 
@@ -222,6 +296,7 @@ public enum Projection {
             eventsByMonth[offset, default: .zero(base)] += event.amount
         }
 
+        var balances = input.buckets.map(\.amount)
         var balance = input.startingBalance
         var contribution = input.monthlyContribution
         var deflator = Decimal(1)
@@ -246,7 +321,7 @@ public enum Projection {
             if date <= input.retirementDate {
                 // 적립 구간 — 월초에 넣고 그 달 수익을 받는다.
                 contributedByYear[year, default: .zero(base)] += contribution
-                balance = (balance + contribution + event).scaled(by: growth)
+                balances[inflowIndex] += contribution + event
                 if month % 12 == 0 {
                     contribution = contribution.scaled(by: contributionStep)
                 }
@@ -259,14 +334,24 @@ public enum Projection {
                 let withdrawal = monthlyWithdrawal(input, year: year, deflator: deflator, base: base)
                 if !withdrawal.isZero { withdrawnByYear[year, default: .zero(base)] += withdrawal }
 
-                let afterSpending = balance + event - withdrawal
-                if afterSpending.minorUnits <= 0 {
-                    balance = .zero(base)
-                    if depletion == nil { depletion = date }
-                } else {
-                    balance = afterSpending.scaled(by: growth)
+                balances[inflowIndex] += event
+
+                // **투자자산부터 꺼낸다.** 전세보증금은 꺼내 쓸 수 있는 돈이
+                // 아니므로 마지막이다. 전부 비면 그 달이 고갈 시점이다.
+                var remaining = withdrawal
+                for index in order where remaining.minorUnits > 0 {
+                    let take = min(balances[index].minorUnits, remaining.minorUnits)
+                    guard take > 0 else { continue }
+                    balances[index] -= Money(minorUnits: take, currency: base)
+                    remaining -= Money(minorUnits: take, currency: base)
                 }
+                if remaining.minorUnits > 0, depletion == nil { depletion = date }
             }
+
+            for index in balances.indices {
+                balances[index] = balances[index].scaled(by: growths[index])
+            }
+            balance = balances.dropFirst().reduce(balances[0], +)
 
             points.append(ProjectionPoint(
                 date: date,
@@ -297,7 +382,7 @@ public enum Projection {
     ///
     /// 연금이 생활비보다 많은 달은 남는 돈을 자산에 더하지 않는다. 그건
     /// 은퇴 후 저축을 가정하는 셈이고, 여기서 낙관을 더할 이유가 없다.
-    private static func monthlyWithdrawal(
+    static func monthlyWithdrawal(
         _ input: ProjectionInput,
         year: Int,
         deflator: Decimal,

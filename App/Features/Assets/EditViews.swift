@@ -97,6 +97,23 @@ struct AccountEditView: View {
                         Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. **이 앱은 세법을 따라가지 않습니다** — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 납입액을 0으로 되돌립니다.")
                     }
                 }
+
+                Section {
+                    Toggle("이 계좌만 따로 정하기", isOn: hasOwnReturn)
+                    if account.expectedReturnBP != nil {
+                        percentRow("연 기대수익률", ownReturnBP)
+                    } else {
+                        LabeledContent("연 기대수익률") {
+                            Text("계획의 \(account.kind.returnProfile.label) 값을 따름")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.muted)
+                        }
+                    }
+                } header: {
+                    Text("기대수익률")
+                } footer: {
+                    Text(returnFooter)
+                }
             }
             .navigationTitle("계좌")
             .navigationBarTitleDisplayMode(.inline)
@@ -119,9 +136,50 @@ struct AccountEditView: View {
             return "부채 계좌입니다. 총자산에서 뺍니다."
         }
         if !account.kind.countsAsInvestable {
-            return "자산에는 넣지만 '투자자산 합계'와 국가 비중에서는 뺍니다. 전세보증금·부동산이 여기 해당합니다."
+            return "자산에는 넣지만 '투자자산 합계'와 국가 비중에서는 뺍니다. 전세보증금·부동산·받을 돈이 여기 해당합니다."
         }
         return "투자자산으로 셉니다."
+    }
+
+    /// 계좌마다 수익률을 따로 적을 수 있어야 한다 — 예금은 상품마다 금리가 다르다.
+    /// 비워 두면 계획의 프로필 값을 따른다 (docs/08-feedback.md 11번).
+    private var hasOwnReturn: Binding<Bool> {
+        Binding(
+            get: { account.expectedReturnBP != nil },
+            set: { account.expectedReturnBP = $0 ? 200 : nil }
+        )
+    }
+
+    private var ownReturnBP: Binding<Int> {
+        Binding(
+            get: { account.expectedReturnBP ?? 0 },
+            set: { account.expectedReturnBP = $0 }
+        )
+    }
+
+    private func percentRow(_ title: String, _ value: Binding<Int>) -> some View {
+        Stepper(value: value, in: 0...2_000, step: 25) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text("\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10000))%")
+                    .font(.figure(14, weight: .medium))
+                    .foregroundStyle(Color.ink)
+            }
+        }
+    }
+
+    private var returnFooter: String {
+        switch account.kind.returnProfile {
+        case .investment:
+            return "궤적에서 이 계좌의 돈이 자라는 속도입니다. 비워 두면 계획의 연 기대수익률을 씁니다."
+        case .lowYield:
+            return "예적금·연금보험은 투자 수익률로 굴리지 않습니다. 금리가 바뀌면 여기서 고치세요."
+        case .realEstate:
+            return "부동산은 계획의 부동산 상승률을 따릅니다."
+        case .fixed:
+            return "전세보증금·받을 돈은 **자라지 않는 돈**으로 봅니다. 궤적에서 명목 그대로 남습니다."
+        }
     }
 }
 

@@ -67,6 +67,15 @@ struct PlanView: View {
                 Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
             }
 
+            Section {
+                percentRow("예적금 · 연금보험", $plan.lowYieldReturnBP, range: 0...800, step: 10)
+                percentRow("부동산", $plan.realEstateReturnBP, range: 0...800, step: 25)
+            } header: {
+                Text("잘 자라지 않는 돈")
+            } footer: {
+                Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
+            }
+
             Section("기간") {
                 Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
                     // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.

@@ -55,6 +55,10 @@ final class Account {
     /// **앱은 세법을 따라가지 않는다.** 한도가 바뀌면 사용자가 직접 고친다.
     /// 여기에 숫자를 박아 두고 세법이 바뀌면, 앱이 조용히 틀린 조언을 하게 된다.
     var annualLimitMinor: Int = 0
+    /// 이 계좌만의 기대수익률(basis point). 비워 두면 계좌 종류의 기본값을 따른다.
+    /// 예금마다 금리가 다르므로 계좌 단위로 적을 수 있어야 한다
+    /// (docs/08-feedback.md 11번).
+    var expectedReturnBP: Int?
 
     var owner: Member?
 

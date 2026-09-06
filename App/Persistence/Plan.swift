@@ -21,6 +21,11 @@ final class Plan {
     /// 적립액의 연 증가율. 연봉 상승률에 맞춘다.
     var contributionGrowthBP: Int = 0
     var inflationBP: Int = 200
+    /// 저수익 자산의 기대수익률. 예적금·연금보험이 여기 붙는다.
+    /// 계좌마다 따로 적으면 그 값이 이긴다 (`Account.expectedReturnBP`).
+    var lowYieldReturnBP: Int = 200
+    /// 부동산 기대수익률. 기본은 물가상승률과 같게 둔다.
+    var realEstateReturnBP: Int = 200
     /// 은퇴 시점 목표 금액. 0이면 목표선을 그리지 않는다.
     var targetAmountMinor: Int = 0
 
@@ -140,6 +145,8 @@ extension Plan {
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }
     var inflation: Ratio { Ratio(basisPoints: inflationBP) }
+    var lowYieldReturn: Ratio { Ratio(basisPoints: lowYieldReturnBP) }
+    var realEstateReturn: Ratio { Ratio(basisPoints: realEstateReturnBP) }
     var monthlyContribution: Money { Money(minorUnits: monthlyContributionMinor, currency: .krw) }
     var targetAmount: Money { Money(minorUnits: targetAmountMinor, currency: .krw) }
 
@@ -198,7 +205,7 @@ extension Plan {
         return ProjectionInput(
             startDate: now,
             endDate: horizon,
-            startingBalance: balance,
+            buckets: buckets(of: members, total: balance),
             monthlyContribution: effectiveMonthlyContribution(members: members),
             annualReturn: annualReturn,
             annualContributionGrowth: contributionGrowth,
@@ -209,6 +216,66 @@ extension Plan {
             monthlyRetirementSpending: monthlySpending,
             incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input)
         )
+    }
+
+    /// 순자산을 **자라는 속도별로 나눈다.**
+    ///
+    /// 예전에는 순자산 전액을 연 8% 로 굴렸다. 그래서 전세보증금 2억이 23년 뒤
+    /// 궤적에서 11.8억이 됐다 — 실제로는 2억 그대로인 돈인데도
+    /// (docs/08-feedback.md 11번).
+    ///
+    /// 수익률이 같은 계좌끼리 한 덩어리로 묶는다. 계좌마다 금리를 따로 적으면
+    /// 그만큼 덩어리가 늘어나는데, 예금 몇 개 수준이라 문제되지 않는다.
+    func buckets(of members: [Member], total: Money) -> [BalanceBucket] {
+        struct Key: Hashable { let profile: ReturnProfile; let bp: Int }
+        var sums: [Key: Int] = [:]
+
+        for member in members {
+            for account in member.sortedAccounts where !account.isArchived {
+                let value = account.sortedHoldings.reduce(0) { $0 + $1.valueMinor }
+                guard value != 0 else { continue }
+                let profile = account.kind.returnProfile
+                let key = Key(profile: profile,
+                              bp: account.expectedReturnBP ?? defaultReturnBP(for: profile))
+                // 부채는 음수로 담는다. 그래야 덩어리의 합이 순자산과 맞는다.
+                sums[key, default: 0] += account.kind.isLiability ? -value : value
+            }
+        }
+
+        var buckets = sums
+            .map { BalanceBucket(profile: $0.key.profile,
+                                 amount: Money(minorUnits: $0.value, currency: .krw),
+                                 annualReturn: Ratio(basisPoints: $0.key.bp)) }
+            .sorted {
+                ($0.profile.drawdownOrder, $0.annualReturn.basisPoints)
+                    < ($1.profile.drawdownOrder, $1.annualReturn.basisPoints)
+            }
+
+        // 적립과 목돈이 들어갈 자리가 반드시 있어야 한다. 투자자산이 하나도
+        // 없으면(전세보증금만 있는 초기 상태 등) 빈 덩어리를 만들어 둔다.
+        if !buckets.contains(where: { $0.profile == .investment }) {
+            buckets.insert(BalanceBucket(profile: .investment, amount: .zero(.krw),
+                                         annualReturn: annualReturn), at: 0)
+        }
+
+        // 덩어리의 합이 화면의 순자산과 어긋나면 **화면이 거짓말을 한다.**
+        // 소유자가 없는 계좌처럼 합계에 안 잡히는 경우가 있으므로 차액을
+        // 투자자산에 맞춰 넣는다.
+        let sum = buckets.dropFirst().reduce(buckets[0].amount) { $0 + $1.amount }
+        let gap = total - sum
+        if !gap.isZero, let index = buckets.firstIndex(where: { $0.profile == .investment }) {
+            buckets[index].amount += gap
+        }
+        return buckets
+    }
+
+    private func defaultReturnBP(for profile: ReturnProfile) -> Int {
+        switch profile {
+        case .investment: return annualReturnBP
+        case .lowYield: return lowYieldReturnBP
+        case .realEstate: return realEstateReturnBP
+        case .fixed: return 0
+        }
     }
 
     /// 은퇴 연도만 바꾼 종료 시점. 시뮬레이션에서 기간 손잡이가 쓴다.
