@@ -31,6 +31,9 @@ struct SimulationChart: View {
     /// 손잡이를 돌리기 전, 계획 그대로의 선. 비교 대상이 없으면 What-if 가 아니다.
     let baseline: [LinePoint]
     let targetMinor: Int
+    /// 자산이 바닥나는 시점. 있으면 차트가 그것을 말해야 한다 —
+    /// 예전에는 선이 아래로 도망갈 뿐 아무 설명이 없었다 (docs/08-feedback.md 3번).
+    var depletion: Date? = nil
 
     private static let ticks: [Int] = [
         1_000_000, 3_000_000, 10_000_000, 30_000_000,
@@ -87,8 +90,22 @@ struct SimulationChart: View {
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
             }
+
+            if let depletion {
+                RuleMark(x: .value("고갈", depletion))
+                    .foregroundStyle(Color.loss.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(position: .top, alignment: .leading, spacing: 2) {
+                        Text("바닥")
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .foregroundStyle(Color.loss)
+                    }
+            }
         }
         .chartYScale(domain: domain)
+        // 도메인 밖으로 나간 선이 차트를 벗어나 **아래 카드 위에 그려지던** 문제.
+        // 적립 0원이면 예상선이 곤두박질치는데, 잘라 주지 않으면 화면이 깨져 보인다.
+        .chartPlotStyle { plot in plot.clipped() }
         .chartYAxis {
             AxisMarks(values: tickValues) { value in
                 AxisGridLine().foregroundStyle(Color.rule)
@@ -127,12 +144,20 @@ struct SimulationChart: View {
             .frame(height: 176)
     }
 
+    /// 로그 축에서 아래위로 몇 자릿수까지 보여줄 것인가.
+    /// 고갈하면 예상선이 바닥(100만원)까지 내려가는데, 그대로 다 담으면
+    /// 위쪽 밴드가 납작해져 읽을 수 없게 된다. 다섯 자릿수에서 끊는다.
+    private static let maxDecades: Double = 5
+
     private var domain: ClosedRange<Double> {
-        var values = bands.flatMap { [logScale($0.low), logScale($0.high)] }
+        // **예상선(mid)을 빼놓지 않는다.** 예전에는 밴드와 계획선으로만 도메인을
+        // 잡아서, 고갈된 예상선이 도메인 밖으로 나가 차트를 뚫고 나갔다
+        // (docs/08-feedback.md 3번).
+        var values = bands.flatMap { [logScale($0.low), logScale($0.mid), logScale($0.high)] }
         values.append(contentsOf: baseline.map { logScale($0.minor) })
-        let lower = (values.min() ?? 6) - 0.15
         var upper = (values.max() ?? 9) + 0.15
         if targetMinor > 0 { upper = max(upper, logScale(targetMinor) + 0.1) }
+        let lower = max((values.min() ?? 6) - 0.15, upper - Self.maxDecades)
         return lower...max(upper, lower + 0.5)
     }
 

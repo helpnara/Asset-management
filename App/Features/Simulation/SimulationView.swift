@@ -52,7 +52,7 @@ struct SimulationView: View {
                     ProgressView().task { _ = Plan.current(in: context) }
                 }
             }
-            .background(Color.surface.opacity(0.5))
+            .background(Color.surface)
             .navigationTitle("시뮬레이션")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -137,7 +137,8 @@ struct SimulationView: View {
             SimulationChart(
                 bands: outcome?.bands ?? [],
                 baseline: changed ? (outcome?.baseline ?? []) : [],
-                targetMinor: plan.targetAmountMinor
+                targetMinor: plan.targetAmountMinor,
+                depletion: outcome?.depletionDate
             )
             legend(plan, changed: changed)
             if plan.targetAmountMinor > 0 {
@@ -370,6 +371,7 @@ struct SimulationView: View {
             } label: {
                 Text("계획에 반영")
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.onInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
             }
@@ -482,7 +484,7 @@ struct SimulationView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.white)
+            .fill(Color.raised)
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(Color.rule, lineWidth: 1)
@@ -577,6 +579,8 @@ struct SimulationOutcome: Sendable {
     /// 잔고가 0이 되는 해. nil 이면 지평선까지 버틴다. 인출을 가정하지 않으면
     /// 계산하지 않으므로 그때도 nil 이다.
     var depletionYear: Int?
+    /// 차트의 x축에 표식을 찍으려면 연도가 아니라 시점이 필요하다.
+    var depletionDate: Date?
     /// 인출 구간을 그리고 있는가. 이게 false 면 고갈 줄을 아예 보여주지 않는다.
     var hasDrawdown: Bool
 
@@ -637,11 +641,16 @@ struct SimulationOutcome: Sendable {
             low: monteCarlo.bands.last?.p10 ?? end,
             expected: end,
             high: monteCarlo.bands.last?.p90 ?? end,
-            expectedReal: deterministic.last?.real ?? end,
+            // 명목과 같은 시점에서 읽어야 한다. `last` 는 은퇴 30년 뒤라서
+            // 고갈되면 0원이 나오고, 화면에는 "2049년 예상 10억 / 오늘 돈으로 0원"
+            // 이라는 앞뒤 안 맞는 두 줄이 뜬다 (docs/08-feedback.md 3번).
+            expectedReal: deterministic.point(inYear: retirementYear, calendar: calendar)?.real
+                ?? deterministic.last?.real ?? end,
             delta: end - planEnd,
             successProbability: monteCarlo.successProbability,
             paths: monteCarlo.paths,
             depletionYear: deterministic.depletion.map { calendar.component(.year, from: $0) },
+            depletionDate: deterministic.depletion,
             hasDrawdown: adjusted.endDate > adjusted.retirementDate
         )
     }

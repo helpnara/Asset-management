@@ -193,7 +193,23 @@ jobs:
           shoot 10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
           shoot 11-todos.png       -skipOnboarding -seedSampleData -startTab more -startTodos
 
-          ls -la screenshots
+          # ── 다크 모드 ──
+          # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**
+          # (docs/08-feedback.md 1번). 톤이 갈리던 화면을 골라 다시 찍는다:
+          # 흰 배경을 칠하던 현황판·주간 점검, 안 칠하던 자산·계획,
+          # 회색이 되던 시뮬레이션·진단, 그리고 잠금 화면.
+          xcrun simctl ui "$UDID" appearance dark
+          mkdir -p screenshots/dark
+          shoot dark/02-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
+          shoot dark/03-assets.png      -skipOnboarding -seedSampleData -startTab assets
+          shoot dark/04-review.png      -skipOnboarding -seedSampleData -startTab dashboard -startReview
+          shoot dark/06-plan.png        -skipOnboarding -seedSampleData -startTab plan
+          shoot dark/07-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
+          shoot dark/08-more.png        -skipOnboarding -seedSampleData -startTab more
+          shoot dark/10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
+          xcrun simctl ui "$UDID" appearance light
+
+          ls -la screenshots screenshots/dark
 
       - name: 스크린샷을 브랜치에 커밋
         run: |

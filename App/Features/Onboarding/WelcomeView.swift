@@ -48,6 +48,7 @@ struct WelcomeView: View {
                         if isAsking { ProgressView().controlSize(.small).tint(.white) }
                         Text("토요일 알림 받기")
                             .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.onInk)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -71,7 +72,7 @@ struct WelcomeView: View {
         .padding(.top, 56)
         .padding(.bottom, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Color.canvas)
     }
 
     private func point(_ title: String, _ detail: String) -> some View {

@@ -3,6 +3,9 @@ import SwiftUI
 
 /// A4 한 장. `ImageRenderer` 가 이걸 그려서 PNG 로 만든다.
 ///
+/// **색은 `Paper` 고정 팔레트를 쓴다.** 화면이 다크여도 인쇄물은 흰 종이여야
+/// 한다. 적응형 토큰(`Color.ink` 등)을 쓰면 다크 모드에서 검은 종이가 나온다.
+///
 /// 화면용 뷰를 그대로 쓰지 않는 이유는 **스크롤이 없기 때문**이다.
 /// 한 장에 다 들어가야 하므로 무엇을 뺄지 먼저 정해야 한다 —
 /// 뺀 것: 주간 점검 바, 시뮬레이션, 진단 카드. 남긴 것: 총액 · 구성원 · 최근 기록.
@@ -20,27 +23,27 @@ struct OnePagerView: View {
             Text("느 린 부 자 의 기 록")
                 .font(.system(size: 10, weight: .medium))
                 .tracking(3)
-                .foregroundStyle(Color.muted)
+                .foregroundStyle(Paper.muted)
             Text(title)
                 .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(Color.ink)
+                .foregroundStyle(Paper.ink)
                 .padding(.top, 4)
 
-            Rectangle().fill(Color.ink).frame(height: 2).padding(.top, 12)
+            Rectangle().fill(Paper.ink).frame(height: 2).padding(.top, 12)
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                     .font(.figure(40, weight: .bold))
-                    .foregroundStyle(Color.ink)
+                    .foregroundStyle(Paper.ink)
                 Text("가족 총자산")
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.muted)
+                    .foregroundStyle(Paper.muted)
             }
             .padding(.top, 18)
 
             Text("자산 \(Won.abbreviated(rollup.assets, suffix: "원")) · 부채 \(Won.abbreviated(rollup.liabilities, suffix: "원")) · 투자자산 \(Won.abbreviated(rollup.investable, suffix: "원"))")
                 .font(.figure(12))
-                .foregroundStyle(Color.muted)
+                .foregroundStyle(Paper.muted)
                 .padding(.top, 6)
 
             sectionTitle("구성원")
@@ -62,12 +65,12 @@ struct OnePagerView: View {
 
             Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다. 시세를 외부에서 가져오지 않고 직접 적어 넣은 숫자입니다.")
                 .font(.system(size: 9))
-                .foregroundStyle(Color.faint)
+                .foregroundStyle(Paper.faint)
                 .padding(.top, 20)
         }
         .padding(44)
         .frame(width: width, alignment: .leading)
-        .background(Color.white)
+        .background(Paper.sheet)
     }
 
     /// 최근 여덟 주. 한 장에 들어가는 만큼만 남긴다.
@@ -80,9 +83,9 @@ struct OnePagerView: View {
             Text(text)
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(1.5)
-                .foregroundStyle(Color.muted)
+                .foregroundStyle(Paper.muted)
                 .padding(.bottom, 6)
-            Rectangle().fill(Color.rule).frame(height: 1)
+            Rectangle().fill(Paper.rule).frame(height: 1)
         }
         .padding(.top, 26)
     }
@@ -91,15 +94,15 @@ struct OnePagerView: View {
         HStack {
             Text(label)
                 .font(.system(size: 13))
-                .foregroundStyle(Color.bodyText)
+                .foregroundStyle(Paper.bodyText)
             Spacer()
             Text(amount)
                 .font(.figure(13, weight: .medium))
-                .foregroundStyle(Color.ink)
+                .foregroundStyle(Paper.ink)
         }
         .padding(.vertical, 7)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.rule.opacity(0.6)).frame(height: 1)
+            Rectangle().fill(Paper.rule.opacity(0.6)).frame(height: 1)
         }
     }
 

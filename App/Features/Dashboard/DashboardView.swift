@@ -59,7 +59,7 @@ struct DashboardView: View {
             .fullScreenCover(item: $completedToShow) { session in
                 ReviewCompleteView(session: session)
             }
-            .background(Color.white)
+            .background(Color.canvas)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()
@@ -187,7 +187,7 @@ struct DashboardView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 11)
-            .background(Color(hex: 0xFDF7F8))
+            .background(Color.alertSoft)
             .padding(.top, 12)
         }
     }
@@ -566,6 +566,7 @@ struct DashboardView: View {
             } label: {
                 Label("구성원 추가하기", systemImage: "person.badge.plus")
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.onInk)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 8)
             }

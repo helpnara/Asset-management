@@ -43,6 +43,10 @@ targets:
         # 암호화를 직접 쓰지 않는다. 없으면 TestFlight 에 올릴 때마다
         # 수출 규정 질문에 손으로 답해야 한다.
         ITSAppUsesNonExemptEncryption: false
+        # **이게 없으면 Face ID 인증이 그냥 실패한다.** 애플이 요구하는 문구다.
+        # 없어서 `com.apple.LocalAuthentication 오류 -6` 이 났다
+        # (docs/08-feedback.md 4번).
+        NSFaceIDUsageDescription: 가족 자산 기록을 열 때 본인 확인에 씁니다.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich

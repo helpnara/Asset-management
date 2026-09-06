@@ -118,7 +118,7 @@ struct AssetsView: View {
                         .foregroundStyle(Color.faint)
                 }
                 if account.kind.isLiability {
-                    StatusBadge(text: "부채", foreground: .loss, background: Color(hex: 0xF5E6E8))
+                    StatusBadge(text: "부채", foreground: .loss, background: Color.lossSoft)
                 } else if !account.kind.countsAsInvestable {
                     StatusBadge(text: "투자자산 제외")
                 }
@@ -168,7 +168,7 @@ struct AssetsView: View {
                     if holding.violatesPFIC {
                         StatusBadge(text: "PFIC",
                                     foreground: .loss,
-                                    background: Color(hex: 0xF5E6E8))
+                                    background: Color.lossSoft)
                     }
                 }
                 // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
@@ -199,7 +199,7 @@ struct AssetsView: View {
                 .font(.system(size: 13, weight: .medium))
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.onInk)
                 .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
                 .padding(.top, 4)
         }

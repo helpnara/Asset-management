@@ -5,7 +5,7 @@ import SwiftUI
 struct StatusBadge: View {
     let text: String
     var foreground: Color = .muted
-    var background: Color = Color(hex: 0xEDF1F3)
+    var background: Color = Color.neutralSoft
 
     var body: some View {
         Text(text)
@@ -28,9 +28,9 @@ extension HoldingStatus {
 
     var badgeBackground: Color {
         switch self {
-        case .accumulating: return Color(hex: 0xE8F1EE)
-        case .frozen, .closed: return Color(hex: 0xEDF1F3)
-        case .new: return Color(hex: 0xF4F7F8)
+        case .accumulating: return Color.gainSoft
+        case .frozen, .closed: return Color.neutralSoft
+        case .new: return Color.surface
         }
     }
 }

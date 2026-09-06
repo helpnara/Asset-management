@@ -33,7 +33,7 @@ struct DiagnosticsView: View {
                 ProgressView().task { _ = Plan.current(in: context) }
             }
         }
-        .background(Color.surface.opacity(0.5))
+        .background(Color.surface)
         .navigationTitle("자산 진단")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isEditingCriteria) {
@@ -227,7 +227,7 @@ struct DiagnosticsView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.white)
+            .fill(Color.raised)
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(Color.rule, lineWidth: 1)

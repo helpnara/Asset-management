@@ -47,8 +47,11 @@ struct SlowRichApp: App {
             .animation(.easeInOut(duration: 0.15), value: lock.isUnlocked)
         }
         .onChange(of: scenePhase) { _, phase in
-            // 백그라운드로 갈 때 잠근다. 홈 화면으로 나갔다 돌아오면 다시 묻는다.
-            if phase != .active { lock.lock() }
+            // **`.background` 에서만 잠근다.** `.inactive` 는 앱 전환기·제어 센터뿐
+            // 아니라 **Face ID 창이 뜰 때도** 온다. 거기서 잠그면 인증하려는 순간
+            // 스스로 판을 엎고, 시스템이 그 평가를 취소한다 — 실제로
+            // "인증이 취소되었습니다" 가 반복해서 났다 (docs/08-feedback.md 4번).
+            if phase == .background { lock.lock() }
         }
         .modelContainer(container)
     }

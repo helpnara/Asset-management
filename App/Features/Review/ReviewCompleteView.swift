@@ -45,7 +45,7 @@ struct ReviewCompleteView: View {
                     footer
                 }
             }
-            .background(Color.white)
+            .background(Color.canvas)
             .navigationTitle("점검 완료")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -164,7 +164,7 @@ struct ReviewCompleteView: View {
             } label: {
                 Text("현황판에서 보기")
                     .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.onInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))

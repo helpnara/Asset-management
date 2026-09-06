@@ -32,6 +32,10 @@ struct RootView: View {
                 .tag(Tab.more)
         }
         .tint(Color.ink)
+        // 숫자 키패드에는 return 키가 없다. `완료` 버튼(MoneyField)에 더해
+        // **쓸어내려도 닫히게** 한다. 이 값은 환경으로 내려가므로 여기 한 번이면
+        // 아래의 모든 Form·List·ScrollView 에 걸린다 (docs/08-feedback.md 2번).
+        .scrollDismissesKeyboard(.interactively)
         .task {
             // 시간대 변경·기기 이전에 대비해 앱이 뜰 때마다 다시 등록한다.
             let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)

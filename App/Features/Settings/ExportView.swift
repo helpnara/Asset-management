@@ -15,8 +15,11 @@ struct ExportView: View {
     @Query private var holdings: [Holding]
     @Query private var plans: [Plan]
 
+    @Environment(\.modelContext) private var context
+
     @State private var isRendering = false
     @State private var rendered: ExportedImage?
+    @State private var backup: JSONFile?
 
     var body: some View {
         List {
@@ -54,9 +57,28 @@ struct ExportView: View {
                     Label("보유 종목 CSV", systemImage: "list.bullet.rectangle")
                 }
             } header: {
-                Text("백업")
+                Text("보기용 백업")
             } footer: {
-                Text("iCloud가 꺼져 있거나 계정에 문제가 생겼을 때 기록을 꺼낼 유일한 길입니다. 가끔 한 번씩 파일 앱이나 메일로 보내 두세요. 금액은 가리지 않고 그대로 나갑니다 — 백업이니까요.")
+                Text("스프레드시트로 열어 보는 용도입니다. 주간 기록과 보유 종목만 담깁니다.")
+            }
+
+            Section {
+                Button {
+                    let document = BackupDocument.make(from: context)
+                    backup = JSONFile(data: document.encoded(), name: document.suggestedFileName)
+                } label: {
+                    Label("전체 백업 만들기", systemImage: "shippingbox")
+                }
+
+                if let backup {
+                    ShareLink(item: backup, preview: SharePreview(backup.name)) {
+                        Label("공유 · 저장", systemImage: "square.and.arrow.up")
+                    }
+                }
+            } header: {
+                Text("전체 백업")
+            } footer: {
+                Text("구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 할 일 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다. 지금 이 기록의 사본은 이 아이폰 하나뿐이니, 앱을 업데이트하기 전에 한 번씩 받아 파일 앱이나 메일로 보내 두세요. 금액은 가리지 않고 그대로 나갑니다 — 백업이니까요.")
             }
         }
         .navigationTitle("내보내기")
@@ -134,6 +156,17 @@ struct CSVFile: Transferable {
             Data([0xEF, 0xBB, 0xBF]) + Data(file.text.utf8)
         }
         .suggestedFileName { $0.name }
+    }
+}
+
+/// 전체 백업 파일. 되살리는 기능은 없지만, **꺼내 둘 수는 있어야 한다.**
+struct JSONFile: Transferable {
+    let data: Data
+    let name: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .json) { $0.data }
+            .suggestedFileName { $0.name }
     }
 }
 

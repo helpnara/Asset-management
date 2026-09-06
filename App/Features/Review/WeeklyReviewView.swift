@@ -69,7 +69,7 @@ struct WeeklyReviewView: View {
                     }
                 }
             }
-            .background(Color.white)
+            .background(Color.canvas)
             .safeAreaInset(edge: .top, spacing: 0) { progressBar }
             .navigationTitle("주간 점검")
             .navigationBarTitleDisplayMode(.inline)
@@ -97,7 +97,7 @@ struct WeeklyReviewView: View {
             }
             .frame(height: 2)
         }
-        .background(Color.white)
+        .background(Color.canvas)
     }
 
     private var fraction: CGFloat {
@@ -132,7 +132,7 @@ struct WeeklyReviewView: View {
                     .foregroundStyle(Color.faint)
             }
             if account.kind.isLiability {
-                StatusBadge(text: "부채", foreground: .loss, background: Color(hex: 0xF5E6E8))
+                StatusBadge(text: "부채", foreground: .loss, background: Color.lossSoft)
             }
             Spacer()
         }
@@ -181,7 +181,7 @@ struct WeeklyReviewView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 11)
-        .background(isActive ? Color(hex: 0xF7FAFB) : Color.white)
+        .background(isActive ? Color.rowActive : Color.canvas)
         .overlay(alignment: .leading) {
             if isActive { Rectangle().fill(Color.ink).frame(width: 2) }
         }
@@ -203,7 +203,7 @@ struct WeeklyReviewView: View {
             } label: {
                 Text("점검 완료")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.onInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
