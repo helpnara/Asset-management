@@ -108,7 +108,7 @@ struct TargetWeightView: View {
                 Text(assetClass.label)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Color.ink)
-                if let slice { DriftBadge(status: slice.status) }
+                if let slice { DriftBadge(status: slice.status, hidesNoTarget: true) }
                 Spacer()
                 actualAndTarget(slice, rawTargetBP: existing(assetClass)?.targetBP)
                 Stepper("", value: binding(for: assetClass), in: 0...10_000, step: 250)
@@ -155,7 +155,7 @@ struct TargetWeightView: View {
                 Text(holding.name.isEmpty ? "이름 없음" : holding.name)
                     .font(.system(size: 12))
                     .foregroundStyle(Color.bodyText)
-                if let slice { DriftBadge(status: slice.status) }
+                if let slice { DriftBadge(status: slice.status, hidesNoTarget: true) }
                 Spacer()
                 actualAndTarget(slice, rawTargetBP: holding.targetWeightBP)
                 Stepper("", value: Binding(
@@ -223,12 +223,17 @@ struct TargetWeightView: View {
 /// 목표에서 벗어났는지를 한 글자로. 주간 점검·자산 탭·목표 화면이 함께 쓴다.
 struct DriftBadge: View {
     let status: Allocation.DriftStatus
+    /// 목표 비중 화면에서는 `목표 없음` 을 접는다. 그 화면은 옆에 `→ —` 로
+    /// 같은 말을 이미 하고 있고, 배지가 폭을 먹어 두 줄로 깨진다.
+    var hidesNoTarget: Bool = false
 
     var body: some View {
-        if status != .onTrack {
+        if status != .onTrack, !(hidesNoTarget && status == .noTarget) {
             StatusBadge(text: status.label,
                         foreground: foreground,
                         background: background)
+                .lineLimit(1)
+                .fixedSize()
         }
     }
 
