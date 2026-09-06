@@ -21,9 +21,33 @@ concurrency:
 jobs:
   upload:
     name: 빌드 · 서명 · TestFlight 업로드
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      # 애플은 2026년부터 **iOS 26 SDK(Xcode 26+)** 로 빌드한 바이너리만 받는다.
+      # 러너 이미지에 Xcode 가 여러 개 깔려 있으므로 가장 높은 것을 고르고,
+      # 26 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서 409 를
+      # 보는 것보다 낫다 (실제로 그렇게 한 번 돌았다).
+      - name: Xcode 26 이상 선택
+        run: |
+          set -euo pipefail
+          BEST=""; BEST_V=0
+          for app in /Applications/Xcode*.app; do
+            [ -x "$app/Contents/Developer/usr/bin/xcodebuild" ] || continue
+            v=$("$app/Contents/Developer/usr/bin/xcodebuild" -version 2>/dev/null \
+                | head -1 | sed -E 's/^Xcode ([0-9]+).*/\1/')
+            case "$v" in ''|*[!0-9]*) continue ;; esac
+            if [ "$v" -gt "$BEST_V" ]; then BEST_V=$v; BEST="$app"; fi
+          done
+          [ -n "$BEST" ] || { echo "::error::러너에서 Xcode 를 찾지 못했습니다"; exit 1; }
+          if [ "$BEST_V" -lt 26 ]; then
+            echo "::error::가장 높은 Xcode 가 $BEST_V 입니다. App Store Connect 는 iOS 26 SDK(Xcode 26+) 빌드만 받습니다 — runs-on 러너 이미지를 올려야 합니다."
+            exit 1
+          fi
+          sudo xcode-select -s "$BEST/Contents/Developer"
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+
 
       - name: XcodeGen 설치
         run: brew install xcodegen
@@ -58,13 +82,14 @@ jobs:
 
       # 아카이브는 자동 서명 + 클라우드 서명으로 굽는다.
       #
-      # 여기까지 오는 데 네 번 틀렸다. 남은 길이 이것뿐이라서가 아니라,
-      # **첫 시도 때와 조건이 두 가지 달라졌기 때문**이다.
-      #  · API 키가 App Manager → **Admin** 이 됐다. 그때는 서명 자산을 만들
-      #    권한이 없어서 "Communication with Apple failed" 가 났다
-      #  · 스킴의 archive 액션 구성을 **Release** 로 못 박았다 (project.yml).
-      #    비워 두면 XcodeGen 기본값에 기대게 되고, 구성에 따라 자동 서명이
-      #    개발용을 고른다
+      # 여기까지 오는 데 다섯 번 틀렸다. 성립하는 조건이 셋이다:
+      #  · API 키 액세스가 **Admin** 이어야 한다. App Manager 로는 서명 자산을
+      #    만들 권한이 없어 "Communication with Apple failed" 가 난다
+      #  · 스킴의 archive 액션 구성이 **Release** 여야 한다 (project.yml)
+      #  · 팀에 **기기가 최소 하나 등록**돼 있어야 한다. 자동 서명은 아카이브를
+      #    개발용 프로파일로 굽고(CODE_SIGN_IDENTITY 기본값이 `iPhone Developer`다),
+      #    개발용 프로파일은 기기 없이는 발급되지 않는다. 배포용 서명은
+      #    아래 '내보내기' 단계에서 다시 입혀진다
       #
       # 막다른 길로 확인된 것들 — 다시 시도하지 말 것:
       #  · CODE_SIGN_IDENTITY 를 배포용으로 강제 → 자동 서명과 "충돌"로 거부

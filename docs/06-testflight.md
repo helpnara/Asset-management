@@ -221,22 +221,27 @@ App Store Connect → 앱 → **TestFlight** 탭
 
 ---
 
-## 기기 등록 — 아카이브가 "no devices" 로 막힐 때만
+## 기기 등록 — 첫 배포 전에 한 번 필요하다
 
-보통은 필요 없습니다. 아래 오류가 났을 때만 하세요.
+TestFlight 설치 자체에는 기기 등록이 필요 없습니다. 그런데 **아카이브 단계**에서
+필요합니다. 자동 서명은 아카이브를 일단 **개발용** 프로파일로 굽고(배포용 서명은
+내보내기 단계에서 다시 입힙니다), 개발용 프로파일에는 "이 앱을 어느 기기에
+설치할지" 목록이 들어가서 **등록된 기기가 최소 하나** 있어야 발급됩니다.
+
+없으면 이렇게 막힙니다.
 
 ```
 Your team has no devices from which to generate a provisioning profile
 ```
 
-자동 서명이 **개발용** 프로비저닝 프로파일을 만들려는데, 개발용에는 "이 앱을
-어느 기기에 설치할지" 목록이 들어가서 **등록된 기기가 최소 하나** 있어야 합니다.
+한 번 등록해 두면 그다음부터는 신경 쓸 일이 없습니다.
 
 ### 아이폰 UDID 찾기 (맥 없이)
 
 | 환경 | 방법 |
 |---|---|
 | 윈도우 | **Apple Devices** 앱(또는 iTunes)에 아이폰을 연결 → 기기 요약 화면에서 **일련번호를 클릭**하면 UDID 로 바뀝니다. 우클릭 → 복사 |
+| 윈도우 (Apple 앱에서 안 보일 때) | 장치 관리자 → `Apple iPhone` → 속성 → **자세히** → `장치 인스턴스 경로`. 끝의 긴 문자열이 UDID 입니다. 24자리면 앞에서 8자 뒤에 `-` 를 넣습니다 (`00008110001A2C3D4E5F6789` → `00008110-001A2C3D4E5F6789`) |
 | 맥이 있다면 | Finder 에 연결 → 기기 이름 아래 정보 줄을 **클릭**하면 UDID 가 나옵니다 |
 
 > UDID 를 알려주는 웹사이트들이 있지만 **구성 프로파일을 설치하게 하는 방식**이라
@@ -295,11 +300,12 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2단계**를 안 했거나, 3단계에서 App ID 를 **등록한 뒤 편집 화면으로 다시 들어가 Configure 로 연결**하지 않았습니다 |
 | App ID 만드는 화면에 `Configure` 버튼이 없다 | 정상입니다. 등록을 마치고 목록에서 그 App ID 를 다시 열면 나타납니다 |
 | `Provisioning profile doesn't include the aps-environment entitlement` | 3단계에서 **Push Notifications** 를 체크하지 않았습니다 |
-| `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되려 한 것입니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. 지금은 아카이브를 `CODE_SIGNING_ALLOWED=NO` 로 굽고 내보내기에서만 서명하므로 이 오류가 나면 안 됩니다 |
+| `Your team has no devices from which to generate a provisioning profile` | 팀에 등록된 기기가 하나도 없습니다. 아래 **기기 등록** 절대로 아이폰을 등록하세요. 한 번만 하면 됩니다 |
 | `conflicting provisioning settings ... Apple Distribution has been manually specified` | 자동 서명일 때는 인증서를 직접 지정할 수 없습니다. `project.yml` 에서 `CODE_SIGN_IDENTITY` 를 지우세요 |
 | `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 서명은 됐는데 자격이 안 붙었습니다. **업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다.** `아카이브 entitlement 확인` 단계는 통과했는데 여기서 걸렸다면 내보내기 문제, 아카이브 단계에서 이미 걸렸다면 `CODE_SIGN_ENTITLEMENTS` 문제입니다 |
 | `아카이브 단계에서 이미 iCloud 자격이 빠졌습니다` | 아카이브가 entitlements 를 안 박은 것입니다. 서명을 완전히 끄면(`CODE_SIGNING_ALLOWED=NO`) Xcode 의 `ProcessProductPackaging` 이 건너뛰어져 이렇게 됩니다 |
 | `Ad Hoc code signing is not allowed with SDK 'iOS 18.5'` | 애드혹(`CODE_SIGN_IDENTITY=-`)은 iOS 기기 빌드에 쓸 수 없습니다. 자동 서명을 쓰세요 |
+| `SDK version issue. This app was built with the iOS 18.5 SDK` (업로드 409) | 애플이 **iOS 26 SDK(Xcode 26+)** 빌드만 받습니다. 서명 문제가 아니라 러너 이미지 문제입니다 — 워크플로의 `runs-on` 이 `macos-26` 인지 보세요. 워크플로 앞쪽 `Xcode 26 이상 선택` 단계가 이걸 업로드 전에 잡습니다 |
 | `Authentication credentials are missing or invalid` | 시크릿 세 개(`KEY_P8` · `KEY_ID` · `ISSUER_ID`)가 서로 맞는 짝인지 확인. 키를 새로 만들었으면 셋 중 둘이 바뀝니다 |
 | `Cloud signing permission error` | **API 키 액세스가 `Admin` 이 아닙니다.** App Manager 로는 서명 자산을 만들 수 없습니다. 5단계를 다시 보고 키를 새로 만드세요 |
 | `Cloud signing permission error` (키가 Admin 인데도) | App Store Connect → **비즈니스**(또는 계약·세금·거래) 에서 동의하지 않은 계약이 있는지 확인하세요. 미동의 계약이 있으면 클라우드 서명이 막힙니다 |

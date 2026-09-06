@@ -20,7 +20,7 @@ concurrency:
 jobs:
   core:
     name: Core 계산 로직 테스트
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +35,7 @@ jobs:
 
   app:
     name: 앱 빌드 · 스크린샷
-    runs-on: macos-15
+    runs-on: macos-26
     needs: core
     permissions:
       contents: write
@@ -44,6 +44,23 @@ jobs:
         with:
           # 스크린샷을 되돌려 커밋해야 하므로 푸시 가능한 체크아웃
           persist-credentials: true
+
+      # 러너 이미지에 Xcode 가 여러 개 깔려 있다. TestFlight 로 올라가는 것과 같은
+      # SDK 로 컴파일해야 여기서 통과한 코드가 배포에서도 통과한다.
+      - name: 최신 Xcode 선택
+        run: |
+          set -euo pipefail
+          BEST=""; BEST_V=0
+          for app in /Applications/Xcode*.app; do
+            [ -x "$app/Contents/Developer/usr/bin/xcodebuild" ] || continue
+            v=$("$app/Contents/Developer/usr/bin/xcodebuild" -version 2>/dev/null \
+                | head -1 | sed -E 's/^Xcode ([0-9]+).*/\1/')
+            case "$v" in ''|*[!0-9]*) continue ;; esac
+            if [ "$v" -gt "$BEST_V" ]; then BEST_V=$v; BEST="$app"; fi
+          done
+          [ -n "$BEST" ] && sudo xcode-select -s "$BEST/Contents/Developer"
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
       - name: XcodeGen 설치
         run: brew install xcodegen
