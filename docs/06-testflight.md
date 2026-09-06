@@ -221,6 +221,39 @@ App Store Connect → 앱 → **TestFlight** 탭
 
 ---
 
+## 기기 등록 — 아카이브가 "no devices" 로 막힐 때만
+
+보통은 필요 없습니다. 아래 오류가 났을 때만 하세요.
+
+```
+Your team has no devices from which to generate a provisioning profile
+```
+
+자동 서명이 **개발용** 프로비저닝 프로파일을 만들려는데, 개발용에는 "이 앱을
+어느 기기에 설치할지" 목록이 들어가서 **등록된 기기가 최소 하나** 있어야 합니다.
+
+### 아이폰 UDID 찾기 (맥 없이)
+
+| 환경 | 방법 |
+|---|---|
+| 윈도우 | **Apple Devices** 앱(또는 iTunes)에 아이폰을 연결 → 기기 요약 화면에서 **일련번호를 클릭**하면 UDID 로 바뀝니다. 우클릭 → 복사 |
+| 맥이 있다면 | Finder 에 연결 → 기기 이름 아래 정보 줄을 **클릭**하면 UDID 가 나옵니다 |
+
+> UDID 를 알려주는 웹사이트들이 있지만 **구성 프로파일을 설치하게 하는 방식**이라
+> 권하지 않습니다. 기기 관리 권한을 넘기는 일입니다.
+
+### 등록
+
+<https://developer.apple.com/account/resources/devices/list> → **+**
+
+| 항목 | 값 |
+|---|---|
+| Platform | iOS |
+| Device Name | `내 아이폰` (아무 이름) |
+| Device ID (UDID) | 위에서 찾은 값 |
+
+등록한 뒤 워크플로를 다시 실행하면 됩니다. **한 번만 하면 됩니다.**
+
 ## 처음 켤 때 확인할 것
 
 | 확인 | 왜 |
@@ -265,7 +298,8 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `Your team has no devices from which to generate a provisioning profile` | 아카이브가 **개발용**으로 서명되려 한 것입니다. 개발용 프로파일은 등록된 기기가 있어야 만들어집니다. 지금은 아카이브를 `CODE_SIGNING_ALLOWED=NO` 로 굽고 내보내기에서만 서명하므로 이 오류가 나면 안 됩니다 |
 | `conflicting provisioning settings ... Apple Distribution has been manually specified` | 자동 서명일 때는 인증서를 직접 지정할 수 없습니다. `project.yml` 에서 `CODE_SIGN_IDENTITY` 를 지우세요 |
 | `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 서명은 됐는데 자격이 안 붙었습니다. **업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다.** `아카이브 entitlement 확인` 단계는 통과했는데 여기서 걸렸다면 내보내기 문제, 아카이브 단계에서 이미 걸렸다면 `CODE_SIGN_ENTITLEMENTS` 문제입니다 |
-| `아카이브 단계에서 이미 iCloud 자격이 빠졌습니다` | 아카이브가 entitlements 를 안 박은 것입니다. 서명을 완전히 끄면(`CODE_SIGNING_ALLOWED=NO`) Xcode 의 `ProcessProductPackaging` 이 건너뛰어져 이렇게 됩니다. 애드혹 서명(`CODE_SIGN_IDENTITY=-`)이어야 합니다 |
+| `아카이브 단계에서 이미 iCloud 자격이 빠졌습니다` | 아카이브가 entitlements 를 안 박은 것입니다. 서명을 완전히 끄면(`CODE_SIGNING_ALLOWED=NO`) Xcode 의 `ProcessProductPackaging` 이 건너뛰어져 이렇게 됩니다 |
+| `Ad Hoc code signing is not allowed with SDK 'iOS 18.5'` | 애드혹(`CODE_SIGN_IDENTITY=-`)은 iOS 기기 빌드에 쓸 수 없습니다. 자동 서명을 쓰세요 |
 | `Authentication credentials are missing or invalid` | 시크릿 세 개(`KEY_P8` · `KEY_ID` · `ISSUER_ID`)가 서로 맞는 짝인지 확인. 키를 새로 만들었으면 셋 중 둘이 바뀝니다 |
 | `Cloud signing permission error` | **API 키 액세스가 `Admin` 이 아닙니다.** App Manager 로는 서명 자산을 만들 수 없습니다. 5단계를 다시 보고 키를 새로 만드세요 |
 | `Cloud signing permission error` (키가 Admin 인데도) | App Store Connect → **비즈니스**(또는 계약·세금·거래) 에서 동의하지 않은 계약이 있는지 확인하세요. 미동의 계약이 있으면 클라우드 서명이 막힙니다 |

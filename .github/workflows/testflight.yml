@@ -56,19 +56,23 @@ jobs:
             | grep -Ei 'CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|PROVISIONING_PROFILE|PRODUCT_BUNDLE_IDENTIFIER|CODE_SIGN_ENTITLEMENTS' \
             || echo "(서명 관련 설정을 찾지 못했습니다)"
 
-      # 아카이브는 **애드혹(-)으로 서명한다.** 서명을 끄지도, 진짜 인증서를 쓰지도 않는다.
+      # 아카이브는 자동 서명 + 클라우드 서명으로 굽는다.
       #
-      # 세 가지가 서로를 막고 있었다.
-      #  · 자동 서명은 아카이브에서 **개발용** 프로파일을 찾는다 →
-      #    개발용은 등록된 기기가 있어야 만들어진다 → CI 에는 기기가 없다
-      #  · 자동 서명에 배포용 인증서를 강제하면 "충돌"로 거부된다
-      #  · 서명을 아예 끄면(CODE_SIGNING_ALLOWED=NO) Xcode 의
-      #    `ProcessProductPackaging` 이 건너뛰어져 **entitlements 가 앱에 안 박힌다.**
-      #    나중에 서명해도 없는 것은 되살릴 수 없다 (실제로 iCloud·푸시가 통째로 빠졌다)
+      # 여기까지 오는 데 네 번 틀렸다. 남은 길이 이것뿐이라서가 아니라,
+      # **첫 시도 때와 조건이 두 가지 달라졌기 때문**이다.
+      #  · API 키가 App Manager → **Admin** 이 됐다. 그때는 서명 자산을 만들
+      #    권한이 없어서 "Communication with Apple failed" 가 났다
+      #  · 스킴의 archive 액션 구성을 **Release** 로 못 박았다 (project.yml).
+      #    비워 두면 XcodeGen 기본값에 기대게 되고, 구성에 따라 자동 서명이
+      #    개발용을 고른다
       #
-      # 애드혹 서명은 프로파일이 필요 없으면서 entitlements 는 정상적으로 박는다.
-      # 진짜 배포용 서명은 내보내기 단계가 다시 입힌다.
-      - name: 아카이브 (애드혹 서명)
+      # 막다른 길로 확인된 것들 — 다시 시도하지 말 것:
+      #  · CODE_SIGN_IDENTITY 를 배포용으로 강제 → 자동 서명과 "충돌"로 거부
+      #  · CODE_SIGNING_ALLOWED=NO → ProcessProductPackaging 이 건너뛰어져
+      #    entitlements 가 앱에 안 박힌다 (iCloud·푸시가 통째로 빠졌다)
+      #  · CODE_SIGN_IDENTITY=- (애드혹) → "Ad Hoc code signing is not allowed
+      #    with SDK 'iOS 18.5'"
+      - name: 아카이브
         run: |
           set -o pipefail
           # 빌드 번호는 실행 번호를 쓴다. 같은 번호를 두 번 올릴 수 없으므로 자동 증가가 필요하다.
@@ -78,11 +82,17 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/SlowRich.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY=- \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            || {
+              echo "::error::아카이브 실패. 'no devices from which to generate a provisioning profile' 라면 자동 서명이 개발용 프로파일을 요구하는 것입니다 — docs/06-testflight.md 의 '기기 등록' 절을 보세요."
+              exit 1
+            }
 
       # entitlements 가 **아카이브 시점에** 박혔는지 여기서 본다.
       # 여기서 없으면 아카이브 문제, 여기서 있는데 IPA 에서 없으면 내보내기 문제다.
