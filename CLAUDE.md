@@ -104,6 +104,14 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 
 **iCloud 컨테이너(`iCloud.com.helpnara.slowrich`)를 먼저 만들어야 한다.**
 앱이 iCloud 자격을 요구하도록 설정돼 있어서, 없으면 아카이브가 서명에서 막힌다.
+**팀에 기기가 하나는 등록돼 있어야 한다** — 자동 서명이 아카이브를 개발용
+프로파일로 굽는데, 개발용은 기기 없이 발급되지 않는다.
+
+**CloudKit 스키마는 저절로 생기지 않는다.** SwiftData 는 Development 환경에서만
+레코드 타입을 자동 생성하고, TestFlight 빌드는 Production 을 쓴다. 맥으로 개발용
+빌드를 한 번도 안 돌렸다면 Development 가 비어 있어 배포할 것이 없다 —
+앱은 로컬로 정상 동작하지만 동기화만 조용히 안 붙는다
+([docs/06-testflight.md](docs/06-testflight.md#cloudkit-스키마--맥이-없으면-여기서-한-번-막힌다)).
 App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있다.
 
 ## 기억해 둘 것

@@ -271,18 +271,55 @@ Your team has no devices from which to generate a provisioning profile
 | 해외 종목을 **원화로 환산해서** 적었는가 | 이 앱의 모든 금액은 원화다. 달러로 적으면 합계가 1,400배 틀린다 |
 | 계획 탭에 은퇴 후 월 생활비를 넣었는가 | 넣어야 인출 구간과 자산 고갈 시점이 그려진다 |
 
-## CloudKit 스키마 배포 (첫 실행 뒤 한 번)
+## CloudKit 스키마 — 맥이 없으면 여기서 한 번 막힌다
 
-앱이 처음 실행되면 CloudKit **Development** 환경에 스키마가 자동으로 올라갑니다.
-TestFlight·App Store 빌드는 **Production** 환경을 쓰므로 한 번 배포해 줘야 합니다.
+**이 절은 TestFlight 설치가 끝난 뒤 읽어도 됩니다. 앱은 스키마가 없어도
+정상 동작하고 기록도 남습니다. 다만 기기 간 동기화와 재설치 복원이 안 됩니다.**
 
-<https://icloud.developer.apple.com> → 컨테이너 `iCloud.com.helpnara.slowrich` 선택
-→ **Schema** → **Deploy Schema Changes** → Development → Production → **Deploy**
+CloudKit 환경은 두 개고, 빌드 종류가 어느 쪽을 쓸지 정합니다.
 
-> 이 단계를 건너뛰면 TestFlight 빌드에서 동기화가 조용히 안 됩니다.
-> **더보기 → 동기화**가 `연결됨` 인데도 다른 기기에 안 넘어오면 여기를 의심하세요.
->
-> 모델을 바꿀 때마다(필드 추가 등) 다시 배포해야 합니다.
+| 빌드 | CloudKit 환경 |
+|---|---|
+| Xcode 에서 맥으로 직접 실행 (개발용 서명) | **Development** |
+| TestFlight · App Store | **Production** |
+
+SwiftData 는 **Development 환경에서만** 레코드 타입을 자동으로 만들어 줍니다.
+Production 에서는 앱이 타입을 만들 수 없습니다 — 미리 배포돼 있어야 합니다.
+
+여기서 문제가 생깁니다. **맥이 없으면 개발용 빌드를 실행할 방법이 없고,
+그러면 Development 스키마가 비어 있어 Production 으로 배포할 것도 없습니다.**
+TestFlight 빌드만 돌리는 한 이 상태는 저절로 풀리지 않습니다.
+
+### 먼저 확인
+
+<https://icloud.developer.apple.com> → 컨테이너 `iCloud.com.helpnara.slowrich`
+→ **Schema** → **Record Types**
+
+`CD_` 로 시작하는 타입 12개가 보여야 합니다.
+
+```
+CD_Account  CD_CashEvent  CD_Holding      CD_IncomeStream
+CD_Member   CD_Plan       CD_ReviewSession CD_Scenario
+CD_Snapshot CD_SnapshotLine CD_TodoItem   CD_UserMilestone
+```
+
+**Development 에 있다면** — 배포만 하면 끝입니다.
+**Schema** → **Deploy Schema Changes** → Development → Production → **Deploy**
+
+**Development 도 비어 있다면** — 아래 셋 중 하나입니다.
+
+| 방법 | 품 | 확실한가 |
+|---|---|---|
+| 맥을 한 번만 빌린다. `xcodegen generate` 후 Xcode 에서 ⌘R 한 번이면 Development 스키마가 생깁니다. 그다음 콘솔에서 Production 으로 배포 | 30분 | ✅ 가장 확실 |
+| CloudKit Console 에서 레코드 타입 12개를 손으로 만든다 | 몇 시간 | ⚠️ 필드 이름·타입을 하나라도 틀리면 동기화가 안 되고, 원인 찾기가 어렵습니다 |
+| 그냥 로컬 저장으로 쓴다 | 0 | 앱은 정상입니다. 나중에 스키마를 올리면 그때부터 동기화가 붙습니다 |
+
+> 세 번째를 골라도 **기록은 잃지 않습니다.** 앱은 로컬에 정상 저장하고,
+> 나중에 스키마가 Production 에 올라가면 그 시점부터 동기화가 시작됩니다.
+> 다만 그 전에 앱을 지우면 그 기기의 기록은 사라집니다 — 백업이 목적이라면
+> 스키마를 먼저 올려 두는 편이 좋습니다.
+
+모델을 바꿀 때마다(필드 추가 등) 다시 배포해야 합니다.
 
 ## 그 뒤로는
 
@@ -313,7 +350,8 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다 |
 | 빌드 번호 중복 오류 | 이미 올린 번호입니다. 다시 실행하면 새 번호가 붙습니다 |
 | 앱은 켜지는데 더보기에 `이 기기에만 저장` | iCloud 자격이 빠진 빌드입니다. 앱이 죽지 않고 로컬로 열린 것이므로 기록은 남아 있습니다. 2·3단계를 마치고 새 빌드를 올리면 그대로 이어집니다 |
-| 동기화가 `연결됨` 인데 다른 기기에 안 옴 | CloudKit 스키마를 Production 에 배포하지 않았습니다 (위 섹션) |
+| 동기화가 `연결됨` 인데 다른 기기에 안 옴 | CloudKit 스키마가 Production 에 없습니다. 위 **CloudKit 스키마** 절에서 Record Types 부터 확인하세요 |
+| 첫 TestFlight 빌드인데 동기화가 안 붙는다 | 정상입니다. 맥으로 개발용 빌드를 한 번도 안 돌렸다면 스키마가 아예 만들어진 적이 없습니다 (위 절) |
 
 ## 다음 단계
 
