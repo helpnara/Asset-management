@@ -19,6 +19,7 @@ struct WeeklyReviewView: View {
 
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var sessions: [ReviewSession]
+    @Query private var plans: [Plan]
 
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []
@@ -141,6 +142,15 @@ struct WeeklyReviewView: View {
         .padding(.bottom, 5)
     }
 
+    /// 이 종목이 목표에서 얼마나 벗어났나. 같은 자산군 안에서 잰다.
+    private func driftStatus(_ holding: Holding) -> Allocation.DriftStatus {
+        guard let member = holding.account?.owner else { return .onTrack }
+        let tolerance = plans.first?.driftTolerance ?? Allocation.Tolerance()
+        let label = holding.name.isEmpty ? "이름 없음" : holding.name
+        return member.holdingSlices(in: holding.assetClass, tolerance: tolerance)
+            .first { $0.label == label }?.status ?? .onTrack
+    }
+
     private func visitedCount(_ member: Member) -> Int {
         queue(for: member).filter { visited.contains($0.id) }.count
     }
@@ -158,6 +168,9 @@ struct WeeklyReviewView: View {
                                     foreground: holding.status.badgeForeground,
                                     background: holding.status.badgeBackground)
                     }
+                    // 금액을 고치는 순간 다시 계산된다 — "지금 이걸 적고 나니
+                    // 비중이 틀어졌다" 를 그 자리에서 본다 (docs/08-feedback.md 14번).
+                    DriftBadge(status: driftStatus(holding))
                 }
                 Text("지난주 \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.system(size: 9.5))

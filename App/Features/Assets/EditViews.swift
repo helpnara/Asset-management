@@ -120,7 +120,8 @@ struct AccountEditView: View {
                 Section {
                     Toggle("이 계좌만 따로 정하기", isOn: hasOwnReturn)
                     if account.expectedReturnBP != nil {
-                        percentRow("연 기대수익률", ownReturnBP)
+                        PercentStepper(title: "연 기대수익률", basisPoints: ownReturnBP,
+                                       range: 0...2_000, step: 25)
                     } else {
                         LabeledContent("연 기대수익률") {
                             Text("계획의 \(account.kind.returnProfile.label) 값을 따름")
@@ -176,18 +177,6 @@ struct AccountEditView: View {
         )
     }
 
-    private func percentRow(_ title: String, _ value: Binding<Int>) -> some View {
-        Stepper(value: value, in: 0...2_000, step: 25) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text("\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10000))%")
-                    .font(.figure(14, weight: .medium))
-                    .foregroundStyle(Color.ink)
-            }
-        }
-    }
-
     private var returnFooter: String {
         switch account.kind.returnProfile {
         case .investment:
@@ -210,6 +199,23 @@ struct HoldingEditView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Toggle("목표 비중 정하기", isOn: Binding(
+                        get: { holding.targetWeightBP != nil },
+                        set: { holding.targetWeightBP = $0 ? (holding.targetWeightBP ?? 1_000) : nil }
+                    ))
+                    if holding.targetWeightBP != nil {
+                        PercentStepper(title: "목표 비중", basisPoints: Binding(
+                            get: { holding.targetWeightBP ?? 0 },
+                            set: { holding.targetWeightBP = $0 }
+                        ))
+                    }
+                } header: {
+                    Text("목표 비중")
+                } footer: {
+                    Text("**같은 자산군 안에서**의 비중입니다. 자산군끼리의 비중은 자산 탭 → 구성원 → 목표 비중에서 정합니다. 정해 두면 매주 점검할 때 어긋난 종목에 배지가 뜹니다.")
+                }
+
                 Section {
                     TextField("종목 이름 (VOO · 삼성전자 …)", text: $holding.name)
                     MoneyField(title: "평가액", minorUnits: $holding.valueMinor)

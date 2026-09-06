@@ -35,6 +35,9 @@ struct BackupDocument: Codable, Sendable {
     struct PlanData: Codable, Sendable {
         var id: UUID
         var title: String
+        var startedOn: Date?
+        var asOfNote: String
+        var declaration: String
         var startYear: Int
         var retirementYear: Int
         var horizonYear: Int
@@ -42,6 +45,8 @@ struct BackupDocument: Codable, Sendable {
         var contributionGrowthBP: Int
         var annualReturnBP: Int
         var inflationBP: Int
+        var lowYieldReturnBP: Int
+        var realEstateReturnBP: Int
         var targetAmountMinor: Int
         var monthlySpendingMinor: Int
         var withdrawalRateBP: Int
@@ -51,6 +56,8 @@ struct BackupDocument: Codable, Sendable {
         var usTargetBP: Int
         var mixToleranceBP: Int
         var usesMemberContributions: Bool
+        var driftToleranceBP: Int
+        var driftRelativeBP: Int
         var createdAt: Date
     }
 
@@ -63,10 +70,20 @@ struct BackupDocument: Codable, Sendable {
         var taxResidency: String
         var targetRetirementAge: Int
         var monthlyContributionMinor: Int
+        var employerMatchMinor: Int
+        var note: String
         var colorIndex: Int
         var sortIndex: Int
         var createdAt: Date
         var accounts: [AccountData]
+        /// 자산군 목표 (목표 비중 1층).
+        var allocationTargets: [AllocationTargetData]
+    }
+
+    struct AllocationTargetData: Codable, Sendable {
+        var id: UUID
+        var assetClass: String
+        var targetBP: Int
     }
 
     struct AccountData: Codable, Sendable {
@@ -77,6 +94,9 @@ struct BackupDocument: Codable, Sendable {
         var isArchived: Bool
         var annualContributionMinor: Int
         var annualLimitMinor: Int
+        var expectedReturnBP: Int?
+        var maturesOn: Date?
+        var ownerID: UUID?
         var sortIndex: Int
         var createdAt: Date
         var holdings: [HoldingData]
@@ -94,6 +114,8 @@ struct BackupDocument: Codable, Sendable {
         var lastEnteredValueMinor: Int
         var lastEnteredAt: Date?
         var note: String
+        var targetWeightBP: Int?
+        var accountID: UUID?
         var sortIndex: Int
         var createdAt: Date
     }
@@ -220,6 +242,8 @@ extension BackupDocument {
                     taxResidency: member.taxResidencyRaw,
                     targetRetirementAge: member.targetRetirementAge,
                     monthlyContributionMinor: member.monthlyContributionMinor,
+                    employerMatchMinor: member.employerMatchMinor,
+                    note: member.note,
                     colorIndex: member.colorIndex, sortIndex: member.sortIndex,
                     createdAt: member.createdAt,
                     accounts: member.sortedAccounts.map { account in
@@ -229,6 +253,9 @@ extension BackupDocument {
                             isArchived: account.isArchived,
                             annualContributionMinor: account.annualContributionMinor,
                             annualLimitMinor: account.annualLimitMinor,
+                            expectedReturnBP: account.expectedReturnBP,
+                            maturesOn: account.maturesOn,
+                            ownerID: account.ownerID ?? member.id,
                             sortIndex: account.sortIndex, createdAt: account.createdAt,
                             holdings: account.sortedHoldings.map { holding in
                                 HoldingData(
@@ -240,22 +267,33 @@ extension BackupDocument {
                                     valueMinor: holding.valueMinor,
                                     lastEnteredValueMinor: holding.lastEnteredValueMinor,
                                     lastEnteredAt: holding.lastEnteredAt,
-                                    note: holding.note, sortIndex: holding.sortIndex,
+                                    note: holding.note,
+                                    targetWeightBP: holding.targetWeightBP,
+                                    accountID: holding.accountID ?? account.id,
+                                    sortIndex: holding.sortIndex,
                                     createdAt: holding.createdAt
                                 )
                             }
                         )
-                    }
+                    },
+                    allocationTargets: (member.allocationTargets ?? [])
+                        .sorted { $0.assetClassRaw < $1.assetClassRaw }
+                        .map { AllocationTargetData(id: $0.id, assetClass: $0.assetClassRaw,
+                                                    targetBP: $0.targetBP) }
                 )
             }
 
         let plan = all(Plan.self).first.map { plan in
             PlanData(
-                id: plan.id, title: plan.title, startYear: plan.startYear,
+                id: plan.id, title: plan.title,
+                startedOn: plan.startedOn, asOfNote: plan.asOfNote,
+                declaration: plan.declaration, startYear: plan.startYear,
                 retirementYear: plan.retirementYear, horizonYear: plan.horizonYear,
                 monthlyContributionMinor: plan.monthlyContributionMinor,
                 contributionGrowthBP: plan.contributionGrowthBP,
                 annualReturnBP: plan.annualReturnBP, inflationBP: plan.inflationBP,
+                lowYieldReturnBP: plan.lowYieldReturnBP,
+                realEstateReturnBP: plan.realEstateReturnBP,
                 targetAmountMinor: plan.targetAmountMinor,
                 monthlySpendingMinor: plan.monthlySpendingMinor,
                 withdrawalRateBP: plan.withdrawalRateBP,
@@ -264,6 +302,8 @@ extension BackupDocument {
                 illiquidCapBP: plan.illiquidCapBP, usTargetBP: plan.usTargetBP,
                 mixToleranceBP: plan.mixToleranceBP,
                 usesMemberContributions: plan.usesMemberContributions,
+                driftToleranceBP: plan.driftToleranceBP,
+                driftRelativeBP: plan.driftRelativeBP,
                 createdAt: plan.createdAt
             )
         }

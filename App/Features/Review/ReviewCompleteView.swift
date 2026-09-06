@@ -7,6 +7,15 @@ import SwiftUI
 /// 손으로 적는 수고에 값을 붙이는 자리다. 끝낸 직후 이번 주 변화와
 /// 연속 기록을 즉시 보여준다 (ADR-0005).
 struct ReviewCompleteView: View {
+    @Query(sort: \Member.sortIndex) private var driftMembers: [Member]
+    @Query private var driftPlans: [Plan]
+
+    /// 목표에서 벗어난 종목 수. 가족 전체를 센다.
+    private var driftCount: Int {
+        let tolerance = driftPlans.first?.driftTolerance ?? Allocation.Tolerance()
+        return driftMembers.reduce(0) { $0 + $1.driftingHoldingCount(tolerance: tolerance) }
+    }
+
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
@@ -76,6 +85,16 @@ struct ReviewCompleteView: View {
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
+
+                if driftCount > 0 {
+                    // 이번 주 입력으로 비중이 어긋난 것이 있으면 여기서 한 번 더
+                    // 말한다. 점검을 마치고 나가는 길목이라 놓치기 어렵다
+                    // (docs/08-feedback.md 14번).
+                    Text("비중이 어긋난 종목 \(driftCount)개")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.loss)
+                        .padding(.top, 4)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

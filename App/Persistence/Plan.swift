@@ -56,6 +56,11 @@ final class Plan {
     var usTargetBP: Int = 6_000
     /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
     var mixToleranceBP: Int = 500
+    /// 목표 비중 허용 오차 — 절대(퍼센트포인트). 기본 5%p.
+    var driftToleranceBP: Int = 500
+    /// 목표 비중 허용 오차 — 상대(목표 대비). 기본 25%.
+    /// 목표가 작은 종목에 절대값만 쓰면 영영 안 걸린다.
+    var driftRelativeBP: Int = 2_500
 
     /// 월 적립을 구성원별로 나눠 넣는가. 켜면 Member 의 몫을 합해서 쓴다.
     ///
@@ -149,6 +154,12 @@ extension Plan {
     var illiquidCap: Ratio { Ratio(basisPoints: illiquidCapBP) }
     var usTarget: Ratio { Ratio(basisPoints: usTargetBP) }
     var mixTolerance: Ratio { Ratio(basisPoints: mixToleranceBP) }
+
+    /// 목표 비중 판정 기준.
+    var driftTolerance: Allocation.Tolerance {
+        Allocation.Tolerance(absolute: Ratio(basisPoints: driftToleranceBP),
+                             relative: Ratio(basisPoints: driftRelativeBP))
+    }
     var monthlySpending: Money { Money(minorUnits: monthlySpendingMinor, currency: .krw) }
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }

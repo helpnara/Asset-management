@@ -18,6 +18,7 @@ struct AssetsView: View {
 
     @Environment(\.modelContext) private var context
     @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Query private var plans: [Plan]
 
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
@@ -150,6 +151,15 @@ struct AssetsView: View {
             }
 
             NavigationLink {
+                TargetWeightView(member: member)
+            } label: {
+                Image(systemName: "chart.pie")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.dad)
+
+            NavigationLink {
                 MemberTrajectoryView(member: member)
             } label: {
                 Image(systemName: "chart.line.uptrend.xyaxis")
@@ -226,6 +236,15 @@ struct AssetsView: View {
         }
     }
 
+    /// 목표 비중에서 벗어났나. 같은 자산군 안에서 잰다 (docs/08-feedback.md 14번).
+    private func driftStatus(_ holding: Holding) -> Allocation.DriftStatus {
+        guard let member = holding.account?.owner else { return .onTrack }
+        let tolerance = plans.first?.driftTolerance ?? Allocation.Tolerance()
+        let label = holding.name.isEmpty ? "이름 없음" : holding.name
+        return member.holdingSlices(in: holding.assetClass, tolerance: tolerance)
+            .first { $0.label == label }?.status ?? .onTrack
+    }
+
     // MARK: - 접기 · 펼치기
 
     private func isExpanded(_ member: Member) -> Bool {
@@ -287,6 +306,7 @@ struct AssetsView: View {
                                     foreground: .loss,
                                     background: Color.lossSoft)
                     }
+                    DriftBadge(status: driftStatus(holding))
                 }
                 // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
                 // 목록에서 실제로 궁금한 것은 상품 종류다.

@@ -30,6 +30,10 @@ final class Member {
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
 
+    /// 자산군 목표 (1층). 주식·ETF 60% · 채권 20% … 처럼 사람마다 세운다.
+    @Relationship(deleteRule: .cascade, inverse: \AllocationTarget.member)
+    var allocationTargets: [AllocationTarget]? = []
+
     @Relationship(deleteRule: .cascade, inverse: \Account.owner)
     var accounts: [Account]? = []
 
@@ -111,6 +115,9 @@ final class Holding {
     var lastEnteredAt: Date?
 
     var note: String = ""
+    /// **그 자산군 안에서**의 목표 비중 (basis point). nil 이면 아직 안 정한 것이고,
+    /// 그건 조용히 넘어갈 일이 아니라 알림거리다 (docs/08-feedback.md 14번).
+    var targetWeightBP: Int?
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
 
