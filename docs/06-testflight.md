@@ -18,9 +18,23 @@ App Store Connect 업로드 (처리 5~15분)
 아이폰 TestFlight 앱에서 설치
 ```
 
+## 승인을 기다리는 동안 할 수 있는 것
+
+가입비를 냈어도 **승인 전에는 2~7단계를 할 수 없습니다.** 개발자 포털의
+Identifiers·App Store Connect 자체가 열리지 않습니다. 그동안 준비할 것:
+
+| 할 일 | 왜 |
+|---|---|
+| Apple ID 2단계 인증 확인 | 없으면 승인돼도 포털에 못 들어갑니다 |
+| 앱 이름 후보 2~3개 준비 | App Store 전체에서 유일해야 합니다. `느린 부자의 기록` 이 이미 쓰이고 있으면 뒤에 말을 붙여야 합니다 |
+| 승인 메일 확인 | 보통 24~48시간. 길면 일주일. 서류를 더 요구하는 메일이 올 수도 있으니 스팸함도 보세요 |
+| 진행 상황 확인 | <https://developer.apple.com/account> 에 들어가서 `Certificates, Identifiers & Profiles` 가 보이면 승인된 것입니다 |
+
+승인 메일 제목은 보통 *"Welcome to the Apple Developer Program"* 입니다.
+
 ## 준비 (최초 1회, 약 40분)
 
-순서대로 하세요. **2-1단계를 건너뛰면 첫 빌드가 서명에서 막힙니다.**
+순서대로 하세요. **2·3단계를 건너뛰면 첫 빌드가 서명에서 막힙니다.**
 
 ---
 
@@ -37,27 +51,10 @@ App Store Connect 업로드 (처리 5~15분)
 
 ---
 
-### 2단계 · App ID 만들기
+### 2단계 · iCloud 컨테이너 먼저 만들기 ⚠️
 
-<https://developer.apple.com/account/resources/identifiers/list>
-
-**+** → **App IDs** → **App** → 계속
-
-| 항목 | 값 |
-|---|---|
-| Description | `SlowRich` |
-| Bundle ID | **Explicit** 선택 후 `com.helpnara.slowrich` |
-
-**Capabilities에서 두 개를 체크합니다. 지금 안 하면 나중에 다시 옵니다.**
-
-- ☑ **iCloud** (설정은 2-1단계에서)
-- ☑ **Push Notifications** — CloudKit이 변경을 알리는 무음 푸시에 필요합니다
-
-**Continue → Register**
-
----
-
-### 2-1단계 · iCloud 컨테이너 만들기 ⚠️ 필수
+**App ID 보다 이걸 먼저 만듭니다.** 순서를 거꾸로 하면 App ID 를 만들었다가
+컨테이너를 만들고 다시 App ID 로 돌아와 연결해야 해서 왕복이 한 번 더 생깁니다.
 
 이 앱은 iCloud 자격을 **요구하도록** 설정돼 있습니다
 (`App/SlowRich.entitlements`). 컨테이너가 없으면 프로비저닝 프로파일에 그 자격을
@@ -65,7 +62,7 @@ App Store Connect 업로드 (처리 5~15분)
 
 <https://developer.apple.com/account/resources/identifiers/list/cloudContainer>
 
-**+** → **iCloud Containers**
+오른쪽 위 **+** → **iCloud Containers** → Continue
 
 | 항목 | 값 |
 |---|---|
@@ -74,19 +71,33 @@ App Store Connect 업로드 (처리 5~15분)
 
 **Continue → Register**
 
-그다음 **2단계에서 만든 App ID로 돌아가서**:
-
-1. App ID 목록에서 `SlowRich` 클릭 → **Edit**
-2. **iCloud** 줄의 **Configure** 클릭
-3. 방금 만든 `iCloud.com.helpnara.slowrich` 를 체크 → **Continue**
-4. **Save** (경고가 뜨면 **Confirm**)
-
-> 컨테이너 식별자는 코드에 박혀 있습니다
-> (`Persistence.cloudKitContainerID`). 다른 이름으로 만들면 안 됩니다.
+> 식별자는 코드에 박혀 있습니다 (`Persistence.cloudKitContainerID`).
+> 오타가 나면 앱은 빌드되지만 **동기화가 조용히 안 됩니다.** 한 글자씩 확인하세요.
 
 ---
 
-### 3단계 · App Store Connect에 앱 등록
+### 3단계 · App ID 만들기
+
+<https://developer.apple.com/account/resources/identifiers/list>
+
+**+** → **App IDs** → **App** → Continue
+
+| 항목 | 값 |
+|---|---|
+| Description | `SlowRich` |
+| Bundle ID | **Explicit** 을 고르고 `com.helpnara.slowrich` |
+
+같은 화면 아래 **Capabilities** 목록에서 두 개를 체크합니다.
+**지금 안 하면 서명 단계에서 막히고 다시 돌아와야 합니다.**
+
+- ☑ **iCloud** → 오른쪽 **Configure** → 2단계에서 만든
+  `iCloud.com.helpnara.slowrich` 체크 → Continue
+- ☑ **Push Notifications** — CloudKit 이 변경을 알리는 무음 푸시에 필요합니다.
+  따로 설정할 것은 없고 체크만 하면 됩니다
+
+**Continue → Register**
+
+### 4단계 · App Store Connect에 앱 등록
 
 <https://appstoreconnect.apple.com> → **앱** → **+** → **신규 앱**
 
@@ -105,7 +116,7 @@ App Store Connect 업로드 (처리 5~15분)
 
 ---
 
-### 4단계 · App Store Connect API 키 만들기
+### 5단계 · App Store Connect API 키 만들기
 
 이 키로 GitHub이 애플 대신 서명하고 업로드합니다.
 **인증서(.p12)나 프로비저닝 프로파일을 직접 만들 필요가 없습니다.**
@@ -127,7 +138,7 @@ App Store Connect 업로드 (처리 5~15분)
 
 ---
 
-### 5단계 · 팀 ID 확인
+### 6단계 · 팀 ID 확인
 
 <https://developer.apple.com/account> → 오른쪽 위 **Membership details**
 
@@ -135,7 +146,7 @@ App Store Connect 업로드 (처리 5~15분)
 
 ---
 
-### 6단계 · GitHub 저장소 시크릿 4개 등록
+### 7단계 · GitHub 저장소 시크릿 4개 등록
 
 <https://github.com/helpnara/Asset-management/settings/secrets/actions>
 
@@ -144,15 +155,15 @@ App Store Connect 업로드 (처리 5~15분)
 | 시크릿 이름 | 값 |
 |---|---|
 | `APP_STORE_CONNECT_KEY_P8` | `.p8` 파일을 **텍스트 편집기로 열어** 내용 전체를 붙여넣기 (`-----BEGIN PRIVATE KEY-----` 줄부터 `-----END PRIVATE KEY-----` 줄까지) |
-| `APP_STORE_CONNECT_KEY_ID` | 4단계의 키 ID |
-| `APP_STORE_CONNECT_ISSUER_ID` | 4단계의 발급자 ID |
-| `APPLE_TEAM_ID` | 5단계의 팀 ID |
+| `APP_STORE_CONNECT_KEY_ID` | 5단계의 키 ID |
+| `APP_STORE_CONNECT_ISSUER_ID` | 5단계의 발급자 ID |
+| `APPLE_TEAM_ID` | 6단계의 팀 ID |
 
 > `.p8` 은 줄바꿈까지 그대로 넣어야 합니다. 한 줄로 붙으면 서명이 실패합니다.
 
 ---
 
-### 7단계 · 첫 배포
+### 8단계 · 첫 배포
 
 <https://github.com/helpnara/Asset-management/actions/workflows/testflight.yml>
 
@@ -163,7 +174,7 @@ App Store Connect 업로드 (처리 5~15분)
 
 ---
 
-### 8단계 · 수출 규정 · 테스터 등록
+### 9단계 · 수출 규정 · 테스터 등록
 
 App Store Connect → 앱 → **TestFlight** 탭
 
@@ -174,7 +185,7 @@ App Store Connect → 앱 → **TestFlight** 탭
 
 ---
 
-### 9단계 · 아이폰에서 설치
+### 10단계 · 아이폰에서 설치
 
 1. App Store에서 **TestFlight** 앱을 받습니다
 2. 초대 메일의 링크를 아이폰에서 엽니다
@@ -218,15 +229,15 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 
 | 증상 | 원인과 해결 |
 |---|---|
-| `APP_STORE_CONNECT_KEY_P8 이 비어 있습니다` | 6단계 시크릿 누락. 이름 철자를 확인하세요 |
-| `No profiles for 'com.helpnara.slowrich' were found` | 2단계 App ID 등록이 안 됐거나 번들 ID가 다릅니다 |
-| `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2-1단계**를 안 했습니다. 컨테이너를 만들고 App ID에 연결하세요 |
-| `Provisioning profile doesn't include the aps-environment entitlement` | 2단계에서 **Push Notifications** 를 체크하지 않았습니다 |
+| `APP_STORE_CONNECT_KEY_P8 이 비어 있습니다` | 7단계 시크릿 누락. 이름 철자를 확인하세요 |
+| `No profiles for 'com.helpnara.slowrich' were found` | 3단계 App ID 등록이 안 됐거나 번들 ID가 다릅니다 |
+| `doesn't include the com.apple.developer.icloud-container-identifiers entitlement` | **2단계**를 안 했거나 3단계에서 Configure 로 연결하지 않았습니다 |
+| `Provisioning profile doesn't include the aps-environment entitlement` | 3단계에서 **Push Notifications** 를 체크하지 않았습니다 |
 | `Authentication credentials are missing or invalid` | API 키 액세스가 **App Manager** 인지 확인 |
 | `Missing required icon file` | 앱 아이콘 누락. `App/Assets.xcassets/AppIcon.appiconset` 에 1024×1024 PNG(알파 없음)가 있어야 합니다 |
 | 업로드는 됐는데 TestFlight에 안 보임 | 애플 처리에 15분까지 걸립니다 |
 | 빌드 번호 중복 오류 | 이미 올린 번호입니다. 다시 실행하면 새 번호가 붙습니다 |
-| 앱은 켜지는데 더보기에 `이 기기에만 저장` | iCloud 자격이 빠진 빌드입니다. 앱이 죽지 않고 로컬로 열린 것이므로 기록은 남아 있습니다. 2-1단계를 마치고 새 빌드를 올리면 그대로 이어집니다 |
+| 앱은 켜지는데 더보기에 `이 기기에만 저장` | iCloud 자격이 빠진 빌드입니다. 앱이 죽지 않고 로컬로 열린 것이므로 기록은 남아 있습니다. 2·3단계를 마치고 새 빌드를 올리면 그대로 이어집니다 |
 | 동기화가 `연결됨` 인데 다른 기기에 안 옴 | CloudKit 스키마를 Production 에 배포하지 않았습니다 (위 섹션) |
 
 ## 다음 단계
