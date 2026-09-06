@@ -85,6 +85,25 @@ jobs:
                 exit 1
               fi ;;
           esac
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: Xcode 프로젝트 생성
+        run: xcodegen generate
+
+      # 깨진 계산이 아이폰까지 가면 안 된다. 20초짜리 관문이다.
+      - name: 계산 로직 테스트
+        run: cd Packages/Core && swift test
+
+      - name: App Store Connect API 키 준비
+        env:
+          KEY: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::시크릿 APP_STORE_CONNECT_KEY_P8 이 비어 있습니다. docs/06-testflight.md 를 보세요."
+            exit 1
+          fi
           mkdir -p ~/private_keys
           echo "$KEY" > ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
           chmod 600 ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
