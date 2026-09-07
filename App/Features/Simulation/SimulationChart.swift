@@ -120,14 +120,11 @@ struct SimulationChart: View {
             }
 
             if let retirementDate {
+                // 라벨을 주석으로 달면 `plot.clipped()` 에 잘려 글자가 안 보인다
+                // (docs/08-feedback.md 45번). 선만 세우고 이름은 범례에 적는다.
                 RuleMark(x: .value("은퇴", retirementDate))
                     .foregroundStyle(Color.ruleStrong)
                     .lineStyle(StrokeStyle(lineWidth: 1))
-                    .annotation(position: .top, alignment: .center, spacing: 2) {
-                        Text("은퇴")
-                            .font(.system(size: 8.5, weight: .medium))
-                            .foregroundStyle(Color.muted)
-                    }
             }
 
             if let depletion {

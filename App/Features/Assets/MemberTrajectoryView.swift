@@ -50,9 +50,14 @@ struct MemberTrajectoryView: View {
                 .font(.figure(28, weight: .bold))
                 .foregroundStyle(Color.ink)
             if let end = projection?.point(inYear: retirementYear)?.nominal {
-                Text("\(String(retirementYear))년에 \(Won.compact(end))")
+                Text("\(String(retirementYear))년 \(member.targetRetirementAge)세에 \(Won.compact(end))")
                     .font(.figure(12))
                     .foregroundStyle(Color.muted)
+            }
+            if retirementYear != householdRetirementYear {
+                Text("가구 은퇴 연도는 \(String(householdRetirementYear))년입니다. 이 사람은 은퇴 나이를 따로 적어 두었습니다.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Color.faint)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -174,7 +179,15 @@ struct MemberTrajectoryView: View {
         return plan.memberMonthlyContributionMinor(member, familyTotal: family)
     }
 
+    /// **이 사람의 은퇴 해.** 구성원 편집에 적어 둔 은퇴 나이를 쓴다
+    /// (docs/08-feedback.md 38번). 예전에는 가구 공통 은퇴 연도만 봐서,
+    /// 아내가 먼저 은퇴해도 궤적이 그대로였다.
     private var retirementYear: Int {
+        member.retirementYear
+    }
+
+    /// 가구 공통 은퇴 연도. 화면에 함께 적어 두 값이 다르다는 것을 보인다.
+    private var householdRetirementYear: Int {
         plan?.retirementYear ?? Calendar.current.component(.year, from: .now) + 23
     }
 

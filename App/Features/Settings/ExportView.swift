@@ -25,6 +25,11 @@ struct ExportView: View {
     @State private var rendered: PDFFile?
     @State private var backup: JSONFile?
 
+    /// 되돌리기 (docs/08-feedback.md 40번).
+    @State private var isPickingBackup = false
+    @State private var pending: BackupDocument?
+    @State private var restoreProblem: String?
+
     var body: some View {
         List {
             Section {
@@ -89,9 +94,87 @@ struct ExportView: View {
             } footer: {
                 Text("구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 할 일 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다. 지금 이 기록의 사본은 이 아이폰 하나뿐이니, 앱을 업데이트하기 전에 한 번씩 받아 파일 앱이나 메일로 보내 두세요. 금액은 가리지 않고 그대로 나갑니다 — 백업이니까요.")
             }
+
+            // **되돌리기** (docs/08-feedback.md 40번).
+            // 내보내기만 있고 되돌리기가 없었다. iCloud 는 삭제까지 동기화하므로
+            // 잘못 지운 것을 되찾을 길이 하나도 없었다.
+            Section {
+                Button(role: .destructive) {
+                    isPickingBackup = true
+                } label: {
+                    Label("백업 파일에서 되돌리기", systemImage: "arrow.counterclockwise")
+                }
+            } header: {
+                Text("되돌리기")
+            } footer: {
+                Text("백업 파일을 골라 **이 기기의 기록을 통째로 갈아 끼웁니다.** 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 **먼저 지금 상태로 백업을 하나 만들어 두세요** — 위의 `전체 백업 만들기` 입니다.")
+            }
+        }
+        .fileImporter(isPresented: $isPickingBackup,
+                      allowedContentTypes: [.json]) { result in
+            load(result)
+        }
+        .alert("이 백업으로 되돌릴까요?",
+               isPresented: Binding(get: { pending != nil },
+                                    set: { if !$0 { pending = nil } }),
+               presenting: pending) { document in
+            Button("되돌리기", role: .destructive) {
+                BackupDocument.restore(document, into: context)
+                pending = nil
+            }
+            Button("그만두기", role: .cancel) { pending = nil }
+        } message: { document in
+            Text(summary(of: document))
+        }
+        .alert("이 파일은 읽을 수 없습니다",
+               isPresented: Binding(get: { restoreProblem != nil },
+                                    set: { if !$0 { restoreProblem = nil } }),
+               presenting: restoreProblem) { _ in
+            Button("확인", role: .cancel) { restoreProblem = nil }
+        } message: { problem in
+            Text(problem)
         }
         .navigationTitle("내보내기")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - 되돌리기
+
+    /// 고른 파일을 읽어 **확인 창까지만** 띄운다. 되돌리기는 사람이 한 번 더
+    /// 눌러야 일어난다 — 잘못 누르면 몇 달치가 사라지는 일이다.
+    private func load(_ result: Result<URL, Error>) {
+        guard case let .success(url) = result else {
+            restoreProblem = "파일을 열지 못했습니다."
+            return
+        }
+        // 파일 앱에서 고른 파일은 보안 범위 안에 있다. 열쇠를 쥐었다 놓아야 읽힌다.
+        let opened = url.startAccessingSecurityScopedResource()
+        defer { if opened { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url) else {
+            restoreProblem = "파일을 읽지 못했습니다."
+            return
+        }
+        guard let document = BackupDocument.decode(data) else {
+            restoreProblem = "이 앱이 만든 백업 파일이 아니거나 형식이 다릅니다. 전체 백업 만들기로 만든 .json 파일을 골라 주세요."
+            return
+        }
+        pending = document
+    }
+
+    /// 무엇이 들어오는지 세어서 보여준다. "정말 되돌릴까요?" 만으로는
+    /// 무엇으로 바뀌는지 알 수 없다.
+    private func summary(of document: BackupDocument) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy년 M월 d일"
+        let accountCount = document.members.reduce(0) { $0 + $1.accounts.count }
+        let holdingCount = document.members.reduce(0) { sum, member in
+            sum + member.accounts.reduce(0) { $0 + $1.holdings.count }
+        }
+        let counts = "구성원 \(document.members.count)명 · 계좌 \(accountCount)개 · 종목 \(holdingCount)개 · 주간 기록 \(document.snapshots.count)주"
+        return formatter.string(from: document.exportedAt) + " 백업\n\n" + counts
+            + "\n\n지금 이 기기에 있는 기록은 전부 지워지고 이 파일의 내용으로 바뀝니다. 되돌릴 수 없습니다."
     }
 
     // MARK: - 1페이지

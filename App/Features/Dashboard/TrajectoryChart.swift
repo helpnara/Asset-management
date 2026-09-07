@@ -27,6 +27,10 @@ struct TrajectoryChart: View {
         enum Series: String {
             case actual = "실제 기록"
             case projected = "예측"
+            /// **계획을 세운 날에서 출발한 선** (docs/08-feedback.md 37번).
+            /// 이것이 있어야 "이번 주 숫자가 계획선 위인지 아래인지" 를 볼 수 있다 —
+            /// 로드맵 M2 의 완료 기준인데 여태 비어 있었다.
+            case plan = "계획선"
         }
         let date: Date
         let minor: Int
@@ -71,6 +75,24 @@ struct TrajectoryChart: View {
         }
     }
 
+    /// 계열마다 색과 선 모양. 범례가 같은 값을 읽어야 그림과 설명이 어긋나지 않는다.
+    static func color(of series: Point.Series) -> Color {
+        switch series {
+        case .actual: return .ink
+        case .projected: return .dad
+        case .plan: return .muted
+        }
+    }
+
+    static func stroke(of series: Point.Series) -> StrokeStyle {
+        switch series {
+        case .actual: return StrokeStyle(lineWidth: 2.2, lineCap: .round)
+        case .projected: return StrokeStyle(lineWidth: 1.8, lineCap: .round, dash: [4, 3])
+        // 계획선은 가장 조용하다. 비교 기준이지 주인공이 아니다.
+        case .plan: return StrokeStyle(lineWidth: 1.4, lineCap: .round, dash: [1, 3])
+        }
+    }
+
     /// 현황판과 구성원 궤적이 함께 읽는다. 화면 밖(범례·목표선)에서도 이 값을
     /// 봐야 해서 열쇠를 공개해 둔다.
     static let spanKey = "trajectory.span"
@@ -110,12 +132,8 @@ struct TrajectoryChart: View {
                     y: .value("순자산", point.value),
                     series: .value("구분", point.series.rawValue)
                 )
-                .foregroundStyle(point.series == .actual ? Color.ink : Color.dad)
-                .lineStyle(StrokeStyle(
-                    lineWidth: point.series == .actual ? 2.2 : 1.8,
-                    lineCap: .round,
-                    dash: point.series == .actual ? [] : [4, 3]
-                ))
+                .foregroundStyle(Self.color(of: point.series))
+                .lineStyle(Self.stroke(of: point.series))
 
                 // 은퇴까지를 보면 과거 몇 달은 전체 폭의 1%도 안 되어 선이 사라진다.
                 // 점을 함께 찍어야 "실제로 적어 온 기록"이 눈에 남는다.

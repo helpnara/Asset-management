@@ -247,6 +247,10 @@ jobs:
           # 정할 뻔했다 (docs/08-feedback.md 24번). 미리보기가 종이 끝 선과
           # 채움 비율을 함께 그린다.
           shoot 16-one-pager.png   -skipOnboarding -seedSampleData -startTab more -startOnePager
+          # 되돌리기가 생겼다 (docs/08-feedback.md 40번). 되돌릴 수 없는 일이라
+          # 경고 문구가 제대로 서는지 그림으로 본다.
+          shoot 17-export.png      -skipOnboarding -seedSampleData -startTab more -startExport
+          shoot 18-change-log.png  -skipOnboarding -seedSampleData -startTab more -startChangeLog
 
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**

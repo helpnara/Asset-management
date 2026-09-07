@@ -111,6 +111,16 @@ struct DashboardView: View {
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
             }
+            // **계획선 위인가 아래인가** (docs/08-feedback.md 37번).
+            // 총액만 보면 하락장에 앱을 열 이유가 없다. `계획보다 위` 라는
+            // 사실은 총액이 줄어도 남는다 — 그 한 줄이 토요일마다 앱을 여는
+            // 이유가 된다. 로드맵 M2 의 완료 기준이 이 줄이다.
+            if let gap = planGap {
+                Text(gap.text)
+                    .font(.figure(12.5, weight: .medium))
+                    .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
+                    .padding(.top, 7)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
@@ -283,6 +293,58 @@ struct DashboardView: View {
         plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes, members: members)
     }
 
+    // MARK: - 계획선 (docs/08-feedback.md 37번)
+
+    /// 계획선이 출발하는 자리 — **계획을 세운 뒤 처음 적은 주**와 그때 총자산.
+    ///
+    /// 계획 수립 시점의 자산을 따로 저장하지 않으므로 스냅샷에서 찾는다.
+    /// 수립일 이후 첫 기록이 없으면 가장 이른 기록에서 출발한다 — 계획을
+    /// 나중에 적었더라도 견줄 선은 있는 편이 낫다.
+    private var planAnchor: (date: Date, balance: Money)? {
+        let sorted = snapshots.sorted { $0.weekAnchor < $1.weekAnchor }
+        guard !sorted.isEmpty else { return nil }
+        let startedOn = plan?.startedOn.map { Calendar.current.startOfDay(for: $0) }
+        let anchor = startedOn.flatMap { start in sorted.first { $0.weekAnchor >= start } }
+            ?? sorted.first
+        guard let anchor else { return nil }
+        return (anchor.weekAnchor, Money(minorUnits: anchor.netWorthMinor, currency: .krw))
+    }
+
+    /// 그 자리에서 계획 가정대로 굴린 궤적.
+    ///
+    /// **덩어리 구성은 지금 계좌로 나눈다.** 과거의 계좌 구성은 알 수 없기
+    /// 때문이다. 그래서 계획선은 "그때 이 구성으로 시작했다면" 이고, 완전한
+    /// 재현이 아니다 — 그래도 견줄 선이 하나도 없는 것보다 낫다.
+    private var planProjection: ProjectionResult? {
+        guard let plan, let anchor = planAnchor else { return nil }
+        let input = plan.projectionInput(from: anchor.balance, cashEvents: cashEvents,
+                                         incomes: incomes, members: members,
+                                         asOf: anchor.date)
+        return Projection.run(input)
+    }
+
+    /// 오늘 계획선이 가리키는 금액과 실제의 차이.
+    private var planGap: (text: String, isAhead: Bool)? {
+        guard let planProjection, planAnchor != nil else { return nil }
+        // **오늘 자리**의 값이어야 한다. `point(inYear:)` 는 그 해의 마지막 점,
+        // 즉 12월 값이라 연초에 보면 몇 달치를 앞질러 견주게 된다.
+        let today = Calendar.current.startOfDay(for: .now)
+        guard let onPlan = planProjection.points.last(where: { $0.date <= today })?.nominal
+        else { return nil }
+        let delta = rollup.netWorth - onPlan
+        // 1% 안쪽이면 "계획대로" 다. 몇십만원 차이에 앞섰다 뒤졌다 하면
+        // 그 숫자를 믿지 않게 된다.
+        let threshold = max(abs(onPlan.minorUnits) / 100, 1)
+        if abs(delta.minorUnits) < threshold {
+            return ("계획선 위에 있습니다", true)
+        }
+        let size = Won.abbreviated(Money(minorUnits: abs(delta.minorUnits), currency: .krw),
+                                   suffix: "원")
+        return (delta.minorUnits > 0 ? "계획보다 \(size) 앞서 있습니다"
+                                     : "계획보다 \(size) 뒤에 있습니다",
+                delta.minorUnits > 0)
+    }
+
     /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.
     private var trajectoryPoints: [TrajectoryChart.Point] {
         var result = snapshots.map {
@@ -300,6 +362,16 @@ struct DashboardView: View {
                                              minor: $0.element.nominal.minorUnits,
                                              series: .projected) }
             result.append(contentsOf: monthly)
+        }
+
+        // 계획선. 과거 구간까지 이어지므로 여기서만 "위인지 아래인지" 가 보인다.
+        if let planProjection {
+            let line = planProjection.points.enumerated()
+                .filter { $0.offset % 3 == 0 || $0.offset == planProjection.points.count - 1 }
+                .map { TrajectoryChart.Point(date: $0.element.date,
+                                             minor: $0.element.nominal.minorUnits,
+                                             series: .plan) }
+            result.append(contentsOf: line)
         }
         return result
     }
@@ -453,6 +525,9 @@ struct DashboardView: View {
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
                 legend(color: .dad, dashed: true, label: "예측")
+                if planAnchor != nil {
+                    legend(color: .muted, dashed: true, label: "계획선")
+                }
                 if chartSpan == .retirement || chartSpan == .all,
                    let target = plan?.targetAmount, !target.isZero {
                     legend(color: .ink.opacity(0.55), dashed: true,

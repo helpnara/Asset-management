@@ -22,6 +22,8 @@ struct OnePagerView: View {
     let title: String
     let asOfNote: String
     let startedOn: Date?
+    /// 수립일을 안 적었을 때 기간의 왼쪽에 쓴다.
+    let startYear: Int
     let retirementYear: Int
     let declaration: String
     let rollup: Rollup
@@ -123,9 +125,11 @@ struct OnePagerView: View {
         }
     }
 
+    /// 수립일을 안 적었으면 **시작 연도**로 적는다. `~ 2049` 는 어디서
+    /// 출발했는지가 빠져 문서로 어색하다 (docs/08-feedback.md 45번).
     private var periodText: String {
         let end = String(retirementYear)
-        guard let startedOn else { return "~ \(end)" }
+        guard let startedOn else { return "\(String(startYear)) ~ \(end)" }
         return "\(Self.dayFormatter.string(from: startedOn)) ~ \(end)"
     }
 

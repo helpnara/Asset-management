@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import SwiftData
 
@@ -397,5 +398,257 @@ extension BackupDocument {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return "느린부자의기록 백업 \(formatter.string(from: exportedAt)).json"
+    }
+}
+
+// MARK: - 되돌리기
+
+extension BackupDocument {
+
+    /// 파일에서 읽는다. 형식이 다르면 `nil`.
+    static func decode(_ data: Data) -> BackupDocument? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(BackupDocument.self, from: data)
+    }
+
+    /// **이 기기의 기록을 백업 파일로 갈아 끼운다** (docs/08-feedback.md 40번).
+    ///
+    /// 내보내기만 있고 되돌리기가 없었다. 그런데 구성원 하나를 잘못 지우면
+    /// 계좌·종목·적어 온 평가액이 cascade 로 함께 사라지고, **iCloud 는 그
+    /// 삭제까지 동기화한다** — 거울이지 백업이 아니다. 변경 이력(29번)은
+    /// 무엇이 사라졌는지 적기만 하고 되돌리지 못한다.
+    ///
+    /// **합치지 않고 통째로 바꾼다.** 합치면 같은 것이 두 벌이 되거나 어느 쪽이
+    /// 최신인지 판단해야 하는데, 그 판단을 앱이 대신하면 조용히 틀린 값이 남는다.
+    /// 지우고 넣는 것은 무슨 일이 일어났는지 사람이 정확히 안다.
+    ///
+    /// UUID 를 그대로 살려 넣으므로 되돌린 뒤에도 스냅샷의 구성원별 줄이
+    /// 같은 사람을 가리킨다.
+    @MainActor
+    static func restore(_ document: BackupDocument, into context: ModelContext) {
+        // 1) 비운다. 관계로 딸려 가는 것까지 확실히 하려고 전부 명시한다.
+        deleteAll(Member.self, in: context)
+        deleteAll(Account.self, in: context)
+        deleteAll(Holding.self, in: context)
+        deleteAll(Snapshot.self, in: context)
+        deleteAll(SnapshotLine.self, in: context)
+        deleteAll(ReviewSession.self, in: context)
+        deleteAll(Plan.self, in: context)
+        deleteAll(CashEvent.self, in: context)
+        deleteAll(IncomeStream.self, in: context)
+        deleteAll(UserMilestone.self, in: context)
+        deleteAll(TodoItem.self, in: context)
+        deleteAll(Scenario.self, in: context)
+        deleteAll(Principle.self, in: context)
+        deleteAll(ChangeLog.self, in: context)
+        deleteAll(FamilyTarget.self, in: context)
+
+        // 2) 채운다.
+        if let data = document.plan { insert(plan: data, into: context) }
+
+        for memberData in document.members {
+            let member = Member(name: memberData.name, roleNote: memberData.roleNote,
+                                birthYear: memberData.birthYear,
+                                birthMonth: memberData.birthMonth,
+                                taxResidency: TaxResidency(rawValue: memberData.taxResidency) ?? .korea,
+                                targetRetirementAge: memberData.targetRetirementAge,
+                                colorIndex: memberData.colorIndex,
+                                sortIndex: memberData.sortIndex)
+            member.id = memberData.id
+            member.monthlyContributionMinor = memberData.monthlyContributionMinor
+            member.employerMatchMinor = memberData.employerMatchMinor
+            member.note = memberData.note
+            member.createdAt = memberData.createdAt
+            context.insert(member)
+
+            for accountData in memberData.accounts {
+                let account = Account(name: accountData.name,
+                                      institution: accountData.institution,
+                                      kind: AccountKind(rawValue: accountData.kind) ?? .general,
+                                      owner: member, sortIndex: accountData.sortIndex)
+                account.id = accountData.id
+                account.isArchived = accountData.isArchived
+                account.annualContributionMinor = accountData.annualContributionMinor
+                account.annualLimitMinor = accountData.annualLimitMinor
+                account.expectedReturnBP = accountData.expectedReturnBP
+                account.maturesOn = accountData.maturesOn
+                account.createdAt = accountData.createdAt
+                context.insert(account)
+
+                for holdingData in accountData.holdings {
+                    let holding = Holding(
+                        name: holdingData.name,
+                        assetClass: AssetClass(rawValue: holdingData.assetClass) ?? .equity,
+                        instrumentType: InstrumentType(rawValue: holdingData.instrumentType) ?? .etf,
+                        listingCountryCode: holdingData.listingCountryCode,
+                        status: HoldingStatus(rawValue: holdingData.status) ?? .accumulating,
+                        cadence: EntryCadence(rawValue: holdingData.cadence) ?? .weekly,
+                        valueMinor: holdingData.valueMinor,
+                        account: account,
+                        sortIndex: holdingData.sortIndex
+                    )
+                    holding.id = holdingData.id
+                    holding.lastEnteredValueMinor = holdingData.lastEnteredValueMinor
+                    holding.lastEnteredAt = holdingData.lastEnteredAt
+                    holding.note = holdingData.note
+                    holding.targetWeightBP = holdingData.targetWeightBP
+                    holding.createdAt = holdingData.createdAt
+                    context.insert(holding)
+                }
+            }
+        }
+
+        for data in document.cashEvents {
+            let event = CashEvent(date: data.date, label: data.label,
+                                  amountMinor: data.amountMinor, sortIndex: data.sortIndex)
+            event.id = data.id
+            event.isAlreadyReflected = data.isAlreadyReflected
+            event.note = data.note
+            context.insert(event)
+        }
+
+        for data in document.incomes {
+            let income = IncomeStream(label: data.label,
+                                      monthlyAmountMinor: data.monthlyAmountMinor,
+                                      startYear: data.startYear, sortIndex: data.sortIndex)
+            income.id = data.id
+            income.endYear = data.endYear
+            income.isInflationLinked = data.isInflationLinked
+            context.insert(income)
+        }
+
+        for data in document.milestones {
+            let milestone = UserMilestone(year: data.year, label: data.label,
+                                          sortIndex: data.sortIndex, memberID: data.memberID)
+            milestone.id = data.id
+            milestone.note = data.note
+            context.insert(milestone)
+        }
+
+        for data in document.todos {
+            let todo = TodoItem(title: data.title,
+                                category: TodoCategory(rawValue: data.category) ?? .note,
+                                sortIndex: data.sortIndex)
+            todo.id = data.id
+            todo.detail = data.detail
+            todo.dueDate = data.dueDate
+            todo.isDone = data.isDone
+            todo.repeatsYearly = data.repeatsYearly
+            todo.completedAt = data.completedAt
+            todo.createdAt = data.createdAt
+            context.insert(todo)
+        }
+
+        for data in document.scenarios {
+            let scenario = Scenario(name: data.name, monthlyMinor: data.monthlyMinor,
+                                    retirementYear: data.retirementYear,
+                                    returnBP: data.returnBP, volatilityBP: data.volatilityBP,
+                                    projectedMinor: data.projectedMinor)
+            scenario.id = data.id
+            scenario.createdAt = data.createdAt
+            context.insert(scenario)
+        }
+
+        for data in document.reviewSessions {
+            let session = ReviewSession(weekAnchor: data.weekAnchor, totalCount: data.totalCount)
+            session.id = data.id
+            session.startedAt = data.startedAt
+            session.completedAt = data.completedAt
+            session.enteredCount = data.enteredCount
+            session.isTotalOnly = data.isTotalOnly
+            session.totalValueMinor = data.totalValueMinor
+            session.previousTotalValueMinor = data.previousTotalValueMinor
+            context.insert(session)
+        }
+
+        for data in document.snapshots {
+            let snapshot = Snapshot(weekAnchor: data.weekAnchor,
+                                    netWorthMinor: data.netWorthMinor,
+                                    investableMinor: data.investableMinor,
+                                    liabilitiesMinor: data.liabilitiesMinor)
+            snapshot.id = data.id
+            context.insert(snapshot)
+            for lineData in data.lines {
+                let line = SnapshotLine(memberID: lineData.memberID,
+                                        memberName: lineData.memberName,
+                                        valueMinor: lineData.valueMinor,
+                                        sortIndex: lineData.sortIndex)
+                line.id = lineData.id
+                line.snapshot = snapshot
+                context.insert(line)
+            }
+        }
+
+        for data in document.principles {
+            let principle = Principle(order: data.order, title: data.title, detail: data.detail)
+            principle.id = data.id
+            principle.reviewNote = data.reviewNote
+            principle.createdAt = data.createdAt
+            context.insert(principle)
+        }
+
+        for data in document.changeLog {
+            let log = ChangeLog(kind: ChangeKind(rawValue: data.kind) ?? .other,
+                                subject: data.subject, summary: data.summary, actor: data.actor)
+            log.id = data.id
+            log.at = data.at
+            context.insert(log)
+        }
+
+        for data in document.familyTargets {
+            let target = FamilyTarget(dimension: FamilyTarget.Dimension(rawValue: data.dimension) ?? .region,
+                                      key: data.key, targetBP: data.targetBP)
+            target.id = data.id
+            context.insert(target)
+        }
+
+        try? context.save()
+
+        // 되돌린 것 자체를 이력에 남긴다. 다음에 "왜 이 값이지?" 를 볼 때
+        // 이 한 줄이 답이 된다.
+        ChangeLogger.record(.other, subject: "백업 되돌리기",
+                            summary: "\(document.suggestedFileName) 으로 되돌렸습니다",
+                            in: context)
+        try? context.save()
+    }
+
+    @MainActor
+    private static func deleteAll<T: PersistentModel>(_ type: T.Type, in context: ModelContext) {
+        let items = (try? context.fetch(FetchDescriptor<T>())) ?? []
+        for item in items { context.delete(item) }
+    }
+
+    @MainActor
+    private static func insert(plan data: PlanData, into context: ModelContext) {
+        let plan = Plan()
+        plan.id = data.id
+        plan.title = data.title
+        plan.startedOn = data.startedOn
+        plan.asOfNote = data.asOfNote
+        plan.declaration = data.declaration
+        plan.startYear = data.startYear
+        plan.retirementYear = data.retirementYear
+        plan.horizonYear = data.horizonYear
+        plan.monthlyContributionMinor = data.monthlyContributionMinor
+        plan.contributionGrowthBP = data.contributionGrowthBP
+        plan.annualReturnBP = data.annualReturnBP
+        plan.inflationBP = data.inflationBP
+        plan.lowYieldReturnBP = data.lowYieldReturnBP
+        plan.realEstateReturnBP = data.realEstateReturnBP
+        plan.targetAmountMinor = data.targetAmountMinor
+        plan.monthlySpendingMinor = data.monthlySpendingMinor
+        plan.withdrawalRateBP = data.withdrawalRateBP
+        plan.monthlyIncomeMinor = data.monthlyIncomeMinor
+        plan.savingsFloorBP = data.savingsFloorBP
+        plan.illiquidCapBP = data.illiquidCapBP
+        plan.usTargetBP = data.usTargetBP
+        plan.mixToleranceBP = data.mixToleranceBP
+        plan.usesMemberContributions = data.usesMemberContributions
+        plan.driftToleranceBP = data.driftToleranceBP
+        plan.driftRelativeBP = data.driftRelativeBP
+        plan.createdAt = data.createdAt
+        plan.updatedAt = data.updatedAt
+        context.insert(plan)
     }
 }

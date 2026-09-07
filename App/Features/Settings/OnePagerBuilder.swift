@@ -40,6 +40,7 @@ enum OnePagerBuilder {
             title: plan?.title ?? "우리 가족 노후자금 준비",
             asOfNote: plan?.asOfNote ?? "",
             startedOn: plan?.startedOn,
+            startYear: plan?.startYear ?? calendar.component(.year, from: today),
             retirementYear: plan?.retirementYear ?? calendar.component(.year, from: today) + 23,
             declaration: plan?.declaration ?? "",
             rollup: rollup,
@@ -110,7 +111,9 @@ enum OnePagerBuilder {
             let projection = Projection.run(
                 ProjectionInput(
                     startDate: now,
-                    endDate: Plan.endDate(retirementYear: plan.retirementYear,
+                    // **그 사람의 은퇴 해까지만 적립한다** (38번).
+                    // 구성원 궤적 화면과 같은 값을 쓴다.
+                    endDate: Plan.endDate(retirementYear: member.retirementYear,
                                           notBefore: now, calendar: calendar),
                     buckets: plan.buckets(of: [member], total: balance),
                     monthlyContribution: Money(

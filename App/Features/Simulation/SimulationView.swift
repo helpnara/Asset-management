@@ -141,7 +141,7 @@ struct SimulationView: View {
                                              notBefore: Calendar.current.startOfDay(for: .now)),
                 depletion: outcome?.depletionDate
             )
-            legend(plan, changed: changed)
+            legend(plan, knobs: knobs, changed: changed)
             if plan.targetAmountMinor > 0 {
                 Divider().overlay(Color.rule).padding(.vertical, 2)
                 successGauge
@@ -159,7 +159,7 @@ struct SimulationView: View {
         return changed ? series : series.filter { $0.kind != .plan }
     }
 
-    private func legend(_ plan: Plan, changed: Bool) -> some View {
+    private func legend(_ plan: Plan, knobs: Knobs, changed: Bool) -> some View {
         // **네 시나리오를 색으로 가른다** (docs/08-feedback.md 34·35번).
         // 예전에는 밴드 하나에 `물가만큼만 ~ 연 20%` 라고만 적어서, 어느 선이
         // 어느 가정인지 알 수 없었다 — 게다가 그 세 선의 금액이 실제로 같았다.
@@ -172,6 +172,9 @@ struct SimulationView: View {
                     }
                 }
                 Spacer(minLength: 4)
+                Text(verbatim: "│ 은퇴 \(knobs.retirementYear)")
+                    .font(.figure(9.5))
+                    .foregroundStyle(Color.muted)
                 if plan.targetAmountMinor > 0 {
                     Text("목표 " + Won.compact(plan.targetAmount))
                         .font(.figure(9.5))

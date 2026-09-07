@@ -22,7 +22,9 @@ struct TodoListView: View {
 
     var body: some View {
         List {
-            if open.isEmpty && done.isEmpty {
+            // 만기 줄이 떠 있는데 "아직 적어 둔 것이 없습니다" 가 함께 나오면
+            // 화면이 두 말을 한다 (docs/08-feedback.md 45번).
+            if open.isEmpty && done.isEmpty && upcomingMaturities.isEmpty {
                 Section {
                     Text("아직 적어 둔 것이 없습니다. 오른쪽 위 + 로 추가하세요.\n\"연금저축 5월까지 채우기\" 처럼 숫자로 판정할 수 없는 것들을 여기 둡니다.")
                         .font(.system(size: 12.5))

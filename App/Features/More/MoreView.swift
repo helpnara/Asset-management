@@ -121,6 +121,7 @@ struct MoreView: View {
         if arguments.contains("-startPrinciples") { return [.principles] }
         // 1페이지는 내보내기 화면 안에 있다. 뒤로 가기가 자연스럽도록 둘 다 쌓는다.
         if arguments.contains("-startOnePager") { return [.export, .onePagerPreview] }
+        if arguments.contains("-startExport") { return [.export] }
         if arguments.contains("-startChangeLog") { return [.changeLog] }
         return []
     }

@@ -62,6 +62,13 @@ final class Plan {
     var driftToleranceBP: Int = 300
     /// 목표 비중 허용 오차 — 상대(목표 대비). 기본 25%.
     /// 목표가 작은 종목에 절대값만 쓰면 영영 안 걸린다.
+    /// ⚠️ **쓰지 않는다** (docs/08-feedback.md 38번).
+    ///
+    /// 20번에서 허용 오차를 퍼센트포인트 하나로 단순화하면서 상대 오차를
+    /// 걷어냈다. 그런데 **지우지 않고 남겨 둔다** — CloudKit Production
+    /// 스키마는 필드를 지울 수 없고(더하기만 된다), 모델에서만 지우면 저장소
+    /// 마이그레이션 위험까지 진다. 안 쓰는 정수 하나가 남는 값은 0에 가깝다.
+    /// 다음에 스키마를 크게 손볼 일이 있으면 그때 함께 뺀다.
     var driftRelativeBP: Int = 2_500
 
     /// 월 적립을 구성원별로 나눠 넣는가. 켜면 Member 의 몫을 합해서 쓴다.
@@ -293,9 +300,13 @@ extension Plan {
         cashEvents: [CashEvent] = [],
         incomes: [IncomeStream] = [],
         members: [Member] = [],
+        asOf: Date? = nil,
         calendar: Calendar = .current
     ) -> ProjectionInput {
-        let now = calendar.startOfDay(for: .now)
+        // `asOf` 는 **계획선**이 쓴다 (docs/08-feedback.md 37번) — 계획을 세운
+        // 날에서 출발해 굴려야 "그때 계획대로면 지금쯤 여기" 가 나온다.
+        // 비워 두면 오늘이다.
+        let now = calendar.startOfDay(for: asOf ?? .now)
         let retirement = Plan.endDate(retirementYear: retirementYear, notBefore: now, calendar: calendar)
         // 은퇴 후 생활비를 넣지 않았으면 은퇴 시점에서 멈춘다. 인출을 가정하지
         // 않는 궤적에 20년을 더 그려 봐야 그냥 계속 오르는 선일 뿐이다.

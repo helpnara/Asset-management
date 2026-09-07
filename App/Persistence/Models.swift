@@ -160,6 +160,18 @@ extension Member {
         return (year - birthYear) - (month < birthMonth ? 1 : 0)
     }
 
+    /// 이 사람이 은퇴하는 해 (docs/08-feedback.md 38번).
+    ///
+    /// `targetRetirementAge` 를 입력받아 놓고 **계산에 한 번도 안 썼다.**
+    /// 은퇴 시점이 계획의 값 하나뿐이라, 부부의 은퇴 시기가 다른데도 궤적은
+    /// 그것을 몰랐다. 구성원 궤적과 1페이지 미니 차트가 이 값을 쓴다.
+    ///
+    /// 이미 지난 나이를 적어 두었으면 올해로 본다 — 과거로 은퇴시킬 수는 없다.
+    var retirementYear: Int {
+        let thisYear = Calendar.current.component(.year, from: .now)
+        return max(birthYear + targetRetirementAge, thisYear)
+    }
+
     var sortedAccounts: [Account] {
         (accounts ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
     }
