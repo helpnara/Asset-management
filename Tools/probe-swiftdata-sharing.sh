@@ -53,7 +53,7 @@ probe() {
 
 probe "ModelConfiguration(cloudKitDatabase: .private(...))" '
 import SwiftData
-@Model final class T { var a: Int = 0 }
+@Model final class T { var a: Int = 0; init() {} }
 func f() throws {
   _ = ModelConfiguration(cloudKitDatabase: .private("iCloud.com.helpnara.slowrich"))
 }'
@@ -76,7 +76,7 @@ func f() {
 probe "★ ModelContainer 에 share(...) 류 메서드" '
 import CloudKit
 import SwiftData
-@Model final class T { var a: Int = 0 }
+@Model final class T { var a: Int = 0; init() {} }
 func f(container: ModelContainer, model: T) async throws {
   _ = try await container.share([model], to: nil)
 }'
@@ -84,7 +84,7 @@ func f(container: ModelContainer, model: T) async throws {
 probe "★ ModelContext 에 share(...) 류 메서드" '
 import CloudKit
 import SwiftData
-@Model final class T { var a: Int = 0 }
+@Model final class T { var a: Int = 0; init() {} }
 func f(context: ModelContext, model: T) async throws {
   _ = try await context.share([model], to: nil)
 }'

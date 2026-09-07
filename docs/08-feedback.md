@@ -1507,10 +1507,64 @@ iCloud 계정  연결됨            ← 로그인돼 있나
 
 ## 착수 전에 확인할 것 둘
 
-**1. SwiftData 가 `CKShare` 를 지원하나.** Core Data 에는
-`NSPersistentCloudKitContainer.share(_:to:)` 가 있지만 SwiftData 에 대응 API 가
-있는지 확증하지 못했다. **없으면 ADR-0001(SwiftData 채택)을 다시 봐야 하는
-큰 문제**라, 설계보다 이것을 먼저 CI 로 찔러 본다.
+**1. SwiftData 가 `CKShare` 를 지원하나 — ❌ 답: 안 한다 (2026-09-07 확인).**
+
+CI 의 macOS 러너에서 SDK 에 직접 물었다 (`Tools/probe-swiftdata-sharing.sh`,
+Xcode 26.6 · iOS 26.5 SDK · Swift 6.3.3). **컴파일러를 심판으로 썼다.**
+
+SwiftData 의 `.swiftinterface` 를 꺼내 보니 `CloudKitDatabase` 에 있는 것은
+셋뿐이다.
+
+```swift
+public struct CloudKitDatabase {
+  public static var automatic: CloudKitDatabase
+  public static var none: CloudKitDatabase
+  public static func `private`(_ privateDBName: String) -> CloudKitDatabase
+}
+```
+
+**`.shared` 가 없다.** 타입검사도 같은 말을 한다.
+
+```
+error: type 'ModelConfiguration.CloudKitDatabase' has no member 'shared'
+error: value of type 'ModelContainer' has no member 'share'
+error: value of type 'ModelContext' has no member 'share'
+```
+
+SwiftData 인터페이스 전체에서 `CKShare` · `sharedCloudDatabase` · `func share`
+가 **한 줄도 안 나온다.** 즉 **SwiftData 는 private 데이터베이스만 연다.**
+
+물러설 곳은 둘 다 살아 있다.
+
+| | |
+|---|---|
+| ✅ `NSPersistentCloudKitContainer.share(_:to:)` | Core Data 쪽은 정식 지원 |
+| ✅ `NSPersistentCloudKitContainerOptions(databaseScope: .shared)` | 공유 DB 를 연다 |
+| ✅ raw CloudKit (`CKShare` · `sharedCloudDatabase` · `CKModifyRecordsOperation`) | 언제나 된다 |
+
+참고 구현(`framara/CloudKitSharing`)도 **SwiftData 만으로는 안 되고 raw
+CloudKit 을 병행**한다고 적어 두었다. 우리 조사와 일치한다.
+
+**그래서 4차는 "SwiftData 에 공유를 켠다" 가 아니다.** 길을 골라야 하고,
+[ADR-0001](adr/0001-swiftdata-cloudkit.md) 을 다시 볼 수도 있다 — 아래.
+
+#### 4차의 길 셋 (사용자 결정 필요)
+
+| | 무엇 | 값 | 위험 |
+|---|---|---|---|
+| **A. raw CloudKit 공유 계층을 따로** | SwiftData 는 그대로 두고, 공유용 커스텀 존에 레코드를 손으로 미러링 | 큼 | **진실의 원천이 둘**이 된다. 동기화·충돌을 직접 짠다 |
+| **B. Core Data 로 옮긴다** | `NSPersistentCloudKitContainer` 로 저장 계층을 바꾼다 | 큼 | ADR-0001 뒤집기. 다만 **CloudKit 쪽은 안 바뀐다** — 이미 `CD_` 형식이다 |
+| **C. 공유를 안 한다** | 1페이지 PDF·JSON 으로 대신 | 작음 | 요청("아내가 직접 쓴다")을 못 채운다 |
+
+**B 를 눈여겨볼 만하다.** SwiftData 는 속으로 Core Data 를 쓰므로 저장 형식도
+CloudKit 스키마도 이미 Core Data 것이다 (3차에서 올린 `CD_` 레코드 타입이
+그 증거다). 클라우드 쪽은 손댈 것이 없고, 바뀌는 것은 앱 안의 코드다.
+`Core` 패키지는 순수 Swift 라 영향이 없다 (ADR-0002 가 값한 자리다).
+
+A 는 "진실의 원천이 둘" 이라는 값을 계속 치러야 한다. 이 앱은 **기록이 조용히
+사라지는 것**을 가장 경계하는데, 미러링 계층은 정확히 그 위험을 만든다.
+
+**지금 정하지 않아도 된다.** 3-1차를 하는 동안 B 의 실제 비용을 재 볼 수 있다.
 
 **2. 보기 전용 상태가 쓸 만한가.** 지금 화면은 전부 "고칠 수 있는 사람" 을
 전제로 만들어져 있다. 편집·삭제·추가 버튼이 곳곳에 있고, 주간 점검은 값을
