@@ -536,3 +536,44 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 
 가족끼리 쓰는 동안은 TestFlight로 충분합니다.
 누구나 다운로드할 수 있게 하려면 → [7. App Store 출시](07-app-store.md)
+
+---
+
+## 인증서가 꽉 찼습니다 (2026-09-07, 빌드 20에서 처음 만남)
+
+아카이브 단계에서 이렇게 멈춥니다.
+
+```
+error: Choose a certificate to revoke. Your account has reached the maximum
+       number of certificates. To create a new one, you must choose a
+       certificate to revoke.
+error: No profiles for 'com.helpnara.slowrich' were found
+```
+
+**코드 문제가 아닙니다.** GitHub 러너는 빌드마다 새 기계라 키체인이 비어 있고,
+자동 서명이 그때마다 **Apple Development 인증서를 새로 발급**받습니다.
+애플은 계정당 개발용 인증서 개수를 제한하므로 몇 번 돌리면 한도에 닿습니다.
+
+### 고치는 법 — 오래된 인증서를 폐기합니다
+
+1. [developer.apple.com/account/resources/certificates](https://developer.apple.com/account/resources/certificates)
+2. **Apple Development** 로 걸러 목록을 봅니다 — `Created by Xcode` 가 여럿 보입니다
+3. 최근 것 하나만 남기고 나머지를 골라 **Revoke**
+4. `Actions → TestFlight 배포` 를 다시 실행합니다
+
+**배포용(Apple Distribution) 인증서는 건드리지 마세요.** 폐기해도 앱이 죽지는
+않지만(이미 서명된 빌드는 그대로 동작합니다) 다시 만들어야 합니다.
+
+### 왜 자동으로 해결하지 않나
+
+셋 다 막다른 길이었습니다.
+
+| 시도 | 결과 |
+|---|---|
+| `CODE_SIGNING_ALLOWED=NO` 로 서명 없이 아카이브 | entitlements 가 앱에 안 박힌다 (iCloud 가 통째로 빠졌다) |
+| `CODE_SIGN_IDENTITY` 를 배포용으로 강제 | 자동 서명과 충돌로 거부 |
+| 애드혹 서명 | SDK 가 허용하지 않는다 |
+
+인증서를 저장소 시크릿에 담아 재사용하는 길(`fastlane match` 같은)이 있지만,
+서명 키를 저장소에 두는 값이 지금 얻는 것보다 큽니다. **몇 달에 한 번 폐기**
+하는 쪽이 싸다고 봅니다.

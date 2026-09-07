@@ -152,7 +152,9 @@ jobs:
             CODE_SIGN_STYLE=Automatic \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             || {
-              echo "::error::아카이브 실패. 'no devices from which to generate a provisioning profile' 라면 자동 서명이 개발용 프로파일을 요구하는 것입니다 — docs/06-testflight.md 의 '기기 등록' 절을 보세요."
+              echo "::error::아카이브 실패. 로그 위쪽의 error: 줄을 먼저 보세요."
+              echo "::error::'maximum number of certificates' → 계정의 인증서가 꽉 찼습니다. CI 는 러너가 매번 새 기계라 빌드마다 Apple Development 인증서를 새로 발급받고, 그게 쌓여 한도를 넘습니다. developer.apple.com → Certificates 에서 오래된 Apple Development 를 폐기하세요 (docs/06-testflight.md '인증서가 꽉 찼습니다')."
+              echo "::error::'no devices from which to generate a provisioning profile' → 팀에 기기가 하나도 없습니다 — 같은 문서의 '기기 등록' 절."
               exit 1
             }
 
