@@ -101,7 +101,7 @@ struct MilestoneEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(milestone.title.isEmpty ? "이 마일스톤" : milestone.title) 을(를) 삭제할까요?",
+                    DeleteButton("\(milestone.label.isEmpty ? "이 마일스톤" : milestone.label) 을(를) 삭제할까요?",
                                  consequence: "되돌릴 수 없습니다.") {
                         context.delete(milestone)
                         dismiss()

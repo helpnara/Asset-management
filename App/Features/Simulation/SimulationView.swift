@@ -415,7 +415,7 @@ struct SimulationView: View {
                 .font(.figure(12.5, weight: .medium))
                 .foregroundStyle(Color.ink)
 
-            DeleteButton(title: "\(scenario.title.isEmpty ? "이 시나리오" : scenario.title) 을(를) 삭제할까요?",
+            DeleteButton(title: "\(scenario.name.isEmpty ? "이 시나리오" : scenario.name) 을(를) 삭제할까요?",
                          consequence: "저장해 둔 가정이 사라집니다. 되돌릴 수 없습니다.") {
                 modelContext.delete(scenario)
             } label: {

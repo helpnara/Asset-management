@@ -44,7 +44,7 @@ struct CashEventEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(event.title.isEmpty ? "이 이벤트" : event.title) 을(를) 삭제할까요?",
+                    DeleteButton("\(event.label.isEmpty ? "이 이벤트" : event.label) 을(를) 삭제할까요?",
                                  consequence: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") {
                         context.delete(event)
                         dismiss()
