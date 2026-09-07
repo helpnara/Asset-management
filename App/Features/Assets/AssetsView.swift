@@ -228,7 +228,7 @@ struct AssetsView: View {
                 } else if !account.kind.countsAsInvestable {
                     StatusBadge(text: "투자자산 제외")
                 }
-                if account.canSetTargets && account.targetSumBP != 10_000 {
+                if account.hasIncompleteTargets {
                     StatusBadge(text: "목표 미완",
                                 foreground: .loss,
                                 background: Color.lossSoft)

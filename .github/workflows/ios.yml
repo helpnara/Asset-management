@@ -168,13 +168,37 @@ jobs:
 
           # 앱을 켜기만 하면 빈 화면밖에 못 본다.
           # 가상 데이터를 시드하고 탭을 지정해 화면마다 한 장씩 찍는다.
+          # 한 번 찍고 끝내면 안 된다. 실제로 이런 일이 있었다:
+          #  · 앱이 안 떠서 **홈 화면**이 찍혔다 (04-review, 3.1MB)
+          #  · 아직 안 그려져서 **흰 화면**이 찍혔다 (06-plan · 07-simulation · 13-principles)
+          # 원격 세션에서는 이 그림이 앱을 확인하는 유일한 창구라, 못 찍은 것보다
+          # **못 찍은 줄 모르는 것**이 훨씬 나쁘다. 그래서 두 가지를 확인하고
+          # 아니면 다시 찍는다.
           shoot() {
             local file="$1"; shift
-            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
-            xcrun simctl launch "$UDID" "$BUNDLE" "$@"
-            sleep 5
-            xcrun simctl io "$UDID" screenshot "screenshots/$file"
-            echo "찍음: $file ($*)"
+            local attempt pid size
+            for attempt in 1 2 3; do
+              xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+              pid=$(xcrun simctl launch "$UDID" "$BUNDLE" "$@" | awk '{print $NF}')
+              sleep 7
+              # (1) 앱이 살아 있나. 시뮬레이터 앱은 호스트의 프로세스라 여기서 보인다.
+              if ! kill -0 "$pid" 2>/dev/null; then
+                echo "  앱이 떠 있지 않습니다 (pid $pid). 다시 ($attempt/3)"
+                sleep 3
+                continue
+              fi
+              xcrun simctl io "$UDID" screenshot "screenshots/$file"
+              # (2) 아직 안 그려진 화면은 단색이라 PNG 가 유난히 작다.
+              #     제일 단순한 실제 화면(01-empty)도 15만 바이트가 넘는다.
+              size=$(stat -f%z "screenshots/$file")
+              if [ "$size" -ge 120000 ]; then
+                echo "찍음: $file ($*)"
+                return 0
+              fi
+              echo "  빈 화면 같습니다 ($size 바이트). 다시 ($attempt/3)"
+              sleep 3
+            done
+            echo "::warning::$file — 세 번 찍었지만 화면이 비어 있습니다"
           }
 
           # 환영 화면은 첫 실행에만 뜬다. 나머지 장면은 -skipOnboarding 으로 건너뛴다.

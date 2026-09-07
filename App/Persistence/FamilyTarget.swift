@@ -87,8 +87,18 @@ extension Account {
     /// 100%가 되는 것이 이 층의 규칙이다. 아니면 화면이 눈에 띄게 적는다.
     var targetSumBP: Int { Allocation.targetSumBP(allocationEntries) }
 
-    /// 목표를 세울 준비가 됐나 (종목이 하나라도 있나).
+    /// 목표 비중 화면을 열 수 있나.
     var canSetTargets: Bool { !weightedHoldings.isEmpty && !kind.isLiability }
+
+    /// 목표를 **세워야 하나.**
+    ///
+    /// 종목이 하나뿐인 계좌는 자동으로 100%라 세울 것이 없다 — 전세보증금·
+    /// 연금보험·IRP 처럼 한 칸짜리 계좌에까지 `목표 미완` 을 달면 영영 지워지지
+    /// 않는 빨간 배지가 된다. 나중에 종목을 더 담으면 그때 배지가 뜬다.
+    var needsTargets: Bool { weightedHoldings.count > 1 && !kind.isLiability && !isArchived }
+
+    /// 목표를 세워야 하는데 합이 100%가 아닌가.
+    var hasIncompleteTargets: Bool { needsTargets && targetSumBP != 10_000 }
 }
 
 extension Holding {
@@ -137,8 +147,14 @@ extension Member {
     var investableHoldingCount: Int { investableHoldings.count }
 
     /// 목표를 아직 안 정한 종목 수. **이것도 알림거리다.**
+    ///
+    /// 종목이 하나뿐인 계좌는 세지 않는다 — 자동으로 100%라 정할 것이 없다.
     var untargetedHoldingCount: Int {
-        investableHoldings.filter { $0.targetWeightBP == nil }.count
+        sortedAccounts
+            .filter(\.needsTargets)
+            .flatMap(\.weightedHoldings)
+            .filter { $0.targetWeightBP == nil }
+            .count
     }
 
     /// 목표에서 벗어난 종목 수. 계좌마다 따로 세어 더한다.
@@ -153,7 +169,7 @@ extension Member {
 
     /// 종목 목표 합이 100%가 아닌 계좌들. 그 자체로 "아직 안 세운 계좌" 다.
     var accountsWithIncompleteTargets: [Account] {
-        sortedAccounts.filter { $0.canSetTargets && !$0.isArchived && $0.targetSumBP != 10_000 }
+        sortedAccounts.filter(\.hasIncompleteTargets)
     }
 }
 

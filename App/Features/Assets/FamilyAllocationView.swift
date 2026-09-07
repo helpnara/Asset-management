@@ -74,7 +74,7 @@ struct FamilyAllocationView: View {
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.bodyText)
                     Spacer(minLength: 6)
-                    WeightLabel(slice: slice)
+                    WeightLabel(slice: slice, hidesNoTarget: true)
                     Stepper("", value: binding(dimension, key: key(for: slice, in: dimension)),
                             in: 0...10_000, step: 250)
                         .labelsHidden()

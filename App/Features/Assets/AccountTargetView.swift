@@ -14,6 +14,7 @@ struct AccountTargetView: View {
     let account: Account
 
     @Query private var plans: [Plan]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
 
     private var tolerance: Allocation.Tolerance {
         plans.first?.driftTolerance ?? Allocation.Tolerance()
@@ -39,7 +40,7 @@ struct AccountTargetView: View {
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer(minLength: 6)
-                        if let slice { WeightLabel(slice: slice) }
+                        if let slice { WeightLabel(slice: slice, hidesNoTarget: true) }
                         Stepper("", value: Binding(
                             get: { holding.targetWeightBP ?? 0 },
                             set: { holding.targetWeightBP = $0 }
@@ -89,6 +90,20 @@ struct AccountTargetView: View {
         }
     }
 
+    /// 이 사람 몫의 월 적립.
+    ///
+    /// 구성원별로 나눠 적지 않았으면 (그게 기본값이다) `Member` 쪽이 0이라
+    /// 제안이 **영영 안 뜬다.** 그때는 계획의 총 적립을 가족 자산 비중으로
+    /// 나눠 이 사람 몫을 어림한다.
+    private func ownerMonthlyContribution(_ owner: Member) -> Int {
+        let own = owner.monthlyContributionMinor + owner.employerMatchMinor
+        if own > 0 { return own }
+        guard let plan = plans.first, plan.monthlyContributionMinor > 0 else { return 0 }
+        let familyTotal = members.reduce(0) { $0 + $1.assetTotalMinor }
+        guard familyTotal > 0 else { return 0 }
+        return plan.monthlyContributionMinor * owner.assetTotalMinor / familyTotal
+    }
+
     /// 합계는 늘 보인다. 100%가 아니면 눈에 띄게 적되 막지는 않는다.
     private var targetSum: some View {
         let sum = account.targetSumBP
@@ -106,8 +121,8 @@ struct AccountTargetView: View {
     /// 어림이지만 "어느 쪽에 더 넣어야 하나" 라는 질문에는 충분하다.
     private var splitSuggestion: [(label: String, amount: Money)] {
         guard let owner = account.owner else { return [] }
-        let monthly = owner.monthlyContributionMinor + owner.employerMatchMinor
         let ownerTotal = owner.assetTotalMinor
+        let monthly = ownerMonthlyContribution(owner)
         guard monthly > 0, ownerTotal > 0, account.totalMinor > 0 else { return [] }
         // `Decimals` 는 Core 내부 타입이라 여기서 못 쓴다. 정수로 계산한다 —
         // 원 단위라 나눗셈 한 번의 버림은 1원이고, 어차피 어림잡는 값이다.
@@ -128,6 +143,10 @@ struct WeightLabel: View {
     let slice: Allocation.Slice
     /// 목표가 붙지 않는 층(가족→구성원, 구성원→계좌)에서는 배지를 달지 않는다.
     var showsStatus: Bool = true
+    /// 목표를 **세우는** 화면에서는 `목표 없음` 을 접는다. 머리글의 `목표 합` 이
+    /// 이미 같은 말을 하고 있어서, 줄마다 반복하면 화면이 배지로 뒤덮인다.
+    /// 자산 탭과 주간 점검에서는 그 배지가 유일한 신호라 그대로 둔다.
+    var hidesNoTarget: Bool = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -136,7 +155,9 @@ struct WeightLabel: View {
                 .foregroundStyle(slice.target == nil ? Color.muted : Color.ink)
                 .lineLimit(1)
                 .fixedSize()
-            if showsStatus { DriftBadge(status: slice.status) }
+            if showsStatus, !(hidesNoTarget && slice.status == .noTarget) {
+                DriftBadge(status: slice.status)
+            }
         }
     }
 }
