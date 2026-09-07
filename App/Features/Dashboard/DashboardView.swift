@@ -308,13 +308,15 @@ struct DashboardView: View {
     /// 그 해가 얼마나 먼지, 무엇을 뜻하는지 몸으로 느껴지지 않는다.
     @ViewBuilder
     private var lifeEvents: some View {
-        if !upcomingEvents.isEmpty {
+        // 한 번만 계산해서 나눠 쓴다. 이 값은 궤적 예측을 한 번 돌린다.
+        let events = upcomingEvents
+        if !events.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("인생 이벤트",
-                              trailing: userMilestones.count > upcomingEvents.count
-                                  ? "가까운 \(upcomingEvents.count)개" : "")
+                              trailing: userMilestones.count > events.count
+                                  ? "가까운 \(events.count)개" : "")
                 VStack(spacing: 0) {
-                    ForEach(upcomingEvents, id: \.id) { event in
+                    ForEach(events, id: \.id) { event in
                         lifeEventRow(event)
                     }
                 }
@@ -392,6 +394,8 @@ struct DashboardView: View {
     /// 앞으로 올 것 셋. 지난 것은 적지 않는다 — 현황판은 앞을 보는 화면이다.
     private var upcomingEvents: [LifeEvent] {
         let thisYear = Calendar.current.component(.year, from: .now)
+        // 예측은 한 번만 돌린다. 줄마다 부르면 세 번 돈다.
+        let result = projection
         return userMilestones
             .filter { $0.year >= thisYear }
             .sorted { $0.year < $1.year }
@@ -407,7 +411,7 @@ struct DashboardView: View {
                     ownerName: owner.map { $0.name.isEmpty ? "이름 없음" : $0.name },
                     age: owner.map { max(0, milestone.year - $0.birthYear) },
                     colorIndex: owner?.colorIndex ?? 0,
-                    projected: projection?.point(inYear: milestone.year)?.nominal
+                    projected: result?.point(inYear: milestone.year)?.nominal
                 )
             }
     }
