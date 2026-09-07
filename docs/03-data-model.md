@@ -105,7 +105,7 @@ enum AccountKind: String, Codable, CaseIterable {
     case retirementPension  // 퇴직연금 DB/DC
     case insurance          // 연금보험 (해지환급금 기준)
     case deposit            // 예적금·현금
-    case leaseDeposit       // 전세보증금
+    case leaseDeposit       // 전월세보증금
     case realEstate
     case loan               // 부채
     case other
@@ -163,7 +163,7 @@ enum ValuationMode: String, Codable, CaseIterable {
 enum EntryCadence: String, Codable, CaseIterable {
     case weekly     // 매주 점검 대상
     case monthly    // 월 1회만 (연금보험 해지환급금 등)
-    case fixed      // 값이 잘 안 바뀜 — 점검에서 자동으로 건너뜀 (전세보증금 등)
+    case fixed      // 값이 잘 안 바뀜 — 점검에서 자동으로 건너뜀 (전월세보증금 등)
 }
 ```
 
@@ -252,7 +252,7 @@ enum IncomeKind: String, Codable, CaseIterable {
 final class CashEvent {
     var id: UUID = UUID()
     var date: Date = Date.now
-    var label: String = ""              // "전세보증금 전환", "퇴직금 유입"
+    var label: String = ""              // "전월세보증금 전환", "퇴직금 유입"
     var amountMinor: Int = 0            // 부호로 방향 표현 (+유입 / -유출)
     var destinationAccount: Account?    // 어디로 들어가는가
     var sourceAccount: Account?         // 어디서 빠지는가
