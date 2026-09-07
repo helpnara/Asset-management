@@ -23,10 +23,18 @@ on:
           - validate      # 스키마 파일 문법만 검사 (쓰지 않는다)
           - apply         # Development 에 적용 (Production 아님)
       container:
-        description: "컨테이너 ID (시험용부터 하세요)"
+        description: "컨테이너 ID"
         required: true
-        default: iCloud.com.helpnara.slowrich.schematest
+        # read 는 읽기만 하므로 **진짜 컨테이너**가 기본이다 — 우리가 알고 싶은
+        # 것이 그쪽이기 때문이다. apply 로 쓸 때는 시험용(.schematest)으로
+        # 바꾸세요. 안 바꾸면 아래 잠금장치가 막습니다.
+        default: iCloud.com.helpnara.slowrich
         type: string
+      allow_real:
+        description: "진짜 컨테이너에 apply 하는 것을 확인함 (시험용에서 검증한 뒤에만)"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: cloudkit-schema
@@ -65,6 +73,7 @@ jobs:
           CKTOOL_MGMT_TOKEN: ${{ secrets.CKTOOL_MGMT_TOKEN }}
           CK_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CK_CONTAINER_ID: ${{ inputs.container }}
+          CK_ALLOW_REAL: ${{ inputs.allow_real }}
         run: |
           set -euo pipefail
           case "${{ inputs.action }}" in
@@ -77,10 +86,13 @@ jobs:
               node ck.mjs containers
               echo
               echo "── ${{ inputs.container }} · Development 에 지금 있는 것 ──"
-              node ck.mjs export development || echo "(읽지 못했습니다)"
+              # 403 "User doesn't have access to container or container does not
+              # exist" 는 **컨테이너가 아직 없다**는 뜻일 때가 많다. 위 목록에
+              # 그 이름이 있는지 먼저 보라.
+              node ck.mjs export development || echo "(읽지 못했습니다 — 위 컨테이너 목록에 이 이름이 있는지 보세요)"
               echo
               echo "── ${{ inputs.container }} · Production 에 지금 있는 것 ──"
-              node ck.mjs export production || echo "(읽지 못했습니다)"
+              node ck.mjs export production || echo "(읽지 못했습니다 — 위 컨테이너 목록에 이 이름이 있는지 보세요)"
               ;;
             validate)
               node ck.mjs validate /tmp/slowrich.ckdb
