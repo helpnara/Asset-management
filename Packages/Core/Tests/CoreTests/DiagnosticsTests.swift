@@ -144,13 +144,16 @@ struct DiagnosticsTests {
 
     @Test("비중끼리의 차이는 퍼센트포인트로 쓴다")
     func countryMixUsesPercentagePoints() throws {
-        // 목표 60%, 실제 38.6% 의 간격은 21.4%p 이지 21.4% 가 아니다.
-        // "21.4% 적다" 로 쓰면 "60%의 21.4%" = 12.8%p 로 읽힌다.
+        // 목표 60%, 실제 38.6% 의 간격은 21%p 이지 21% 가 아니다.
+        // "21% 적다" 로 쓰면 "60%의 21%" = 12.6%p 로 읽힌다.
         // 스크린샷을 보고 잡은 자리다.
+        //
+        // 18번에서 비중을 정수로 바꾸면서 `21.4%p` 가 `21%p` 가 됐다.
+        // **이 테스트가 지키는 것은 숫자가 아니라 단위다** — %p 여야 한다.
         let result = Diagnostics.run(input(us: 270_200_000, kr: 429_800_000))   // 미국 38.6%
         let diagnosis = try #require(result.diagnosis(.countryMix))
-        #expect(diagnosis.action.contains("21.4%p"))
-        #expect(!diagnosis.action.contains("21.4% "))
+        #expect(diagnosis.action.contains("21%p"))
+        #expect(!diagnosis.action.contains("21% "))
     }
 
     @Test("게이지의 1.0 은 목표다 — 절대 비중이 아니다")
