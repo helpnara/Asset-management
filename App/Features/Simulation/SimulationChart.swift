@@ -72,6 +72,10 @@ struct SimulationChart: View {
 
     let series: [Series]
     let targetMinor: Int
+    /// 은퇴 시점. **큰 숫자가 가리키는 자리**다 — 차트는 지평선까지 그리므로
+    /// 표시가 없으면 헤드라인의 `2049년 63억` 과 선의 끝값(수백억)이 어긋나
+    /// 보인다.
+    var retirementDate: Date? = nil
     /// 자산이 바닥나는 시점. 있으면 차트가 그것을 말해야 한다 —
     /// 예전에는 선이 아래로 도망갈 뿐 아무 설명이 없었다 (docs/08-feedback.md 3번).
     var depletion: Date? = nil
@@ -113,6 +117,17 @@ struct SimulationChart: View {
                 RuleMark(y: .value("목표", logScale(targetMinor)))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
+            }
+
+            if let retirementDate {
+                RuleMark(x: .value("은퇴", retirementDate))
+                    .foregroundStyle(Color.ruleStrong)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, alignment: .center, spacing: 2) {
+                        Text("은퇴")
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundStyle(Color.muted)
+                    }
             }
 
             if let depletion {

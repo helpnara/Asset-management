@@ -69,7 +69,7 @@ struct SimulationView: View {
         ScrollView {
             VStack(spacing: 14) {
                 headline(plan, current)
-                chartCard(plan, changed: current != Knobs(plan))
+                chartCard(plan, knobs: current, changed: current != Knobs(plan))
                 knobCard(plan, current)
                 spreadCard
                 scenarioCard(current)
@@ -132,11 +132,13 @@ struct SimulationView: View {
 
     // MARK: - 차트
 
-    private func chartCard(_ plan: Plan, changed: Bool) -> some View {
+    private func chartCard(_ plan: Plan, knobs: Knobs, changed: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             SimulationChart(
                 series: visibleSeries(changed: changed),
                 targetMinor: plan.targetAmountMinor,
+                retirementDate: Plan.endDate(retirementYear: knobs.retirementYear,
+                                             notBefore: Calendar.current.startOfDay(for: .now)),
                 depletion: outcome?.depletionDate
             )
             legend(plan, changed: changed)
@@ -169,12 +171,12 @@ struct SimulationView: View {
                                    dashed: !kind.dash.isEmpty)
                     }
                 }
-                Spacer(minLength: 0)
-            }
-            if plan.targetAmountMinor > 0 {
-                Text("목표 " + Won.compact(plan.targetAmount))
-                    .font(.figure(9.5))
-                    .foregroundStyle(Color.muted)
+                Spacer(minLength: 4)
+                if plan.targetAmountMinor > 0 {
+                    Text("목표 " + Won.compact(plan.targetAmount))
+                        .font(.figure(9.5))
+                        .foregroundStyle(Color.muted)
+                }
             }
         }
     }
