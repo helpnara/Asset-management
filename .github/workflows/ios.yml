@@ -29,6 +29,25 @@ jobs:
           xcodebuild -version
           swift --version
 
+      # 모델을 고치면 CloudKit 스키마도 다시 올려야 한다. 안 그러면 **동기화가
+      # 조용히 깨진다** — 새 필드를 Production 이 모르니 밀어 넣기가 실패하는데,
+      # 앱은 로컬에 잘 저장하니 화면은 멀쩡해 보인다.
+      #
+      # 스키마가 Production 에 올라간 뒤로는 이게 진짜 위험이라, 어긋나면 **막는다.**
+      - name: CloudKit 스키마가 모델과 맞는지
+        run: |
+          python3 Tools/cloudkit/generate-ckdb.py > /tmp/slowrich.ckdb
+          if ! diff -u Tools/cloudkit/slowrich.ckdb /tmp/slowrich.ckdb; then
+            echo "::error::모델이 바뀌었는데 CloudKit 스키마 파일이 그대로입니다."
+            echo "1) python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb"
+            echo "2) 커밋하고 푸시"
+            echo "3) Actions → CloudKit 스키마 → apply (allow_real 켜고)"
+            echo "4) CloudKit Console 에서 Deploy Schema Changes"
+            echo "이걸 안 하면 새 필드가 iCloud 에 안 올라가고, 화면에서는 티가 안 납니다."
+            exit 1
+          fi
+          echo "모델과 스키마 파일이 일치합니다."
+
       - name: swift test
         working-directory: Packages/Core
         run: swift test --enable-code-coverage

@@ -113,12 +113,15 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 Development 가 비어 있어 배포할 것이 없다. 앱은 로컬로 정상 동작하지만
 동기화만 조용히 안 붙는다.
 
-**맥이 꼭 필요하지는 않다.** 애플의 `CKTool JS` 는 Node 에서 돌아서 스키마
-텍스트 파일(`.ckdb`)을 Development 에 밀어 넣을 수 있다. Production 으로
-올리는 것만 웹 콘솔의 Deploy 버튼이라 사람이 누른다. 다만 `.ckdb` 를 손으로
-써야 하고 **Production 스키마는 지울 수 없어서**, 진짜 컨테이너에 하기 전에
-시험용 컨테이너로 한 번 확인하는 절차를 거친다
-([docs/06-testflight.md](docs/06-testflight.md#cloudkit-스키마--맥이-없어도-길이-있다)).
+**맥 없이 올렸다 (2026-09-07).** 애플의 `CKTool JS` 는 Node 에서 돌아서
+리눅스 러너로 충분하다. `Actions → CloudKit 스키마` 워크플로가 스키마 파일을
+Development 에 밀어 넣고, Production 승격만 웹 콘솔의 Deploy 버튼을 사람이
+누른다. 앱에서 `더보기 → 동기화 → 마지막 내보내기: 성공` 으로 확인했다.
+
+**`@Model` 을 고치면 스키마를 다시 올려야 한다.** 안 그러면 새 필드가 iCloud 에
+안 올라가는데 화면에서는 티가 안 난다. CI 가 모델과 `Tools/cloudkit/slowrich.ckdb`
+를 대조해 어긋나면 빌드를 막는다. 절차는
+[docs/06-testflight.md](docs/06-testflight.md) 에 있다.
 App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있다.
 
 ## 기억해 둘 것

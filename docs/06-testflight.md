@@ -271,13 +271,46 @@ Your team has no devices from which to generate a provisioning profile
 | 해외 종목을 **원화로 환산해서** 적었는가 | 이 앱의 모든 금액은 원화다. 달러로 적으면 합계가 1,400배 틀린다 |
 | 계획 탭에 은퇴 후 월 생활비를 넣었는가 | 넣어야 인출 구간과 자산 고갈 시점이 그려진다 |
 
-## CloudKit 스키마 — 맥이 없어도 길이 있다
-
-**이 절은 TestFlight 설치가 끝난 뒤 읽어도 됩니다. 앱은 스키마가 없어도
-정상 동작하고 기록도 남습니다. 다만 기기 간 동기화와 재설치 복원이 안 됩니다.**
+## CloudKit 스키마 — ✅ **맥 없이 올렸습니다 (2026-09-07)**
 
 > 예전에 이 문서는 "맥이 한 번 필요하다" 고 단정했습니다. **틀렸습니다.**
-> 맥 없이 가는 길이 둘 있습니다. 아래에 확인한 사실과 함께 적습니다.
+> `CKTool JS` 로 맥 없이 올렸고, 앱에서 **마지막 내보내기: 성공**을 확인했습니다.
+> 기록이 실제로 iCloud 에 저장되고 있습니다.
+
+**한 일:**
+
+1. CloudKit Console 에서 관리 토큰 발급 → 저장소 시크릿 `CKTOOL_MGMT_TOKEN`
+2. `Actions → CloudKit 스키마 → read` — 두 환경이 비어 있는 것을 확인
+3. 같은 워크플로 `apply` (`allow_real` 켜고) — 레코드 타입 15개가 Development 에
+4. CloudKit Console → **Deploy Schema Changes** → Production
+5. 빌드 16 에서 `더보기 → 동기화 → 마지막 내보내기: 성공`
+
+**시험용 컨테이너는 안 거쳤습니다.** 원래 그러려고 했는데 `read` 결과를 보고
+바꿨습니다 — CloudKit 에 데이터가 하나도 없어서, 최악의 경우(타입을 틀려서
+컨테이너를 못 쓰게 됨) 비용이 "새 컨테이너 + 엔타이틀먼트 한 줄 + 재빌드"
+뿐이었습니다. 시험용을 거치면 **항상** 빌드가 두 번인데, 바로 가면 잘 되면
+한 번입니다. 최악이 같고 최선이 다르면 바로 가는 쪽이 낫습니다.
+
+### ⚠️ 모델을 고칠 때마다 다시 올려야 합니다
+
+`@Model` 에 속성을 더하면 **Production 이 그 필드를 모릅니다.** 밀어 넣기가
+실패하는데 앱은 로컬에 잘 저장하니 화면에서는 티가 안 납니다.
+
+CI 가 막아 줍니다 — 모델과 `Tools/cloudkit/slowrich.ckdb` 가 어긋나면 빌드가
+실패합니다. 그때는 이렇게 합니다.
+
+```bash
+python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb
+```
+
+커밋 → `Actions → CloudKit 스키마 → apply` (allow_real 켜기) → Console 에서 Deploy.
+
+**Production 스키마는 더하기만 됩니다.** 필드를 지우거나 타입을 바꿀 수 없으니,
+모델에서 속성을 없애도 CloudKit 쪽에는 남습니다. 안 쓰는 필드는 무해합니다.
+
+---
+
+### 아래는 어떻게 됐는지의 기록입니다
 
 ### 왜 막히나
 
