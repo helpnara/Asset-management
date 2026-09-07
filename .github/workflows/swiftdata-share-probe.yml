@@ -1,0 +1,32 @@
+name: SwiftData 공유 가능성 조사
+
+# 4차(가족 공유) 착수 전에 답이 있어야 하는 질문 하나를 SDK 에 직접 묻는다.
+# 인터넷 자료가 엇갈려서(지원 안 함 vs `.shared` 가 있음) **컴파일러를 심판으로
+# 쓴다.** 원격 세션에는 Xcode 가 없으므로 여기서 돈다.
+#
+# ⚠️ 이 워크플로는 **아무것도 바꾸지 않는다.** 조사 결과를 찍기만 한다.
+
+on:
+  workflow_dispatch:
+  # 조사 스크립트를 고치면 바로 다시 돈다. 다른 푸시에는 안 돈다.
+  push:
+    paths:
+      - "Tools/probe-swiftdata-sharing.sh"
+      - ".github/workflows/swiftdata-share-probe.yml"
+
+jobs:
+  probe:
+    name: SwiftData 가 CKShare 를 지원하나
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 툴체인 확인
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      # 실패해도 결과를 봐야 하므로 막지 않는다.
+      - name: 조사
+        run: bash Tools/probe-swiftdata-sharing.sh
+        continue-on-error: true
