@@ -154,8 +154,11 @@ struct SimulationView: View {
 
     private func legend(_ plan: Plan, changed: Bool) -> some View {
         HStack(spacing: 12) {
-            legendItem(color: Color.dad, label: "예상", dashed: false)
-            legendItem(color: Color.dad.opacity(0.35), label: "10~90%", dashed: false)
+            // 밴드는 이제 확률의 꼬리가 아니라 **수익률 세 가지**다
+            // (docs/08-feedback.md 22번). 범례도 그렇게 말해야 한다 —
+            // `10~90%` 는 몬테카를로를 쓰던 때의 잔재다.
+            legendItem(color: Color.dad, label: "계획대로", dashed: false)
+            legendItem(color: Color.dad.opacity(0.35), label: "물가만큼만 ~ 연 20%", dashed: false)
             if changed {
                 legendItem(color: Color.faint, label: "계획 그대로", dashed: true)
             }

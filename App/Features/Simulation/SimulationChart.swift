@@ -26,7 +26,7 @@ struct SimulationChart: View {
         var id: TimeInterval { date.timeIntervalSince1970 }
     }
 
-    /// 손잡이를 돌린 뒤의 밴드. `mid` 는 변동성을 뺀 예상선이다.
+    /// 세 시나리오. `low` 는 물가만큼만, `mid` 는 계획한 수익률, `high` 는 연 20%.
     let bands: [Band]
     /// 손잡이를 돌리기 전, 계획 그대로의 선. 비교 대상이 없으면 What-if 가 아니다.
     let baseline: [LinePoint]
@@ -54,12 +54,14 @@ struct SimulationChart: View {
     private var chart: some View {
         Chart {
             ForEach(bands) { band in
+                // 위아래는 확률의 꼬리가 아니라 **수익률 시나리오**다 —
+                // 아래는 물가만큼만 벌었을 때, 위는 연 20% (08-feedback 22번).
                 AreaMark(
                     x: .value("시점", band.date),
-                    yStart: .value("하위 10%", logScale(band.low)),
-                    yEnd: .value("상위 10%", logScale(band.high))
+                    yStart: .value("물가만큼만", logScale(band.low)),
+                    yEnd: .value("연 20%", logScale(band.high))
                 )
-                .foregroundStyle(Color.dad.opacity(0.16))
+                .foregroundStyle(Color.dad.opacity(0.20))
                 .interpolationMethod(.monotone)
             }
 
