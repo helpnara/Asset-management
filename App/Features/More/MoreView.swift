@@ -106,6 +106,8 @@ struct MoreView: View {
                 case .security: SecuritySettingsView()
                 case .export: ExportView()
                 case .onePagerSettings: OnePagerSettingsView()
+                case .onePagerPreview: OnePagerPreviewView()
+                case .changeLog: ChangeLogView()
                 }
             }
         }
