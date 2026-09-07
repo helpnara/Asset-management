@@ -661,7 +661,10 @@ struct SimulationOutcome: Sendable {
             paths: monteCarlo.paths,
             depletionYear: deterministic.depletion.map { calendar.component(.year, from: $0) },
             depletionDate: deterministic.depletion,
-            hasDrawdown: adjusted.endDate > adjusted.retirementDate
+            hasDrawdown: adjusted.endDate > adjusted.retirementDate,
+            floorReturnBP: adjusted.inflation.basisPoints,
+            midReturnBP: adjusted.annualReturn.basisPoints,
+            ceilingReturnBP: 2_000
         )
     }
 }
