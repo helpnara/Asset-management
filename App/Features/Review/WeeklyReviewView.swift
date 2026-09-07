@@ -334,6 +334,16 @@ struct WeeklyReviewView: View {
             holding.lastEnteredAt = .now
         }
 
+        // **무엇이 언제 바뀌었나** 를 남긴다 (docs/08-feedback.md 29번).
+        // 주간 점검은 이 앱에서 가장 자주 일어나는 변경이라 첫 줄에 온다.
+        let previousTotal = Money(minorUnits: session.previousTotalValueMinor, currency: .krw)
+        let summary = session.previousTotalValueMinor > 0
+            ? "\(Won.compact(previousTotal)) → \(Won.compact(rollup.netWorth))"
+            : "\(Won.compact(rollup.netWorth))"
+        ChangeLogger.record(.weeklyEntry,
+                            subject: "주간 점검 · 종목 \(queue.count)건",
+                            summary: summary, in: context)
+
         focusedID = nil
         completed = session
     }

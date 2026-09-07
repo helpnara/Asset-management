@@ -41,9 +41,13 @@ struct PlanView: View {
             }
             // 계획의 어떤 값이든 달라지면 수정 시각을 찍는다. 화면을 열기만
             // 해서는 안 찍힌다 — 지문이 실제로 달라져야 한다.
-            .onChange(of: plans.first?.editFingerprint) { previous, _ in
-                guard previous != nil else { return }   // 첫 진입은 변경이 아니다
+            .onChange(of: plans.first?.editFingerprint) { previous, current in
+                guard let previous, let current else { return }   // 첫 진입은 변경이 아니다
                 plans.first?.touch()
+                // 무엇을 고쳤는지도 남긴다 (docs/08-feedback.md 29번).
+                // **값은 안 남긴다** — 이력이 금액 목록이 되면 안 된다.
+                ChangeLogger.planChanged(labels: Plan.changedLabels(from: previous, to: current),
+                                         in: context)
             }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)

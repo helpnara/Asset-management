@@ -182,6 +182,37 @@ extension Plan {
         + "|\(title)|\(asOfNote)|\(declaration)|\(startedOn?.timeIntervalSince1970 ?? 0)"
     }
 
+    /// 지문의 자리마다 사람이 읽는 이름. **순서가 `editFingerprint` 와 같아야
+    /// 한다** — 어긋나면 변경 이력이 엉뚱한 항목 이름을 적는다.
+    static let fieldLabels: [String] = [
+        "시작 연도", "은퇴 연도", "지평선", "월 적립", "적립 증가율",
+        "연 기대수익률", "물가상승률", "저금리 수익률", "부동산 상승률",
+        "목표 금액", "월 생활비", "인출률", "월 소득", "저축률 하한",
+        "비유동 자산 상한", "미국 목표 비중", "지역 허용 오차", "비중 허용 오차",
+        "구성원별 적립",
+        // `|` 뒤의 글자 항목들. 같은 순서다.
+        "1페이지 제목", "기준 시점", "선언문", "수립일"
+    ]
+
+    /// 두 지문을 견줘 **무엇이 달라졌는지** 이름으로 돌려준다
+    /// (docs/08-feedback.md 29번). 값 자체는 남기지 않는다 — 이력이 금액
+    /// 목록이 되면 남에게 보여줄 수 없는 화면이 된다.
+    static func changedLabels(from before: String, to after: String) -> [String] {
+        func fields(_ text: String) -> [String] {
+            let parts = text.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+            guard let numbers = parts.first else { return [] }
+            return numbers.split(separator: "-", omittingEmptySubsequences: false).map(String.init)
+                + parts.dropFirst()
+        }
+        let old = fields(before)
+        let new = fields(after)
+        guard old.count == new.count else { return [] }
+        return zip(old, new).enumerated().compactMap { index, pair in
+            guard pair.0 != pair.1, fieldLabels.indices.contains(index) else { return nil }
+            return fieldLabels[index]
+        }
+    }
+
     /// 계획을 고친 시각을 찍는다. **값이 실제로 달라졌을 때만** 찍어야
     /// 화면을 열기만 해도 날짜가 바뀌는 일이 없다.
     func touch() {

@@ -45,6 +45,22 @@ struct PrincipleListView: View {
                 Label("원칙 추가", systemImage: "plus")
                     .font(.system(size: 13))
             }
+
+            // 기본값을 첫 실행 때 심지 않는 이유는 `DefaultPrinciples` 에 적어 두었다.
+            // 이미 쓰고 있는 사람에게도 와야 해서 버튼으로 둔다.
+            if !missingDefaults.isEmpty {
+                Section {
+                    Button {
+                        addDefaults()
+                    } label: {
+                        Label("기본 원칙 넣기 (\(missingDefaults.count)개)",
+                              systemImage: "text.badge.plus")
+                            .font(.system(size: 13))
+                    }
+                } footer: {
+                    Text("투자 원칙 열여섯 개를 그대로 넣습니다. 넣은 뒤에 고치고 지울 수 있고, 이미 적어 둔 것과 같은 문장은 건너뜁니다.")
+                }
+            }
         }
         .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
                         message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
@@ -58,19 +74,35 @@ struct PrincipleListView: View {
                     Text("아직 적은 원칙이 없습니다")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.ink)
-                    Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.")
+                    Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 **기본 원칙 넣기** 를 누르면 열여섯 개로 시작할 수 있습니다.")
                         .font(.system(size: 12))
                         .foregroundStyle(Color.muted)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
                 }
                 .padding(30)
+                // 비어 있을 때 뜨는 안내가 아래 버튼을 가로채면 안 된다.
+                .allowsHitTesting(false)
             }
         }
     }
 
     private func add() {
         context.insert(Principle(order: principles.count + 1))
+    }
+
+    /// 아직 없는 기본 원칙들. 전부 있으면 버튼 자체가 사라진다.
+    private var missingDefaults: [String] {
+        DefaultPrinciples.missing(from: principles)
+    }
+
+    /// 있는 것 뒤에 이어 붙인다. 적어 둔 순서를 흔들지 않는다.
+    private func addDefaults() {
+        var order = principles.count
+        for title in missingDefaults {
+            order += 1
+            context.insert(Principle(order: order, title: title))
+        }
     }
 
     private func delete(_ offsets: IndexSet) {

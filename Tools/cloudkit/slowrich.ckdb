@@ -386,6 +386,8 @@ DEFINE SCHEMA
         CD_note STRING,
         CD_note_ckAsset ASSET,
         CD_sortIndex INT64,
+        CD_memberID STRING,
+        CD_memberID_ckAsset ASSET,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"

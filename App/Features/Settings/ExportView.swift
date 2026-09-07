@@ -44,6 +44,12 @@ struct ExportView: View {
                         Label("공유 · 저장", systemImage: "square.and.arrow.up")
                     }
                 }
+
+                // **뽑기 전에 눈으로 본다.** 한 장에 들어가는지는 렌더를 봐야
+                // 알 수 있고, 원격 세션에서는 CI 스크린샷이 이 화면을 찍는다.
+                NavigationLink(value: MoreView.Destination.onePagerPreview) {
+                    Label("한 장 미리보기", systemImage: "doc.text.magnifyingglass")
+                }
             } header: {
                 Text("1페이지")
             } footer: {
@@ -96,27 +102,10 @@ struct ExportView: View {
         defer { isRendering = false }
 
         let plan = plans.first
-        let calendar = Calendar.current
-        let rollup = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
-        let projection = plan?.projection(from: rollup.netWorth, cashEvents: cashEvents,
-                                          incomes: incomes, members: members)
-
-        let page = OnePagerView(
-            title: plan?.title ?? "우리 가족 노후자금 준비",
-            asOfNote: plan?.asOfNote ?? "",
-            startedOn: plan?.startedOn,
-            retirementYear: plan?.retirementYear ?? calendar.component(.year, from: .now) + 23,
-            declaration: plan?.declaration ?? "",
-            rollup: rollup,
-            members: members,
-            snapshots: snapshots,
-            milestones: projection?.milestones ?? [],
-            cashEvents: cashEvents.filter { !$0.isAlreadyReflected },
-            principles: principles,
-            todos: todos,
-            usShare: rollup.countryShare("US"),
-            nextReview: ReviewWeek.nextSaturday(after: .now, calendar: calendar)
-        )
+        // 미리보기와 **같은 함수**로 만든다. 따로 만들면 조용히 어긋난다.
+        let page = OnePagerBuilder.make(plan: plan, members: members, holdings: holdings,
+                                        cashEvents: cashEvents, incomes: incomes,
+                                        principles: principles, todos: todos)
 
         // **PDF 로 뽑는다.** 원본이 PDF 였고, 인쇄가 선명하고 글자를 고를 수 있다.
         // `ImageRenderer` 가 CGPDFContext 에 그려 주므로 뷰는 하나로 쓴다.

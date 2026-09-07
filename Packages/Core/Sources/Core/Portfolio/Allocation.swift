@@ -27,6 +27,10 @@ public enum Allocation {
 
     /// 한 줄의 판정 결과. 자산군 줄과 종목 줄이 같은 모양을 쓴다.
     public struct Slice: Sendable, Hashable, Identifiable {
+        /// 이 덩어리를 가리키는 열쇠. **화면이 되찾을 때 쓴다.**
+        /// 종목 층에서는 이름과 같고, 계좌·구성원 층에서는 그 개체의 UUID 다
+        /// (docs/08-feedback.md 30번).
+        public let key: String
         /// 자산군이면 자산군 이름, 종목이면 종목 이름.
         public let label: String
         /// 같은 이름으로 합친 실제 금액.
@@ -46,7 +50,7 @@ public enum Allocation {
         public let targetPercent: Int?
         public let status: DriftStatus
 
-        public var id: String { label }
+        public var id: String { key }
 
         /// 목표에서 얼마나 벗어났나. 목표가 없으면 nil.
         public var drift: Decimal? {
@@ -115,14 +119,28 @@ public enum Allocation {
     }
 
     /// 비중을 잴 한 덩어리.
+    ///
+    /// **합치는 열쇠(`key`)와 화면에 적는 이름(`label`)은 다른 것이다.**
+    /// 층마다 "같다" 의 뜻이 다르기 때문이다 (docs/08-feedback.md 30번).
+    ///
+    /// | 층 | 무엇이 같으면 합치나 | `key` |
+    /// |---|---|---|
+    /// | 계좌 안 종목 | **같은 종목**이면 합친다 — IRP·연금저축·ISA 에 흩어져 있어도 하나 | 이름 |
+    /// | 구성원 안 계좌 | 합치지 않는다 — 이름이 같아도 **다른 계좌**다 | 계좌 UUID |
+    /// | 가족 안 구성원 | 합치지 않는다 — 이름이 같아도 **다른 사람**이다 | 구성원 UUID |
+    ///
+    /// 열쇠를 안 주면 이름이 열쇠가 된다. 종목 층이 그 기본을 쓴다.
     public struct Entry: Sendable, Hashable {
-        /// 묶는 이름. 같은 이름끼리 합쳐진다.
+        /// 합치는 열쇠. 같은 열쇠끼리 합쳐진다.
+        public let key: String
+        /// 화면에 적는 이름. 열쇠와 달라도 된다.
         public let label: String
         public let amount: Money
-        /// 이 덩어리의 목표. 여럿이 같은 이름이면 **합쳐서** 목표가 된다.
+        /// 이 덩어리의 목표. 여럿이 같은 열쇠면 **합쳐서** 목표가 된다.
         public let targetBP: Int?
 
-        public init(label: String, amount: Money, targetBP: Int?) {
+        public init(key: String? = nil, label: String, amount: Money, targetBP: Int?) {
+            self.key = key ?? label
             self.label = label
             self.amount = amount
             self.targetBP = targetBP
@@ -139,19 +157,22 @@ public enum Allocation {
         guard !entries.isEmpty else { return [] }
         let currency = entries[0].amount.currency
 
-        // 같은 이름을 합친다. 금액도 목표도 함께 더한다.
+        // 같은 **열쇠**를 합친다. 금액도 목표도 함께 더한다.
+        // 이름이 아니라 열쇠인 이유는 `Entry` 에 적어 두었다.
         var order: [String] = []
+        var labels: [String: String] = [:]
         var amounts: [String: Int] = [:]
         var targets: [String: Int?] = [:]
         for entry in entries {
-            if amounts[entry.label] == nil {
-                order.append(entry.label)
-                amounts[entry.label] = 0
-                targets[entry.label] = Int?.none
+            if amounts[entry.key] == nil {
+                order.append(entry.key)
+                labels[entry.key] = entry.label
+                amounts[entry.key] = 0
+                targets[entry.key] = Int?.none
             }
-            amounts[entry.label]! += entry.amount.minorUnits
+            amounts[entry.key]! += entry.amount.minorUnits
             if let bp = entry.targetBP {
-                targets[entry.label] = (targets[entry.label] ?? nil).map { $0 + bp } ?? bp
+                targets[entry.key] = (targets[entry.key] ?? nil).map { $0 + bp } ?? bp
             }
         }
 
@@ -162,13 +183,14 @@ public enum Allocation {
         // 최대잔여법으로 한꺼번에 맞춘다.
         let percents = integerPercents(order.map { Decimal(amounts[$0] ?? 0) / Decimal(total) })
 
-        return zip(order, percents).map { label, percent in
-            let amount = amounts[label] ?? 0
+        return zip(order, percents).map { key, percent in
+            let amount = amounts[key] ?? 0
             let actual = Decimal(amount) / Decimal(total)
-            let bp = targets[label] ?? nil
+            let bp = targets[key] ?? nil
             let target: Decimal? = bp.map { Decimal($0) / 10_000 }
             return Slice(
-                label: label,
+                key: key,
+                label: labels[key] ?? key,
                 amount: Money(minorUnits: amount, currency: currency),
                 actual: actual,
                 target: target,
@@ -226,15 +248,15 @@ public enum Allocation {
 
     /// 적어 둔 목표의 합 (basis point). 100%(10,000)가 아니면 화면이 그렇게 적는다.
     ///
-    /// 같은 이름은 합쳐서 센다 — `slices` 와 같은 규칙이어야 화면의 두 숫자가
+    /// 같은 열쇠는 합쳐서 센다 — `slices` 와 같은 규칙이어야 화면의 두 숫자가
     /// 어긋나지 않는다.
     public static func targetSumBP(_ entries: [Entry]) -> Int {
-        var byLabel: [String: Int] = [:]
+        var byKey: [String: Int] = [:]
         for entry in entries {
             guard let bp = entry.targetBP else { continue }
-            byLabel[entry.label, default: 0] += bp
+            byKey[entry.key, default: 0] += bp
         }
-        return byLabel.values.reduce(0, +)
+        return byKey.values.reduce(0, +)
     }
 
     static func status(actual: Decimal, target: Decimal?, tolerance: Tolerance) -> DriftStatus {

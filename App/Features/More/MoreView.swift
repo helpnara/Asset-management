@@ -27,6 +27,8 @@ struct MoreView: View {
         case security
         case export
         case onePagerSettings
+        case onePagerPreview
+        case changeLog
     }
 
     var body: some View {
@@ -49,6 +51,9 @@ struct MoreView: View {
                     }
                     NavigationLink(value: Destination.diagnostics) {
                         Label("자산 진단", systemImage: "checklist")
+                    }
+                    NavigationLink(value: Destination.changeLog) {
+                        Label("변경 이력", systemImage: "clock.arrow.circlepath")
                     }
                     NavigationLink(value: Destination.todos) {
                         Label("유의사항 · 할 일", systemImage: "note.text")
@@ -112,6 +117,9 @@ struct MoreView: View {
         if arguments.contains("-startDiagnostics") { return [.diagnostics] }
         if arguments.contains("-startTodos") { return [.todos] }
         if arguments.contains("-startPrinciples") { return [.principles] }
+        // 1페이지는 내보내기 화면 안에 있다. 뒤로 가기가 자연스럽도록 둘 다 쌓는다.
+        if arguments.contains("-startOnePager") { return [.export, .onePagerPreview] }
+        if arguments.contains("-startChangeLog") { return [.changeLog] }
         return []
     }
 

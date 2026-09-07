@@ -8,6 +8,7 @@ struct RootView: View {
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
     @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    @Query private var accounts: [Account]
 
     var body: some View {
         TabView(selection: $route.selectedTab) {
@@ -43,7 +44,7 @@ struct RootView: View {
 
             // 기한 알림은 주간 점검과 따로 건다. 시간대 변경·기기 이전에 대비해
             // 여기서도 통째로 다시 건다.
-            let todoInput = TodoNotifications.Input(items: todos)
+            let todoInput = TodoNotifications.Input(items: todos, accounts: accounts)
             await TodoNotifications.refresh(todoInput)
         }
         .fullScreenCover(isPresented: $route.showReview) {

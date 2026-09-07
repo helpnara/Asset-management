@@ -9,8 +9,13 @@ import SwiftUI
 struct TodoListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \TodoItem.sortIndex) private var items: [TodoItem]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: TodoItem?
     @State private var showsDone = false
+
+    /// 만기 알림을 다시 걸 때 함께 넘긴다. 안 넘기면 할 일을 하나 고칠 때마다
+    /// 걸어 둔 만기 알림이 조용히 지워진다.
+    private var allAccounts: [Account] { members.flatMap(\.sortedAccounts) }
 
     private var open: [TodoItem] { items.filter { !$0.isDone } }
     private var done: [TodoItem] { items.filter(\.isDone) }
@@ -23,6 +28,35 @@ struct TodoListView: View {
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
+                }
+            }
+
+            // **만기는 적어 둔 할 일이 아니라 계좌에서 자동으로 온다**
+            // (docs/08-feedback.md 28번). `TodoItem` 을 만들어 넣지 않는 이유는
+            // 앱이 켜질 때마다 같은 것을 또 만들게 되고, 사용자가 지워도 다시
+            // 살아나기 때문이다. 계좌의 날짜를 그대로 읽어 보여 준다.
+            if !upcomingMaturities.isEmpty {
+                Section {
+                    ForEach(upcomingMaturities, id: \.id) { account in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Image(systemName: "calendar.badge.exclamationmark")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.loss)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(maturityTitle(account))
+                                    .font(.system(size: 13.5, weight: .medium))
+                                    .foregroundStyle(Color.ink)
+                                Text(maturityDetail(account))
+                                    .font(.system(size: 11.5))
+                                    .foregroundStyle(Color.muted)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } header: {
+                    Text("다가오는 만기")
+                } footer: {
+                    Text("계좌에 적어 둔 만기일이 90일 안으로 들어오면 여기 뜹니다. 계좌 화면에서 날짜를 고칠 수 있습니다.")
                 }
             }
 
@@ -65,12 +99,52 @@ struct TodoListView: View {
         .sheet(item: $editing) { TodoEditView(item: $0) }
     }
 
+    /// 90일 안으로 들어온 만기. 지난 것도 한 달까지는 남긴다 — 연장했는지
+    /// 확인하지 않은 채 사라지면 그게 더 위험하다.
+    private var upcomingMaturities: [Account] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        return members
+            .flatMap(\.sortedAccounts)
+            .filter { !$0.isArchived }
+            .filter { account in
+                guard let days = daysUntilMaturity(account) else { return false }
+                return days >= -30 && days <= 90
+            }
+            .sorted { ($0.maturesOn ?? today) < ($1.maturesOn ?? today) }
+    }
+
+    private func daysUntilMaturity(_ account: Account) -> Int? {
+        guard let date = account.maturesOn else { return nil }
+        let calendar = Calendar.current
+        return calendar.dateComponents([.day],
+                                       from: calendar.startOfDay(for: .now),
+                                       to: calendar.startOfDay(for: date)).day
+    }
+
+    private func maturityTitle(_ account: Account) -> String {
+        let owner = account.owner?.name ?? ""
+        let name = account.weightLabel
+        return owner.isEmpty ? name : "\(owner) · \(name)"
+    }
+
+    private func maturityDetail(_ account: Account) -> String {
+        guard let date = account.maturesOn, let days = daysUntilMaturity(account) else { return "" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy.MM.dd"
+        let day = formatter.string(from: date)
+        if days < 0 { return "\(day) — 만기가 \(-days)일 지났습니다" }
+        if days == 0 { return "\(day) — 오늘이 만기입니다" }
+        return "\(day) — \(days)일 남았습니다"
+    }
+
     private func row(_ item: TodoItem) -> some View {
         HStack(alignment: .top, spacing: 11) {
             Button {
                 item.isDone.toggle()
                 item.completedAt = item.isDone ? .now : nil
-                Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items)) }
+                Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items, accounts: allAccounts)) }
             } label: {
                 Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18))
@@ -117,8 +191,12 @@ struct TodoEditView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Query(sort: \TodoItem.sortIndex) private var items: [TodoItem]
+    @Query(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var hasDue: Bool
+
+    /// 알림을 통째로 다시 걸므로 만기도 함께 넘겨야 한다.
+    private var allAccounts: [Account] { members.flatMap(\.sortedAccounts) }
 
     init(item: TodoItem) {
         self.item = item
@@ -172,7 +250,7 @@ struct TodoEditView: View {
                 }
             }
             .onDisappear {
-                let input = TodoNotifications.Input(items: items)
+                let input = TodoNotifications.Input(items: items, accounts: allAccounts)
                 Task { await TodoNotifications.refresh(input) }
             }
         }

@@ -7,6 +7,10 @@ struct MemberEditView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
 
+    /// 열었을 때의 이름. 닫을 때 견줘서 **추가인지 이름 변경인지** 가린다
+    /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
+    @State private var nameOnOpen: String?
+
     private let years = Array((1930...Calendar.current.component(.year, from: .now)).reversed())
 
     /// 구성원 삭제는 이 앱에서 가장 크게 지우는 일이다 — 계좌와 종목이
@@ -84,6 +88,11 @@ struct MemberEditView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     DeleteButton("\(member.name.isEmpty ? "이 구성원" : member.name) 을(를) 삭제할까요?",
                                  consequence: memberDeleteWarning) {
+                        ChangeLogger.structureChanged(
+                            member.name.isEmpty ? "이름 없음" : member.name,
+                            "구성원을 삭제했습니다", in: context
+                        )
+                        nameOnOpen = nil          // 지운 것을 또 기록하지 않는다
                         context.delete(member)
                         dismiss()
                     }
@@ -92,6 +101,18 @@ struct MemberEditView: View {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
                 }
             }
+            .onAppear { if nameOnOpen == nil { nameOnOpen = member.name } }
+            .onDisappear { logChange() }
+        }
+    }
+
+    private func logChange() {
+        guard let before = nameOnOpen else { return }
+        let after = member.name
+        if before.isEmpty, !after.isEmpty {
+            ChangeLogger.structureChanged(after, "구성원을 추가했습니다", in: context)
+        } else if !before.isEmpty, before != after, !after.isEmpty {
+            ChangeLogger.structureChanged(after, "이름을 \(before) 에서 바꿨습니다", in: context)
         }
     }
 }
@@ -101,17 +122,27 @@ struct AccountEditView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
 
+    /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
+    @State private var nameOnOpen: String?
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     TextField("계좌 이름", text: $account.name)
-                    TextField("기관 (미래에셋 · 토스 …)", text: $account.institution)
+                    TextField("기관 (증권사 · 은행 · 보험사)", text: $account.institution)
                     Picker("종류", selection: $account.kind) {
                         ForEach(AccountKind.allCases) { Text($0.label).tag($0) }
                     }
                 } footer: {
-                    Text(accountFooter)
+                    // 겹칠 때는 **왜 완료를 못 누르는지**를 입력칸 바로 아래 적는다.
+                    // 다 적은 뒤 경고창으로 튕겨내지 않는다 (30번).
+                    if isDuplicate {
+                        Text("이미 같은 이름·기관의 계좌가 있습니다. 이름이나 기관을 다르게 적어 주세요.")
+                            .foregroundStyle(Color.loss)
+                    } else {
+                        Text(accountFooter)
+                    }
                 }
 
                 // 한도가 있는 계좌에만 나타난다. 일반 위탁 계좌에 한도 칸을 두면
@@ -125,6 +156,19 @@ struct AccountEditView: View {
                     } footer: {
                         Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. **이 앱은 세법을 따라가지 않습니다** — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 납입액을 0으로 되돌립니다.")
                     }
+                }
+
+                // **만기** — 모델에는 2차부터 있었는데 적을 자리가 없었다
+                // (docs/08-feedback.md 28번). 1페이지 푸터와 할 일이 이걸 읽는다.
+                Section {
+                    Toggle("만기가 있는 계좌", isOn: hasMaturity)
+                    if account.maturesOn != nil {
+                        DatePicker("만기일", selection: maturityDate, displayedComponents: .date)
+                    }
+                } header: {
+                    Text("만기")
+                } footer: {
+                    Text(maturityFooter)
                 }
 
                 Section {
@@ -151,16 +195,51 @@ struct AccountEditView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     DeleteButton("\(account.name.isEmpty ? account.kind.label : account.name) 을(를) 삭제할까요?",
                                  consequence: accountDeleteWarning) {
+                        ChangeLogger.structureChanged(
+                            logSubject,
+                            "계좌를 삭제했습니다 (종목 \(account.sortedHoldings.count)개 포함)",
+                            in: context
+                        )
+                        nameOnOpen = nil
                         context.delete(account)
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("완료") { dismiss() }.fontWeight(.semibold)
+                    Button("완료") { dismiss() }
+                        .fontWeight(.semibold)
+                        .disabled(isDuplicate)
                 }
             }
+            // 잠근 완료 버튼을 쓸어내려 빠져나가면 잠근 의미가 없다.
+            .interactiveDismissDisabled(isDuplicate)
+            .onAppear { if nameOnOpen == nil { nameOnOpen = account.name } }
+            .onDisappear { logChange() }
         }
     }
+
+    private var logSubject: String {
+        let owner = account.owner?.name ?? ""
+        let name = account.name.isEmpty ? account.kind.label : account.name
+        return owner.isEmpty ? name : "\(owner) · \(name)"
+    }
+
+    private func logChange() {
+        guard let before = nameOnOpen else { return }
+        let after = account.name
+        if before.isEmpty, !after.isEmpty {
+            ChangeLogger.structureChanged(logSubject, "계좌를 추가했습니다", in: context)
+        } else if !before.isEmpty, before != after, !after.isEmpty {
+            ChangeLogger.structureChanged(logSubject, "이름을 \(before) 에서 바꿨습니다", in: context)
+        }
+    }
+
+    /// 같은 사람 밑에 이름·기관이 같은 계좌가 이미 있나 (30번, 정책 B).
+    ///
+    /// 한 사람의 계좌 목록에 `일반적립` 이 둘 있으면 어느 줄이 어느 계좌인지
+    /// 알 수 없다. **기관이 다르면 막지 않는다** — 같은 성격의 적립을 증권사
+    /// 두 곳에 나눠 두는 것은 자연스럽고, 기관은 이미 따로 적는 칸이다.
+    private var isDuplicate: Bool { account.hasDuplicateSibling }
 
     /// **무엇이 함께 사라지는지 세어서 적는다.** "정말 삭제할까요?" 만으로는
     /// 계좌 하나를 지우는 줄 알고 종목 열 개를 잃는다.
@@ -178,6 +257,37 @@ struct AccountEditView: View {
             return "자산에는 넣지만 '투자자산 합계'와 국가 비중에서는 뺍니다. 전월세보증금·부동산·받을 돈이 여기 해당합니다."
         }
         return "투자자산으로 셉니다."
+    }
+
+    /// 켜면 1년 뒤로 잡아 준다. 만기는 대개 몇 년 뒤라 오늘로 두면 매번 크게
+    /// 돌려야 한다.
+    private var hasMaturity: Binding<Bool> {
+        Binding(
+            get: { account.maturesOn != nil },
+            set: { on in
+                account.maturesOn = on
+                    ? (Calendar.current.date(byAdding: .year, value: 1, to: .now) ?? .now)
+                    : nil
+            }
+        )
+    }
+
+    private var maturityDate: Binding<Date> {
+        Binding(
+            get: { account.maturesOn ?? .now },
+            set: { account.maturesOn = $0 }
+        )
+    }
+
+    private var maturityFooter: String {
+        guard let date = account.maturesOn else {
+            return "ISA·예적금처럼 기한이 있는 계좌에 적습니다. 1페이지 푸터의 `임박한 만기` 와 할 일 목록이 이 날짜를 읽습니다."
+        }
+        let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now),
+                                                   to: Calendar.current.startOfDay(for: date)).day ?? 0
+        if days < 0 { return "만기가 \(-days)일 지났습니다. 연장했다면 날짜를 새로 적어 주세요." }
+        if days == 0 { return "오늘이 만기입니다." }
+        return "\(days)일 남았습니다. 90일 안으로 들어오면 할 일 목록에 함께 뜹니다."
     }
 
     /// 계좌마다 수익률을 따로 적을 수 있어야 한다 — 예금은 상품마다 금리가 다르다.
@@ -214,6 +324,9 @@ struct HoldingEditView: View {
     @Bindable var holding: Holding
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+
+    /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
+    @State private var nameOnOpen: String?
 
     var body: some View {
         NavigationStack {
@@ -299,6 +412,8 @@ struct HoldingEditView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     DeleteButton("\(holding.name.isEmpty ? "이 종목" : holding.name) 을(를) 삭제할까요?",
                                  consequence: "적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
+                        ChangeLogger.structureChanged(logSubject, "종목을 삭제했습니다", in: context)
+                        nameOnOpen = nil
                         context.delete(holding)
                         dismiss()
                     }
@@ -307,6 +422,25 @@ struct HoldingEditView: View {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
                 }
             }
+            .onAppear { if nameOnOpen == nil { nameOnOpen = holding.name } }
+            .onDisappear { logChange() }
+        }
+    }
+
+    private var logSubject: String {
+        let owner = holding.account?.owner?.name ?? ""
+        let account = holding.account.map { $0.name.isEmpty ? $0.kind.label : $0.name } ?? ""
+        let name = holding.name.isEmpty ? "이름 없음" : holding.name
+        return [owner, account, name].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private func logChange() {
+        guard let before = nameOnOpen else { return }
+        let after = holding.name
+        if before.isEmpty, !after.isEmpty {
+            ChangeLogger.structureChanged(logSubject, "종목을 추가했습니다", in: context)
+        } else if !before.isEmpty, before != after, !after.isEmpty {
+            ChangeLogger.structureChanged(logSubject, "이름을 \(before) 에서 바꿨습니다", in: context)
         }
     }
 

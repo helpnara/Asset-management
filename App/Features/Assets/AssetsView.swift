@@ -306,7 +306,9 @@ struct AssetsView: View {
     /// 꺼내 쓴다 (docs/08-feedback.md 18번).
     private func memberShare(of account: Account) -> String? {
         guard !account.kind.isLiability, let owner = account.owner else { return nil }
-        guard let slice = owner.accountSlices.first(where: { $0.label == account.weightLabel })
+        // **이름이 아니라 계좌 자신으로 찾는다.** 이름으로 찾으면 같은 이름의
+        // 계좌 둘이 같은 줄을 가리켜 둘 다 100% 로 보였다 (30번).
+        guard let slice = owner.accountSlices.first(where: { $0.key == account.id.uuidString })
         else { return nil }
         return "\(slice.actualPercent)%"
     }
@@ -350,9 +352,8 @@ struct AssetsView: View {
 
     /// 가족 안에서 이 사람이 차지하는 비중. 여기도 합이 100 이 되게 맞춘 값을 쓴다.
     private func familyShare(_ member: Member) -> String? {
-        guard let slice = memberSlices.first(where: {
-            $0.label == (member.name.isEmpty ? "이름 없음" : member.name)
-        }) else { return nil }
+        guard let slice = memberSlices.first(where: { $0.key == member.id.uuidString })
+        else { return nil }
         return "\(slice.actualPercent)%"
     }
 
@@ -455,7 +456,14 @@ struct AssetsView: View {
     private func delete(_ offsets: IndexSet, from account: Account) {
         let items = account.sortedHoldings
         for index in offsets where items.indices.contains(index) {
-            context.delete(items[index])
+            let holding = items[index]
+            let owner = account.owner?.name ?? ""
+            let name = holding.name.isEmpty ? "이름 없음" : holding.name
+            ChangeLogger.structureChanged(
+                [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
+                "종목을 삭제했습니다", in: context
+            )
+            context.delete(holding)
         }
     }
 

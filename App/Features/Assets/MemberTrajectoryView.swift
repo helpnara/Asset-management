@@ -17,6 +17,7 @@ struct MemberTrajectoryView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var plans: [Plan]
     @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Query(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
 
     /// 손잡이. nil 이면 지금 계획대로다.
     @State private var monthlyMinor: Int?
@@ -68,11 +69,27 @@ struct MemberTrajectoryView: View {
             TrajectoryChart(
                 points: points,
                 today: Calendar.current.startOfDay(for: .now),
-                targetMinor: 0
+                targetMinor: 0,
+                events: events
             )
         }
         .padding(14)
         .background(Color.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// **이 사람의** 인생 이벤트만 눈금으로 세운다 (docs/08-feedback.md 32번).
+    /// 가족 전체의 일(전세 만기 등)은 현황판 궤적에 있으므로 여기서는 뺀다 —
+    /// 한 사람의 화면에 가족 일까지 세우면 눈금만 늘어난다.
+    private var events: [TrajectoryChart.EventMark] {
+        let calendar = Calendar.current
+        let thisYear = calendar.component(.year, from: .now)
+        return userMilestones.compactMap { milestone in
+            guard milestone.memberID == member.id, milestone.year >= thisYear,
+                  let date = calendar.date(from: DateComponents(year: milestone.year, month: 1, day: 1))
+            else { return nil }
+            return .init(date: date,
+                         label: milestone.label.isEmpty ? "마일스톤" : milestone.label)
+        }
     }
 
     /// 과거는 매주 적어 둔 구성원별 값, 미래는 이 사람 몫의 예측.
@@ -101,7 +118,7 @@ struct MemberTrajectoryView: View {
     private var knob: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("이 사람의 월 적립")
+                Text("이 사람의 월 적립 (회사 매칭 포함)")
                     .font(.system(size: 12.5))
                     .foregroundStyle(Color.bodyText)
                 Spacer()
@@ -136,7 +153,12 @@ struct MemberTrajectoryView: View {
 
     // MARK: - 계산
 
-    private var effectiveMonthly: Int { monthlyMinor ?? member.monthlyContributionMinor }
+    /// 회사 매칭까지 합친다. 실제로 계좌에 들어가는 돈이 그 합이고,
+    /// 모델도 "궤적에는 합계가 쓰인다" 고 적어 두었다. 1페이지의 구성원
+    /// 미니 차트도 같은 값을 쓴다 — 두 화면의 숫자가 어긋나면 안 된다.
+    private var effectiveMonthly: Int {
+        monthlyMinor ?? (member.monthlyContributionMinor + member.employerMatchMinor)
+    }
 
     private var retirementYear: Int {
         plan?.retirementYear ?? Calendar.current.component(.year, from: .now) + 23

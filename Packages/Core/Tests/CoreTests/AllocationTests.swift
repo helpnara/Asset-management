@@ -32,6 +32,42 @@ struct AllocationTests {
         #expect(slices[0].status == .onTrack)
     }
 
+    @Test("열쇠가 다르면 이름이 같아도 안 합친다 — 계좌 층")
+    func doesNotMergeWhenKeysDiffer() {
+        // 실제로 났던 버그다 (docs/08-feedback.md 30번). 같은 이름의 계좌 둘이
+        // 하나로 합쳐져 **둘 다 100%** 로 보였다. 계좌는 이름이 같아도 다른
+        // 개체이므로 열쇠를 따로 준다.
+        //
+        // 기댓값은 파이썬으로 대조했다:
+        //   29,800,000 / 32,100,000 = 92.8348…%  → 내림 92, 소수부 .8348
+        //    2,300,000 / 32,100,000 =  7.1651…%  → 내림  7, 소수부 .1651
+        //   남은 1 은 소수부가 큰 쪽으로 → 93 / 7
+        let slices = Allocation.slices([
+            Allocation.Entry(key: "account-1", label: "일반적립",
+                             amount: Money(minorUnits: 29_800_000, currency: .krw),
+                             targetBP: nil),
+            Allocation.Entry(key: "account-2", label: "일반적립",
+                             amount: Money(minorUnits: 2_300_000, currency: .krw),
+                             targetBP: nil)
+        ])
+        #expect(slices.count == 2)
+        #expect(slices.map(\.label) == ["일반적립", "일반적립"])
+        #expect(slices.map(\.actualPercent) == [93, 7])
+        // 화면이 되찾을 때 쓰는 값. 열쇠가 겹치면 두 줄이 같은 것을 가리킨다.
+        #expect(slices.map(\.key) == ["account-1", "account-2"])
+        #expect(slices.map(\.id) == ["account-1", "account-2"])
+    }
+
+    @Test("열쇠를 안 주면 이름이 열쇠다 — 종목 층은 그대로 합친다")
+    func defaultsKeyToLabel() {
+        let slices = Allocation.slices([
+            entry("TIGER", 100, nil),
+            entry("TIGER", 100, nil)
+        ])
+        #expect(slices.count == 1)
+        #expect(slices[0].key == "TIGER")
+    }
+
     @Test("목표는 적은 그대로 쓴다 — 정규화하지 않는다")
     func targetsAreTakenAsWritten() {
         // 한때 목표 합으로 나눠 비례 배분했다. 그러면 30% 라고 적은 것이 화면에

@@ -41,6 +41,9 @@ enum SampleData {
         let dadIRP = account("IRP", "증권사 A", .irp, dad, 3, context)
         dadIRP.annualLimitMinor = 3_000_000
         dadIRP.annualContributionMinor = 1_800_000
+        // 만기가 있는 계좌. 1페이지 푸터의 `임박한 만기` 가 이걸 읽는다
+        // (docs/08-feedback.md 28번). **날짜도 예시다.**
+        dadIRP.maturesOn = Calendar.current.date(byAdding: .day, value: 96, to: .now)
         holding("채권 혼합형", .bond, .fund, "KR", .accumulating, .monthly, 18_500_000, dadIRP, 0, context)
 
         // 받을 돈 — 종목 자리에 빌려준 사람들이 늘어선다. 비중·목표가 없는
@@ -67,6 +70,12 @@ enum SampleData {
         holding("국내 반도체주", .equity, .stock, "KR", .frozen, .weekly, 24_300_000, sonBrokerage, 0, context, targetBP: 3_000)
         holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_750_000, sonBrokerage, 1, context, targetBP: 4_000)
         holding("국내 지수 ETF", .equity, .etf, "KR", .frozen, .weekly, 3_100_000, sonBrokerage, 2, context, targetBP: 3_000)
+
+        // **같은 이름의 계좌 둘 — 기관만 다르다.** 30번 버그가 났던 모양 그대로라
+        // CI 스크린샷에서 두 줄이 제대로 나뉘는지(둘 다 100%가 아닌지) 보인다.
+        let sonBrokerageB = account("증여계좌", "증권사 E", .general, son, 1, context)
+        holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly,
+                1_950_000, sonBrokerageB, 0, context)
 
         // 딸
         let daughterBrokerage = account("증여계좌", "증권사 D", .general, daughter, 0, context)
@@ -115,9 +124,18 @@ enum SampleData {
         leaseTodo.dueDate = Calendar.current.date(byAdding: .day, value: 120, to: .now)
         context.insert(leaseTodo)
 
+        // 운용 원칙 — **기본 열여섯을 그대로 넣는다.** 1페이지가 가장 꽉 차는
+        // 경우라, CI 스크린샷이 "한 장에 들어가나" 를 최악의 조건에서 보여준다
+        // (docs/08-feedback.md 24번).
+        for (index, title) in DefaultPrinciples.titles.enumerated() {
+            context.insert(Principle(order: index + 1, title: title))
+        }
+
         // 직접 찍은 마일스톤
+        // 구성원에게 붙은 마일스톤. 현황판 `인생 이벤트` 줄이 그 해 나이를
+        // 함께 적는지 스크린샷으로 본다 (docs/08-feedback.md 32번).
         let college = UserMilestone(year: Calendar.current.component(.year, from: .now) + 14,
-                                    label: "첫째 대학 입학", sortIndex: 0)
+                                    label: "첫째 대학 입학", sortIndex: 0, memberID: son.id)
         context.insert(college)
         context.insert(plan)
 

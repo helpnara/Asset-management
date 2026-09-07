@@ -138,7 +138,10 @@ extension Member {
         let entries = sortedAccounts
             .filter { !$0.isArchived && !$0.kind.isLiability && $0.totalMinor != 0 }
             .map { account in
-                Allocation.Entry(label: account.weightLabel,
+                // **열쇠는 계좌 자신이다.** 이름이 같아도 다른 계좌이므로
+                // 합쳐지면 안 된다 (docs/08-feedback.md 30번).
+                Allocation.Entry(key: account.id.uuidString,
+                                 label: account.weightLabel,
                                  amount: Money(minorUnits: account.totalMinor, currency: .krw),
                                  targetBP: nil)
             }
@@ -184,6 +187,38 @@ extension Member {
 extension Account {
     /// 목록과 비중에서 쓰는 이름.
     var weightLabel: String { name.isEmpty ? kind.label : name }
+
+    /// 같은 계좌인지 사람이 판정하는 열쇠 — **이름 + 기관**
+    /// (docs/08-feedback.md 30번, 정책 B).
+    ///
+    /// 화면에 `일반적립 증권사 A` 로 보이는 그 쌍이다. 앞뒤 공백과 대소문자는
+    /// 무시한다. 기관을 안 적었으면 빈 값 그대로 쌍의 한쪽이 된다 — 기관 없는
+    /// 같은 이름 둘은 화면에서 구별되지 않으므로 막는 것이 맞다.
+    ///
+    /// **비중을 합치는 열쇠가 아니다.** 그쪽은 계좌의 UUID 다 — 이름이 같아도
+    /// 다른 계좌이기 때문이고, 그것이 30번의 뿌리 고침이다.
+    var duplicateKey: String {
+        let name = self.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let institution = self.institution.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // 이름에 없는 글자로 잇는다. `A`+`B가` 와 `A B`+`가` 가 같아지지 않게.
+        return name + "\u{1F}" + institution
+    }
+
+    /// 같은 주인 밑에 **이름·기관이 같은 계좌**가 이미 있나.
+    ///
+    /// 이름이 비어 있으면 보지 않는다. 계좌를 새로 만들면 빈 이름으로 시작하는데,
+    /// 열자마자 빨간 글씨가 뜨면 아직 아무것도 안 한 사람을 나무라는 꼴이 된다.
+    ///
+    /// 보관한 계좌는 세지 않는다 — 닫은 계좌의 이름을 다시 쓰는 것은 자연스럽다.
+    /// (보관을 푸는 화면은 아직 없다. 생기면 그 자리에서 같은 검사를 건다.)
+    var hasDuplicateSibling: Bool {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard !isArchived, let owner else { return false }
+        let key = duplicateKey
+        return owner.sortedAccounts.contains {
+            $0.id != id && !$0.isArchived && $0.duplicateKey == key
+        }
+    }
 }
 
 // MARK: - 1·2층과 가로지르는 축 · 가족 전체
@@ -201,7 +236,9 @@ enum FamilyAllocation {
         let entries = members
             .filter { $0.assetTotalMinor != 0 }
             .map { member in
-                Allocation.Entry(label: member.name.isEmpty ? "이름 없음" : member.name,
+                // 계좌와 같은 이유로 열쇠는 구성원 자신이다.
+                Allocation.Entry(key: member.id.uuidString,
+                                 label: member.name.isEmpty ? "이름 없음" : member.name,
                                  amount: Money(minorUnits: member.assetTotalMinor, currency: .krw),
                                  targetBP: nil)
             }
@@ -225,7 +262,8 @@ enum FamilyAllocation {
             for holding in account.weightedHoldings {
                 let key = self.key(of: holding, dimension: dimension)
                 let bp = attached.insert(key).inserted ? targetByKey[key] : nil
-                entries.append(Allocation.Entry(label: label(forKey: key, dimension: dimension),
+                entries.append(Allocation.Entry(key: key,
+                                                label: label(forKey: key, dimension: dimension),
                                                 amount: holding.value,
                                                 targetBP: bp))
             }

@@ -148,6 +148,9 @@ struct BackupDocument: Codable, Sendable {
         var label: String
         var note: String
         var sortIndex: Int
+        /// 누구의 일인가. 없으면 가족 전체 (docs/08-feedback.md 32번).
+        /// 옛 백업 파일에는 이 칸이 없으므로 옵셔널이라야 읽힌다.
+        var memberID: UUID?
     }
 
     struct TodoData: Codable, Sendable {
@@ -327,7 +330,8 @@ extension BackupDocument {
             },
             milestones: all(UserMilestone.self).sorted { $0.year < $1.year }.map {
                 MilestoneData(id: $0.id, year: $0.year, label: $0.label,
-                              note: $0.note, sortIndex: $0.sortIndex)
+                              note: $0.note, sortIndex: $0.sortIndex,
+                              memberID: $0.memberID)
             },
             todos: all(TodoItem.self).sorted { $0.sortIndex < $1.sortIndex }.map {
                 TodoData(id: $0.id, title: $0.title, detail: $0.detail,

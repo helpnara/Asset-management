@@ -242,6 +242,11 @@ jobs:
           # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).
           shoot 14-account-targets.png -skipOnboarding -seedSampleData -startTab assets -startAccountTargets
           shoot 15-family-allocation.png -skipOnboarding -seedSampleData -startTab assets -startFamilyAllocation
+          # **1페이지는 한 장에 들어가느냐가 전부다.** 그런데 정작 이 화면만
+          # 안 찍고 있어서 원칙을 몇 개 실을지, 종목을 몇 줄까지 둘지를 감으로
+          # 정할 뻔했다 (docs/08-feedback.md 24번). 미리보기가 종이 끝 선과
+          # 채움 비율을 함께 그린다.
+          shoot 16-one-pager.png   -skipOnboarding -seedSampleData -startTab more -startOnePager
 
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**

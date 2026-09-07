@@ -20,14 +20,9 @@ struct DashboardView: View {
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
     @State private var completedToShow: ReviewSession?
-    @AppStorage("dashboard.chartRange") private var chartRange: ChartRange = .retirement
-
-    /// 은퇴까지만 보면 과거가 눌리고, 최근만 보면 큰 그림이 사라진다. 둘 다 필요하다.
-    enum ChartRange: String, CaseIterable, Identifiable {
-        case recent = "최근 3년"
-        case retirement = "은퇴까지"
-        var id: String { rawValue }
-    }
+    /// 기간은 궤적 차트가 들고 있다 — 구성원 궤적과 같은 값을 나눠 쓴다
+    /// (docs/08-feedback.md 31번). 여기서는 범례를 그릴지 판단하려고 읽는다.
+    @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .all
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -48,6 +43,7 @@ struct DashboardView: View {
                             .padding(.horizontal, 20)
                         weeklyBar
                         roadmap
+                        lifeEvents
                         trajectory
                         diagnosticsStrip
                         alerts
@@ -300,16 +296,120 @@ struct DashboardView: View {
         return result
     }
 
-    /// 최근 3년을 볼 때는 목표선(수십억)을 그리지 않는다. 그리면 나머지가 다 눌린다.
-    private var visiblePoints: [TrajectoryChart.Point] {
-        guard chartRange == .recent else { return trajectoryPoints }
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        guard
-            let from = calendar.date(byAdding: .year, value: -3, to: today),
-            let to = calendar.date(byAdding: .year, value: 3, to: today)
-        else { return trajectoryPoints }
-        return trajectoryPoints.filter { $0.date >= from && $0.date <= to }
+    // MARK: - 인생 이벤트
+
+    /// 직접 찍은 마일스톤을 **글로 보여 준다** (docs/08-feedback.md 32번).
+    ///
+    /// 지금까지는 궤적 차트의 세로 눈금 하나가 전부였다. 7.5pt 회색 글씨라
+    /// 사실상 안 보였고, 기간을 좁히면 아예 사라졌다 — 사용자가 "입력한 값이
+    /// 어디에 쓰이는지 모르겠다" 고 한 것이 정확한 지적이다.
+    ///
+    /// **그때의 예상 자산과 그 사람의 나이를 함께 적는다.** 연도만으로는
+    /// 그 해가 얼마나 먼지, 무엇을 뜻하는지 몸으로 느껴지지 않는다.
+    @ViewBuilder
+    private var lifeEvents: some View {
+        if !upcomingEvents.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                sectionHeader("인생 이벤트",
+                              trailing: userMilestones.count > upcomingEvents.count
+                                  ? "가까운 \(upcomingEvents.count)개" : "")
+                VStack(spacing: 0) {
+                    ForEach(upcomingEvents, id: \.id) { event in
+                        lifeEventRow(event)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    private func lifeEventRow(_ event: LifeEvent) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: "\(event.year)")
+                    .font(.figure(14, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                Text(event.yearsAway == 0 ? "올해" : "\(event.yearsAway)년 뒤")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Color.faint)
+            }
+            .frame(width: 54, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 5) {
+                    Text(event.label)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                    if let owner = event.ownerName {
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(Color.member(event.colorIndex))
+                                .frame(width: 6, height: 6)
+                            Text(event.age.map { "\(owner) \($0)세" } ?? owner)
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.muted)
+                        }
+                    }
+                }
+                if !event.note.isEmpty {
+                    Text(event.note)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Color.faint)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 6)
+
+            if let amount = event.projected {
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(Won.compact(amount))
+                        .font(.figure(13, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                    Text("그때 예상")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Color.faint)
+                }
+            }
+        }
+        .padding(.vertical, 9)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.rule).frame(height: 0.5)
+        }
+    }
+
+    struct LifeEvent: Identifiable {
+        let id: UUID
+        let year: Int
+        let yearsAway: Int
+        let label: String
+        let note: String
+        let ownerName: String?
+        let age: Int?
+        let colorIndex: Int
+        let projected: Money?
+    }
+
+    /// 앞으로 올 것 셋. 지난 것은 적지 않는다 — 현황판은 앞을 보는 화면이다.
+    private var upcomingEvents: [LifeEvent] {
+        let thisYear = Calendar.current.component(.year, from: .now)
+        return userMilestones
+            .filter { $0.year >= thisYear }
+            .sorted { $0.year < $1.year }
+            .prefix(3)
+            .map { milestone in
+                let owner = milestone.memberID.flatMap { id in members.first { $0.id == id } }
+                return LifeEvent(
+                    id: milestone.id,
+                    year: milestone.year,
+                    yearsAway: milestone.year - thisYear,
+                    label: milestone.label.isEmpty ? "이름 없음" : milestone.label,
+                    note: milestone.note,
+                    ownerName: owner.map { $0.name.isEmpty ? "이름 없음" : $0.name },
+                    age: owner.map { max(0, milestone.year - $0.birthYear) },
+                    colorIndex: owner?.colorIndex ?? 0,
+                    projected: projection?.point(inYear: milestone.year)?.nominal
+                )
+            }
     }
 
     @ViewBuilder
@@ -320,20 +420,16 @@ struct DashboardView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.ink)
                 Spacer()
-                Picker("기간", selection: $chartRange) {
-                    ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 168)
             }
             .padding(.horizontal, 20)
             .padding(.top, 22)
             .padding(.bottom, 10)
 
+            // 기간 선택은 차트가 들고 있다. 창을 좁히면 목표선도 차트가 스스로 뺀다.
             TrajectoryChart(
-                points: visiblePoints,
+                points: trajectoryPoints,
                 today: Calendar.current.startOfDay(for: .now),
-                targetMinor: chartRange == .retirement ? (plan?.targetAmountMinor ?? 0) : 0,
+                targetMinor: plan?.targetAmountMinor ?? 0,
                 events: milestoneMarks
             )
             .padding(.horizontal, 16)
@@ -341,7 +437,7 @@ struct DashboardView: View {
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
                 legend(color: .dad, dashed: true, label: "예측")
-                if chartRange == .retirement, let target = plan?.targetAmount, !target.isZero {
+                if chartSpan == .all, let target = plan?.targetAmount, !target.isZero {
                     legend(color: .ink.opacity(0.55), dashed: true,
                            label: "목표 \(Won.compact(target))")
                 }
