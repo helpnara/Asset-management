@@ -45,7 +45,7 @@ struct OnePagerPreviewView: View {
                 }
             }
         }
-        .background(Color.surface)
+        .background(Color.ground)
         .navigationTitle("한 장 미리보기")
         .navigationBarTitleDisplayMode(.inline)
     }

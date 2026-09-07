@@ -55,7 +55,7 @@ struct SimulationView: View {
                     ProgressView().task { _ = Plan.current(in: context) }
                 }
             }
-            .background(Color.surface)
+            .background(Color.ground)
             .navigationTitle("시뮬레이션")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -134,11 +134,8 @@ struct SimulationView: View {
 
     private func chartCard(_ plan: Plan, changed: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 손잡이를 안 돌렸으면 계획선은 예상선과 완전히 겹친다.
-            // 그 위에 점선을 덧그리면 실선이 점선처럼 보여서 차트가 망가진다.
             SimulationChart(
-                bands: outcome?.bands ?? [],
-                baseline: changed ? (outcome?.baseline ?? []) : [],
+                series: visibleSeries(changed: changed),
                 targetMinor: plan.targetAmountMinor,
                 depletion: outcome?.depletionDate
             )
@@ -152,17 +149,28 @@ struct SimulationView: View {
         .background(cardBackground)
     }
 
+    /// 손잡이를 안 돌렸으면 `계획대로` 와 `이 설정` 이 완전히 겹친다.
+    /// 그 위에 점선을 덧그리면 실선이 점선처럼 보여서 차트가 망가지므로
+    /// 겹칠 때는 계획선을 빼고 그린다.
+    private func visibleSeries(changed: Bool) -> [SimulationChart.Series] {
+        let series = outcome?.series ?? []
+        return changed ? series : series.filter { $0.kind != .plan }
+    }
+
     private func legend(_ plan: Plan, changed: Bool) -> some View {
-        HStack(spacing: 12) {
-            // 밴드는 이제 확률의 꼬리가 아니라 **수익률 세 가지**다
-            // (docs/08-feedback.md 22번). 범례도 그렇게 말해야 한다 —
-            // `10~90%` 는 몬테카를로를 쓰던 때의 잔재다.
-            legendItem(color: Color.dad, label: "계획대로", dashed: false)
-            legendItem(color: Color.dad.opacity(0.35), label: "물가만큼만 ~ 연 20%", dashed: false)
-            if changed {
-                legendItem(color: Color.faint, label: "계획 그대로", dashed: true)
+        // **네 시나리오를 색으로 가른다** (docs/08-feedback.md 34·35번).
+        // 예전에는 밴드 하나에 `물가만큼만 ~ 연 20%` 라고만 적어서, 어느 선이
+        // 어느 가정인지 알 수 없었다 — 게다가 그 세 선의 금액이 실제로 같았다.
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 12) {
+                ForEach(SimulationChart.ScenarioKind.allCases) { kind in
+                    if kind != .plan || changed {
+                        legendItem(color: kind.color, label: kind.label,
+                                   dashed: !kind.dash.isEmpty)
+                    }
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
             if plan.targetAmountMinor > 0 {
                 Text("목표 " + Won.compact(plan.targetAmount))
                     .font(.figure(9.5))
@@ -303,12 +311,18 @@ struct SimulationView: View {
     private var spreadCard: some View {
         if let outcome {
             VStack(spacing: 0) {
-                // 각 줄이 무엇인지 수익률로 말한다. "잘 풀리면" 은 뜻이 흐리다.
-                spreadRow(rateLabel("물가만큼만", outcome.floorReturnBP), outcome.low, Color.muted)
-                Divider().overlay(Color.rule)
-                spreadRow(rateLabel("계획대로", outcome.midReturnBP), outcome.expected, Color.ink)
-                Divider().overlay(Color.rule)
-                spreadRow(rateLabel("크게 잡아", outcome.ceilingReturnBP), outcome.high, Color.gain)
+                // **네 줄이고 색은 차트의 선과 같다.** 표와 그림이 같은 색이라야
+                // 어느 숫자가 어느 선인지 눈으로 잇는다 (35번).
+                ForEach(SimulationChart.ScenarioKind.allCases) { kind in
+                    if kind != SimulationChart.ScenarioKind.allCases.first {
+                        Divider().overlay(Color.rule)
+                    }
+                    spreadRow(
+                        rateLabel(kind.label, outcome.rates[kind] ?? 0),
+                        outcome.ends[kind] ?? .zero(.krw),
+                        kind.color
+                    )
+                }
                 if outcome.hasDrawdown {
                     Divider().overlay(Color.rule)
                     depletionRow(outcome)
@@ -547,13 +561,15 @@ extension SimulationView.Knobs {
 
 /// 계산 결과. `Sendable` 값만 담아 계산 스레드에서 그대로 건너온다.
 struct SimulationOutcome: Sendable {
-    var bands: [SimulationChart.Band]
-    var baseline: [SimulationChart.LinePoint]
-    var low: Money
-    /// 변동성을 빼고 계산한 값. 계획 탭이 보여주는 숫자와 같아야 한다 —
-    /// 탭마다 다른 "예상"이 나오면 어느 쪽도 믿지 않게 된다.
+    /// 네 시나리오. 차트의 선과 아래 표가 **같은 값**을 나눠 쓴다 —
+    /// 따로 계산하면 그림과 숫자가 어긋난다 (docs/08-feedback.md 34번).
+    var series: [SimulationChart.Series]
+    /// 시나리오별 은퇴 시점 금액.
+    var ends: [SimulationChart.ScenarioKind: Money]
+    /// 시나리오별 가정 수익률 (basis point).
+    var rates: [SimulationChart.ScenarioKind: Int]
+    /// 지금 설정의 은퇴 시점 값. 헤드라인의 큰 숫자다.
     var expected: Money
-    var high: Money
     var expectedReal: Money
     /// 계획 그대로일 때와의 차이. 이 숫자 하나가 What-if 의 답이다.
     var delta: Money
@@ -567,10 +583,6 @@ struct SimulationOutcome: Sendable {
     var depletionDate: Date?
     /// 인출 구간을 그리고 있는가. 이게 false 면 고갈 줄을 아예 보여주지 않는다.
     var hasDrawdown: Bool
-    /// 세 줄에 적을 수익률. 화면이 다시 계산하지 않게 여기 실어 보낸다.
-    var floorReturnBP: Int
-    var midReturnBP: Int
-    var ceilingReturnBP: Int
 
     static func make(
         baseline input: ProjectionInput,
@@ -579,92 +591,77 @@ struct SimulationOutcome: Sendable {
         retirementYear: Int,
         calendar: Calendar
     ) -> SimulationOutcome {
-        let deterministic = Projection.run(adjusted, calendar: calendar)
-        let plain = Projection.run(input, calendar: calendar)
+        // **네 시나리오를 결정론으로 그린다** (docs/08-feedback.md 22·34번).
+        //
+        // 확률의 꼬리(하위 10%·상위 10%)로 밴드를 그리던 때가 있었는데, 하위
+        // 10%가 무엇을 뜻하는지 아무도 모른다. 대신 수익률을 바꿔 네 번 굴린다 —
+        // 각 선을 한 문장으로 말할 수 있다.
+        //
+        // **`settingInvestmentReturn` 을 써야 한다.** `annualReturn` 만 바꾸면
+        // 굴리는 쪽은 덩어리의 수익률을 읽으므로 아무것도 안 바뀌고, 실제로
+        // 그래서 세 줄이 전부 같은 금액으로 나왔다 (34번).
+        let inputs: [SimulationChart.ScenarioKind: ProjectionInput] = [
+            .conservative: adjusted.settingInvestmentReturn(adjusted.inflation),
+            .plan: input,
+            .current: adjusted,
+            .optimistic: adjusted.settingInvestmentReturn(Ratio(basisPoints: 2_000))
+        ]
+        let results = inputs.mapValues { Projection.run($0, calendar: calendar) }
+
+        let planYear = calendar.component(.year, from: input.retirementDate)
+        func end(_ kind: SimulationChart.ScenarioKind) -> Money {
+            let year = kind == .plan ? planYear : retirementYear
+            guard let result = results[kind] else { return .zero(.krw) }
+            return result.point(inYear: year, calendar: calendar)?.nominal
+                ?? result.last?.nominal ?? .zero(.krw)
+        }
+
+        // 선은 연 단위로 성기게 뽑는다. 매달 찍으면 선이 두꺼워지기만 한다.
+        func line(_ result: ProjectionResult) -> [SimulationChart.LinePoint] {
+            result.points.reduce(into: [SimulationChart.LinePoint]()) { points, point in
+                let year = calendar.component(.year, from: point.date)
+                let entry = SimulationChart.LinePoint(date: point.date,
+                                                      minor: point.nominal.minorUnits)
+                if let last = points.last, calendar.component(.year, from: last.date) == year {
+                    points[points.count - 1] = entry
+                } else {
+                    points.append(entry)
+                }
+            }
+        }
+
+        let series = SimulationChart.ScenarioKind.allCases.map { kind in
+            SimulationChart.Series(kind: kind, points: results[kind].map(line) ?? [])
+        }
+        var ends: [SimulationChart.ScenarioKind: Money] = [:]
+        var rates: [SimulationChart.ScenarioKind: Int] = [:]
+        for kind in SimulationChart.ScenarioKind.allCases {
+            ends[kind] = end(kind)
+            rates[kind] = inputs[kind]?.annualReturn.basisPoints ?? 0
+        }
+
         let monteCarlo = MonteCarlo.run(
             MonteCarloInput(base: adjusted, annualVolatility: volatility),
             calendar: calendar
         )
-
-        // 밴드의 가운데 선은 몬테카를로의 p50 이 아니라 결정론적 궤적이다.
-        // p50 은 변동성 때문에 예상선보다 아래에 놓이는데, 화면의 큰 숫자와
-        // 차트의 선이 어긋나면 그건 버그로 읽힌다. 폭만 시뮬레이션에서 가져온다.
-        var expectedByDate: [Date: Int] = [:]
-        for point in deterministic.points { expectedByDate[point.date] = point.nominal.minorUnits }
-
-        // **세 시나리오를 결정론으로 그린다** (docs/08-feedback.md 22번).
-        //
-        // 예전에는 몬테카를로의 하위 10% · 상위 10% 로 밴드를 그리고 "잘 안
-        // 풀리면 / 잘 풀리면" 이라고 적었다. 그건 확률의 꼬리를 사람 말로
-        // 옮긴 것이라 뜻이 흐리다 — 하위 10%가 무엇을 뜻하는지 아무도 모른다.
-        //
-        // 대신 **수익률을 바꿔 세 번 굴린다.** 각 선이 무엇인지 한 문장으로
-        // 말할 수 있다: "물가만큼만 벌면", "계획한 대로면", "연 20%면".
-        var floorInput = adjusted
-        floorInput.annualReturn = adjusted.inflation
-        var ceilingInput = adjusted
-        ceilingInput.annualReturn = Ratio(basisPoints: 2_000)
-        let floor = Projection.run(floorInput, calendar: calendar)
-        let ceiling = Projection.run(ceilingInput, calendar: calendar)
-
-        var floorByDate: [Date: Int] = [:]
-        for point in floor.points { floorByDate[point.date] = point.nominal.minorUnits }
-        var ceilingByDate: [Date: Int] = [:]
-        for point in ceiling.points { ceilingByDate[point.date] = point.nominal.minorUnits }
-
-        let bands = deterministic.points.map { point in
-            SimulationChart.Band(
-                date: point.date,
-                low: floorByDate[point.date] ?? point.nominal.minorUnits,
-                mid: point.nominal.minorUnits,
-                high: ceilingByDate[point.date] ?? point.nominal.minorUnits
-            )
-        }
-
-        // 계획선은 밴드와 같은 리듬으로 성기게 뽑는다. 매달 찍으면 선이 두꺼워지기만 한다.
-        let baselinePoints = plain.points
-            .reduce(into: [SimulationChart.LinePoint]()) { result, point in
-                let year = calendar.component(.year, from: point.date)
-                let entry = SimulationChart.LinePoint(date: point.date,
-                                                     minor: point.nominal.minorUnits)
-                if let last = result.last, calendar.component(.year, from: last.date) == year {
-                    result[result.count - 1] = entry
-                } else {
-                    result.append(entry)
-                }
-            }
-
-        // 헤드라인은 **은퇴 시점** 값이다. 인출 구간까지 그리기 시작하면서
-        // `last` 가 은퇴 후 30년 뒤 잔고가 됐다 — 그걸 "2049년 예상"이라고
-        // 보여주면 통째로 다른 숫자다.
-        let end = deterministic.point(inYear: retirementYear, calendar: calendar)?.nominal
-            ?? deterministic.last?.nominal ?? adjusted.startingBalance
-        let planYear = calendar.component(.year, from: input.retirementDate)
-        let planEnd = plain.point(inYear: planYear, calendar: calendar)?.nominal
-            ?? plain.last?.nominal ?? input.startingBalance
+        let current = results[.current]
 
         return SimulationOutcome(
-            bands: bands,
-            baseline: baselinePoints,
-            low: floor.point(inYear: retirementYear, calendar: calendar)?.nominal
-                ?? floor.last?.nominal ?? end,
-            expected: end,
-            high: ceiling.point(inYear: retirementYear, calendar: calendar)?.nominal
-                ?? ceiling.last?.nominal ?? end,
+            series: series,
+            ends: ends,
+            rates: rates,
+            expected: ends[.current] ?? .zero(.krw),
             // 명목과 같은 시점에서 읽어야 한다. `last` 는 은퇴 30년 뒤라서
             // 고갈되면 0원이 나오고, 화면에는 "2049년 예상 10억 / 오늘 돈으로 0원"
             // 이라는 앞뒤 안 맞는 두 줄이 뜬다 (docs/08-feedback.md 3번).
-            expectedReal: deterministic.point(inYear: retirementYear, calendar: calendar)?.real
-                ?? deterministic.last?.real ?? end,
-            delta: end - planEnd,
+            expectedReal: current?.point(inYear: retirementYear, calendar: calendar)?.real
+                ?? current?.last?.real ?? .zero(.krw),
+            delta: (ends[.current] ?? .zero(.krw)) - (ends[.plan] ?? .zero(.krw)),
             successProbability: monteCarlo.successProbability,
             paths: monteCarlo.paths,
-            depletionYear: deterministic.depletion.map { calendar.component(.year, from: $0) },
-            depletionDate: deterministic.depletion,
-            hasDrawdown: adjusted.endDate > adjusted.retirementDate,
-            floorReturnBP: adjusted.inflation.basisPoints,
-            midReturnBP: adjusted.annualReturn.basisPoints,
-            ceilingReturnBP: 2_000
+            depletionYear: current?.depletion.map { calendar.component(.year, from: $0) },
+            depletionDate: current?.depletion,
+            hasDrawdown: adjusted.endDate > adjusted.retirementDate
         )
     }
 }

@@ -37,6 +37,9 @@ struct RootView: View {
         // **쓸어내려도 닫히게** 한다. 이 값은 환경으로 내려가므로 여기 한 번이면
         // 아래의 모든 Form·List·ScrollView 에 걸린다 (docs/08-feedback.md 2번).
         .scrollDismissesKeyboard(.interactively)
+        // **탭 화면의 바탕은 하나다** (docs/08-feedback.md 35번).
+        // 목록 화면들이 이미 시스템 목록 바탕을 쓰고 있으므로 거기에 맞춘다.
+        .background(Color.ground)
         .task {
             // 시간대 변경·기기 이전에 대비해 앱이 뜰 때마다 다시 등록한다.
             let input = ReviewScheduling.Input(holdings: holdings, sessions: sessions)

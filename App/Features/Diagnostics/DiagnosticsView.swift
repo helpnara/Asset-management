@@ -33,7 +33,7 @@ struct DiagnosticsView: View {
                 ProgressView().task { _ = Plan.current(in: context) }
             }
         }
-        .background(Color.surface)
+        .background(Color.ground)
         .navigationTitle("자산 진단")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isEditingCriteria) {

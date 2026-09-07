@@ -38,6 +38,59 @@ struct ProjectionTests {
         )
     }
 
+    @Test("수익률을 갈아 끼우면 결과가 실제로 달라진다")
+    func settingInvestmentReturnActuallyChangesResult() {
+        // **실제로 났던 버그다** (docs/08-feedback.md 34번).
+        // `input.annualReturn` 만 바꾸고 덩어리를 그대로 두면 굴리는 쪽은
+        // `bucket.annualReturn` 을 읽으므로 아무것도 안 바뀐다 — 시뮬레이션의
+        // 세 시나리오가 전부 같은 금액으로 나왔다.
+        //
+        // 기댓값은 파이썬으로 대조했다 (1억, 120개월, 월복리 + 은행가 반올림):
+        //   연 3%  → 134,391,635
+        //   연 8%  → 215,892,496
+        //   연 20% → 619,173,640
+        let base = input(years: 10, start: 100_000_000, monthly: 0, returnBP: 800)
+        #expect(Projection.run(base, calendar: calendar).last?.nominal
+                == Money(215_892_496, currency: .krw))
+
+        let slow = base.settingInvestmentReturn(Ratio(basisPoints: 300))
+        #expect(Projection.run(slow, calendar: calendar).last?.nominal
+                == Money(134_391_635, currency: .krw))
+
+        let fast = base.settingInvestmentReturn(Ratio(basisPoints: 2_000))
+        #expect(Projection.run(fast, calendar: calendar).last?.nominal
+                == Money(619_173_640, currency: .krw))
+
+        // 덩어리까지 갈아 끼웠는지 직접 본다. 여기가 버그의 자리였다.
+        #expect(slow.buckets.allSatisfy { $0.profile != .investment
+                    || $0.annualReturn == Ratio(basisPoints: 300) })
+    }
+
+    @Test("투자자산이 아닌 덩어리는 수익률을 갈아 끼워도 그대로다")
+    func settingInvestmentReturnLeavesOtherBuckets() {
+        // 전월세보증금은 자라지 않는 돈이다. 시나리오를 바꿔도 여기까지
+        // 함께 굴리면 보증금이 복리로 불어난다 (11번).
+        let input = ProjectionInput(
+            startDate: date("2026-01-01"),
+            endDate: date("2036-01-01"),
+            buckets: [
+                BalanceBucket(profile: .investment,
+                              amount: Money(100_000_000, currency: .krw),
+                              annualReturn: Ratio(basisPoints: 800)),
+                BalanceBucket(profile: .fixed,
+                              amount: Money(100_000_000, currency: .krw),
+                              annualReturn: .zero)
+            ],
+            monthlyContribution: .zero(.krw),
+            annualReturn: Ratio(basisPoints: 800)
+        )
+        let slow = input.settingInvestmentReturn(Ratio(basisPoints: 300))
+        #expect(slow.buckets[1].annualReturn == .zero)
+        // 투자자산만 3%로 자라고 보증금은 그대로 → 134,391,635 + 100,000,000
+        #expect(Projection.run(slow, calendar: calendar).last?.nominal
+                == Money(234_391_635, currency: .krw))
+    }
+
     @Test("수익률이 0이면 적립한 만큼만 쌓인다")
     func noReturn() {
         let result = Projection.run(input(years: 2, start: 0, monthly: 1_000_000, returnBP: 0),

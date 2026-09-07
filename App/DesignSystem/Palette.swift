@@ -10,8 +10,20 @@ import UIKit
 ///
 /// 색을 새로 쓸 때 **`Color.white` · `Color.black` 을 직접 쓰지 않는다.**
 /// 다크 모드에서 그 화면만 흰 판으로 남는다 (docs/08-feedback.md 1번).
-/// 바탕이 필요하면 `canvas`, 살짝 눌린 면이 필요하면 `surface` 를 쓴다.
+/// 탭 화면의 바탕은 `ground` 하나다. 그 위에 얹는 카드는 `raised`,
+/// 전면 시트(주간 점검·환영·잠금)는 종이처럼 `canvas` 를 쓴다.
 extension Color {
+    /// **탭 화면의 유일한 바탕** (docs/08-feedback.md 35번).
+    ///
+    /// 다크 모드에서 검정이 셋으로 갈려 있었다 — 현황판 `canvas`(#0E1216),
+    /// 자산·계획·더보기는 시스템 목록 바탕(#000000), 시뮬레이션·진단은
+    /// `surface`(#171C21). 사람 눈에는 "화면마다 톤이 다르다" 로 읽힌다.
+    ///
+    /// 다섯 탭 중 셋이 이미 시스템 목록 바탕이므로 **거기에 맞춘다.** 목록의
+    /// 행 색(시스템)과도 자연스럽게 짝이 맞아, 행이 바탕에 묻히지 않는다.
+    /// 이 위에 얹는 카드는 `raised` 를 쓴다.
+    static let ground = Color(uiColor: .systemGroupedBackground)
+
     /// 화면 바탕. 예전에 `Color.white` 로 칠하던 자리.
     static let canvas = Color(light: 0xFFFFFF, dark: 0x0E1216)
     /// 바탕보다 한 겹 눌린 면. 카드가 얹히는 배경.

@@ -44,25 +44,29 @@ struct TrajectoryChart: View {
         var id: String { "\(label)-\(date.timeIntervalSince1970)" }
     }
 
-    /// 보는 창. **오늘을 가운데 두고 앞뒤로** 얼마를 볼지다.
+    /// 보는 창.
     ///
-    /// 앞뒤 둘 다 자르는 이유는 기록이 쌓이기 때문이다. 미래만 자르면 20년 뒤에는
-    /// 지난 20년치가 창에 남아 `1년` 이 다시 넓은 창이 된다.
+    /// `1년` · `5년` 은 **오늘을 가운데 두고 앞뒤로** 자른다. 앞뒤 둘 다 자르는
+    /// 이유는 기록이 쌓이기 때문이다 — 미래만 자르면 20년 뒤에는 지난 20년치가
+    /// 창에 남아 `1년` 이 다시 넓은 창이 된다.
+    ///
+    /// `은퇴까지` 는 은퇴 시점에서 끊고, `전체` 는 계획의 지평선까지 — **은퇴
+    /// 이후 인출 구간을 포함해** 그린다 (docs/08-feedback.md 36번).
+    /// 자산이 줄어드는 구간을 봐야 노후 계획이 완성되기 때문이다.
     enum Span: String, CaseIterable, Identifiable {
         case year1 = "1년"
         case year5 = "5년"
-        /// 자르지 않는다. 궤적 자체가 **은퇴까지**만 그려지므로 이 창이 곧
-        /// 은퇴까지다 (docs/08-feedback.md 33번).
-        case all = "은퇴까지"
+        case retirement = "은퇴까지"
+        case all = "전체"
 
         var id: String { rawValue }
 
-        /// 오늘 앞뒤로 볼 햇수. `전체` 는 자르지 않는다.
+        /// 오늘 앞뒤로 볼 햇수. 나머지 둘은 날짜로 자른다.
         var years: Int? {
             switch self {
             case .year1: return 1
             case .year5: return 5
-            case .all: return nil
+            case .retirement, .all: return nil
             }
         }
     }
@@ -74,9 +78,13 @@ struct TrajectoryChart: View {
     let points: [Point]
     let today: Date
     let targetMinor: Int
+    /// 은퇴 시점. `은퇴까지` 창이 여기서 끊는다. 없으면 자르지 않는다.
+    var retirementDate: Date? = nil
     var events: [EventMark] = []
 
-    @AppStorage(TrajectoryChart.spanKey) private var span: Span = .all
+    /// 기본은 `은퇴까지` — 이 앱이 답하는 질문의 기본 범위다.
+    /// 저장된 값이 있으면 그것을 따른다.
+    @AppStorage(TrajectoryChart.spanKey) private var span: Span = .retirement
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -84,7 +92,7 @@ struct TrajectoryChart: View {
                 ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 200)
+            .frame(maxWidth: 260)
 
             if visiblePoints.count < 2 {
                 placeholder
@@ -209,6 +217,12 @@ struct TrajectoryChart: View {
     }
 
     private var dateRange: ClosedRange<Date>? {
+        // 은퇴까지는 오른쪽만 자른다. 왼쪽(적어 온 기록)은 남길수록 좋다.
+        if span == .retirement {
+            guard let retirementDate else { return nil }
+            let first = points.map(\.date).min() ?? today
+            return min(first, today)...max(retirementDate, today)
+        }
         guard let years = span.years else { return nil }
         let calendar = Calendar.current
         guard
@@ -218,9 +232,11 @@ struct TrajectoryChart: View {
         return from...to
     }
 
-    /// **목표선은 `전체` 에서만 그린다.** 좁은 창에서 수십억짜리 선을 그리면
+    /// **목표선은 넓은 창에서만 그린다.** 좁은 창에서 수십억짜리 선을 그리면
     /// 그 하나 때문에 축이 늘어나 나머지가 전부 바닥에 눌린다.
-    private var showsTarget: Bool { span == .all && targetMinor > 0 }
+    private var showsTarget: Bool {
+        (span == .retirement || span == .all) && targetMinor > 0
+    }
 
     // MARK: - 축
 

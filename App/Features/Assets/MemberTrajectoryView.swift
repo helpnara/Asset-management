@@ -35,7 +35,7 @@ struct MemberTrajectoryView: View {
             }
             .padding(16)
         }
-        .background(Color.surface)
+        .background(Color.ground)
         .navigationTitle(member.name.isEmpty ? "구성원" : member.name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -71,6 +71,10 @@ struct MemberTrajectoryView: View {
                 points: points,
                 today: Calendar.current.startOfDay(for: .now),
                 targetMinor: 0,
+                retirementDate: Plan.endDate(
+                    retirementYear: retirementYear,
+                    notBefore: Calendar.current.startOfDay(for: .now)
+                ),
                 events: events
             )
         }

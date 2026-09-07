@@ -22,7 +22,7 @@ struct DashboardView: View {
     @State private var completedToShow: ReviewSession?
     /// 기간은 궤적 차트가 들고 있다 — 구성원 궤적과 같은 값을 나눠 쓴다
     /// (docs/08-feedback.md 31번). 여기서는 범례를 그릴지 판단하려고 읽는다.
-    @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .all
+    @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .retirement
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -55,7 +55,9 @@ struct DashboardView: View {
             .fullScreenCover(item: $completedToShow) { session in
                 ReviewCompleteView(session: session)
             }
-            .background(Color.canvas)
+            // 앱의 한 가지 바탕 (35번). 예전에는 여기만 `canvas` 라
+            // 다른 탭과 검정이 달랐다.
+            .background(Color.ground)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()
@@ -146,7 +148,9 @@ struct DashboardView: View {
             }
         }
         .padding(13)
-        .background(Color.surface)
+        // 바탕이 `surface` 가 됐으므로 이 카드는 한 겹 위(`raised`)로 올린다.
+        // 그러지 않으면 카드가 바탕에 묻혀 사라진다 (35번).
+        .background(Color.raised)
         .padding(.horizontal, 20)
         .padding(.top, 16)
     }
@@ -286,21 +290,14 @@ struct DashboardView: View {
         }
         // 예측선은 오늘에서 출발한다. 과거 마지막 점과 이어 붙어 끊겨 보이지 않는다.
         //
-        // **은퇴까지만 그린다** (docs/08-feedback.md 33번). 생활비를 적어 두면
-        // 예측이 은퇴 뒤 35년까지 이어지는데, 선형 축에서 그 끝(수백억)에 축을
-        // 맞추면 지금 자산이 바닥에 붙어 보이지 않는다. 은퇴 이후는 진단과
-        // 시뮬레이션이 답하는 질문이고, 이 그래프의 질문은 은퇴까지다.
+        // **지평선까지 다 만든다** (docs/08-feedback.md 36번). 자르는 것은
+        // 차트의 기간 선택이 한다 — 여기서 미리 잘라 버리면 `전체` 를 골라도
+        // 은퇴 이후에 자산이 줄어드는 구간을 볼 수 없다.
         if let projection {
-            let limit = plan.map {
-                Plan.endDate(retirementYear: $0.retirementYear,
-                             notBefore: Calendar.current.startOfDay(for: .now))
-            }
             let monthly = projection.points.enumerated()
                 .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
-                .map { $0.element }
-                .filter { point in limit.map { point.date <= $0 } ?? true }
-                .map { TrajectoryChart.Point(date: $0.date,
-                                             minor: $0.nominal.minorUnits,
+                .map { TrajectoryChart.Point(date: $0.element.date,
+                                             minor: $0.element.nominal.minorUnits,
                                              series: .projected) }
             result.append(contentsOf: monthly)
         }
@@ -445,6 +442,10 @@ struct DashboardView: View {
                 points: trajectoryPoints,
                 today: Calendar.current.startOfDay(for: .now),
                 targetMinor: plan?.targetAmountMinor ?? 0,
+                retirementDate: plan.map {
+                    Plan.endDate(retirementYear: $0.retirementYear,
+                                 notBefore: Calendar.current.startOfDay(for: .now))
+                },
                 events: milestoneMarks
             )
             .padding(.horizontal, 16)
@@ -452,7 +453,8 @@ struct DashboardView: View {
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
                 legend(color: .dad, dashed: true, label: "예측")
-                if chartSpan == .all, let target = plan?.targetAmount, !target.isZero {
+                if chartSpan == .retirement || chartSpan == .all,
+                   let target = plan?.targetAmount, !target.isZero {
                     legend(color: .ink.opacity(0.55), dashed: true,
                            label: "목표 \(Won.compact(target))")
                 }

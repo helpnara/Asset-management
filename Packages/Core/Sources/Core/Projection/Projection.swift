@@ -105,6 +105,24 @@ public struct ProjectionInput: Sendable, Hashable {
         return buckets.dropFirst().reduce(first.amount) { $0 + $1.amount }
     }
 
+    /// 투자 수익률을 갈아 끼운 사본.
+    ///
+    /// **`annualReturn` 만 바꾸면 아무 일도 일어나지 않는다.** 굴리는 것은
+    /// 덩어리마다 들고 있는 `bucket.annualReturn` 이라, 계산은 그쪽만 읽는다.
+    /// 이걸 모르고 `annualReturn` 만 바꾼 코드가 실제로 있었고, 시뮬레이션의
+    /// 세 시나리오가 **전부 같은 금액**으로 나왔다 (docs/08-feedback.md 34번).
+    ///
+    /// 바꾸는 것은 **투자자산 덩어리뿐**이다. 전월세보증금·받을 돈은 자라지
+    /// 않는 돈이고, 예적금·부동산은 자기 속도가 따로 있다 (11번).
+    public func settingInvestmentReturn(_ rate: Ratio) -> ProjectionInput {
+        var copy = self
+        copy.annualReturn = rate
+        for index in copy.buckets.indices where copy.buckets[index].profile == .investment {
+            copy.buckets[index].annualReturn = rate
+        }
+        return copy
+    }
+
     /// 덩어리를 나누지 않는 경우. **전액을 투자자산으로 본다** — 예전 동작 그대로다.
     public init(
         startDate: Date,
