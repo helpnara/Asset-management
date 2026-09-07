@@ -108,10 +108,17 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 프로파일로 굽는데, 개발용은 기기 없이 발급되지 않는다.
 
 **CloudKit 스키마는 저절로 생기지 않는다.** SwiftData 는 Development 환경에서만
-레코드 타입을 자동 생성하고, TestFlight 빌드는 Production 을 쓴다. 맥으로 개발용
-빌드를 한 번도 안 돌렸다면 Development 가 비어 있어 배포할 것이 없다 —
-앱은 로컬로 정상 동작하지만 동기화만 조용히 안 붙는다
-([docs/06-testflight.md](docs/06-testflight.md#cloudkit-스키마--맥이-없으면-여기서-한-번-막힌다)).
+레코드 타입을 자동 생성하고, TestFlight 빌드는 Production 을 쓴다 —
+엔타이틀먼트로 이걸 바꿀 수 없다. 맥으로 개발용 빌드를 한 번도 안 돌렸다면
+Development 가 비어 있어 배포할 것이 없다. 앱은 로컬로 정상 동작하지만
+동기화만 조용히 안 붙는다.
+
+**맥이 꼭 필요하지는 않다.** 애플의 `CKTool JS` 는 Node 에서 돌아서 스키마
+텍스트 파일(`.ckdb`)을 Development 에 밀어 넣을 수 있다. Production 으로
+올리는 것만 웹 콘솔의 Deploy 버튼이라 사람이 누른다. 다만 `.ckdb` 를 손으로
+써야 하고 **Production 스키마는 지울 수 없어서**, 진짜 컨테이너에 하기 전에
+시험용 컨테이너로 한 번 확인하는 절차를 거친다
+([docs/06-testflight.md](docs/06-testflight.md#cloudkit-스키마--맥이-없어도-길이-있다)).
 App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있다.
 
 ## 기억해 둘 것

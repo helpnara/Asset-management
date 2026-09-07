@@ -271,10 +271,15 @@ Your team has no devices from which to generate a provisioning profile
 | 해외 종목을 **원화로 환산해서** 적었는가 | 이 앱의 모든 금액은 원화다. 달러로 적으면 합계가 1,400배 틀린다 |
 | 계획 탭에 은퇴 후 월 생활비를 넣었는가 | 넣어야 인출 구간과 자산 고갈 시점이 그려진다 |
 
-## CloudKit 스키마 — 맥이 없으면 여기서 한 번 막힌다
+## CloudKit 스키마 — 맥이 없어도 길이 있다
 
 **이 절은 TestFlight 설치가 끝난 뒤 읽어도 됩니다. 앱은 스키마가 없어도
 정상 동작하고 기록도 남습니다. 다만 기기 간 동기화와 재설치 복원이 안 됩니다.**
+
+> 예전에 이 문서는 "맥이 한 번 필요하다" 고 단정했습니다. **틀렸습니다.**
+> 맥 없이 가는 길이 둘 있습니다. 아래에 확인한 사실과 함께 적습니다.
+
+### 왜 막히나
 
 CloudKit 환경은 두 개고, 빌드 종류가 어느 쪽을 쓸지 정합니다.
 
@@ -283,41 +288,108 @@ CloudKit 환경은 두 개고, 빌드 종류가 어느 쪽을 쓸지 정합니�
 | Xcode 에서 맥으로 직접 실행 (개발용 서명) | **Development** |
 | TestFlight · App Store | **Production** |
 
-SwiftData 는 **Development 환경에서만** 레코드 타입을 자동으로 만들어 줍니다.
-Production 에서는 앱이 타입을 만들 수 없습니다 — 미리 배포돼 있어야 합니다.
+SwiftData 는 **Development 환경에서만** 레코드 타입을 자동으로 만듭니다.
+Production 에서는 앱이 타입을 만들 수 없고, 시도하면 이 오류가 납니다.
 
-여기서 문제가 생깁니다. **맥이 없으면 개발용 빌드를 실행할 방법이 없고,
-그러면 Development 스키마가 비어 있어 Production 으로 배포할 것도 없습니다.**
-TestFlight 빌드만 돌리는 한 이 상태는 저절로 풀리지 않습니다.
+```
+"Invalid Arguments" (12/2006)
+server message = "Cannot create new type ... in production schema"
+```
+
+**엔타이틀먼트로 TestFlight 빌드를 Development 로 돌릴 수 없습니다.**
+`com.apple.developer.icloud-container-environment` 를 `Development` 로 적어도
+TestFlight·App Store 배포는 **항상** Production 을 씁니다. 애플이 그렇게
+막아 둔 것이라 우회할 방법이 없습니다.
+([Apple Developer Forums](https://developer.apple.com/forums/thread/707098))
+
+그래서 맥으로 개발용 빌드를 한 번도 안 돌렸다면 Development 가 비어 있고,
+콘솔의 **Deploy** 버튼은 "no changes are detected" 로 비활성입니다 —
+**올릴 것이 없기 때문**입니다.
 
 ### 먼저 확인
 
 <https://icloud.developer.apple.com> → 컨테이너 `iCloud.com.helpnara.slowrich`
 → **Schema** → **Record Types**
 
-`CD_` 로 시작하는 타입 12개가 보여야 합니다.
+> ⚠️ **컨테이너를 반드시 확인하세요.** 이름이 비슷한 컨테이너가 여럿이면
+> 엉뚱한 쪽을 보고 있기 쉽습니다. 실제로 이것이 원인이었던 사례가 있습니다
+> ([forums/819507](https://developer.apple.com/forums/thread/819507)).
 
-```
-CD_Account  CD_CashEvent  CD_Holding      CD_IncomeStream
-CD_Member   CD_Plan       CD_ReviewSession CD_Scenario
-CD_Snapshot CD_SnapshotLine CD_TodoItem   CD_UserMilestone
-```
+`CD_` 로 시작하는 타입 15개가 보여야 합니다. `CD_` 는 Core Data 가 자기가
+관리하는 것을 구분하려고 붙이는 접두사이고, SwiftData 도 내부적으로 Core Data
+를 쓰므로 같습니다. 필드도 `CD_속성이름` 이 됩니다.
 
 **Development 에 있다면** — 배포만 하면 끝입니다.
 **Schema** → **Deploy Schema Changes** → Development → Production → **Deploy**
 
-**Development 도 비어 있다면** — 아래 셋 중 하나입니다.
+### Development 도 비어 있다면 — 길 넷
 
-| 방법 | 품 | 확실한가 |
-|---|---|---|
-| 맥을 한 번만 빌린다. `xcodegen generate` 후 Xcode 에서 ⌘R 한 번이면 Development 스키마가 생깁니다. 그다음 콘솔에서 Production 으로 배포 | 30분 | ✅ 가장 확실 |
-| CloudKit Console 에서 레코드 타입 12개를 손으로 만든다 | 몇 시간 | ⚠️ 필드 이름·타입을 하나라도 틀리면 동기화가 안 되고, 원인 찾기가 어렵습니다 |
-| 그냥 로컬 저장으로 쓴다 | 0 | 앱은 정상입니다. 나중에 스키마를 올리면 그때부터 동기화가 붙습니다 |
+| 방법 | 맥 | 품 | 위험 |
+|---|---|---|---|
+| **A. 맥을 한 번 빌린다** | 필요 | Xcode 설치까지 반나절 | **없음** |
+| **B. CKTool JS 로 스키마를 밀어 넣는다** | **불필요** | 반나절 | 중간 (아래) |
+| **C. 웹 콘솔에서 손으로 만든다** | **불필요** | 하루 | B 와 같고 노동만 많다 |
+| **D. 미룬다** | — | 0 | 없음 |
 
-> 세 번째를 골라도 **기록은 잃지 않습니다.** 앱은 로컬에 정상 저장하고,
-> 나중에 스키마가 Production 에 올라가면 그 시점부터 동기화가 시작됩니다.
-> 다만 그 전에 앱을 지우면 그 기기의 기록은 사라집니다 — 백업이 목적이라면
-> 스키마를 먼저 올려 두는 편이 좋습니다.
+#### A. 맥을 한 번 빌린다 — 가장 확실
+
+`xcodegen generate` 후 Xcode 에서 ⌘R 한 번이면 Development 스키마가 **정확히**
+생깁니다. 그다음 콘솔에서 Production 으로 배포합니다.
+Xcode 내려받기(10GB 넘음)까지 치면 30분이 아니라 반나절로 잡는 편이 맞습니다.
+
+#### B. CKTool JS — 맥 없이 가는 길
+
+애플이 스키마를 **텍스트 파일(`.ckdb`)** 로 다루는 도구를 둘 냅니다.
+
+| 도구 | 어디서 도나 |
+|---|---|
+| `xcrun cktool` | **macOS + Xcode 전용** |
+| **CKTool JS** | **Node.js** — 리눅스에서도 돈다 |
+
+`cktool` 은 맥 전용이지만 **우리 GitHub Actions 러너가 맥**이라 그것도 쓸 수
+있고, CKTool JS 는 아예 아무 데서나 돕니다
+([Apple 샘플](https://github.com/apple/sample-cloudkit-tooling/blob/main/CKTool-JS/travis-ci/README.md)).
+
+순서는 이렇습니다.
+
+1. 웹 콘솔에서 **관리 토큰**을 발급합니다 (Settings → Tokens).
+   저장소 시크릿 `CKTOOL_MGMT_TOKEN` 에 넣습니다 — TestFlight 키 넷과 같은 방식입니다
+2. 모델에서 `.ckdb` 를 씁니다 (제가 씁니다)
+3. CI 가 그 파일을 **Development 에** 적용합니다
+4. 사용자가 웹 콘솔에서 **Deploy** 를 누릅니다
+
+**두 도구 모두 Development 에만 쓸 수 있습니다.** Production 으로 올리는 것은
+웹 콘솔의 Deploy 버튼뿐이라 4번은 사람이 해야 합니다 — 브라우저면 됩니다.
+
+**위험이 어디 있나.** `.ckdb` 를 모델에서 손으로 옮겨 적어야 하는데, 필드 타입을
+틀리면 (UUID 를 STRING 으로 적는 식) 동기화가 조용히 안 붙습니다. 그리고
+**Production 스키마는 더하기만 되고 지우기가 안 됩니다.**
+
+- 필드를 **빠뜨렸다** → 나중에 더하면 됩니다. 회복 가능
+- 필드 **타입을 틀렸다** → 영구히 고칠 수 없습니다. 컨테이너를 새로 파야 합니다
+
+**그래서 진짜 컨테이너에 바로 하지 않습니다.** 시험용 컨테이너
+(`iCloud.com.helpnara.slowrich.schematest`) 를 웹에서 만들어 거기에 먼저
+적용하고, 그 컨테이너를 보는 TestFlight 빌드를 한 번 올려 **동기화가 실제로
+붙는지 확인**한 뒤 같은 파일을 진짜 컨테이너에 적용합니다. 왕복이 한 번 더
+늘지만 되돌릴 수 없는 실수를 막습니다.
+
+#### C. 웹 콘솔에서 손으로
+
+B 와 결과는 같고 레코드 타입 15개·필드 백여 개를 손으로 찍는 차이입니다.
+**인덱스는 만들 필요가 없습니다** — 애플 엔지니어가 "private database 에서는
+쿼리를 쓰지 않는다" 고 답했습니다
+([forums/655392](https://developer.apple.com/forums/thread/655392)).
+그래도 B 가 낫습니다. 파일은 다시 적용할 수 있지만 손으로 찍은 것은 못 되돌립니다.
+
+#### D. 미룬다 — 기록은 잃지 않습니다
+
+앱은 로컬에 정상 저장하고, 나중에 스키마가 Production 에 올라가면 그 시점부터
+동기화가 시작됩니다. 다만 그 전에 앱을 지우면 그 기기의 기록은 사라지므로
+**`더보기 → 내보내기` 로 JSON 백업을 받아 두세요.**
+
+가족 공유(4차)는 동기화가 붙어야 시작할 수 있으니, 거기까지 갈 생각이면
+A 나 B 중 하나는 해야 합니다.
 
 모델을 바꿀 때마다(필드 추가 등) 다시 배포해야 합니다.
 
