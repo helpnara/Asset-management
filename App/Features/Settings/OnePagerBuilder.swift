@@ -19,6 +19,7 @@ enum OnePagerBuilder {
         incomes: [IncomeStream],
         principles: [Principle],
         todos: [TodoItem],
+        snapshots: [Snapshot] = [],
         today: Date = .now,
         calendar: Calendar = .current
     ) -> OnePagerView {
@@ -51,6 +52,12 @@ enum OnePagerBuilder {
             todos: todos,
             usShare: rollup.countryShare("US"),
             krShare: rollup.countryShare("KR"),
+            // 계획선 대비 (46번). 화면과 **같은 함수**로 낸다.
+            planGapText: PlanTrack.gap(
+                PlanTrack.projection(plan: plan, snapshots: snapshots, cashEvents: cashEvents,
+                                     incomes: incomes, members: members, calendar: calendar),
+                actual: rollup.netWorth, at: today, calendar: calendar
+            )?.compact,
             // 계획에만 적어 두었으면 그 값이 곧 본인 부담이다 — 회사 매칭은
             // 구성원 칸에만 있는 값이라 계획 쪽에는 섞여 있지 않다.
             monthlyTotalMinor: splitsByMember ? memberTotal : planMonthly,

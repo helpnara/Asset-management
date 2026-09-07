@@ -188,7 +188,7 @@ struct ExportView: View {
         // 미리보기와 **같은 함수**로 만든다. 따로 만들면 조용히 어긋난다.
         let page = OnePagerBuilder.make(plan: plan, members: members, holdings: holdings,
                                         cashEvents: cashEvents, incomes: incomes,
-                                        principles: principles, todos: todos)
+                                        principles: principles, todos: todos, snapshots: snapshots)
 
         // **PDF 로 뽑는다.** 원본이 PDF 였고, 인쇄가 선명하고 글자를 고를 수 있다.
         // `ImageRenderer` 가 CGPDFContext 에 그려 주므로 뷰는 하나로 쓴다.

@@ -42,6 +42,7 @@ struct DashboardView: View {
                         Rectangle().fill(Color.rule).frame(height: 1)
                             .padding(.horizontal, 20)
                         weeklyBar
+                        planReviewNudge
                         roadmap
                         lifeEvents
                         trajectory
@@ -293,56 +294,53 @@ struct DashboardView: View {
         plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes, members: members)
     }
 
-    // MARK: - 계획선 (docs/08-feedback.md 37번)
-
-    /// 계획선이 출발하는 자리 — **계획을 세운 뒤 처음 적은 주**와 그때 총자산.
+    /// **1년에 한 번은 가정을 다시 본다** (docs/08-feedback.md 43번).
     ///
-    /// 계획 수립 시점의 자산을 따로 저장하지 않으므로 스냅샷에서 찾는다.
-    /// 수립일 이후 첫 기록이 없으면 가장 이른 기록에서 출발한다 — 계획을
-    /// 나중에 적었더라도 견줄 선은 있는 편이 낫다.
-    private var planAnchor: (date: Date, balance: Money)? {
-        let sorted = snapshots.sorted { $0.weekAnchor < $1.weekAnchor }
-        guard !sorted.isEmpty else { return nil }
-        let startedOn = plan?.startedOn.map { Calendar.current.startOfDay(for: $0) }
-        let anchor = startedOn.flatMap { start in sorted.first { $0.weekAnchor >= start } }
-            ?? sorted.first
-        guard let anchor else { return nil }
-        return (anchor.weekAnchor, Money(minorUnits: anchor.netWorthMinor, currency: .krw))
-    }
-
-    /// 그 자리에서 계획 가정대로 굴린 궤적.
-    ///
-    /// **덩어리 구성은 지금 계좌로 나눈다.** 과거의 계좌 구성은 알 수 없기
-    /// 때문이다. 그래서 계획선은 "그때 이 구성으로 시작했다면" 이고, 완전한
-    /// 재현이 아니다 — 그래도 견줄 선이 하나도 없는 것보다 낫다.
-    private var planProjection: ProjectionResult? {
-        guard let plan, let anchor = planAnchor else { return nil }
-        let input = plan.projectionInput(from: anchor.balance, cashEvents: cashEvents,
-                                         incomes: incomes, members: members,
-                                         asOf: anchor.date)
-        return Projection.run(input)
-    }
-
-    /// 오늘 계획선이 가리키는 금액과 실제의 차이.
-    private var planGap: (text: String, isAhead: Bool)? {
-        guard let planProjection, planAnchor != nil else { return nil }
-        // **오늘 자리**의 값이어야 한다. `point(inYear:)` 는 그 해의 마지막 점,
-        // 즉 12월 값이라 연초에 보면 몇 달치를 앞질러 견주게 된다.
-        let today = Calendar.current.startOfDay(for: .now)
-        guard let onPlan = planProjection.points.last(where: { $0.date <= today })?.nominal
-        else { return nil }
-        let delta = rollup.netWorth - onPlan
-        // 1% 안쪽이면 "계획대로" 다. 몇십만원 차이에 앞섰다 뒤졌다 하면
-        // 그 숫자를 믿지 않게 된다.
-        let threshold = max(abs(onPlan.minorUnits) / 100, 1)
-        if abs(delta.minorUnits) < threshold {
-            return ("계획선 위에 있습니다", true)
+    /// 주간 점검은 숫자를 적는 일이고, 기대수익률·물가·목표 금액은 그대로
+    /// 20년을 간다. 계획을 마지막으로 고친 지 1년이 넘으면 여기서 한 번 부른다.
+    @ViewBuilder
+    private var planReviewNudge: some View {
+        if let years = PlanTrack.yearsSincePlanReview(plan) {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.ink)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("계획을 \(years)년째 안 고쳤습니다")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                    Text("기대수익률 · 물가 · 목표 금액을 지금도 그렇게 보시나요?")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.muted)
+                }
+                Spacer(minLength: 0)
+                Button("계획 열기") { AppRoute.shared.selectedTab = RootView.Tab.plan }
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(Color.ink)
+            }
+            .padding(13)
+            .background(Color.raised)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
         }
-        let size = Won.abbreviated(Money(minorUnits: abs(delta.minorUnits), currency: .krw),
-                                   suffix: "원")
-        return (delta.minorUnits > 0 ? "계획보다 \(size) 앞서 있습니다"
-                                     : "계획보다 \(size) 뒤에 있습니다",
-                delta.minorUnits > 0)
+    }
+
+    // MARK: - 계획선 (docs/08-feedback.md 37·46번)
+
+    /// 계산은 `PlanTrack` 이 한다. **현황판 · 점검 완료 화면 · 1페이지가 같은
+    /// 함수를 쓴다** — 37번에서 여기에만 붙였다가 나머지 둘을 빠뜨렸다.
+    private var planProjection: ProjectionResult? {
+        PlanTrack.projection(plan: plan, snapshots: snapshots, cashEvents: cashEvents,
+                             incomes: incomes, members: members)
+    }
+
+    private var planGap: PlanTrack.Gap? {
+        PlanTrack.gap(planProjection, actual: rollup.netWorth)
+    }
+
+    /// 계획선이 그려질 수 있나. 범례가 이걸 보고 줄을 넣는다.
+    private var hasPlanLine: Bool {
+        PlanTrack.anchor(plan: plan, snapshots: snapshots) != nil
     }
 
     /// 과거는 매주 적어 넣은 스냅샷, 미래는 예측. 같은 축에 잇는다.
@@ -525,7 +523,7 @@ struct DashboardView: View {
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
                 legend(color: .dad, dashed: true, label: "예측")
-                if planAnchor != nil {
+                if hasPlanLine {
                     legend(color: .muted, dashed: true, label: "계획선")
                 }
                 if chartSpan == .retirement || chartSpan == .all,

@@ -19,6 +19,7 @@ struct OnePagerPreviewView: View {
     @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Query(sort: \Principle.order) private var principles: [Principle]
     @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
 
     /// A4 @72dpi. `OnePagerView` 의 폭과 같은 값이라야 미리보기가 거짓말을 안 한다.
     private let paperWidth: CGFloat = 595
@@ -53,7 +54,7 @@ struct OnePagerPreviewView: View {
     private func page(scale: CGFloat) -> some View {
         OnePagerBuilder.make(plan: plans.first, members: members, holdings: holdings,
                              cashEvents: cashEvents, incomes: incomes,
-                             principles: principles, todos: todos)
+                             principles: principles, todos: todos, snapshots: snapshots)
             // 재는 것은 **줄이기 전**이다. `scaleEffect` 뒤에 재면 축소된 값이 나온다.
             .background {
                 GeometryReader { geometry in

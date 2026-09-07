@@ -37,6 +37,9 @@ struct OnePagerView: View {
     let todos: [TodoItem]
     let usShare: Decimal?
     let krShare: Decimal?
+    /// 계획선 대비 — `계획 대비 +2,300만` (docs/08-feedback.md 46번).
+    /// 종이에도 이 한 줄이 있어야 "지금 잘 가고 있나" 를 남에게 설명할 수 있다.
+    let planGapText: String?
     /// 월 적립 합계와 그중 본인 부담. **계산은 밖에서 한다** — 구성원별로 나눠
     /// 넣지 않는 집은 계획에만 값이 있어서, 구성원 합만 세면 0원이 찍힌다.
     let monthlyTotalMinor: Int
@@ -144,6 +147,11 @@ struct OnePagerView: View {
                 Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                     .font(.figure(24, weight: .bold))
                     .foregroundStyle(Paper.ink)
+                if let planGapText {
+                    Text(planGapText)
+                        .font(.figure(7.5, weight: .medium))
+                        .foregroundStyle(Paper.bodyText)
+                }
             }
             Spacer()
             figure("투자자산", Won.compact(rollup.investable))

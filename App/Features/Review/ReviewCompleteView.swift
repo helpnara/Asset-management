@@ -25,6 +25,8 @@ struct ReviewCompleteView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var sessions: [ReviewSession]
     @Query private var snapshots: [Snapshot]
+    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     /// 화면의 모든 숫자를 이 스냅샷 하나에서 읽는다.
     /// 현재 값과 섞으면 과거 점검을 열었을 때 총액과 구성원별 합이 어긋난다.
@@ -86,6 +88,17 @@ struct ReviewCompleteView: View {
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
 
+                // **계획선 위인가 아래인가** (docs/08-feedback.md 46번).
+                // 숫자를 막 적고 난 이 순간이 그 사실을 볼 가장 좋은 자리다 —
+                // 로드맵 M2 도 "점검 완료 화면 포함" 이라고 적어 두었는데
+                // 37번에서는 현황판에만 붙이고 여기를 빠뜨렸다.
+                if let gap = planGap {
+                    Text(gap.text)
+                        .font(.figure(12.5, weight: .medium))
+                        .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
+                        .padding(.top, 6)
+                }
+
                 if driftCount > 0 {
                     // 이번 주 입력으로 비중이 어긋난 것이 있으면 여기서 한 번 더
                     // 말한다. 점검을 마치고 나가는 길목이라 놓치기 어렵다
@@ -100,6 +113,15 @@ struct ReviewCompleteView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
+    }
+
+    /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
+    /// **그때 기준**으로 맞게 나온다 — 화면의 다른 숫자와 같은 규칙이다.
+    private var planGap: PlanTrack.Gap? {
+        let projection = PlanTrack.projection(plan: driftPlans.first, snapshots: snapshots,
+                                              cashEvents: cashEvents, incomes: incomes,
+                                              members: driftMembers)
+        return PlanTrack.gap(projection, actual: total, at: session.weekAnchor)
     }
 
     private var streakSection: some View {

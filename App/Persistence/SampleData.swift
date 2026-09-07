@@ -131,6 +131,19 @@ enum SampleData {
             context.insert(Principle(order: index + 1, title: title))
         }
 
+        // 변경 이력 — 비어 있으면 CI 스크린샷이 빈 화면만 찍어서, 이력이
+        // 실제로 그려지는지 확인할 수 없다 (docs/08-feedback.md 29번).
+        let logs: [(ChangeKind, String, String, Int)] = [
+            (.weeklyEntry, "주간 점검 · 종목 14건", "2억 9,800만 → 3억 800만", 0),
+            (.structure, "아들 · 증여계좌 · 해외 ETF B", "종목을 추가했습니다", 2),
+            (.planValue, "계획", "월 적립 · 연 기대수익률 을(를) 고쳤습니다", 9)
+        ]
+        for (kind, subject, summary, daysAgo) in logs {
+            let log = ChangeLog(kind: kind, subject: subject, summary: summary, actor: "이 아이폰")
+            log.at = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+            context.insert(log)
+        }
+
         // 직접 찍은 마일스톤
         // 구성원에게 붙은 마일스톤. 현황판 `인생 이벤트` 줄이 그 해 나이를
         // 함께 적는지 스크린샷으로 본다 (docs/08-feedback.md 32번).
