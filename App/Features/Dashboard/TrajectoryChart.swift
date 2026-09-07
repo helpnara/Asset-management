@@ -157,7 +157,7 @@ struct TrajectoryChart: View {
                     if let raw = value.as(Double.self) {
                         // 금액 가리기를 켜면 축 눈금도 함께 가려진다.
                         // 예전 눈금은 자체 포맷터를 써서 이것만 새어 나갔다.
-                        Text(Won.compact(Money(minorUnits: Int(raw), currency: .krw)))
+                        Text(axisLabel(raw))
                             .font(.figure(8))
                             .foregroundStyle(Color.faint)
                     }
@@ -236,6 +236,19 @@ struct TrajectoryChart: View {
         return lower...max(upper * 1.08, lower + 1_000_000)
     }
 
+    /// 축 눈금 글자. 눈금은 대개 딱 떨어지는 값이라 `60.0억` 이 아니라 `60억` 이다.
+    /// 소수가 필요할 때만 한 자리를 붙인다.
+    private func axisLabel(_ raw: Double) -> String {
+        let value = Int(raw)
+        let eok = 100_000_000
+        guard value >= eok else {
+            return Won.compact(Money(minorUnits: value, currency: .krw))
+        }
+        let tenths = (value * 10 + eok / 2) / eok
+        let text = tenths % 10 == 0 ? "\(tenths / 10)억" : "\(tenths / 10).\(tenths % 10)억"
+        return AmountPrivacy.mask(text)
+    }
+
     /// 기간이 길면 눈금을 성기게 둔다.
     private var xStride: Int {
         guard let first = visiblePoints.first?.date, let last = visiblePoints.last?.date
@@ -244,7 +257,9 @@ struct TrajectoryChart: View {
         switch years {
         case ..<3: return 1
         case ..<8: return 2
-        case ..<20: return 5
+        // 은퇴까지는 보통 20~30년이다. 여기서 10년 간격이 되면 눈금이 둘밖에
+        // 안 남아 어느 해쯤인지 읽히지 않는다.
+        case ..<32: return 5
         default: return 10
         }
     }
