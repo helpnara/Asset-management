@@ -11,9 +11,6 @@ import SwiftUI
 @MainActor
 enum OnePagerBuilder {
 
-    /// 구성원 카드 미니 차트에 세울 막대 수. 로드맵 정거장과 같은 해를 쓴다.
-    private static let barLimit = 6
-
     static func make(
         plan: Plan?,
         members: [Member],
@@ -29,7 +26,15 @@ enum OnePagerBuilder {
         let projection = plan?.projection(from: rollup.netWorth, cashEvents: cashEvents,
                                           incomes: incomes, members: members,
                                           calendar: calendar)
-        let milestones = projection?.milestones ?? []
+        let stops = roadmapStops(plan: plan, projection: projection, rollup: rollup,
+                                 today: today, calendar: calendar)
+
+        // **구성원별로 나눠 넣지 않는 집은 계획에만 값이 있다.** 구성원 합만
+        // 세면 종이에 `월 적립 0원` 이 찍힌다 (docs/08-feedback.md 33번).
+        let splitsByMember = plan?.usesMemberContributions ?? false
+        let memberTotal = members.reduce(0) { $0 + $1.monthlyContributionMinor + $1.employerMatchMinor }
+        let memberOwn = members.reduce(0) { $0 + $1.monthlyContributionMinor }
+        let planMonthly = plan?.monthlyContributionMinor ?? 0
 
         return OnePagerView(
             title: plan?.title ?? "우리 가족 노후자금 준비",
@@ -39,44 +44,57 @@ enum OnePagerBuilder {
             declaration: plan?.declaration ?? "",
             rollup: rollup,
             members: members,
-            milestones: milestones,
+            roadmapStops: stops,
             cashEvents: cashEvents.filter { !$0.isAlreadyReflected },
             principles: principles,
             todos: todos,
             usShare: rollup.countryShare("US"),
             krShare: rollup.countryShare("KR"),
+            // 계획에만 적어 두었으면 그 값이 곧 본인 부담이다 — 회사 매칭은
+            // 구성원 칸에만 있는 값이라 계획 쪽에는 섞여 있지 않다.
+            monthlyTotalMinor: splitsByMember ? memberTotal : planMonthly,
+            ownContributionMinor: splitsByMember ? memberOwn : planMonthly,
+            showsMemberContribution: splitsByMember,
             memberSeries: memberSeries(plan: plan, members: members, rollup: rollup,
-                                       years: barYears(plan: plan, milestones: milestones,
-                                                       today: today, calendar: calendar),
-                                       calendar: calendar),
+                                       years: stops.map(\.year), calendar: calendar),
             today: today,
             nextReview: ReviewWeek.nextSaturday(after: today, calendar: calendar)
         )
     }
 
-    /// 미니 차트의 해들 — **로드맵의 정거장과 같은 해**를 쓴다
-    /// (docs/08-feedback.md 26번). 1페이지 안에서 위의 로드맵 줄과 아래 카드가
-    /// 같은 시간축을 가져야 읽기 쉽다.
+    /// 로드맵 정거장 — **현황판의 여섯 칸과 같은 뼈대**다.
     ///
-    /// 마일스톤은 달성 여부에 따라 개수가 달라지므로 **지금**과 **은퇴**를
-    /// 양 끝에 못 박아 최소 둘은 남게 한다.
-    private static func barYears(plan: Plan?, milestones: [Milestone],
-                                 today: Date, calendar: Calendar) -> [Int] {
+    /// 예전에는 마일스톤만 실어서 `지금` 과 `은퇴` 가 빠졌고, 그 바람에 아래
+    /// 구성원 카드의 막대(지금부터 은퇴까지)와 해가 어긋났다. 여기서 만든
+    /// 연도를 미니 바차트가 그대로 쓰므로 이제 어긋날 수 없다.
+    private static func roadmapStops(plan: Plan?, projection: ProjectionResult?,
+                                     rollup: Rollup, today: Date,
+                                     calendar: Calendar) -> [OnePagerView.Stop] {
         let thisYear = calendar.component(.year, from: today)
-        var years: Set<Int> = [thisYear]
-        years.formUnion(milestones.map(\.year))
-        if let retirement = plan?.retirementYear { years.insert(retirement) }
-        let sorted = years.sorted()
-        guard sorted.count > barLimit else { return sorted }
-        // 넘치면 가운데를 솎되 양 끝(지금·은퇴)은 남긴다.
-        var trimmed = [sorted[0]]
-        let middle = sorted.dropFirst().dropLast()
-        let step = max(1, middle.count / (barLimit - 2))
-        for (offset, year) in middle.enumerated() where offset % step == 0 {
-            if trimmed.count < barLimit - 1 { trimmed.append(year) }
+        var stops: [OnePagerView.Stop] = [
+            .init(year: thisYear, minor: rollup.netWorth.minorUnits, label: "지금")
+        ]
+        for milestone in (projection?.milestones ?? []).sorted(by: { $0.year < $1.year })
+        where milestone.year > thisYear {
+            stops.append(.init(year: milestone.year,
+                               minor: milestone.balance.minorUnits,
+                               label: milestone.kind.label))
         }
-        trimmed.append(sorted[sorted.count - 1])
-        return trimmed
+        if let plan, let atRetirement = projection?.point(inYear: plan.retirementYear,
+                                                         calendar: calendar) {
+            // 목표 달성이 은퇴와 같은 해면 칸을 하나로 둔다 — 같은 해가 두 번
+            // 서면 미니 바차트의 막대도 두 번 선다.
+            if let index = stops.firstIndex(where: { $0.year == plan.retirementYear }) {
+                stops[index] = .init(year: plan.retirementYear,
+                                     minor: atRetirement.nominal.minorUnits,
+                                     label: stops[index].label + " · 은퇴")
+            } else if plan.retirementYear > thisYear {
+                stops.append(.init(year: plan.retirementYear,
+                                   minor: atRetirement.nominal.minorUnits,
+                                   label: "은퇴"))
+            }
+        }
+        return stops.sorted { $0.year < $1.year }
     }
 
     /// 사람마다 자기 몫만 굴린다. 수익률·물가 가정은 가구 공통이다 —
@@ -96,7 +114,7 @@ enum OnePagerBuilder {
                                           notBefore: now, calendar: calendar),
                     buckets: plan.buckets(of: [member], total: balance),
                     monthlyContribution: Money(
-                        minorUnits: member.monthlyContributionMinor + member.employerMatchMinor,
+                        minorUnits: plan.memberMonthlyContributionMinor(member, familyTotal: rollup.netWorth),
                         currency: .krw
                     ),
                     annualReturn: plan.annualReturn,

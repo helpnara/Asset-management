@@ -16,6 +16,7 @@ struct MemberTrajectoryView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Query private var plans: [Plan]
+    @Query private var holdings: [Holding]
     @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Query(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
 
@@ -136,7 +137,7 @@ struct MemberTrajectoryView: View {
             )
             .tint(Color.dad)
 
-            if monthlyMinor != nil {
+            if monthlyMinor != nil, monthlyMinor != plannedMonthly {
                 Button("계획값으로 되돌리기") { monthlyMinor = nil }
                     .font(.system(size: 12))
             }
@@ -153,11 +154,20 @@ struct MemberTrajectoryView: View {
 
     // MARK: - 계산
 
-    /// 회사 매칭까지 합친다. 실제로 계좌에 들어가는 돈이 그 합이고,
-    /// 모델도 "궤적에는 합계가 쓰인다" 고 적어 두었다. 1페이지의 구성원
-    /// 미니 차트도 같은 값을 쓴다 — 두 화면의 숫자가 어긋나면 안 된다.
+    /// 이 사람 몫의 월 적립. 1페이지의 구성원 미니 차트와 **같은 계산**을 쓴다 —
+    /// 두 화면의 숫자가 어긋나면 안 된다 (docs/08-feedback.md 33번).
+    ///
+    /// 구성원별로 나눠 넣고 있으면 그 사람 칸(본인 + 회사 매칭), 아니면 계획의
+    /// 한 덩어리를 **자산 비중대로** 나눈 몫이다. 예전에는 본인 부담만 봐서,
+    /// 계획에만 적어 둔 집에서는 손잡이가 0원에서 시작했다.
     private var effectiveMonthly: Int {
-        monthlyMinor ?? (member.monthlyContributionMinor + member.employerMatchMinor)
+        monthlyMinor ?? plannedMonthly
+    }
+
+    private var plannedMonthly: Int {
+        guard let plan else { return member.monthlyContributionMinor }
+        let family = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        return plan.memberMonthlyContributionMinor(member, familyTotal: family)
     }
 
     private var retirementYear: Int {

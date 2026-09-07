@@ -51,7 +51,9 @@ struct TrajectoryChart: View {
     enum Span: String, CaseIterable, Identifiable {
         case year1 = "1년"
         case year5 = "5년"
-        case all = "전체"
+        /// 자르지 않는다. 궤적 자체가 **은퇴까지**만 그려지므로 이 창이 곧
+        /// 은퇴까지다 (docs/08-feedback.md 33번).
+        case all = "은퇴까지"
 
         var id: String { rawValue }
 

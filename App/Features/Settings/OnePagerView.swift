@@ -26,16 +26,32 @@ struct OnePagerView: View {
     let declaration: String
     let rollup: Rollup
     let members: [Member]
-    let milestones: [Milestone]
+    /// 로드맵 정거장. **미니 바차트와 같은 해를 쓰려고** 밖에서 만들어 넘긴다
+    /// (docs/08-feedback.md 33번). 예전에는 마일스톤만 받아서 `지금` 과 `은퇴`
+    /// 가 빠졌고, 그래서 아래 카드의 막대와 해가 어긋나 있었다.
+    let roadmapStops: [Stop]
     let cashEvents: [CashEvent]
     let principles: [Principle]
     let todos: [TodoItem]
     let usShare: Decimal?
     let krShare: Decimal?
+    /// 월 적립 합계와 그중 본인 부담. **계산은 밖에서 한다** — 구성원별로 나눠
+    /// 넣지 않는 집은 계획에만 값이 있어서, 구성원 합만 세면 0원이 찍힌다.
+    let monthlyTotalMinor: Int
+    let ownContributionMinor: Int
+    /// 구성원별로 나눠 넣고 있나. 아니면 카드의 `월 …` 줄을 아예 안 적는다.
+    let showsMemberContribution: Bool
     /// 구성원 카드의 성장 궤적. 계산은 밖에서 해서 넘긴다 — 이 뷰는 그리기만 한다.
     let memberSeries: [MemberSeries]
     let today: Date
     let nextReview: Date?
+
+    /// 로드맵 한 칸.
+    struct Stop: Hashable {
+        let year: Int
+        let minor: Int
+        let label: String
+    }
 
     /// 한 구성원의 미니 바차트 (docs/08-feedback.md 26번).
     ///
@@ -55,10 +71,10 @@ struct OnePagerView: View {
     }
 
     /// 1페이지에 싣는 운용 원칙 개수. 나머지는 다음 주에 실린다 (24번).
-    private let principlesOnPage = 5
+    private let principlesOnPage = 7
 
     /// 카드에 늘어놓을 종목 줄 수. 넘치면 `외 N건` 으로 접는다.
-    private let holdingRowsPerCard = 6
+    private let holdingRowsPerCard = 8
 
     /// A4 가로 폭(595pt @72dpi). PDF 로 뽑으므로 포인트 단위가 그대로 종이다.
     private let width: CGFloat = 595
@@ -131,7 +147,8 @@ struct OnePagerView: View {
             figure("부채", Won.compact(rollup.liabilities))
             // **본인 부담을 따로 적는다** (27번). 회사 매칭까지 합친 숫자만 보면
             // 내 저축률을 부풀려 읽게 된다 — 진단은 이미 본인 부담만 센다.
-            figure("월 적립", Won.compact(monthlyTotal), sub: "본인 \(Won.compact(ownContribution))")
+            figure("월 적립", Won.compact(Money(minorUnits: monthlyTotalMinor, currency: .krw)),
+                   sub: "본인 \(Won.compact(Money(minorUnits: ownContributionMinor, currency: .krw)))")
             // **한국을 미국과 나란히 적는다** (27번). 미국만 적으면 나머지가
             // 전부 한국인 것처럼 읽히는데, 그 외 국가가 따로 있다.
             if let countryText {
@@ -157,17 +174,6 @@ struct OnePagerView: View {
         }
     }
 
-    private var monthlyTotal: Money {
-        Money(minorUnits: members.reduce(0) {
-            $0 + $1.monthlyContributionMinor + $1.employerMatchMinor
-        }, currency: .krw)
-    }
-
-    /// 회사 매칭을 뺀 **본인 부담**만.
-    private var ownContribution: Money {
-        Money(minorUnits: members.reduce(0) { $0 + $1.monthlyContributionMinor }, currency: .krw)
-    }
-
     /// `30 · 70%` — 한국과 미국을 한 칸에 나란히.
     private var countryText: String? {
         guard usShare != nil || krShare != nil else { return nil }
@@ -182,24 +188,24 @@ struct OnePagerView: View {
         VStack(alignment: .leading, spacing: 3) {
             blockTitle("전체 자산 로드맵")
             HStack(alignment: .top, spacing: 0) {
-                ForEach(milestones, id: \.year) { milestone in
+                ForEach(roadmapStops, id: \.year) { stop in
                     VStack(alignment: .leading, spacing: 1) {
                         // **연도 옆에 가장 나이**를 적는다 (27번). 연도만 있으면
                         // "그때 내가 몇 살인가" 를 머리로 계산해야 한다.
                         HStack(spacing: 3) {
-                            Text(verbatim: "\(milestone.year)")
+                            Text(verbatim: "\(stop.year)")
                                 .font(.figure(7))
                                 .foregroundStyle(Paper.faint)
-                            if let age = headAge(inYear: milestone.year) {
+                            if let age = headAge(inYear: stop.year) {
                                 Text(verbatim: "\(age)세")
                                     .font(.figure(6.5))
                                     .foregroundStyle(Paper.muted)
                             }
                         }
-                        Text(Won.compact(milestone.balance))
+                        Text(Won.compact(Money(minorUnits: stop.minor, currency: .krw)))
                             .font(.figure(10, weight: .semibold))
                             .foregroundStyle(Paper.ink)
-                        Text(milestone.kind.label)
+                        Text(stop.label)
                             .font(.system(size: 6.5))
                             .foregroundStyle(Paper.muted)
                     }
@@ -271,9 +277,11 @@ struct OnePagerView: View {
                     .foregroundStyle(Paper.ink)
             }
 
-            Text(contributionText(member))
-                .font(.figure(6.5))
-                .foregroundStyle(Paper.muted)
+            if showsMemberContribution {
+                Text(contributionText(member))
+                    .font(.figure(6.5))
+                    .foregroundStyle(Paper.muted)
+            }
 
             // 보유 종목 — 상태 태그가 중요하다. `동결`·`신규` 가 원본의 핵심이었다.
             // 칸이 좁아졌으므로 넘치는 것은 접는다. 한 장을 넘기지 않는 것이

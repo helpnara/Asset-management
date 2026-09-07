@@ -259,6 +259,31 @@ extension Plan {
                      currency: .krw)
     }
 
+    /// **한 사람 몫의 월 적립.** 구성원 궤적과 1페이지 미니 바차트가 함께 쓴다
+    /// (docs/08-feedback.md 33번).
+    ///
+    /// 구성원별로 나눠 넣고 있으면 그 사람 칸의 값(본인 + 회사 매칭)이다.
+    /// 안 나눠 넣고 있으면 계획에 한 덩어리로만 있으므로 **자산 비중대로**
+    /// 나눈다 — 그러지 않으면 그 사람 몫이 0이 되어 궤적이 자라지 않는다.
+    /// 자산이 없으면 0이다. 없는 돈을 나눠 줄 근거가 없다.
+    func memberMonthlyContributionMinor(_ member: Member, familyTotal: Money) -> Int {
+        if usesMemberContributions {
+            return member.monthlyContributionMinor + member.employerMatchMinor
+        }
+        let mine = member.sortedAccounts
+            .filter { !$0.isArchived }
+            .reduce(0) { sum, account in
+                let value = account.sortedHoldings.reduce(0) { $0 + $1.valueMinor }
+                return sum + (account.kind.isLiability ? -value : value)
+            }
+        guard familyTotal.minorUnits > 0, mine > 0 else { return 0 }
+        // 정수로만 센다 (ADR-0003 — 금액에 Double 을 쓰지 않는다).
+        // 한 번에 곱하면 자릿수가 커져 넘칠 수 있으므로 **비중을 먼저** 낸다.
+        // `Decimals` 는 `Core` 안에만 있어 여기서 못 쓴다.
+        let shareBP = mine * 10_000 / familyTotal.minorUnits
+        return monthlyContributionMinor * shareBP / 10_000
+    }
+
     /// 계산 직전의 입력. 시뮬레이션은 이걸 받아 손잡이만 바꿔 끼운다.
     ///
     /// `@Model` 은 `Sendable` 이 아니지만 `ProjectionInput` 은 값 타입이라

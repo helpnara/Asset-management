@@ -285,11 +285,22 @@ struct DashboardView: View {
             TrajectoryChart.Point(date: $0.weekAnchor, minor: $0.netWorthMinor, series: .actual)
         }
         // 예측선은 오늘에서 출발한다. 과거 마지막 점과 이어 붙어 끊겨 보이지 않는다.
+        //
+        // **은퇴까지만 그린다** (docs/08-feedback.md 33번). 생활비를 적어 두면
+        // 예측이 은퇴 뒤 35년까지 이어지는데, 선형 축에서 그 끝(수백억)에 축을
+        // 맞추면 지금 자산이 바닥에 붙어 보이지 않는다. 은퇴 이후는 진단과
+        // 시뮬레이션이 답하는 질문이고, 이 그래프의 질문은 은퇴까지다.
         if let projection {
+            let limit = plan.map {
+                Plan.endDate(retirementYear: $0.retirementYear,
+                             notBefore: Calendar.current.startOfDay(for: .now))
+            }
             let monthly = projection.points.enumerated()
                 .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
-                .map { TrajectoryChart.Point(date: $0.element.date,
-                                             minor: $0.element.nominal.minorUnits,
+                .map { $0.element }
+                .filter { limit.map { end in $0.date <= end } ?? true }
+                .map { TrajectoryChart.Point(date: $0.date,
+                                             minor: $0.nominal.minorUnits,
                                              series: .projected) }
             result.append(contentsOf: monthly)
         }
