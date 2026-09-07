@@ -17,6 +17,28 @@ struct PrincipleListView: View {
     @State private var pendingDelete: IndexSet?
 
     var body: some View {
+        list
+            .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
+                            message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
+                            perform: delete)
+            .navigationTitle("운용 원칙")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+            .overlay { emptyNote }
+    }
+
+    /// **툴바를 따로 뽑는다.** `.toolbar { ... }` 는 `ViewBuilder` 판과
+    /// `ToolbarContentBuilder` 판이 둘 다 있어서, 안이 조금만 복잡해지면
+    /// 어느 쪽인지 못 골라 `ambiguous use of 'toolbar(content:)'` 로 막힌다.
+    /// 반환 타입을 `some ToolbarContent` 로 적어 두면 고를 것이 없다.
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            if canManageHousehold { EditButton() }
+        }
+    }
+
+    private var list: some View {
         List {
             ForEach(principles) { principle in
                 @Bindable var principle = principle
@@ -42,7 +64,10 @@ struct PrincipleListView: View {
             }
             .onDelete(perform: canManageHousehold
                       ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
-            .onMove(perform: canManageHousehold ? move : nil)
+            .onMove(perform: canManageHousehold
+                    ? { (offsets: IndexSet, destination: Int) in
+                        move(offsets, to: destination)
+                    } : nil)
 
             if canManageHousehold {
                 Button {
@@ -69,36 +94,24 @@ struct PrincipleListView: View {
                 }
             }
         }
-        .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
-                        message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
-                        perform: delete)
-        .navigationTitle("운용 원칙")
-        .navigationBarTitleDisplayMode(.inline)
-        // `.toolbar { if ... }` 로는 못 쓴다. 조건이 붙는 순간 `ViewBuilder` 판과
-        // `ToolbarContentBuilder` 판 중 어느 쪽인지 컴파일러가 못 고른다
-        // ("ambiguous use of 'toolbar(content:)'"). `ToolbarItem` 으로 감싸면
-        // ToolbarContent 로 확정된다.
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if canManageHousehold { EditButton() }
+    }
+
+    @ViewBuilder
+    private var emptyNote: some View {
+        if principles.isEmpty {
+            VStack(spacing: 10) {
+                Text("아직 적은 원칙이 없습니다")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 **기본 원칙 넣기** 를 누르면 열여섯 개로 시작할 수 있습니다.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.muted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
             }
-        }
-        .overlay {
-            if principles.isEmpty {
-                VStack(spacing: 10) {
-                    Text("아직 적은 원칙이 없습니다")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.ink)
-                    Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 **기본 원칙 넣기** 를 누르면 열여섯 개로 시작할 수 있습니다.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.muted)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(3)
-                }
-                .padding(30)
-                // 비어 있을 때 뜨는 안내가 아래 버튼을 가로채면 안 된다.
-                .allowsHitTesting(false)
-            }
+            .padding(30)
+            // 비어 있을 때 뜨는 안내가 아래 버튼을 가로채면 안 된다.
+            .allowsHitTesting(false)
         }
     }
 
