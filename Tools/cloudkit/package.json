@@ -1,0 +1,11 @@
+{
+  "name": "slowrich-cloudkit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "맥 없이 CloudKit 스키마를 다루는 도구 (docs/06-testflight.md)",
+  "dependencies": {
+    "@apple/cktool.database": "1.3.2",
+    "@apple/cktool.target.nodejs": "1.3.2"
+  }
+}

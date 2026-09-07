@@ -337,7 +337,7 @@ TestFlight·App Store 배포는 **항상** Production 을 씁니다. 애플이 �
 생깁니다. 그다음 콘솔에서 Production 으로 배포합니다.
 Xcode 내려받기(10GB 넘음)까지 치면 30분이 아니라 반나절로 잡는 편이 맞습니다.
 
-#### B. CKTool JS — 맥 없이 가는 길
+#### B. CKTool JS — 맥 없이 가는 길 **(만들어 뒀습니다)**
 
 애플이 스키마를 **텍스트 파일(`.ckdb`)** 로 다루는 도구를 둘 냅니다.
 
@@ -373,6 +373,70 @@ Xcode 내려받기(10GB 넘음)까지 치면 30분이 아니라 반나절로 잡
 적용하고, 그 컨테이너를 보는 TestFlight 빌드를 한 번 올려 **동기화가 실제로
 붙는지 확인**한 뒤 같은 파일을 진짜 컨테이너에 적용합니다. 왕복이 한 번 더
 늘지만 되돌릴 수 없는 실수를 막습니다.
+
+##### 만들어 둔 것
+
+| 무엇 | 어디 |
+|---|---|
+| 스키마 파일 | `Tools/cloudkit/slowrich.ckdb` |
+| **모델에서 그 파일을 만드는 스크립트** | `Tools/cloudkit/generate-ckdb.py` |
+| CKTool JS 감싼 것 | `Tools/cloudkit/ck.mjs` |
+| 워크플로 | `.github/workflows/cloudkit-schema.yml` (리눅스 러너) |
+
+스키마 파일은 **손으로 쓰지 않고 모델에서 만들어 냅니다.** 필드가 백 개가
+넘어서 손으로 옮기면 빠뜨리고, 나중에 `@Model` 을 고칠 때 또 어긋납니다.
+
+```bash
+python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb
+```
+
+워크플로가 돌 때마다 커밋된 파일이 모델과 맞는지 대조해서, 어긋나면 경고를
+남깁니다.
+
+##### 사용자가 할 일은 둘뿐입니다
+
+**하나 — 관리 토큰을 만들어 저장소에 넣습니다.** 한 번만 하면 됩니다.
+
+1. <https://icloud.developer.apple.com> → 오른쪽 위 **Settings** → **Tokens**
+2. **Management Token** 을 만들고 값을 복사합니다
+3. GitHub 저장소 → Settings → Secrets and variables → Actions →
+   **New repository secret** → 이름 `CKTOOL_MGMT_TOKEN`
+
+팀 ID 는 이미 있는 `APPLE_TEAM_ID` 를 씁니다. 새로 넣을 것은 이 하나입니다.
+
+**둘 — 마지막에 Deploy 버튼을 누릅니다.** 아래 순서의 4번입니다.
+
+##### 순서
+
+워크플로를 **Actions → CloudKit 스키마 → Run workflow** 로 돌립니다.
+`container` 는 기본값이 시험용이라 그대로 두면 됩니다.
+
+| | `action` | 무엇이 일어나나 | 위험 |
+|---|---|---|---|
+| 1 | `read` | 팀·컨테이너 목록과 **두 환경에 지금 무엇이 있는지** 읽습니다 | 없음 (읽기만) |
+| 2 | `validate` | 스키마 파일 문법을 애플 서버로 검사합니다 | 없음 (쓰지 않음) |
+| 3 | `apply` | 시험용 컨테이너의 **Development** 에 적용합니다 | 낮음 (Development 는 몇 번이든 다시) |
+| 4 | — | 웹 콘솔에서 **Deploy Schema Changes** | 시험용 컨테이너라 괜찮음 |
+| 5 | — | 시험용 컨테이너를 보는 TestFlight 빌드로 **동기화가 붙는지 확인** | — |
+| 6 | `apply` + Deploy | 붙었으면 **진짜 컨테이너**에 같은 파일로 반복 | 5번에서 확인했으므로 낮음 |
+
+**1번부터 하세요.** 쓰기 전에 지금 무엇이 있는지 봐야 합니다. 혹시 Development
+에 이미 스키마가 있다면 4번(Deploy)만 누르면 끝입니다.
+
+##### 무엇을 확신하지 못하나
+
+스키마 파일을 애플 문서(WWDC19 *Using Core Data With CloudKit*)의 규칙대로
+만들었지만, 두 가지는 확증하지 못했습니다. `generate-ckdb.py` 에 `UNCERTAIN`
+으로 표시해 뒀습니다.
+
+1. **UUID 속성**을 `STRING` 으로 봅니다. `BYTES` 일 가능성을 못 지웠습니다
+2. **다대일 관계**를 `STRING`(상대의 UUID)으로 봅니다. 애플 설명이 "상대의
+   UUID 를 그대로 들고 있는다" 이므로 `REFERENCE` 는 아닐 것입니다
+
+`validate` 는 **문법만** 봅니다. Core Data 가 기대하는 모양인지는 알려 주지
+않습니다. 그래서 5번(시험용 컨테이너 + 실제 빌드)이 진짜 검증입니다.
+틀렸으면 시험용 컨테이너를 하나 더 만들어 다시 하면 됩니다 — 진짜 컨테이너는
+멀쩡합니다.
 
 #### C. 웹 콘솔에서 손으로
 
