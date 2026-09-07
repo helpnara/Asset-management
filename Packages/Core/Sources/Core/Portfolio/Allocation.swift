@@ -201,11 +201,23 @@ public enum Allocation {
         guard remaining > 0 else { return result }
 
         // 소수부가 큰 것부터. 같으면 앞선 것에 준다 — 순서가 정해져야 결과가 늘 같다.
-        let order = scaled.enumerated()
-            .map { (index: $0.offset, fraction: $0.element - Decimal(result[$0.offset])) }
-            .sorted { $0.fraction == $1.fraction ? $0.index < $1.index : $0.fraction > $1.fraction }
+        //
+        // 한 줄짜리 map+sorted 로 쓰면 컴파일러가 타입 추론을 못 끝낸다
+        // ("unable to type-check this expression in reasonable time").
+        // Decimal 연산과 튜플이 겹치면 그렇게 된다. 풀어 쓴다.
+        var remainders: [(index: Int, fraction: Decimal)] = []
+        remainders.reserveCapacity(scaled.count)
+        for index in scaled.indices {
+            let fraction: Decimal = scaled[index] - Decimal(result[index])
+            remainders.append((index: index, fraction: fraction))
+        }
+        remainders.sort { left, right in
+            if left.fraction == right.fraction { return left.index < right.index }
+            return left.fraction > right.fraction
+        }
 
-        for entry in order where remaining > 0 {
+        for entry in remainders {
+            guard remaining > 0 else { break }
             result[entry.index] += 1
             remaining -= 1
         }
