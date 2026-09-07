@@ -653,9 +653,6 @@ struct SimulationOutcome: Sendable {
             // 이라는 앞뒤 안 맞는 두 줄이 뜬다 (docs/08-feedback.md 3번).
             expectedReal: deterministic.point(inYear: retirementYear, calendar: calendar)?.real
                 ?? deterministic.last?.real ?? end,
-            floorReturnBP: adjusted.inflation.basisPoints,
-            midReturnBP: adjusted.annualReturn.basisPoints,
-            ceilingReturnBP: 2_000,
             delta: end - planEnd,
             successProbability: monteCarlo.successProbability,
             paths: monteCarlo.paths,
