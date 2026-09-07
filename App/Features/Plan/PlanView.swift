@@ -15,6 +15,8 @@ struct PlanView: View {
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @State private var editingEvent: CashEvent?
     @State private var editingIncome: IncomeStream?
+    @State private var pendingIncomeDelete: IndexSet?
+    @State private var pendingEventDelete: IndexSet?
 
     var body: some View {
         NavigationStack {
@@ -23,6 +25,18 @@ struct PlanView: View {
                     form(plan)
                 } else {
                     ProgressView().task { _ = Plan.current(in: context) }
+                }
+            }
+            .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
+                            message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") { offsets in
+                for index in offsets where incomes.indices.contains(index) {
+                    context.delete(incomes[index])
+                }
+            }
+            .confirmsDelete($pendingEventDelete, title: "이 목돈 이벤트를 삭제할까요?",
+                            message: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") { offsets in
+                for index in offsets where cashEvents.indices.contains(index) {
+                    context.delete(cashEvents[index])
                 }
             }
             .navigationTitle("계획")
@@ -178,11 +192,7 @@ struct PlanView: View {
                     }
                 }
             }
-            .onDelete { offsets in
-                for index in offsets where incomes.indices.contains(index) {
-                    context.delete(incomes[index])
-                }
-            }
+            .onDelete { pendingIncomeDelete = $0 }
 
             Button {
                 let stream = IncomeStream(startYear: plan.retirementYear, sortIndex: incomes.count)
@@ -228,11 +238,7 @@ struct PlanView: View {
                     }
                 }
             }
-            .onDelete { offsets in
-                for index in offsets where cashEvents.indices.contains(index) {
-                    context.delete(cashEvents[index])
-                }
-            }
+            .onDelete { pendingEventDelete = $0 }
 
             Button {
                 let event = CashEvent(date: .now, label: "", sortIndex: cashEvents.count)

@@ -62,7 +62,8 @@ struct IncomeStreamEditView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(stream.title.isEmpty ? "이 수입" : stream.title) 을(를) 삭제할까요?",
+                                 consequence: "은퇴 후 이 수입이 궤적에서 빠집니다. 되돌릴 수 없습니다.") {
                         context.delete(stream)
                         dismiss()
                     }

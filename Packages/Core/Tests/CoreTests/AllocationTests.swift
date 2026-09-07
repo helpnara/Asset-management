@@ -32,16 +32,46 @@ struct AllocationTests {
         #expect(slices[0].status == .onTrack)
     }
 
-    @Test("목표 합이 100%가 아니어도 막지 않는다 — 비례로 정규화한다")
-    func normalisesPartialTargets() {
-        // 적다 말면 100이 안 되는 것이 정상이다. 그때 "전부 미달" 이라는
-        // 거짓 경고가 뜨면 안 된다.
+    @Test("목표는 적은 그대로 쓴다 — 정규화하지 않는다")
+    func targetsAreTakenAsWritten() {
+        // 한때 목표 합으로 나눠 비례 배분했다. 그러면 30% 라고 적은 것이 화면에
+        // 50% 로 보인다. 사용자가 요구한 표기는 `15/20%` — 적은 값이 그대로
+        // 서야 한다. 합이 60%뿐이면 그건 **덜 적은 것**이고, 화면은 합계를
+        // 눈에 띄게 적어 그 사실을 알린다.
         let slices = Allocation.slices([
             entry("A", 100, 3_000),
             entry("B", 100, 3_000)
         ])
-        #expect(slices[0].target == Decimal(string: "0.5"))
+        #expect(slices[0].target == Decimal(string: "0.3"))
+        #expect(slices[0].actual == Decimal(string: "0.5"))
+        // 30% 목표에 50% 를 들고 있으면 허용(max(5%p, 7.5%p))의 두 배를 넘는다.
+        #expect(slices[0].status == .act)
+        #expect(Allocation.targetSumBP([entry("A", 100, 3_000), entry("B", 100, 3_000)]) == 6_000)
+    }
+
+    @Test("한 줄에 실제와 목표가 나란히 선다 — 15/20%")
+    func comparisonLabelReadsAsRequested() {
+        // 조치·주의만으로는 얼마나 벗어났는지 알 수 없다는 것이 사용자의 지적이다.
+        let slices = Allocation.slices([
+            entry("KODEX 국고채3년", 15, 2_000),
+            entry("나머지", 85, 8_000)
+        ])
+        #expect(slices[0].comparisonLabel == "15.0/20.0%")
+        // 목표 20%에 실제 15% — 어긋난 폭 5%p 는 허용(max(5%p, 5%p))과 같다.
         #expect(slices[0].status == .onTrack)
+        // 목표가 없으면 실제만 적는다.
+        let untargeted = Allocation.slices([entry("A", 15, nil), entry("B", 85, nil)])
+        #expect(untargeted[0].comparisonLabel == "15.0%")
+    }
+
+    @Test("목표 합은 같은 이름을 합쳐서 센다")
+    func targetSumMergesByName() {
+        // `slices` 와 같은 규칙이어야 화면의 두 숫자가 어긋나지 않는다.
+        #expect(Allocation.targetSumBP([
+            entry("TIGER", 100, 2_000),
+            entry("TIGER", 100, 2_000),
+            entry("VOO", 300, 6_000)
+        ]) == 10_000)
     }
 
     @Test("목표를 안 정한 종목은 조용히 넘어가지 않는다")

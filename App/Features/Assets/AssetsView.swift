@@ -23,12 +23,16 @@ struct AssetsView: View {
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
     @State private var editingHolding: Holding?
+    @State private var targetingAccount: Account?
+    @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
     @State private var route = AppRoute.shared
-    /// CI 가 목표 비중 화면을 찍을 수 있게 하는 갈고리. 이 화면이 이번 묶음에서
-    /// 가장 새롭고 계산이 많은데, 그림이 없으면 확인할 방법이 없다.
-    @State private var showTargets = ProcessInfo.processInfo.arguments
-        .contains("-startTargetWeights")
+    /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
+    /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
+    @State private var showFamilyAllocation = ProcessInfo.processInfo.arguments
+        .contains("-startFamilyAllocation")
+    @State private var showAccountTargets = ProcessInfo.processInfo.arguments
+        .contains("-startAccountTargets")
 
     /// 펼쳐 둔 계좌·구성원의 UUID. 기기마다 따로 기억된다 — 접힘은 원래
     /// 기기별로 다른 게 자연스럽다.
@@ -82,20 +86,48 @@ struct AssetsView: View {
             .sheet(item: $editingMember) { MemberEditView(member: $0) }
             .sheet(item: $editingAccount) { AccountEditView(account: $0) }
             .sheet(item: $editingHolding) { HoldingEditView(holding: $0) }
-            .navigationDestination(isPresented: $showTargets) {
-                if let member = members.first { TargetWeightView(member: member) }
+            .navigationDestination(item: $targetingAccount) { AccountTargetView(account: $0) }
+            // 밀어 지우기도 확인을 거친다. 여기서 지우는 것은 그 종목에 적어 온
+            // 평가액 전부라 되돌릴 방법이 없다 (docs/08-feedback.md 16번).
+            .confirmationDialog("종목을 삭제할까요?",
+                                isPresented: Binding(get: { pendingHoldingDelete != nil },
+                                                     set: { if !$0 { pendingHoldingDelete = nil } }),
+                                titleVisibility: .visible,
+                                presenting: pendingHoldingDelete) { request in
+                Button("삭제", role: .destructive) {
+                    delete(request.offsets, from: request.account)
+                    pendingHoldingDelete = nil
+                }
+                Button("취소", role: .cancel) { pendingHoldingDelete = nil }
+            } message: { request in
+                Text("\(request.names) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.")
+            }
+            .navigationDestination(isPresented: $showFamilyAllocation) {
+                FamilyAllocationView()
+            }
+            .navigationDestination(isPresented: $showAccountTargets) {
+                if let account = members.first?.sortedAccounts.first(where: \.canSetTargets) {
+                    AccountTargetView(account: account)
+                }
             }
         }
     }
 
     private var list: some View {
         List {
-            if members.count > 1 {
-                Section {
+            Section {
+                NavigationLink {
+                    FamilyAllocationView()
+                } label: {
                     HStack {
-                        Text("가족 총자산")
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(Color.bodyText)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("가족 총자산")
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(Color.bodyText)
+                            Text("구성원 · 지역 · 자산군 비중")
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(Color.faint)
+                        }
                         Spacer()
                         Text(signedAmount(familyTotal, false))
                             .font(.figure(15, weight: .bold))
@@ -158,15 +190,6 @@ struct AssetsView: View {
             }
 
             NavigationLink {
-                TargetWeightView(member: member)
-            } label: {
-                Image(systemName: "chart.pie")
-                    .font(.system(size: 11))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color.dad)
-
-            NavigationLink {
                 MemberTrajectoryView(member: member)
             } label: {
                 Image(systemName: "chart.line.uptrend.xyaxis")
@@ -205,7 +228,19 @@ struct AssetsView: View {
                 } else if !account.kind.countsAsInvestable {
                     StatusBadge(text: "투자자산 제외")
                 }
+                if account.canSetTargets && account.targetSumBP != 10_000 {
+                    StatusBadge(text: "목표 미완",
+                                foreground: .loss,
+                                background: Color.lossSoft)
+                }
                 Spacer()
+                // 이 계좌가 **주인의 자산에서** 차지하는 몫. 목표는 없다 —
+                // 계좌 잔고는 급여와 납입 한도가 정하는 값이다.
+                if let share = memberShare(of: account) {
+                    Text(share)
+                        .font(.figure(10))
+                        .foregroundStyle(Color.faint)
+                }
                 Text(signedAmount(accountTotal(account).minorUnits, account.kind.isLiability))
                     .font(.figure(12.5, weight: .medium))
                     .foregroundStyle(account.kind.isLiability ? Color.loss : Color.ink)
@@ -216,6 +251,9 @@ struct AssetsView: View {
         // 계좌 자체를 고치는 길. 펼치기와 겹치지 않게 길게 눌러 연다.
         .contextMenu {
             Button("계좌 편집") { editingAccount = account }
+            if account.canSetTargets {
+                Button("목표 비중") { targetingAccount = account }
+            }
         }
 
         if isExpanded(account) {
@@ -226,30 +264,47 @@ struct AssetsView: View {
                     holdingRow(holding)
                 }
             }
-            .onDelete { offsets in
-                delete(offsets, from: account)
-            }
+            .onDelete { pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: $0) }
             .onMove { offsets, destination in
                 move(offsets, to: destination, in: account)
             }
 
-            Button {
-                addHolding(to: account)
-            } label: {
-                Label("종목 추가", systemImage: "plus")
-                    .font(.system(size: 12))
-                    .padding(.leading, 12)
+            HStack(spacing: 14) {
+                Button {
+                    addHolding(to: account)
+                } label: {
+                    Label("종목 추가", systemImage: "plus")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.dad)
+
+                if account.canSetTargets {
+                    Button {
+                        targetingAccount = account
+                    } label: {
+                        Label("목표 비중", systemImage: "chart.pie")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.dad)
+                }
             }
+            .padding(.leading, 12)
         }
     }
 
-    /// 목표 비중에서 벗어났나. 같은 자산군 안에서 잰다 (docs/08-feedback.md 14번).
-    private func driftStatus(_ holding: Holding) -> Allocation.DriftStatus {
-        guard let member = holding.account?.owner else { return .onTrack }
-        let tolerance = plans.first?.driftTolerance ?? Allocation.Tolerance()
-        let label = holding.name.isEmpty ? "이름 없음" : holding.name
-        return member.holdingSlices(in: holding.assetClass, tolerance: tolerance)
-            .first { $0.label == label }?.status ?? .onTrack
+    /// 이 종목이 **자기 계좌 안에서** 어느 상태인가 (docs/08-feedback.md 15번).
+    private func driftSlice(_ holding: Holding) -> Allocation.Slice? {
+        holding.driftSlice(tolerance: plans.first?.driftTolerance ?? Allocation.Tolerance())
+    }
+
+    /// 이 계좌가 주인의 자산에서 차지하는 몫.
+    private func memberShare(of account: Account) -> String? {
+        guard !account.kind.isLiability, let owner = account.owner else { return nil }
+        let total = owner.assetTotalMinor
+        guard total > 0, account.totalMinor > 0 else { return nil }
+        return "\(PercentFormatter.oneDecimal(Decimal(account.totalMinor) / Decimal(total)))%"
     }
 
     // MARK: - 접기 · 펼치기
@@ -313,7 +368,11 @@ struct AssetsView: View {
                                     foreground: .loss,
                                     background: Color.lossSoft)
                     }
-                    DriftBadge(status: driftStatus(holding))
+                    // 사용자가 요구한 자리 — **종목 이름 바로 옆**이다.
+                    // 조치·주의만으로는 어떤 상황인지 알 수 없다는 지적이었다.
+                    if let slice = driftSlice(holding) {
+                        WeightLabel(slice: slice)
+                    }
                 }
                 // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
                 // 목록에서 실제로 궁금한 것은 상품 종류다.
@@ -437,5 +496,19 @@ struct MemberOrderView: View {
                 }
             }
         }
+    }
+}
+
+/// 밀어 지우려는 종목들. 확인 창이 이름을 읽어 "무엇이 사라지는지" 를 적는다.
+struct HoldingDeleteRequest: Identifiable {
+    let account: Account
+    let offsets: IndexSet
+
+    var id: String { "\(account.id)-\(offsets.map(String.init).joined(separator: ","))" }
+
+    var names: String {
+        let holdings = account.sortedHoldings
+        let picked = offsets.compactMap { holdings.indices.contains($0) ? holdings[$0] : nil }
+        return picked.map(\.weightLabel).joined(separator: " · ")
     }
 }

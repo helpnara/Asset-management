@@ -161,7 +161,8 @@ struct TodoEditView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(item.title.isEmpty ? "이 할 일" : item.title) 을(를) 삭제할까요?",
+                                 consequence: "되돌릴 수 없습니다.") {
                         context.delete(item)
                         dismiss()
                     }

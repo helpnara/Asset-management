@@ -239,3 +239,33 @@ public enum EntryCadence: String, Codable, Sendable, CaseIterable, Identifiable 
         }
     }
 }
+
+/// 상장 국가를 묶은 지역. 가족 전체 자산의 **미국 · 한국 비중**을 볼 때 쓴다
+/// (docs/08-feedback.md 15번).
+///
+/// 상장 종목이 아닌 것(부동산 · 전세보증금 · 예적금 · 보험)은 `listingCountryCode`
+/// 가 `"KR"` 이라 한국으로 잡힌다. 실제로 그 돈은 한국에 있으니 맞다.
+public enum Region: String, Codable, Sendable, CaseIterable, Identifiable {
+    case korea
+    case unitedStates
+    case other
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .korea: return "한국"
+        case .unitedStates: return "미국"
+        case .other: return "그 밖"
+        }
+    }
+
+    /// 2글자 국가 코드에서 고른다. 대소문자를 가리지 않는다.
+    public static func of(countryCode: String) -> Region {
+        switch countryCode.uppercased() {
+        case "KR": return .korea
+        case "US": return .unitedStates
+        default: return .other
+        }
+    }
+}

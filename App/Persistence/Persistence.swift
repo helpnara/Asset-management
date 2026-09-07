@@ -29,7 +29,7 @@ enum Persistence {
     /// 걸린다("static property is not concurrency-safe"). 계산 프로퍼티는 매번 새 인스턴스를
     /// 돌려주므로 공유 가변 상태가 아니다.
     static var schema: Schema {
-        Schema([Member.self, Account.self, Holding.self, ReviewSession.self, Snapshot.self, SnapshotLine.self, Plan.self, CashEvent.self, IncomeStream.self, UserMilestone.self, TodoItem.self, Scenario.self, Principle.self, ChangeLog.self, AllocationTarget.self])
+        Schema([Member.self, Account.self, Holding.self, ReviewSession.self, Snapshot.self, SnapshotLine.self, Plan.self, CashEvent.self, IncomeStream.self, UserMilestone.self, TodoItem.self, Scenario.self, Principle.self, ChangeLog.self, FamilyTarget.self])
     }
 
     static let shared: Store = open()

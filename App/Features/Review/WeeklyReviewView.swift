@@ -142,13 +142,10 @@ struct WeeklyReviewView: View {
         .padding(.bottom, 5)
     }
 
-    /// 이 종목이 목표에서 얼마나 벗어났나. 같은 자산군 안에서 잰다.
-    private func driftStatus(_ holding: Holding) -> Allocation.DriftStatus {
-        guard let member = holding.account?.owner else { return .onTrack }
-        let tolerance = plans.first?.driftTolerance ?? Allocation.Tolerance()
-        let label = holding.name.isEmpty ? "이름 없음" : holding.name
-        return member.holdingSlices(in: holding.assetClass, tolerance: tolerance)
-            .first { $0.label == label }?.status ?? .onTrack
+    /// 이 종목이 **자기 계좌 안에서** 목표에서 얼마나 벗어났나
+    /// (docs/08-feedback.md 15번).
+    private func driftSlice(_ holding: Holding) -> Allocation.Slice? {
+        holding.driftSlice(tolerance: plans.first?.driftTolerance ?? Allocation.Tolerance())
     }
 
     private func visitedCount(_ member: Member) -> Int {
@@ -170,7 +167,10 @@ struct WeeklyReviewView: View {
                     }
                     // 금액을 고치는 순간 다시 계산된다 — "지금 이걸 적고 나니
                     // 비중이 틀어졌다" 를 그 자리에서 본다 (docs/08-feedback.md 14번).
-                    DriftBadge(status: driftStatus(holding))
+                    // 숫자가 먼저다 — `15/20% 주의` 라야 얼마나 벗어났는지 읽힌다.
+                    if let slice = driftSlice(holding) {
+                        WeightLabel(slice: slice)
+                    }
                 }
                 Text("지난주 \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.system(size: 9.5))

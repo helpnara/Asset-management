@@ -11,6 +11,7 @@ struct MilestoneListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \UserMilestone.year) private var milestones: [UserMilestone]
     @State private var editing: UserMilestone?
+    @State private var pendingDelete: IndexSet?
 
     var body: some View {
         List {
@@ -47,10 +48,12 @@ struct MilestoneListView: View {
                     }
                 }
             }
-            .onDelete { offsets in
-                for index in offsets where milestones.indices.contains(index) {
-                    context.delete(milestones[index])
-                }
+            .onDelete { pendingDelete = $0 }
+        }
+        .confirmsDelete($pendingDelete, title: "이 마일스톤을 삭제할까요?",
+                        message: "되돌릴 수 없습니다.") { offsets in
+            for index in offsets where milestones.indices.contains(index) {
+                context.delete(milestones[index])
             }
         }
         .navigationTitle("내 마일스톤")
@@ -98,7 +101,8 @@ struct MilestoneEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(milestone.title.isEmpty ? "이 마일스톤" : milestone.title) 을(를) 삭제할까요?",
+                                 consequence: "되돌릴 수 없습니다.") {
                         context.delete(milestone)
                         dismiss()
                     }

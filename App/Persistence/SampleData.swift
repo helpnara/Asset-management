@@ -23,9 +23,9 @@ enum SampleData {
 
         // 아빠 — 일반 위탁 · 연금보험 · 전세보증금 · 마이너스통장
         let dadBrokerage = account("종합계좌", "증권사 A", .general, dad, 0, context)
-        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 48_200_000, dadBrokerage, 0, context)
-        holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly, 26_400_000, dadBrokerage, 1, context)
-        holding("국내 대형주", .equity, .stock, "KR", .frozen, .weekly, 9_100_000, dadBrokerage, 2, context)
+        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 48_200_000, dadBrokerage, 0, context, targetBP: 4_000)
+        holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly, 26_400_000, dadBrokerage, 1, context, targetBP: 4_000)
+        holding("국내 대형주", .equity, .stock, "KR", .frozen, .weekly, 9_100_000, dadBrokerage, 2, context, targetBP: 2_000)
 
         let dadInsurance = account("연금보험", "보험사 B", .insurance, dad, 1, context)
         holding("해지환급금", .insurance, .other, "KR", .accumulating, .monthly, 19_800_000, dadInsurance, 0, context)
@@ -36,7 +36,7 @@ enum SampleData {
         let dadPension = account("연금저축", "증권사 A", .pensionSavings, dad, 2, context)
         dadPension.annualLimitMinor = 6_000_000
         dadPension.annualContributionMinor = 6_000_000
-        holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context)
+        holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context, targetBP: 10_000)
 
         let dadIRP = account("IRP", "증권사 A", .irp, dad, 3, context)
         dadIRP.annualLimitMinor = 3_000_000
@@ -55,9 +55,9 @@ enum SampleData {
 
         // 아들 — 국내 ETF 가 섞여 있어 PFIC 경고가 뜬다
         let sonBrokerage = account("증여계좌", "증권사 D", .general, son, 0, context)
-        holding("국내 반도체주", .equity, .stock, "KR", .frozen, .weekly, 24_300_000, sonBrokerage, 0, context)
-        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_750_000, sonBrokerage, 1, context)
-        holding("국내 지수 ETF", .equity, .etf, "KR", .frozen, .weekly, 3_100_000, sonBrokerage, 2, context)
+        holding("국내 반도체주", .equity, .stock, "KR", .frozen, .weekly, 24_300_000, sonBrokerage, 0, context, targetBP: 3_000)
+        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 1_750_000, sonBrokerage, 1, context, targetBP: 4_000)
+        holding("국내 지수 ETF", .equity, .etf, "KR", .frozen, .weekly, 3_100_000, sonBrokerage, 2, context, targetBP: 3_000)
 
         // 딸
         let daughterBrokerage = account("증여계좌", "증권사 D", .general, daughter, 0, context)
@@ -185,14 +185,18 @@ enum SampleData {
         return account
     }
 
+    /// `targetBP` 는 **그 계좌 안에서**의 목표다. 한 계좌 안 종목들의 합이
+    /// 100%가 되도록 적는다 — 그래야 화면의 `목표 합` 이 초록으로 선다.
+    /// 일부러 몇 계좌는 비워 둔다. `목표 미완` 배지가 찍히는지 봐야 하기 때문이다.
     private static func holding(_ name: String, _ assetClass: AssetClass,
                                 _ instrumentType: InstrumentType, _ country: String,
                                 _ status: HoldingStatus, _ cadence: EntryCadence,
                                 _ valueMinor: Int, _ account: Account, _ sortIndex: Int,
-                                _ context: ModelContext) {
+                                _ context: ModelContext, targetBP: Int? = nil) {
         let holding = Holding(name: name, assetClass: assetClass, instrumentType: instrumentType,
                               listingCountryCode: country, status: status, cadence: cadence,
                               valueMinor: valueMinor, account: account, sortIndex: sortIndex)
+        holding.targetWeightBP = targetBP
         // 지난주 값이 있어야 증감이 화면에 보인다. 오른 것과 내린 것을 섞는다.
         holding.lastEnteredValueMinor = sortIndex % 2 == 0
             ? valueMinor - valueMinor / 40      // 이번 주 상승

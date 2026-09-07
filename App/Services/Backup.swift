@@ -31,6 +31,15 @@ struct BackupDocument: Codable, Sendable {
     /// 변경 이력은 **백업에는 넣고 1페이지에는 안 넣는다.** 이력에 금액이
     /// 남으므로 남에게 건네는 문서에 들어가면 안 된다 (docs/08-feedback.md 13번).
     var changeLog: [ChangeLogData]
+    /// 가족 전체의 지역·자산군 목표 (docs/08-feedback.md 15번).
+    var familyTargets: [FamilyTargetData]
+
+    struct FamilyTargetData: Codable, Sendable {
+        var id: UUID
+        var dimension: String
+        var key: String
+        var targetBP: Int
+    }
 
     struct PlanData: Codable, Sendable {
         var id: UUID
@@ -76,14 +85,6 @@ struct BackupDocument: Codable, Sendable {
         var sortIndex: Int
         var createdAt: Date
         var accounts: [AccountData]
-        /// 자산군 목표 (목표 비중 1층).
-        var allocationTargets: [AllocationTargetData]
-    }
-
-    struct AllocationTargetData: Codable, Sendable {
-        var id: UUID
-        var assetClass: String
-        var targetBP: Int
     }
 
     struct AccountData: Codable, Sendable {
@@ -275,11 +276,7 @@ extension BackupDocument {
                                 )
                             }
                         )
-                    },
-                    allocationTargets: (member.allocationTargets ?? [])
-                        .sorted { $0.assetClassRaw < $1.assetClassRaw }
-                        .map { AllocationTargetData(id: $0.id, assetClass: $0.assetClassRaw,
-                                                    targetBP: $0.targetBP) }
+                    }
                 )
             }
 
@@ -371,7 +368,13 @@ extension BackupDocument {
             changeLog: all(ChangeLog.self).sorted { $0.at < $1.at }.map {
                 ChangeLogData(id: $0.id, at: $0.at, actor: $0.actor,
                               kind: $0.kindRaw, subject: $0.subject, summary: $0.summary)
-            }
+            },
+            familyTargets: all(FamilyTarget.self)
+                .sorted { ($0.dimensionRaw, $0.key) < ($1.dimensionRaw, $1.key) }
+                .map {
+                    FamilyTargetData(id: $0.id, dimension: $0.dimensionRaw,
+                                     key: $0.key, targetBP: $0.targetBP)
+                }
         )
     }
 

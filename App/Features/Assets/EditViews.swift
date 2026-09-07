@@ -9,6 +9,15 @@ struct MemberEditView: View {
 
     private let years = Array((1930...Calendar.current.component(.year, from: .now)).reversed())
 
+    /// 구성원 삭제는 이 앱에서 가장 크게 지우는 일이다 — 계좌와 종목이
+    /// cascade 로 전부 딸려 간다. 몇 개가 사라지는지 세어서 적는다.
+    private var memberDeleteWarning: String {
+        let accounts = member.sortedAccounts.count
+        let holdings = member.sortedAccounts.reduce(0) { $0 + $1.sortedHoldings.count }
+        guard accounts > 0 else { return "되돌릴 수 없습니다." }
+        return "계좌 \(accounts)개와 종목 \(holdings)개, 적어 온 평가액이 모두 함께 사라집니다. 되돌릴 수 없습니다."
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -73,7 +82,8 @@ struct MemberEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(member.name.isEmpty ? "이 구성원" : member.name) 을(를) 삭제할까요?",
+                                 consequence: memberDeleteWarning) {
                         context.delete(member)
                         dismiss()
                     }
@@ -139,7 +149,8 @@ struct AccountEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(account.name.isEmpty ? account.kind.label : account.name) 을(를) 삭제할까요?",
+                                 consequence: accountDeleteWarning) {
                         context.delete(account)
                         dismiss()
                     }
@@ -149,6 +160,14 @@ struct AccountEditView: View {
                 }
             }
         }
+    }
+
+    /// **무엇이 함께 사라지는지 세어서 적는다.** "정말 삭제할까요?" 만으로는
+    /// 계좌 하나를 지우는 줄 알고 종목 열 개를 잃는다.
+    private var accountDeleteWarning: String {
+        let count = account.sortedHoldings.count
+        guard count > 0 else { return "되돌릴 수 없습니다." }
+        return "이 계좌에 담긴 종목 \(count)개와 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다."
     }
 
     private var accountFooter: String {
@@ -278,7 +297,8 @@ struct HoldingEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("삭제", role: .destructive) {
+                    DeleteButton("\(holding.name.isEmpty ? "이 종목" : holding.name) 을(를) 삭제할까요?",
+                                 consequence: "적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
                         context.delete(holding)
                         dismiss()
                     }

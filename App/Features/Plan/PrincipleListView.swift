@@ -12,6 +12,7 @@ import SwiftUI
 struct PrincipleListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Principle.order) private var principles: [Principle]
+    @State private var pendingDelete: IndexSet?
 
     var body: some View {
         List {
@@ -35,7 +36,7 @@ struct PrincipleListView: View {
                 }
                 .padding(.vertical, 2)
             }
-            .onDelete(perform: delete)
+            .onDelete { pendingDelete = $0 }
             .onMove(perform: move)
 
             Button {
@@ -45,6 +46,9 @@ struct PrincipleListView: View {
                     .font(.system(size: 13))
             }
         }
+        .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
+                        message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
+                        perform: delete)
         .navigationTitle("운용 원칙")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }

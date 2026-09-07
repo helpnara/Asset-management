@@ -2,19 +2,27 @@ import Foundation
 
 /// 목표 비중과 실제 비중의 차이.
 ///
-/// **두 층으로 잰다** (docs/08-feedback.md 14번).
+/// **비중은 네 층으로 잰다** (docs/08-feedback.md 15번).
 ///
-/// | 층 | 무엇을 나누나 | 분모 |
-/// |---|---|---|
-/// | 자산군 | 주식·ETF · 채권 · 금 · 예적금 · 현금 · 부동산 … | 그 사람의 **자산 합계**(부채 제외) |
-/// | 종목 | 그 자산군 안의 종목들 | **그 자산군 합계** |
+/// | 층 | 무엇을 나누나 | 분모 | 목표 |
+/// |---|---|---|---|
+/// | 가족 | 구성원 | 가족 자산 합계 | 없음 |
+/// | 구성원 | 계좌 | 그 사람의 자산 합계 | 없음 |
+/// | 계좌 | 종목 | **그 계좌의 합계** | **있음 — 합이 100%** |
+/// | (별도) | 지역 · 자산군 | 가족 자산 합계 | 있음 |
 ///
-/// 한 종목의 전체 비중은 곱이다. 주식·ETF 60% × 그 안에서 VOO 40% = 24%.
-/// 이렇게 나눠야 **종목을 하나 더 담아도 자산군 층이 흔들리지 않는다.**
+/// 목표가 붙는 곳은 **계좌 안의 종목**뿐이다. 계좌마다 투자 목적과 규모가 다르니
+/// "이 계좌를 무엇으로 채울 것인가" 가 실제로 사람이 정하는 단위이기 때문이다.
+/// 위의 두 층(가족→구성원, 구성원→계좌)은 목표를 둘 수 없다 — 계좌 잔고는
+/// 급여와 한도가 정하는 것이라 사람이 비율로 고를 수 있는 값이 아니다.
 ///
-/// 기준이 사람인 이유는 실제 데이터에 있다 — 같은 종목이 IRP·연금저축·ISA
-/// 세 계좌에 흩어져 있어서, 계좌 안에서 재면 "이 사람이 미국 주식을 얼마나
-/// 갖고 있나" 를 알 수 없다. **같은 이름은 합쳐서 판정한다.**
+/// 그와 **별개로** 가족 전체를 지역(미국·한국)과 자산군(부동산·주식·채권·금·연금)
+/// 으로 갈라 본다. 이쪽은 계좌 구조를 가로지르는 질문이다.
+///
+/// **목표는 적은 그대로 쓴다 — 정규화하지 않는다.** 한때 목표 합으로 나눠
+/// 비례 배분했는데, 그러면 20% 라고 적은 종목이 화면에는 33% 로 보였다.
+/// 사용자가 요구한 표기는 `15/20%` — 적은 값이 그대로 보여야 한다.
+/// 합이 100%가 아니면 숨기지 말고 **합계를 눈에 띄게 적는다**.
 public enum Allocation {
 
     /// 한 줄의 판정 결과. 자산군 줄과 종목 줄이 같은 모양을 쓴다.
@@ -25,7 +33,8 @@ public enum Allocation {
         public let amount: Money
         /// 실제 비중. 0.0~1.0
         public let actual: Decimal
-        /// 목표 비중. **없으면 nil** — 그 자체가 알림거리다.
+        /// 목표 비중. **적은 그대로**다 (정규화하지 않는다).
+        /// 없으면 nil — 그 자체가 알림거리다.
         public let target: Decimal?
         public let status: DriftStatus
 
@@ -34,6 +43,16 @@ public enum Allocation {
         /// 목표에서 얼마나 벗어났나. 목표가 없으면 nil.
         public var drift: Decimal? {
             target.map { actual - $0 }
+        }
+
+        /// 사용자가 요구한 표기 — `15/20%`. 목표가 없으면 실제만 `15%`.
+        ///
+        /// 한 줄에 실제와 목표가 같이 서야 "지금 어떤 상황인지" 를 배지 없이도
+        /// 읽을 수 있다. 조치·주의만으로는 얼마나 벗어났는지 알 수 없었다.
+        public var comparisonLabel: String {
+            let now = PercentFormatter.oneDecimal(actual)
+            guard let target else { return "\(now)%" }
+            return "\(now)/\(PercentFormatter.oneDecimal(target))%"
         }
     }
 
@@ -95,9 +114,9 @@ public enum Allocation {
 
     /// 한 층을 잰다.
     ///
-    /// 목표의 합이 100%가 아니어도 막지 않는다 — 적다 말면 100이 안 되는 것이
-    /// 정상이다. 대신 **비례로 정규화해서** 판정한다. 그래야 "아직 60%만
-    /// 적었는데 전부 미달" 이라는 거짓 경고가 안 뜬다.
+    /// 목표의 합이 100%가 아니어도 막지 않는다. 대신 **적은 그대로** 판정하고,
+    /// 합이 얼마인지는 `targetSumBP` 로 따로 알려 화면이 눈에 띄게 적게 한다.
+    /// 정규화하지 않는 이유는 이 타입 맨 위에 적어 두었다.
     public static func slices(_ entries: [Entry],
                               tolerance: Tolerance = Tolerance()) -> [Slice] {
         guard !entries.isEmpty else { return [] }
@@ -122,17 +141,11 @@ public enum Allocation {
         let total = amounts.values.reduce(0, +)
         guard total > 0 else { return [] }
 
-        // 적어 둔 목표의 합. 100%가 아니면 이 값으로 정규화한다.
-        let targetSum = order.reduce(0) { $0 + ((targets[$1] ?? nil) ?? 0) }
-
         return order.map { label in
             let amount = amounts[label] ?? 0
             let actual = Decimal(amount) / Decimal(total)
             let bp = targets[label] ?? nil
-            let target: Decimal? = bp.flatMap { value in
-                guard targetSum > 0 else { return nil }
-                return Decimal(value) / Decimal(targetSum)
-            }
+            let target: Decimal? = bp.map { Decimal($0) / 10_000 }
             return Slice(
                 label: label,
                 amount: Money(minorUnits: amount, currency: currency),
@@ -141,6 +154,19 @@ public enum Allocation {
                 status: status(actual: actual, target: target, tolerance: tolerance)
             )
         }
+    }
+
+    /// 적어 둔 목표의 합 (basis point). 100%(10,000)가 아니면 화면이 그렇게 적는다.
+    ///
+    /// 같은 이름은 합쳐서 센다 — `slices` 와 같은 규칙이어야 화면의 두 숫자가
+    /// 어긋나지 않는다.
+    public static func targetSumBP(_ entries: [Entry]) -> Int {
+        var byLabel: [String: Int] = [:]
+        for entry in entries {
+            guard let bp = entry.targetBP else { continue }
+            byLabel[entry.label, default: 0] += bp
+        }
+        return byLabel.values.reduce(0, +)
     }
 
     static func status(actual: Decimal, target: Decimal?, tolerance: Tolerance) -> DriftStatus {

@@ -22,6 +22,7 @@ struct PastRecordsView: View {
     @Query(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
     @Query private var sessions: [ReviewSession]
 
+    @State private var pendingDelete: IndexSet?
     @State private var editing: PastRecordDraft?
 
     var body: some View {
@@ -41,7 +42,7 @@ struct PastRecordsView: View {
                     row(snapshot)
                 }
             }
-            .onDelete(perform: delete)
+            .onDelete { pendingDelete = $0 }
 
             Section {
                 Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.")
@@ -49,6 +50,9 @@ struct PastRecordsView: View {
                     .foregroundStyle(Color.faint)
             }
         }
+        .confirmsDelete($pendingDelete, title: "지난 기록을 삭제할까요?",
+                        message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.",
+                        perform: delete)
         .navigationTitle("지난 기록")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
