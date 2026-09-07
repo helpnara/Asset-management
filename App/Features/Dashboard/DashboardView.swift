@@ -298,7 +298,7 @@ struct DashboardView: View {
             let monthly = projection.points.enumerated()
                 .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
                 .map { $0.element }
-                .filter { limit.map { end in $0.date <= end } ?? true }
+                .filter { point in limit.map { point.date <= $0 } ?? true }
                 .map { TrajectoryChart.Point(date: $0.date,
                                              minor: $0.nominal.minorUnits,
                                              series: .projected) }
