@@ -15,6 +15,7 @@ struct AccountTargetView: View {
 
     @Query private var plans: [Plan]
     @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.canEdit) private var canEdit
 
     private var tolerance: Allocation.Tolerance {
         plans.first?.driftTolerance ?? Allocation.Tolerance()
@@ -42,11 +43,13 @@ struct AccountTargetView: View {
                         Spacer(minLength: 6)
                         if let slice { WeightLabel(slice: slice, hidesNoTarget: true) }
                         // 1%p 단위. 목표는 정수로만 적는다.
-                        Stepper("", value: Binding(
-                            get: { holding.targetWeightBP ?? 0 },
-                            set: { holding.targetWeightBP = $0 }
-                        ), in: 0...10_000, step: 100)
-                        .labelsHidden()
+                        if canEdit {
+                            Stepper("", value: Binding(
+                                get: { holding.targetWeightBP ?? 0 },
+                                set: { holding.targetWeightBP = $0 }
+                            ), in: 0...10_000, step: 100)
+                            .labelsHidden()
+                        }
                     }
                 }
             } header: {

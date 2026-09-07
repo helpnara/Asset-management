@@ -11,6 +11,8 @@ import SwiftUI
 /// 글로 남긴다.
 struct PrincipleListView: View {
     @Environment(\.modelContext) private var context
+    // 원칙은 1페이지에 실려 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
+    @Environment(\.canManageHousehold) private var canManageHousehold
     @Query(sort: \Principle.order) private var principles: [Principle]
     @State private var pendingDelete: IndexSet?
 
@@ -35,20 +37,25 @@ struct PrincipleListView: View {
                         .foregroundStyle(Color.muted)
                 }
                 .padding(.vertical, 2)
+                // 줄 자체가 입력칸이라 여기도 잠가야 한다.
+                .disabled(!canManageHousehold)
             }
-            .onDelete { pendingDelete = $0 }
-            .onMove(perform: move)
+            .onDelete(perform: canManageHousehold
+                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
+            .onMove(perform: canManageHousehold ? move : nil)
 
-            Button {
-                add()
-            } label: {
-                Label("원칙 추가", systemImage: "plus")
-                    .font(.system(size: 13))
+            if canManageHousehold {
+                Button {
+                    add()
+                } label: {
+                    Label("원칙 추가", systemImage: "plus")
+                        .font(.system(size: 13))
+                }
             }
 
             // 기본값을 첫 실행 때 심지 않는 이유는 `DefaultPrinciples` 에 적어 두었다.
             // 이미 쓰고 있는 사람에게도 와야 해서 버튼으로 둔다.
-            if !missingDefaults.isEmpty {
+            if !missingDefaults.isEmpty && canManageHousehold {
                 Section {
                     Button {
                         addDefaults()
@@ -67,7 +74,7 @@ struct PrincipleListView: View {
                         perform: delete)
         .navigationTitle("운용 원칙")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { EditButton() }
+        .toolbar { if canManageHousehold { EditButton() } }
         .overlay {
             if principles.isEmpty {
                 VStack(spacing: 10) {

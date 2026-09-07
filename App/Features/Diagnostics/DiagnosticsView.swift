@@ -24,6 +24,8 @@ struct DiagnosticsView: View {
 
     @State private var expanded: Set<String> = []
     @State private var isEditingCriteria = false
+    // 진단 기준은 가구 하나에 한 벌이다 — 관리자만 바꾼다.
+    @Environment(\.canManageHousehold) private var canManageHousehold
 
     var body: some View {
         Group {
@@ -203,17 +205,20 @@ struct DiagnosticsView: View {
 
     // MARK: - 기준 · 고지
 
+    @ViewBuilder
     private var criteriaButton: some View {
-        Button {
-            isEditingCriteria = true
-        } label: {
-            Label("진단 기준 바꾸기", systemImage: "slider.horizontal.3")
-                .font(.system(size: 13, weight: .medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+        if canManageHousehold {
+            Button {
+                isEditingCriteria = true
+            } label: {
+                Label("진단 기준 바꾸기", systemImage: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.bordered)
+            .tint(Color.ink)
         }
-        .buttonStyle(.bordered)
-        .tint(Color.ink)
     }
 
     private var disclaimer: some View {

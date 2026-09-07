@@ -19,6 +19,8 @@ struct PastRecordsView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     @Environment(\.modelContext) private var context
+    // 지난 기록을 고치는 것은 궤적의 과거를 고치는 일이라 관리자만이다.
+    @Environment(\.canManageHousehold) private var canManageHousehold
     @Query(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
     @Query private var sessions: [ReviewSession]
 
@@ -29,20 +31,25 @@ struct PastRecordsView: View {
         List {
             if snapshots.isEmpty {
                 Section {
-                    Text("아직 기록이 없습니다. 오른쪽 위 + 로 과거 시점의 총자산을 넣으세요.")
+                    Text(canManageHousehold
+                         ? "아직 기록이 없습니다. 오른쪽 위 + 로 과거 시점의 총자산을 넣으세요."
+                         : "아직 기록이 없습니다.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.muted)
                 }
             }
 
             ForEach(snapshots) { snapshot in
-                Button {
-                    editing = PastRecordDraft(snapshot)
-                } label: {
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
+                } else {
                     row(snapshot)
                 }
             }
-            .onDelete { pendingDelete = $0 }
+            .onDelete(perform: canManageHousehold
+                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
 
             Section {
                 Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.")
@@ -57,10 +64,12 @@ struct PastRecordsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    editing = PastRecordDraft()
-                } label: {
-                    Image(systemName: "plus")
+                if canManageHousehold {
+                    Button {
+                        editing = PastRecordDraft()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }

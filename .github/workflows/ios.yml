@@ -252,6 +252,13 @@ jobs:
           shoot 17-export.png      -skipOnboarding -seedSampleData -startTab more -startExport
           shoot 18-change-log.png  -skipOnboarding -seedSampleData -startTab more -startChangeLog
 
+          # **보기 전용 화면** (docs/09-family-sharing.md 4단계). 아내분이 보게
+          # 될 화면이라 원격 세션에서 그림으로 확인할 수 있어야 한다 — 고치는
+          # 자리가 정말 사라졌는지, 남은 화면이 읽을 만한지.
+          shoot 19-viewer-dashboard.png -skipOnboarding -seedSampleData -startTab dashboard -rolePreview viewer
+          shoot 20-viewer-assets.png    -skipOnboarding -seedSampleData -startTab assets    -rolePreview viewer
+          shoot 21-viewer-plan.png      -skipOnboarding -seedSampleData -startTab plan      -rolePreview viewer
+
           # ── 다크 모드 ──
           # 라이트로만 찍어서 **화면마다 톤이 제각각인 것을 놓쳤다**
           # (docs/08-feedback.md 1번). 톤이 갈리던 화면을 골라 다시 찍는다:

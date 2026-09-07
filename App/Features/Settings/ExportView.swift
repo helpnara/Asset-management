@@ -20,6 +20,9 @@ struct ExportView: View {
     @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
     @Environment(\.modelContext) private var context
+    /// **되돌리기는 관리자만이다.** iCloud 는 삭제까지 퍼뜨리므로, 참가자가
+    /// 자기 기기에서 되돌리면 관리자의 기록까지 갈아 끼운다 (40번).
+    @Environment(\.canManageHousehold) private var canManageHousehold
 
     @State private var isRendering = false
     @State private var rendered: PDFFile?
@@ -98,16 +101,18 @@ struct ExportView: View {
             // **되돌리기** (docs/08-feedback.md 40번).
             // 내보내기만 있고 되돌리기가 없었다. iCloud 는 삭제까지 동기화하므로
             // 잘못 지운 것을 되찾을 길이 하나도 없었다.
-            Section {
-                Button(role: .destructive) {
-                    isPickingBackup = true
-                } label: {
-                    Label("백업 파일에서 되돌리기", systemImage: "arrow.counterclockwise")
+            if canManageHousehold {
+                Section {
+                    Button(role: .destructive) {
+                        isPickingBackup = true
+                    } label: {
+                        Label("백업 파일에서 되돌리기", systemImage: "arrow.counterclockwise")
+                    }
+                } header: {
+                    Text("되돌리기")
+                } footer: {
+                    Text("백업 파일을 골라 **이 기기의 기록을 통째로 갈아 끼웁니다.** 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 **먼저 지금 상태로 백업을 하나 만들어 두세요** — 위의 `전체 백업 만들기` 입니다.")
                 }
-            } header: {
-                Text("되돌리기")
-            } footer: {
-                Text("백업 파일을 골라 **이 기기의 기록을 통째로 갈아 끼웁니다.** 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 **먼저 지금 상태로 백업을 하나 만들어 두세요** — 위의 `전체 백업 만들기` 입니다.")
             }
         }
         .fileImporter(isPresented: $isPickingBackup,

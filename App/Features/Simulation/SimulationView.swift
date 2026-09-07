@@ -16,6 +16,10 @@ struct SimulationView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     @Environment(\.modelContext) private var context
+    /// **손잡이는 누구나 돌린다.** 이 화면은 계획을 바꾸지 않으므로
+    /// 보기 전용이어도 막을 이유가 없다 — 막으면 남는 것이 그림 한 장뿐이다.
+    /// 다만 이름 붙여 **저장하는 것**은 가족이 함께 보는 목록에 남으므로 잠근다.
+    @Environment(\.canEdit) private var canEdit
     @Query private var plans: [Plan]
     @Query private var holdings: [Holding]
     @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
@@ -388,18 +392,22 @@ struct SimulationView: View {
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Color.bodyText)
                 Spacer()
-                Button {
-                    scenarioName = ""
-                    isNamingScenario = true
-                } label: {
-                    Label("지금 조합 저장", systemImage: "bookmark")
-                        .font(.system(size: 12))
+                if canEdit {
+                    Button {
+                        scenarioName = ""
+                        isNamingScenario = true
+                    } label: {
+                        Label("지금 조합 저장", systemImage: "bookmark")
+                            .font(.system(size: 12))
+                    }
+                    .disabled(outcome == nil)
                 }
-                .disabled(outcome == nil)
             }
 
             if scenarios.isEmpty {
-                Text("마음에 든 조합에 이름을 붙여 두면 손잡이를 다시 돌리지 않아도 됩니다.")
+                Text(canEdit
+                     ? "마음에 든 조합에 이름을 붙여 두면 손잡이를 다시 돌리지 않아도 됩니다."
+                     : "저장해 둔 조합이 없습니다. 손잡이는 마음껏 돌려 보셔도 계획은 바뀌지 않습니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.faint)
             } else {
@@ -443,15 +451,17 @@ struct SimulationView: View {
                 .font(.figure(12.5, weight: .medium))
                 .foregroundStyle(Color.ink)
 
-            DeleteButton(title: "\(scenario.name.isEmpty ? "이 시나리오" : scenario.name) 을(를) 삭제할까요?",
-                         consequence: "저장해 둔 가정이 사라집니다. 되돌릴 수 없습니다.") {
-                modelContext.delete(scenario)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.ruleStrong)
+            if canEdit {
+                DeleteButton(title: "\(scenario.name.isEmpty ? "이 시나리오" : scenario.name) 을(를) 삭제할까요?",
+                             consequence: "저장해 둔 가정이 사라집니다. 되돌릴 수 없습니다.") {
+                    modelContext.delete(scenario)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.ruleStrong)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.vertical, 3)
     }

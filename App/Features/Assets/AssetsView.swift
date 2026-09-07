@@ -17,6 +17,9 @@ struct AssetsView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     @Environment(\.modelContext) private var context
+    // 보기 전용으로 열었을 때 고칠 자리를 감춘다 (docs/09-family-sharing.md).
+    @Environment(\.canEdit) private var canEdit
+    @Environment(\.canManageHousehold) private var canManageHousehold
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var plans: [Plan]
 
@@ -52,26 +55,30 @@ struct AssetsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if !members.isEmpty {
+                    if !members.isEmpty && canEdit {
                         EditButton()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            addMember()
-                        } label: {
-                            Label("구성원 추가", systemImage: "person.badge.plus")
-                        }
-                        if members.count > 1 {
+                    // 구성원을 더하고 지우는 것은 가구 전체에 걸리는 일이라
+                    // 관리자만이다.
+                    if canManageHousehold {
+                        Menu {
                             Button {
-                                isOrderingMembers = true
+                                addMember()
                             } label: {
-                                Label("구성원 순서", systemImage: "arrow.up.arrow.down")
+                                Label("구성원 추가", systemImage: "person.badge.plus")
                             }
+                            if members.count > 1 {
+                                Button {
+                                    isOrderingMembers = true
+                                } label: {
+                                    Label("구성원 순서", systemImage: "arrow.up.arrow.down")
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "plus")
                         }
-                    } label: {
-                        Image(systemName: "plus")
                     }
                 }
             }
@@ -142,11 +149,13 @@ struct AssetsView: View {
                         ForEach(member.sortedAccounts) { account in
                             accountRows(account)
                         }
-                        Button {
-                            addAccount(to: member)
-                        } label: {
-                            Label("계좌 추가", systemImage: "plus")
-                                .font(.system(size: 12.5))
+                        if canEdit {
+                            Button {
+                                addAccount(to: member)
+                            } label: {
+                                Label("계좌 추가", systemImage: "plus")
+                                    .font(.system(size: 12.5))
+                            }
                         }
                     }
                 } header: {
@@ -198,10 +207,12 @@ struct AssetsView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Color.dad)
 
-            Button("편집") { editingMember = member }
-                .font(.system(size: 11))
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.dad)
+            if canEdit {
+                Button("편집") { editingMember = member }
+                    .font(.system(size: 11))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.dad)
+            }
         }
         .textCase(nil)
     }
@@ -250,7 +261,9 @@ struct AssetsView: View {
         .buttonStyle(.plain)
         // 계좌 자체를 고치는 길. 펼치기와 겹치지 않게 길게 눌러 연다.
         .contextMenu {
-            Button("계좌 편집") { editingAccount = account }
+            if canEdit {
+                Button("계좌 편집") { editingAccount = account }
+            }
             if account.canSetTargets {
                 Button("목표 비중") { targetingAccount = account }
             }
@@ -258,26 +271,37 @@ struct AssetsView: View {
 
         if isExpanded(account) {
             ForEach(account.sortedHoldings) { holding in
-                Button {
-                    editingHolding = holding
-                } label: {
+                if canEdit {
+                    Button {
+                        editingHolding = holding
+                    } label: {
+                        holdingRow(holding)
+                    }
+                } else {
+                    // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                     holdingRow(holding)
                 }
             }
-            .onDelete { pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: $0) }
-            .onMove { offsets, destination in
+            // 삼항 안의 클로저에는 타입을 적는다. `$0` 로 두면 `nil` 쪽 때문에
+            // 추론할 근거가 없어 컴파일러가 막는다.
+            .onDelete(perform: canEdit ? { (offsets: IndexSet) in
+                pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: offsets)
+            } : nil)
+            .onMove(perform: canEdit ? { (offsets: IndexSet, destination: Int) in
                 move(offsets, to: destination, in: account)
-            }
+            } : nil)
 
             HStack(spacing: 14) {
-                Button {
-                    addHolding(to: account)
-                } label: {
-                    Label("종목 추가", systemImage: "plus")
-                        .font(.system(size: 12))
+                if canEdit {
+                    Button {
+                        addHolding(to: account)
+                    } label: {
+                        Label("종목 추가", systemImage: "plus")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.dad)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.dad)
 
                 if account.canSetTargets {
                     Button {
@@ -409,13 +433,19 @@ struct AssetsView: View {
                 .foregroundStyle(Color.muted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
-            Button("구성원 추가") { addMember() }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 11)
-                .foregroundStyle(Color.onInk)
-                .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
-                .padding(.top, 4)
+            if canManageHousehold {
+                Button("구성원 추가") { addMember() }
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 11)
+                    .foregroundStyle(Color.onInk)
+                    .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
+                    .padding(.top, 4)
+            } else {
+                // 참가자가 빈 화면을 봤다면 아직 동기화가 안 온 것이다.
+                ReadOnlyNote(text: "관리자가 구성원을 넣으면 여기에 보입니다.")
+                    .padding(.top, 4)
+            }
         }
         .padding(28)
     }

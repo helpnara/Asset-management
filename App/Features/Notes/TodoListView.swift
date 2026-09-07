@@ -8,6 +8,7 @@ import SwiftUI
 /// 없는 것**이다. "연금저축 5월까지 채우기", "전세 만기 전에 알아보기" 같은 것들.
 struct TodoListView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.canEdit) private var canEdit
     @Query(sort: \TodoItem.sortIndex) private var items: [TodoItem]
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: TodoItem?
@@ -26,7 +27,9 @@ struct TodoListView: View {
             // 화면이 두 말을 한다 (docs/08-feedback.md 45번).
             if open.isEmpty && done.isEmpty && upcomingMaturities.isEmpty {
                 Section {
-                    Text("아직 적어 둔 것이 없습니다. 오른쪽 위 + 로 추가하세요.\n\"연금저축 5월까지 채우기\" 처럼 숫자로 판정할 수 없는 것들을 여기 둡니다.")
+                    Text(canEdit
+                         ? "아직 적어 둔 것이 없습니다. 오른쪽 위 + 로 추가하세요.\n\"연금저축 5월까지 채우기\" 처럼 숫자로 판정할 수 없는 것들을 여기 둡니다."
+                         : "아직 적어 둔 것이 없습니다. 관리자가 적으면 여기에 보입니다.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
@@ -89,12 +92,14 @@ struct TodoListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    let item = TodoItem(sortIndex: items.count)
-                    context.insert(item)
-                    editing = item
-                } label: {
-                    Image(systemName: "plus")
+                if canEdit {
+                    Button {
+                        let item = TodoItem(sortIndex: items.count)
+                        context.insert(item)
+                        editing = item
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
@@ -141,44 +146,59 @@ struct TodoListView: View {
         return "\(day) — \(days)일 남았습니다"
     }
 
+    /// **보기 전용이면 버튼으로 두지 않는다.** 눌러도 아무 일이 없는 버튼은
+    /// 잠긴 화면이 아니라 고장 난 화면으로 읽힌다 — 4차가 피하려는 바로 그것이다.
     private func row(_ item: TodoItem) -> some View {
         HStack(alignment: .top, spacing: 11) {
-            Button {
-                item.isDone.toggle()
-                item.completedAt = item.isDone ? .now : nil
-                Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items, accounts: allAccounts)) }
-            } label: {
-                Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(item.isDone ? Color.gain : Color.ruleStrong)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                editing = item
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.title.isEmpty ? "이름 없음" : item.title)
-                        .font(.system(size: 13))
-                        .foregroundStyle(item.isDone ? Color.faint : Color.ink)
-                        .strikethrough(item.isDone, color: Color.faint)
-                        .multilineTextAlignment(.leading)
-                    if let days = item.daysRemaining, !item.isDone {
-                        Text(deadlineText(days))
-                            .font(.figure(10.5))
-                            .foregroundStyle(days < 0 ? Color.loss
-                                             : (days <= 14 ? Color.dad : Color.faint))
-                    }
+            if canEdit {
+                Button {
+                    item.isDone.toggle()
+                    item.completedAt = item.isDone ? .now : nil
+                    Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items, accounts: allAccounts)) }
+                } label: {
+                    checkmark(item)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+
+                Button {
+                    editing = item
+                } label: {
+                    summary(item)
+                }
+                .buttonStyle(.plain)
+            } else {
+                checkmark(item)
+                summary(item)
             }
-            .buttonStyle(.plain)
 
             if item.repeatsYearly {
                 StatusBadge(text: "매년")
             }
         }
         .padding(.vertical, 2)
+    }
+
+    private func checkmark(_ item: TodoItem) -> some View {
+        Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 18))
+            .foregroundStyle(item.isDone ? Color.gain : Color.ruleStrong)
+    }
+
+    private func summary(_ item: TodoItem) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(item.title.isEmpty ? "이름 없음" : item.title)
+                .font(.system(size: 13))
+                .foregroundStyle(item.isDone ? Color.faint : Color.ink)
+                .strikethrough(item.isDone, color: Color.faint)
+                .multilineTextAlignment(.leading)
+            if let days = item.daysRemaining, !item.isDone {
+                Text(deadlineText(days))
+                    .font(.figure(10.5))
+                    .foregroundStyle(days < 0 ? Color.loss
+                                     : (days <= 14 ? Color.dad : Color.faint))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func deadlineText(_ days: Int) -> String {

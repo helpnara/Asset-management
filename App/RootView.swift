@@ -5,12 +5,33 @@ import SwiftUI
 struct RootView: View {
     @State private var route = AppRoute.shared
 
+    /// 지금 어느 역할로 보고 있나 (docs/09-family-sharing.md 4단계).
+    /// 공유가 붙기 전까지는 더보기의 토글이 이 값을 바꾼다.
+    @AppStorage(RolePreview.key) private var previewedRole = FamilyRole.owner.rawValue
+
     @Query private var holdings: [Holding]
     @Query private var sessions: [ReviewSession]
     @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
     @Query private var accounts: [Account]
 
+    /// 실행 인자가 있으면 그것이 이긴다 — CI 가 보기 전용 화면을 찍을 때 쓴다.
+    private var role: FamilyRole {
+        RolePreview.launchArgument ?? FamilyRole(rawValue: previewedRole) ?? .owner
+    }
+
     var body: some View {
+        VStack(spacing: 0) {
+            // **미리보기 중이라는 것을 늘 보이게 둔다.** 이 띠가 없으면 왜
+            // 버튼이 안 눌리는지 몰라 고장으로 읽는다.
+            if role != .owner {
+                RolePreviewBanner(role: role) { previewedRole = FamilyRole.owner.rawValue }
+            }
+            tabs
+        }
+        .familyRole(role)
+    }
+
+    private var tabs: some View {
         TabView(selection: $route.selectedTab) {
             DashboardView()
                 .tabItem { Label("현황판", systemImage: "chart.bar") }
@@ -50,7 +71,11 @@ struct RootView: View {
             let todoInput = TodoNotifications.Input(items: todos, accounts: accounts)
             await TodoNotifications.refresh(todoInput)
         }
-        .fullScreenCover(isPresented: $route.showReview) {
+        .fullScreenCover(isPresented: Binding(
+            // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.
+            get: { route.showReview && role.canEdit },
+            set: { route.showReview = $0 }
+        )) {
             WeeklyReviewView()
         }
         .alert("이번 주 기록 완료",

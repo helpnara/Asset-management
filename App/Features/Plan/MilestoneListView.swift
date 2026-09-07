@@ -13,6 +13,7 @@ import SwiftUI
 /// 궤적의 세로 눈금으로 간다. 누구의 일인지도 고를 수 있다 (32번).
 struct MilestoneListView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.canEdit) private var canEdit
     @Query(sort: \UserMilestone.year) private var milestones: [UserMilestone]
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: UserMilestone?
@@ -30,44 +31,16 @@ struct MilestoneListView: View {
             }
 
             ForEach(milestones) { milestone in
-                Button {
-                    editing = milestone
-                } label: {
-                    HStack {
-                        Text(verbatim: "\(milestone.year)")
-                            .font(.figure(14, weight: .semibold))
-                            .foregroundStyle(Color.dad)
-                            .frame(width: 52, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 5) {
-                                Text(milestone.label.isEmpty ? "이름 없음" : milestone.label)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Color.ink)
-                                // 누구의 일인가. 가족 전체면 배지를 달지 않는다 —
-                                // 대부분이 가족 일이라 배지가 다 붙으면 소용없다.
-                                if let member = owner(of: milestone) {
-                                    HStack(spacing: 3) {
-                                        Circle()
-                                            .fill(Color.member(member.colorIndex))
-                                            .frame(width: 6, height: 6)
-                                        Text(member.name.isEmpty ? "이름 없음" : member.name)
-                                            .font(.system(size: 10))
-                                            .foregroundStyle(Color.muted)
-                                    }
-                                }
-                            }
-                            if !milestone.note.isEmpty {
-                                Text(milestone.note)
-                                    .font(.system(size: 10.5))
-                                    .foregroundStyle(Color.faint)
-                                    .lineLimit(1)
-                            }
-                        }
-                        Spacer()
-                    }
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canEdit {
+                    Button { editing = milestone } label: { row(milestone) }
+                } else {
+                    row(milestone)
                 }
             }
-            .onDelete { pendingDelete = $0 }
+            .onDelete(perform: canEdit
+                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
         }
         .confirmsDelete($pendingDelete, title: "이 마일스톤을 삭제할까요?",
                         message: "되돌릴 수 없습니다.") { offsets in
@@ -79,16 +52,53 @@ struct MilestoneListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    let milestone = UserMilestone(sortIndex: milestones.count)
-                    context.insert(milestone)
-                    editing = milestone
-                } label: {
-                    Image(systemName: "plus")
+                if canEdit {
+                    Button {
+                        let milestone = UserMilestone(sortIndex: milestones.count)
+                        context.insert(milestone)
+                        editing = milestone
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
         .sheet(item: $editing) { MilestoneEditView(milestone: $0) }
+    }
+
+    private func row(_ milestone: UserMilestone) -> some View {
+        HStack {
+            Text(verbatim: "\(milestone.year)")
+                .font(.figure(14, weight: .semibold))
+                .foregroundStyle(Color.dad)
+                .frame(width: 52, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Text(milestone.label.isEmpty ? "이름 없음" : milestone.label)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.ink)
+                    // 누구의 일인가. 가족 전체면 배지를 달지 않는다 —
+                    // 대부분이 가족 일이라 배지가 다 붙으면 소용없다.
+                    if let member = owner(of: milestone) {
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(Color.member(member.colorIndex))
+                                .frame(width: 6, height: 6)
+                            Text(member.name.isEmpty ? "이름 없음" : member.name)
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.muted)
+                        }
+                    }
+                }
+                if !milestone.note.isEmpty {
+                    Text(milestone.note)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Color.faint)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+        }
     }
 
     private func owner(of milestone: UserMilestone) -> Member? {

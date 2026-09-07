@@ -8,13 +8,19 @@ import SwiftUI
 /// 건드리는 값이고 계산에도 안 쓰이므로 인쇄물 쪽에 두는 편이 맞다.
 struct OnePagerSettingsView: View {
     @Query private var plans: [Plan]
+    // 1페이지는 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
+    @Environment(\.canManageHousehold) private var canManageHousehold
 
     var body: some View {
         Form {
+            if !canManageHousehold {
+                Section { ReadOnlyNote(text: "1페이지 문서는 관리자만 고칠 수 있습니다.") }
+            }
             if let plan = plans.first {
                 @Bindable var plan = plan
                 Section {
                     TextField("우리 가족 노후자금 준비", text: $plan.title)
+                        .disabled(!canManageHousehold)
                 } header: {
                     Text("문서 제목")
                 } footer: {
@@ -23,6 +29,7 @@ struct OnePagerSettingsView: View {
 
                 Section {
                     TextField("2026.08 기준 · 이사 후 자산", text: $plan.asOfNote)
+                        .disabled(!canManageHousehold)
                 } header: {
                     Text("기준 시점")
                 } footer: {
@@ -33,6 +40,7 @@ struct OnePagerSettingsView: View {
                     TextField("계획은 끝났다. 이제는 시간이 일한다.",
                               text: $plan.declaration, axis: .vertical)
                         .lineLimit(1...3)
+                        .disabled(!canManageHousehold)
                 } header: {
                     Text("맨 밑 한 줄")
                 } footer: {

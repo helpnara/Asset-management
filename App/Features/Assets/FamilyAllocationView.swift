@@ -15,6 +15,8 @@ struct FamilyAllocationView: View {
     @Query private var plans: [Plan]
     @Query private var targets: [FamilyTarget]
     @Environment(\.modelContext) private var context
+    // 가족 전체의 목표 비중은 가구 하나에 한 벌이다.
+    @Environment(\.canManageHousehold) private var canManageHousehold
 
     private var tolerance: Allocation.Tolerance {
         plans.first?.driftTolerance ?? Allocation.Tolerance()
@@ -75,9 +77,11 @@ struct FamilyAllocationView: View {
                         .foregroundStyle(Color.bodyText)
                     Spacer(minLength: 6)
                     WeightLabel(slice: slice, hidesNoTarget: true)
-                    Stepper("", value: binding(dimension, key: key(for: slice, in: dimension)),
-                            in: 0...10_000, step: 100)
-                        .labelsHidden()
+                    if canManageHousehold {
+                        Stepper("", value: binding(dimension, key: key(for: slice, in: dimension)),
+                                in: 0...10_000, step: 100)
+                            .labelsHidden()
+                    }
                 }
             }
         } header: {

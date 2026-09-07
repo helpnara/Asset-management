@@ -6,6 +6,8 @@ struct DashboardView: View {
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+    // 주간 점검은 **숫자를 적어 넣는** 화면이라 보기 전용이면 열 이유가 없다.
+    @Environment(\.canEdit) private var canEdit
 
     @Query(sort: \Member.sortIndex) private var members: [Member]
     @Query private var holdings: [Holding]
@@ -145,7 +147,7 @@ struct DashboardView: View {
             }
             Spacer(minLength: 0)
 
-            if !didReviewThisWeek {
+            if !didReviewThisWeek && canEdit {
                 Button {
                     isReviewing = true
                 } label: {
@@ -168,12 +170,16 @@ struct DashboardView: View {
 
     private var weeklyTitle: String {
         if didReviewThisWeek { return "이번 주 점검 완료" }
+        // 적을 수 없는 사람에게 D-3 을 들이밀지 않는다. 재촉으로만 읽힌다.
+        if !canEdit { return "이번 주 기록 대기 중" }
         let days = ReviewWeek.daysUntilReview(from: .now)
         return days == 0 ? "오늘이 점검일입니다" : "이번 주 점검 · 토요일까지 D-\(days)"
     }
 
     private var weeklySubtitle: String {
-        if streak == 0 { return "매주 토요일 오전에 알려드립니다" }
+        if streak == 0 {
+            return canEdit ? "매주 토요일 오전에 알려드립니다" : "관리자가 매주 토요일에 적습니다"
+        }
         return "\(streak)주 연속 기록 중"
     }
 
