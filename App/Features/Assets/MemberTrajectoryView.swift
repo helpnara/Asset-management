@@ -117,7 +117,9 @@ struct MemberTrajectoryView: View {
                 guard year != seenYear else { continue }
                 seenYear = year
                 result.append(.init(date: point.date,
-                                    minor: point.nominal.minorUnits, series: .projected))
+                                    minor: point.nominal.minorUnits,
+                                    realMinor: point.real.minorUnits,
+                                    series: .projected))
             }
         }
         return result

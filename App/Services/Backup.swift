@@ -70,6 +70,10 @@ struct BackupDocument: Codable, Sendable {
         var driftRelativeBP: Int
         var createdAt: Date
         var updatedAt: Date?
+        /// 진단 규칙 켜짐·채우는 순서 (docs/08-feedback.md 47번).
+        /// 옛 백업에는 없으므로 옵셔널이라야 읽힌다.
+        var disabledDiagnosesRaw: String?
+        var contributionOrderRaw: String?
     }
 
     struct MemberData: Codable, Sendable {
@@ -307,7 +311,10 @@ extension BackupDocument {
                 driftToleranceBP: plan.driftToleranceBP,
                 driftRelativeBP: plan.driftRelativeBP,
                 createdAt: plan.createdAt,
-                updatedAt: plan.updatedAt
+                updatedAt: plan.updatedAt,
+                // 선언 순서와 같아야 한다 — 멤버와이즈 초기화는 순서를 지킨다.
+                disabledDiagnosesRaw: plan.disabledDiagnosesRaw,
+                contributionOrderRaw: plan.contributionOrderRaw
             )
         }
 
@@ -647,6 +654,8 @@ extension BackupDocument {
         plan.usesMemberContributions = data.usesMemberContributions
         plan.driftToleranceBP = data.driftToleranceBP
         plan.driftRelativeBP = data.driftRelativeBP
+        plan.disabledDiagnosesRaw = data.disabledDiagnosesRaw ?? ""
+        plan.contributionOrderRaw = data.contributionOrderRaw ?? ""
         plan.createdAt = data.createdAt
         plan.updatedAt = data.updatedAt
         context.insert(plan)

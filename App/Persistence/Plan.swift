@@ -71,6 +71,16 @@ final class Plan {
     /// 다음에 스키마를 크게 손볼 일이 있으면 그때 함께 뺀다.
     var driftRelativeBP: Int = 2_500
 
+    /// 꺼 둔 진단 규칙 (docs/08-feedback.md 47번). 쉼표로 이어 붙인 rawValue.
+    ///
+    /// **끈 것을 저장한다** — 켠 것을 저장하면 나중에 규칙이 늘었을 때
+    /// 새 규칙이 꺼진 채로 태어난다. 빈 문자열이면 전부 켜져 있다는 뜻이다.
+    var disabledDiagnosesRaw: String = ""
+
+    /// 세제혜택 계좌를 채우는 순서. 쉼표로 이어 붙인 `AccountKind` rawValue.
+    /// 비어 있으면 기본 순서(IRP → 연금저축 → ISA)를 쓴다.
+    var contributionOrderRaw: String = ""
+
     /// 월 적립을 구성원별로 나눠 넣는가. 켜면 Member 의 몫을 합해서 쓴다.
     ///
     /// 합계 하나로도 궤적은 똑같이 그려진다. 나누는 이유는 "누가 얼마를 넣고
@@ -187,6 +197,30 @@ extension Plan {
          usesMemberContributions ? 1 : 0]
             .map(String.init).joined(separator: "-")
         + "|\(title)|\(asOfNote)|\(declaration)|\(startedOn?.timeIntervalSince1970 ?? 0)"
+        + "|\(disabledDiagnosesRaw)|\(contributionOrderRaw)"
+    }
+
+    /// 켜 둔 진단 규칙. 화면과 계산이 같은 값을 읽는다.
+    var enabledDiagnoses: Set<DiagnosisKind> {
+        get {
+            let disabled = Set(disabledDiagnosesRaw.split(separator: ",")
+                .compactMap { DiagnosisKind(rawValue: String($0)) })
+            return Set(DiagnosisKind.allCases).subtracting(disabled)
+        }
+        set {
+            let disabled = Set(DiagnosisKind.allCases).subtracting(newValue)
+            disabledDiagnosesRaw = disabled.map(\.rawValue).sorted().joined(separator: ",")
+        }
+    }
+
+    /// 세제혜택 계좌를 채우는 순서.
+    var contributionOrder: [AccountKind] {
+        get {
+            let saved = contributionOrderRaw.split(separator: ",")
+                .compactMap { AccountKind(rawValue: String($0)) }
+            return saved.isEmpty ? Diagnostics.defaultContributionOrder : saved
+        }
+        set { contributionOrderRaw = newValue.map(\.rawValue).joined(separator: ",") }
     }
 
     /// 지문의 자리마다 사람이 읽는 이름. **순서가 `editFingerprint` 와 같아야
@@ -198,7 +232,8 @@ extension Plan {
         "비유동 자산 상한", "미국 목표 비중", "지역 허용 오차", "비중 허용 오차",
         "구성원별 적립",
         // `|` 뒤의 글자 항목들. 같은 순서다.
-        "1페이지 제목", "기준 시점", "선언문", "수립일"
+        "1페이지 제목", "기준 시점", "선언문", "수립일",
+        "진단 규칙", "세제혜택 순서"
     ]
 
     /// 두 지문을 견줘 **무엇이 달라졌는지** 이름으로 돌려준다
@@ -452,7 +487,11 @@ extension Plan {
                         contributedThisYear: Money(minorUnits: $0.annualContributionMinor, currency: .krw),
                         annualLimit: Money(minorUnits: $0.annualLimitMinor, currency: .krw)
                     )
-                }
+                },
+            // 켜 둔 규칙과 채우는 순서는 계획에 저장된 사용자의 것이다 (47번).
+            // **선언 순서와 같아야 한다** — 스위프트는 인자 순서를 지킨다.
+            enabledKinds: enabledDiagnoses,
+            contributionOrder: contributionOrder
         )
     }
 

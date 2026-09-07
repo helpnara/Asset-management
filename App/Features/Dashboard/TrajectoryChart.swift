@@ -34,10 +34,13 @@ struct TrajectoryChart: View {
         }
         let date: Date
         let minor: Int
+        /// 오늘 돈으로 환산한 값 (docs/08-feedback.md 47번).
+        /// 없으면 명목과 같다 — 과거 기록은 이미 그때의 돈이라 환산할 것이 없다.
+        var realMinor: Int?
         let series: Series
 
         var id: String { "\(series.rawValue)-\(date.timeIntervalSince1970)" }
-        var value: Double { Double(minor) }
+        func value(real: Bool) -> Double { Double(real ? (realMinor ?? minor) : minor) }
     }
 
     /// 인생 이벤트. 로드맵의 뼈대를 흔들지 않으면서 "그 사건이 궤적의 어디쯤
@@ -96,6 +99,12 @@ struct TrajectoryChart: View {
     /// 현황판과 구성원 궤적이 함께 읽는다. 화면 밖(범례·목표선)에서도 이 값을
     /// 봐야 해서 열쇠를 공개해 둔다.
     static let spanKey = "trajectory.span"
+    /// **실질(오늘 돈) 로 볼 것인가** (로드맵 M2 · docs/08-feedback.md 47번).
+    ///
+    /// 30년 뒤 63억이 지금 얼마인지가 노후 준비의 진짜 질문이다. 화면마다
+    /// `오늘 돈으로 …` 를 덧붙여 적고 있었지만 **궤적 자체를 실질로 보는**
+    /// 선택지는 없었다.
+    static let realKey = "trajectory.real"
 
     let points: [Point]
     let today: Date
@@ -107,6 +116,7 @@ struct TrajectoryChart: View {
     /// 기본은 `은퇴까지` — 이 앱이 답하는 질문의 기본 범위다.
     /// 저장된 값이 있으면 그것을 따른다.
     @AppStorage(TrajectoryChart.spanKey) private var span: Span = .retirement
+    @AppStorage(TrajectoryChart.realKey) private var showsReal = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -114,6 +124,15 @@ struct TrajectoryChart: View {
                 ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
+            .frame(maxWidth: 260)
+
+            Toggle(isOn: $showsReal) {
+                Text("오늘 돈으로 보기")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.muted)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.mini)
             .frame(maxWidth: 260)
 
             if visiblePoints.count < 2 {
@@ -129,7 +148,7 @@ struct TrajectoryChart: View {
             ForEach(visiblePoints) { point in
                 LineMark(
                     x: .value("시점", point.date),
-                    y: .value("순자산", point.value),
+                    y: .value("순자산", point.value(real: showsReal)),
                     series: .value("구분", point.series.rawValue)
                 )
                 .foregroundStyle(Self.color(of: point.series))
@@ -140,7 +159,7 @@ struct TrajectoryChart: View {
                 if point.series == .actual {
                     PointMark(
                         x: .value("시점", point.date),
-                        y: .value("순자산", point.value)
+                        y: .value("순자산", point.value(real: showsReal))
                     )
                     .foregroundStyle(Color.ink)
                     .symbolSize(20)
@@ -150,6 +169,8 @@ struct TrajectoryChart: View {
             // 목표선에는 주석을 달지 않는다. 차트 주석은 leading 이든 trailing 이든
             // 가장자리에서 잘린다. 라벨은 범례 줄에 둔다.
             if showsTarget {
+                // 목표는 **명목으로 적은 값**이다. 실질 축에서 그대로 그으면
+                // 선만 위로 뜬다. 그래서 실질 보기에서는 목표선을 접는다.
                 RuleMark(y: .value("목표", Double(targetMinor)))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
@@ -253,7 +274,7 @@ struct TrajectoryChart: View {
     /// **목표선은 넓은 창에서만 그린다.** 좁은 창에서 수십억짜리 선을 그리면
     /// 그 하나 때문에 축이 늘어나 나머지가 전부 바닥에 눌린다.
     private var showsTarget: Bool {
-        (span == .retirement || span == .all) && targetMinor > 0
+        (span == .retirement || span == .all) && targetMinor > 0 && !showsReal
     }
 
     // MARK: - 축
@@ -262,7 +283,7 @@ struct TrajectoryChart: View {
     /// 커 보인다. 복리를 정직하게 보여주려면 바닥이 0이어야 한다.
     /// 순자산이 음수인 구간이 있으면 그때만 0 아래로 내린다.
     private var domain: ClosedRange<Double> {
-        let values = visiblePoints.map(\.value)
+        let values = visiblePoints.map { $0.value(real: showsReal) }
         var upper = values.max() ?? 0
         if showsTarget { upper = max(upper, Double(targetMinor)) }
         let lower = min(0, values.min() ?? 0)

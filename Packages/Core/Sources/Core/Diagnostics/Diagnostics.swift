@@ -165,6 +165,18 @@ public struct DiagnosticsInput: Sendable {
     // MARK: 계좌
     public var limitAccounts: [LimitAccountInput]
 
+    /// 켜 둔 규칙 (docs/08-feedback.md 47번). 비어 있으면 **전부** 본다.
+    ///
+    /// 규칙은 사용자의 것이어야 한다. 쓰지 않는 규칙이 늘 `조치` 로 떠 있으면
+    /// 나머지 여섯까지 같이 무시하게 된다 — 그게 진단 화면이 죽는 방식이다.
+    public var enabledKinds: Set<DiagnosisKind>
+
+    /// 세제혜택 계좌를 채우는 순서. 기본은 IRP → 연금저축 → ISA.
+    ///
+    /// 예전에는 상수였고 주석에 "설정에서 고칠 수 있어야 한다 — 아직은
+    /// 상수다" 라고 적혀 있었다. 이제 사용자가 정한다.
+    public var contributionOrder: [AccountKind]
+
     public init(
         netWorth: Money,
         investable: Money,
@@ -186,7 +198,9 @@ public struct DiagnosticsInput: Sendable {
         projectedAtRetirement: Money? = nil,
         doublingYear: Int? = nil,
         currentYear: Int,
-        limitAccounts: [LimitAccountInput] = []
+        limitAccounts: [LimitAccountInput] = [],
+        enabledKinds: Set<DiagnosisKind> = Set(DiagnosisKind.allCases),
+        contributionOrder: [AccountKind] = Diagnostics.defaultContributionOrder
     ) {
         self.netWorth = netWorth
         self.investable = investable
@@ -209,6 +223,12 @@ public struct DiagnosticsInput: Sendable {
         self.doublingYear = doublingYear
         self.currentYear = currentYear
         self.limitAccounts = limitAccounts
+        // 빈 집합은 "고른 것이 없다" 가 아니라 "아직 안 정했다" 로 본다.
+        // 전부 끄면 진단 화면이 통째로 비는데, 그건 화면이 고장 난 것처럼 보인다.
+        self.enabledKinds = enabledKinds.isEmpty ? Set(DiagnosisKind.allCases) : enabledKinds
+        self.contributionOrder = contributionOrder.isEmpty
+            ? Diagnostics.defaultContributionOrder
+            : contributionOrder
     }
 }
 
@@ -237,15 +257,21 @@ public struct DiagnosticsResult: Sendable, Hashable {
 public enum Diagnostics {
 
     public static func run(_ input: DiagnosticsInput) -> DiagnosticsResult {
-        DiagnosticsResult(diagnoses: [
-            retirementTarget(input),
-            realEstateShare(input),
-            countryMix(input),
-            taxAdvantagedOrder(input),
-            doublingTime(input),
-            savingsRate(input),
-            targetWeights(input)
-        ])
+        // **켜 둔 규칙만 본다** (docs/08-feedback.md 47번).
+        let all: [DiagnosisKind: (DiagnosticsInput) -> Diagnosis] = [
+            .retirementTarget: retirementTarget,
+            .realEstateShare: realEstateShare,
+            .countryMix: countryMix,
+            .taxAdvantagedOrder: taxAdvantagedOrder,
+            .doublingTime: doublingTime,
+            .savingsRate: savingsRate,
+            .targetWeights: targetWeights
+        ]
+        // 순서는 `allCases` 가 정한다 — 켠 것만 걸러도 늘 같은 차례로 선다.
+        let diagnoses = DiagnosisKind.allCases
+            .filter { input.enabledKinds.contains($0) }
+            .compactMap { kind in all[kind].map { $0(input) } }
+        return DiagnosticsResult(diagnoses: diagnoses)
     }
 
     /// 은퇴 시점에 필요한 자산. 연 생활비 ÷ 인출률.
@@ -416,17 +442,19 @@ public enum Diagnostics {
 
     /// 채우는 순서. 우선순위가 앞선 계좌를 먼저 채운다.
     ///
-    /// 이 순서는 사용자가 정한 것이다 (IRP → 연금저축 → ISA → 일반).
-    /// 세법이 바뀌거나 생각이 바뀌면 여기가 아니라 설정에서 고칠 수 있어야 한다 —
-    /// 아직은 상수다.
-    public static let contributionOrder: [AccountKind] = [.irp, .pensionSavings, .isa]
+    /// 기본 순서 (IRP → 연금저축 → ISA → 일반).
+    ///
+    /// **정답이 아니라 출발점이다.** 세법이 바뀌거나 생각이 바뀌면 진단 기준
+    /// 화면에서 바꾼다 (docs/08-feedback.md 47번).
+    public static let defaultContributionOrder: [AccountKind] = [.irp, .pensionSavings, .isa]
 
     private static func taxAdvantagedOrder(_ input: DiagnosticsInput) -> Diagnosis {
         let tracked = input.limitAccounts
             .filter { $0.annualLimit.minorUnits > 0 }
             .sorted { lhs, rhs in
-                let l = contributionOrder.firstIndex(of: lhs.kind) ?? contributionOrder.count
-                let r = contributionOrder.firstIndex(of: rhs.kind) ?? contributionOrder.count
+                let order = input.contributionOrder
+                let l = order.firstIndex(of: lhs.kind) ?? order.count
+                let r = order.firstIndex(of: rhs.kind) ?? order.count
                 return l < r
             }
 

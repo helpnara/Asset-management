@@ -358,6 +358,7 @@ struct DashboardView: View {
                 .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
                 .map { TrajectoryChart.Point(date: $0.element.date,
                                              minor: $0.element.nominal.minorUnits,
+                                             realMinor: $0.element.real.minorUnits,
                                              series: .projected) }
             result.append(contentsOf: monthly)
         }
@@ -368,6 +369,7 @@ struct DashboardView: View {
                 .filter { $0.offset % 3 == 0 || $0.offset == planProjection.points.count - 1 }
                 .map { TrajectoryChart.Point(date: $0.element.date,
                                              minor: $0.element.nominal.minorUnits,
+                                             realMinor: $0.element.real.minorUnits,
                                              series: .plan) }
             result.append(contentsOf: line)
         }
