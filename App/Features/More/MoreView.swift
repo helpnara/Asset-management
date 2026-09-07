@@ -214,6 +214,7 @@ struct NotificationSettingsView: View {
 /// 실제로 열린 모드와 iCloud 계정 상태를 둘 다 보여 준다.
 struct SyncStatusSection: View {
     @State private var accountStatus: CKAccountStatus?
+    @State private var monitor = CloudKitSyncMonitor.shared
 
     var body: some View {
         Section {
@@ -224,6 +225,16 @@ struct SyncStatusSection: View {
             }
             if case .cloudKit = Persistence.mode {
                 LabeledContent("iCloud 계정", value: accountLabel)
+                // **여기가 진짜 답이다.** 위의 둘이 초록이어도 밀어 넣기가
+                // 전부 실패하고 있을 수 있다. 마지막 내보내기가 성공했는지를
+                // 봐야 "정말 백업되고 있나" 에 답할 수 있다.
+                attemptRow("마지막 내보내기", monitor.lastExport)
+                attemptRow("마지막 가져오기", monitor.lastImport)
+                if let failure = monitor.lastExport?.failure ?? monitor.lastSetup?.failure {
+                    Text(failure)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.loss)
+                }
             }
         } header: {
             Text("동기화")
@@ -234,6 +245,23 @@ struct SyncStatusSection: View {
             guard case .cloudKit = Persistence.mode else { return }
             accountStatus = try? await CKContainer(identifier: Persistence.cloudKitContainerID)
                 .accountStatus()
+        }
+    }
+
+    /// 한 번의 시도를 한 줄로. 아직 없으면 "아직 없음" 이라고 적는다 —
+    /// 빈칸으로 두면 성공한 것처럼 읽힌다.
+    @ViewBuilder
+    private func attemptRow(_ title: String, _ attempt: CloudKitSyncMonitor.Attempt?) -> some View {
+        LabeledContent(title) {
+            if let attempt {
+                Text(attempt.succeeded ? "성공" : "실패")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(attempt.succeeded ? Color.gain : Color.loss)
+            } else {
+                Text("아직 없음")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.muted)
+            }
         }
     }
 
@@ -268,7 +296,9 @@ struct SyncStatusSection: View {
     private var footer: String {
         switch Persistence.mode {
         case .cloudKit where accountStatus == .available:
-            return "기록이 iCloud 개인 데이터베이스에 저장됩니다. 앱을 지우거나 기기를 바꿔도 남습니다. 애플도 내용을 볼 수 없습니다."
+            // 계정이 붙었다고 동기화가 되는 것은 아니다. 위의 **마지막
+            // 내보내기**가 성공이어야 정말 올라간 것이다.
+            return "기록이 iCloud 개인 데이터베이스에 저장됩니다. 애플도 내용을 볼 수 없습니다. 실제로 올라갔는지는 위의 **마지막 내보내기**로 확인하세요 — 계정이 붙어 있어도 밀어 넣기가 실패할 수 있습니다."
         case .cloudKit:
             return "설정 앱에서 iCloud에 로그인해야 동기화됩니다. 그전까지는 이 기기에만 저장됩니다."
         case .localOnly:

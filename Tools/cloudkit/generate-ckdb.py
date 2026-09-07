@@ -20,9 +20,10 @@ SwiftData 는 속으로 Core Data 를 쓰므로 같은 규칙을 따른다.
  · 다대다는 `CDMR` 조인 레코드가 생기는데, **이 앱에는 다대다가 없다**
    (구성원→계좌, 계좌→종목, 스냅샷→줄 모두 일대다)
 
-⚠️ **확신하지 못하는 것 둘.** 아래 `UNCERTAIN` 표시를 보라. 그래서 진짜
-컨테이너에 바로 적용하지 않고 시험용 컨테이너로 먼저 확인한다
-(docs/06-testflight.md).
+**타입 매핑은 확인했다.** UUID 는 STRING 이고, 관계는 레퍼런스가 아니라 상대
+UUID 를 담은 STRING 이다. 그래도 이것은 문서를 읽어 옮긴 것이지 실제로 돌려
+본 것이 아니다 — **진짜 검증은 앱이 실제로 동기화되는지 보는 것**이고,
+그래서 `더보기 → 동기화` 에 마지막 내보내기 성공·실패를 띄운다.
 """
 import glob
 import re
@@ -41,12 +42,22 @@ TYPE_MAP = {
     "Bool": "INT64",       # CloudKit 에 불리언 타입이 없다
     "Double": "DOUBLE",
     "Date": "TIMESTAMP",
-    "UUID": "STRING",      # UNCERTAIN(1)
+    # UUID 는 STRING 이다. CloudKit Console 에도 String 으로 보인다 (확인함).
+    "UUID": "STRING",
     "Data": "BYTES",
 }
 
-# 길이가 변해서 에셋이 딸리는 타입.
-ASSET_BACKED = {"String", "Data"}
+# 에셋 필드(`_ckAsset`)가 딸리는 타입.
+#
+# String·Data 는 확실하다 — CloudKit 레코드가 1MB 로 제한되는데 Core Data
+# 속성에는 한계가 없어서, 넘치면 외부 에셋으로 넘긴다.
+#
+# **UUID 는 애매해서 넣어 둔다.** 고정 길이라 필요 없어 보이지만 자료마다
+# 말이 갈린다. 여기서 비대칭이 중요하다 — 안 쓰는 필드가 스키마에 있는 것은
+# 무해하지만, **써야 하는데 없으면 Production 이 거부한다.** 그리고 Production
+# 스키마는 지울 수 없으므로, 모자라서 실패하는 쪽이 남아서 지저분한 쪽보다
+# 훨씬 비싸다.
+ASSET_BACKED = {"String", "Data", "UUID"}
 
 MODEL_RE = re.compile(r"@Model\s*\n\s*final class (\w+)\s*\{(.*?)\n\}", re.S)
 # 저장 프로퍼티만. 계산 프로퍼티(`var x: T {`)와 주석은 걸러진다.
@@ -69,8 +80,10 @@ def fields_of(body, class_names):
         if swift.startswith("["):
             continue
         # 다대일 관계(`Member?`)는 상대의 UUID 를 문자열로 들고 있는다.
+        # 다대일 관계는 **레퍼런스를 안 쓴다.** NSPersistentCloudKitContainer 는
+        # 상대 레코드의 UUID 를 문자열로 그대로 들고 있는다 (확인함).
         if swift in class_names:
-            out.append((name, "STRING", False))   # UNCERTAIN(2)
+            out.append((name, "STRING", False))
             continue
         if swift not in TYPE_MAP:
             sys.exit(f"모르는 타입입니다: {name}: {swift} — TYPE_MAP 에 더하세요")

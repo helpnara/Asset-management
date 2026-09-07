@@ -22,6 +22,10 @@ struct SlowRichApp: App {
 
         UNUserNotificationCenter.current().delegate = notifications
         ReviewNotifications.registerCategories()
+        // 동기화가 **실제로** 되는지 지켜본다. 저장소가 iCloud 모드로 열리고
+        // 계정이 붙어 있어도 밀어 넣기는 전부 실패하고 있을 수 있다
+        // (Production 스키마에 레코드 타입이 없을 때가 그렇다).
+        MainActor.assumeIsolated { CloudKitSyncMonitor.shared.start() }
     }
 
     /// CI 스크린샷은 매 실행마다 환영 화면에 막히면 안 되므로 실행 인자로 건너뛴다.
