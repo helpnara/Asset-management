@@ -13,7 +13,7 @@ struct ValuationTests {
 
     private func krw(_ value: Int) -> Money { Money(value, currency: .krw) }
 
-    /// 아빠: 미국 ETF 6,000만 · 전세보증금 1억 · 마이너스통장 500만
+    /// 아빠: 미국 ETF 6,000만 · 전월세보증금 1억 · 마이너스통장 500만
     /// 아들: 국내 주식 2,000만
     private var family: [Position] {
         [
@@ -40,7 +40,7 @@ struct ValuationTests {
         #expect(rollup.netWorth == krw(175_000_000))
     }
 
-    @Test("투자자산에는 전세보증금과 부채가 들어가지 않는다")
+    @Test("투자자산에는 전월세보증금과 부채가 들어가지 않는다")
     func investableExcludesPropertyAndDebt() {
         let rollup = Valuation.rollUp(family, base: .krw)
         #expect(rollup.investable == krw(80_000_000))

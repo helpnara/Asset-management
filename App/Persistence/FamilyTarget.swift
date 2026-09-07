@@ -41,7 +41,7 @@ final class FamilyTarget {
         var footnote: String {
             switch self {
             case .region:
-                return "상장 국가로 가릅니다. 부동산·전세보증금·예적금처럼 상장되지 않은 것은 한국으로 잡힙니다."
+                return "상장 국가로 가릅니다. 부동산·전월세보증금·예적금처럼 상장되지 않은 것은 한국으로 잡힙니다."
             case .assetClass:
                 return "계좌를 가로질러 봅니다. 같은 자산군이 여러 계좌에 흩어져 있어도 하나로 합칩니다."
             }
@@ -80,22 +80,30 @@ extension Account {
     /// 계좌마다 투자 목적과 규모가 다르므로 계좌를 넘어 합치지 않는다 —
     /// 같은 종목이 IRP·연금저축·ISA 에 흩어져 있어도 각 계좌 안에서 따로 잰다.
     func holdingSlices(tolerance: Allocation.Tolerance) -> [Allocation.Slice] {
-        Allocation.slices(allocationEntries, tolerance: tolerance)
+        guard weighsHoldings else { return [] }
+        return Allocation.slices(allocationEntries, tolerance: tolerance)
     }
 
     /// 적어 둔 목표의 합. **100%(10,000)여야 한다** — 계좌 안 종목 비중의 합이
     /// 100%가 되는 것이 이 층의 규칙이다. 아니면 화면이 눈에 띄게 적는다.
     var targetSumBP: Int { Allocation.targetSumBP(allocationEntries) }
 
+    /// **계좌 안 비중을 재는 것이 뜻이 있는 계좌인가** (docs/08-feedback.md 19번).
+    ///
+    /// `받을 돈` 계좌는 종목 자리에 **빌려준 사람들**이 늘어선다. 그 안에서
+    /// "누가 몇 %" 를 따지는 것은 뜻이 없고, 목표를 세울 것도 없다 —
+    /// 받을 돈은 나눠 담는 것이 아니라 받아 내는 것이다.
+    var weighsHoldings: Bool { kind != .receivable && !kind.isLiability }
+
     /// 목표 비중 화면을 열 수 있나.
-    var canSetTargets: Bool { !weightedHoldings.isEmpty && !kind.isLiability }
+    var canSetTargets: Bool { !weightedHoldings.isEmpty && weighsHoldings }
 
     /// 목표를 **세워야 하나.**
     ///
-    /// 종목이 하나뿐인 계좌는 자동으로 100%라 세울 것이 없다 — 전세보증금·
+    /// 종목이 하나뿐인 계좌는 자동으로 100%라 세울 것이 없다 — 전월세보증금·
     /// 연금보험·IRP 처럼 한 칸짜리 계좌에까지 `목표 미완` 을 달면 영영 지워지지
     /// 않는 빨간 배지가 된다. 나중에 종목을 더 담으면 그때 배지가 뜬다.
-    var needsTargets: Bool { weightedHoldings.count > 1 && !kind.isLiability && !isArchived }
+    var needsTargets: Bool { weightedHoldings.count > 1 && weighsHoldings && !isArchived }
 
     /// 목표를 세워야 하는데 합이 100%가 아닌가.
     var hasIncompleteTargets: Bool { needsTargets && targetSumBP != 10_000 }
@@ -160,10 +168,10 @@ extension Member {
     /// 목표에서 벗어난 종목 수. 계좌마다 따로 세어 더한다.
     func driftingHoldingCount(tolerance: Allocation.Tolerance) -> Int {
         sortedAccounts
-            .filter { !$0.isArchived && !$0.kind.isLiability }
+            .filter { !$0.isArchived && $0.weighsHoldings }
             .reduce(0) { count, account in
                 count + account.holdingSlices(tolerance: tolerance)
-                    .filter { $0.status == .watch || $0.status == .act }.count
+                    .filter(\.status.isDrifting).count
             }
     }
 

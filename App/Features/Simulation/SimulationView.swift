@@ -300,11 +300,12 @@ struct SimulationView: View {
     private var spreadCard: some View {
         if let outcome {
             VStack(spacing: 0) {
-                spreadRow("잘 안 풀리면 (하위 10%)", outcome.low, Color.loss)
+                // 각 줄이 무엇인지 수익률로 말한다. "잘 풀리면" 은 뜻이 흐리다.
+                spreadRow(rateLabel("물가만큼만", outcome.floorReturnBP), outcome.low, Color.muted)
                 Divider().overlay(Color.rule)
-                spreadRow("예상", outcome.expected, Color.ink)
+                spreadRow(rateLabel("계획대로", outcome.midReturnBP), outcome.expected, Color.ink)
                 Divider().overlay(Color.rule)
-                spreadRow("잘 풀리면 (상위 10%)", outcome.high, Color.gain)
+                spreadRow(rateLabel("크게 잡아", outcome.ceilingReturnBP), outcome.high, Color.gain)
                 if outcome.hasDrawdown {
                     Divider().overlay(Color.rule)
                     depletionRow(outcome)
@@ -314,6 +315,11 @@ struct SimulationView: View {
             .padding(.vertical, 4)
             .background(cardBackground)
         }
+    }
+
+    /// `계획대로 · 연 8%` — 무엇을 가정한 줄인지 수익률로 못 박는다.
+    private func rateLabel(_ name: String, _ basisPoints: Int) -> String {
+        "\(name) · 연 \(PercentFormatter.integer(Decimal(basisPoints) / 10_000))%"
     }
 
     /// 은퇴 후 인출까지 그릴 때만 나온다. 추정할 수 없으면 만들지 않는다.
@@ -497,7 +503,7 @@ struct SimulationView: View {
         adjusted.annualReturn = Ratio(basisPoints: knobs.returnBP)
         // **수익률 손잡이는 투자자산에만 걸린다.** 덩어리마다 자기 수익률을
         // 들고 다니므로 여기서 같이 갈아 끼우지 않으면 손잡이를 돌려도
-        // 궤적이 안 움직인다. 전세보증금까지 함께 올리면 안 되므로
+        // 궤적이 안 움직인다. 전월세보증금까지 함께 올리면 안 되므로
         // 투자자산 덩어리만 바꾼다 (docs/08-feedback.md 11번).
         for index in adjusted.buckets.indices where adjusted.buckets[index].profile == .investment {
             adjusted.buckets[index].annualReturn = adjusted.annualReturn
@@ -558,6 +564,10 @@ struct SimulationOutcome: Sendable {
     var depletionDate: Date?
     /// 인출 구간을 그리고 있는가. 이게 false 면 고갈 줄을 아예 보여주지 않는다.
     var hasDrawdown: Bool
+    /// 세 줄에 적을 수익률. 화면이 다시 계산하지 않게 여기 실어 보낸다.
+    var floorReturnBP: Int
+    var midReturnBP: Int
+    var ceilingReturnBP: Int
 
     static func make(
         baseline input: ProjectionInput,
@@ -579,12 +589,32 @@ struct SimulationOutcome: Sendable {
         var expectedByDate: [Date: Int] = [:]
         for point in deterministic.points { expectedByDate[point.date] = point.nominal.minorUnits }
 
-        let bands = monteCarlo.bands.map { band in
+        // **세 시나리오를 결정론으로 그린다** (docs/08-feedback.md 22번).
+        //
+        // 예전에는 몬테카를로의 하위 10% · 상위 10% 로 밴드를 그리고 "잘 안
+        // 풀리면 / 잘 풀리면" 이라고 적었다. 그건 확률의 꼬리를 사람 말로
+        // 옮긴 것이라 뜻이 흐리다 — 하위 10%가 무엇을 뜻하는지 아무도 모른다.
+        //
+        // 대신 **수익률을 바꿔 세 번 굴린다.** 각 선이 무엇인지 한 문장으로
+        // 말할 수 있다: "물가만큼만 벌면", "계획한 대로면", "연 20%면".
+        var floorInput = adjusted
+        floorInput.annualReturn = adjusted.inflation
+        var ceilingInput = adjusted
+        ceilingInput.annualReturn = Ratio(basisPoints: 2_000)
+        let floor = Projection.run(floorInput, calendar: calendar)
+        let ceiling = Projection.run(ceilingInput, calendar: calendar)
+
+        var floorByDate: [Date: Int] = [:]
+        for point in floor.points { floorByDate[point.date] = point.nominal.minorUnits }
+        var ceilingByDate: [Date: Int] = [:]
+        for point in ceiling.points { ceilingByDate[point.date] = point.nominal.minorUnits }
+
+        let bands = deterministic.points.map { point in
             SimulationChart.Band(
-                date: band.date,
-                low: band.p10.minorUnits,
-                mid: expectedByDate[band.date] ?? band.p50.minorUnits,
-                high: band.p90.minorUnits
+                date: point.date,
+                low: floorByDate[point.date] ?? point.nominal.minorUnits,
+                mid: point.nominal.minorUnits,
+                high: ceilingByDate[point.date] ?? point.nominal.minorUnits
             )
         }
 
@@ -613,14 +643,19 @@ struct SimulationOutcome: Sendable {
         return SimulationOutcome(
             bands: bands,
             baseline: baselinePoints,
-            low: monteCarlo.bands.last?.p10 ?? end,
+            low: floor.point(inYear: retirementYear, calendar: calendar)?.nominal
+                ?? floor.last?.nominal ?? end,
             expected: end,
-            high: monteCarlo.bands.last?.p90 ?? end,
+            high: ceiling.point(inYear: retirementYear, calendar: calendar)?.nominal
+                ?? ceiling.last?.nominal ?? end,
             // 명목과 같은 시점에서 읽어야 한다. `last` 는 은퇴 30년 뒤라서
             // 고갈되면 0원이 나오고, 화면에는 "2049년 예상 10억 / 오늘 돈으로 0원"
             // 이라는 앞뒤 안 맞는 두 줄이 뜬다 (docs/08-feedback.md 3번).
             expectedReal: deterministic.point(inYear: retirementYear, calendar: calendar)?.real
                 ?? deterministic.last?.real ?? end,
+            floorReturnBP: adjusted.inflation.basisPoints,
+            midReturnBP: adjusted.annualReturn.basisPoints,
+            ceilingReturnBP: 2_000,
             delta: end - planEnd,
             successProbability: monteCarlo.successProbability,
             paths: monteCarlo.paths,

@@ -125,7 +125,7 @@ public struct DiagnosticsInput: Sendable {
     // MARK: 지금 자산
     public var netWorth: Money
     public var investable: Money
-    /// 부동산 + 전세보증금. 팔지 않으면 생활비로 못 쓰는 자산.
+    /// 부동산 + 전월세보증금. 팔지 않으면 생활비로 못 쓰는 자산.
     public var illiquid: Money
     /// 투자자산의 국가별 분해.
     public var byCountry: [String: Money]
@@ -337,7 +337,7 @@ public enum Diagnostics {
 
         let share = ratio(input.illiquid, of: input.netWorth)
         let cap = decimalToDouble(input.illiquidCap.fraction)
-        let capText = PercentFormatter.oneDecimal(input.illiquidCap.fraction)
+        let capText = PercentFormatter.integer(input.illiquidCap.fraction)
 
         let status: DiagnosisStatus
         let action: String
@@ -361,7 +361,7 @@ public enum Diagnostics {
         return Diagnosis(
             kind: .realEstateShare,
             status: status,
-            headline: "부동산 · 전세보증금 \(percent(share)) (상한 \(capText)%)",
+            headline: "부동산 · 전월세보증금 \(percent(share)) (상한 \(capText)%)",
             action: action,
             progress: cap > 0 ? min(share / cap, 1.5) : nil
         )
@@ -387,7 +387,7 @@ public enum Diagnostics {
         let action: String
         if abs(drift) <= tolerance {
             status = .pass
-            action = "목표 \(PercentFormatter.oneDecimal(input.usTarget.fraction))% 근처입니다. 다음 적립을 적은 쪽에 넣으면 저절로 맞춰집니다."
+            action = "목표 \(PercentFormatter.integer(input.usTarget.fraction))% 근처입니다. 다음 적립을 적은 쪽에 넣으면 저절로 맞춰집니다."
         } else if abs(drift) <= tolerance * 2 {
             status = .watch
             action = drift > 0
@@ -403,7 +403,7 @@ public enum Diagnostics {
         return Diagnosis(
             kind: .countryMix,
             status: status,
-            headline: "미국 \(percent(us)) · 한국 \(percent(kr)) (목표 미국 \(PercentFormatter.oneDecimal(input.usTarget.fraction))% ±\(PercentFormatter.oneDecimal(input.mixTolerance.fraction))%p)",
+            headline: "미국 \(percent(us)) · 한국 \(percent(kr)) (목표 미국 \(PercentFormatter.integer(input.usTarget.fraction))% ±\(PercentFormatter.integer(input.mixTolerance.fraction))%p)",
             action: action,
             // 게이지의 1.0 은 **목표**다. 절대 비중(us)을 그대로 넣으면 1.0 이
             // "미국 100%" 를 뜻하게 되어 기준선이 아무 의미도 없는 곳을 가리킨다.
@@ -524,7 +524,7 @@ public enum Diagnostics {
 
         let rate = ratio(input.monthlyContribution, of: input.monthlyIncome)
         let floor = decimalToDouble(input.savingsFloor.fraction)
-        let floorText = PercentFormatter.oneDecimal(input.savingsFloor.fraction)
+        let floorText = PercentFormatter.integer(input.savingsFloor.fraction)
 
         let status: DiagnosisStatus
         let action: String
@@ -564,8 +564,10 @@ public enum Diagnostics {
         return Double(value.minorUnits) / Double(base.minorUnits)
     }
 
+    /// 비중은 정수로 적는다. 소수 첫째 자리는 산만하기만 하고 판단을 안 바꾼다
+    /// (docs/08-feedback.md 18번).
     private static func percent(_ value: Double) -> String {
-        PercentFormatter.oneDecimal(Decimals.fromDouble(value)) + "%"
+        PercentFormatter.integer(Decimals.fromDouble(value)) + "%"
     }
 
     /// 비중끼리의 **차이**는 퍼센트가 아니라 퍼센트포인트다.
@@ -573,7 +575,7 @@ public enum Diagnostics {
     /// 목표 60%, 실제 38.6% 의 간격은 21.4%p 이지 21.4% 가 아니다.
     /// 21.4% 라고 쓰면 "60%의 21.4%" 로 읽혀 12.8%p 로 오해된다.
     private static func points(_ value: Double) -> String {
-        PercentFormatter.oneDecimal(Decimals.fromDouble(value)) + "%p"
+        PercentFormatter.integer(Decimals.fromDouble(value)) + "%p"
     }
 
     private static func decimalToDouble(_ value: Decimal) -> Double {

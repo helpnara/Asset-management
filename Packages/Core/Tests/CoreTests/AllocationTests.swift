@@ -44,8 +44,8 @@ struct AllocationTests {
         ])
         #expect(slices[0].target == Decimal(string: "0.3"))
         #expect(slices[0].actual == Decimal(string: "0.5"))
-        // 30% 목표에 50% 를 들고 있으면 허용(max(5%p, 7.5%p))의 두 배를 넘는다.
-        #expect(slices[0].status == .act)
+        // 30% 목표에 50% 를 들고 있으면 20%p 넘쳤다.
+        #expect(slices[0].status == .over)
         #expect(Allocation.targetSumBP([entry("A", 100, 3_000), entry("B", 100, 3_000)]) == 6_000)
     }
 
@@ -56,12 +56,12 @@ struct AllocationTests {
             entry("KODEX 국고채3년", 15, 2_000),
             entry("나머지", 85, 8_000)
         ])
-        #expect(slices[0].comparisonLabel == "15.0/20.0%")
-        // 목표 20%에 실제 15% — 어긋난 폭 5%p 는 허용(max(5%p, 5%p))과 같다.
-        #expect(slices[0].status == .onTrack)
+        #expect(slices[0].comparisonLabel == "15/20%")
+        // 목표 20%에 실제 15% — 5%p 모자라니 ±3%p 를 벗어난다.
+        #expect(slices[0].status == .under)
         // 목표가 없으면 실제만 적는다.
         let untargeted = Allocation.slices([entry("A", 15, nil), entry("B", 85, nil)])
-        #expect(untargeted[0].comparisonLabel == "15.0%")
+        #expect(untargeted[0].comparisonLabel == "15%")
     }
 
     @Test("목표 합은 같은 이름을 합쳐서 센다")
@@ -86,26 +86,52 @@ struct AllocationTests {
         #expect(b?.drift == nil)
     }
 
-    @Test("허용 오차는 절대와 상대 중 큰 쪽이다")
-    func toleranceTakesTheLarger() {
-        let tolerance = Allocation.Tolerance()          // 5%p · 25%
-        // 목표 60% → 0.6 × 25% = 15%p 가 더 크다
-        #expect(tolerance.allowed(for: Decimal(string: "0.6")!) == Decimal(string: "0.15"))
-        // 목표 5% → 0.05 × 25% = 1.25%p 라 절대값 5%p 가 이긴다.
-        // 상대만 쓰면 작은 종목은 영영 안 걸린다.
-        #expect(tolerance.allowed(for: Decimal(string: "0.05")!) == Decimal(string: "0.05"))
+    @Test("허용 오차는 퍼센트포인트 하나다 — 기본 ±3%p")
+    func toleranceIsOneNumber() {
+        // 절대와 상대를 섞어 쓰던 것을 걷어냈다. 두 숫자가 어떻게 맞물리는지
+        // 설명하기 어렵고 조절하기도 어려웠다.
+        #expect(Allocation.Tolerance().allowed == Decimal(string: "0.03"))
+        #expect(Allocation.Tolerance(absolute: Ratio(basisPoints: 500)).allowed
+                == Decimal(string: "0.05"))
     }
 
-    @Test("허용 오차 안이면 지킴, 두 배까지는 주의, 넘으면 조치")
-    func threeSteps() {
-        let tolerance = Allocation.Tolerance()
-        let target = Decimal(string: "0.5")!            // 허용 12.5%p, 두 배 25%p
-        #expect(Allocation.status(actual: Decimal(string: "0.60")!,
+    @Test("어느 쪽으로 벗어났는지 말한다 — 초과 · 부족 · (지키면 조용히)")
+    func statusSaysWhichWay() {
+        let tolerance = Allocation.Tolerance()          // ±3%p
+        let target = Decimal(string: "0.20")!
+        // 17~23% 는 지킴. 배지를 안 단다.
+        #expect(Allocation.status(actual: Decimal(string: "0.23")!,
                                   target: target, tolerance: tolerance) == .onTrack)
-        #expect(Allocation.status(actual: Decimal(string: "0.65")!,
-                                  target: target, tolerance: tolerance) == .watch)
-        #expect(Allocation.status(actual: Decimal(string: "0.80")!,
-                                  target: target, tolerance: tolerance) == .act)
+        #expect(Allocation.status(actual: Decimal(string: "0.17")!,
+                                  target: target, tolerance: tolerance) == .onTrack)
+        #expect(Allocation.status(actual: Decimal(string: "0.24")!,
+                                  target: target, tolerance: tolerance) == .over)
+        #expect(Allocation.status(actual: Decimal(string: "0.16")!,
+                                  target: target, tolerance: tolerance) == .under)
+        // 지키고 있을 때는 아무 말도 안 한다.
+        #expect(Allocation.DriftStatus.onTrack.label == "")
+        #expect(Allocation.DriftStatus.onTrack.isDrifting == false)
+        #expect(Allocation.DriftStatus.over.isDrifting)
+    }
+
+    @Test("정수 퍼센트는 합이 정확히 100 이 된다")
+    func integerPercentsSumToHundred() {
+        // 실제로 화면에 나온 값이다. 줄마다 따로 반올림하면
+        // 32 + 8 + 16 + 7 + 38 = 101 이 되어 틀려 보인다.
+        let total = Decimal(264_000_000)
+        let fractions = [83_700_000, 19_800_000, 42_000_000, 18_500_000, 100_000_000]
+            .map { Decimal($0) / total }
+        let percents = Allocation.integerPercents(fractions)
+        #expect(percents == [32, 7, 16, 7, 38])
+        #expect(percents.reduce(0, +) == 100)
+    }
+
+    @Test("합이 1 이 아니면 부풀리지 않는다")
+    func partialSetsAreNotInflated() {
+        // 목표를 덜 적어 60%뿐인 것을 100 으로 만들면 거짓말이 된다.
+        #expect(Allocation.integerPercents([Decimal(string: "0.3")!,
+                                            Decimal(string: "0.3")!]) == [30, 30])
+        #expect(Allocation.integerPercents([]).isEmpty)
     }
 
     @Test("적립을 나눠 넣으면 목표에 정확히 닿는다 — 팔지 않는다")

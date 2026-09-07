@@ -68,6 +68,7 @@ struct BackupDocument: Codable, Sendable {
         var driftToleranceBP: Int
         var driftRelativeBP: Int
         var createdAt: Date
+        var updatedAt: Date?
     }
 
     struct MemberData: Codable, Sendable {
@@ -301,7 +302,8 @@ extension BackupDocument {
                 usesMemberContributions: plan.usesMemberContributions,
                 driftToleranceBP: plan.driftToleranceBP,
                 driftRelativeBP: plan.driftRelativeBP,
-                createdAt: plan.createdAt
+                createdAt: plan.createdAt,
+                updatedAt: plan.updatedAt
             )
         }
 

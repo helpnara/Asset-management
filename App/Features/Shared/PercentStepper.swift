@@ -16,7 +16,10 @@ struct PercentStepper: View {
             HStack {
                 Text(title)
                 Spacer()
-                Text("\(PercentFormatter.oneDecimal(Decimal(basisPoints) / 10_000))%")
+                // 1%p 단위로 움직이면 정수로 적는다 (docs/08-feedback.md 18번).
+                Text(step % 100 == 0
+                     ? "\(PercentFormatter.integer(Decimal(basisPoints) / 10_000))%"
+                     : "\(PercentFormatter.oneDecimal(Decimal(basisPoints) / 10_000))%")
                     .font(.figure(14, weight: .medium))
                     .foregroundStyle(Color.ink)
             }

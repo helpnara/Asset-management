@@ -103,7 +103,7 @@ struct OnePagerView: View {
             figure("부채", Won.compact(rollup.liabilities))
             figure("월 적립", Won.compact(monthlyTotal))
             if let usShare {
-                figure("미국", "\(PercentFormatter.oneDecimal(usShare))%")
+                figure("미국", "\(PercentFormatter.integer(usShare))%")
             }
         }
         .padding(.top, 12)

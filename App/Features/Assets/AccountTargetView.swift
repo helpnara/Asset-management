@@ -41,10 +41,11 @@ struct AccountTargetView: View {
                         }
                         Spacer(minLength: 6)
                         if let slice { WeightLabel(slice: slice, hidesNoTarget: true) }
+                        // 1%p 단위. 목표는 정수로만 적는다.
                         Stepper("", value: Binding(
                             get: { holding.targetWeightBP ?? 0 },
                             set: { holding.targetWeightBP = $0 }
-                        ), in: 0...10_000, step: 250)
+                        ), in: 0...10_000, step: 100)
                         .labelsHidden()
                     }
                 }
@@ -108,7 +109,7 @@ struct AccountTargetView: View {
     private var targetSum: some View {
         let sum = account.targetSumBP
         let isHundred = sum == 10_000
-        return Text("목표 합 \(PercentFormatter.oneDecimal(Decimal(sum) / 10_000))%")
+        return Text("목표 합 \(PercentFormatter.integer(Decimal(sum) / 10_000))%")
             .font(.figure(10, weight: isHundred ? .regular : .semibold))
             .foregroundStyle(isHundred ? Color.gain : Color.loss)
     }
@@ -178,8 +179,8 @@ struct DriftBadge: View {
 
     private var foreground: Color {
         switch status {
-        case .act: return .loss
-        case .watch: return .daughter
+        case .over: return .loss       // 넘쳤다
+        case .under: return .daughter  // 모자라다
         case .noTarget: return .muted
         case .onTrack: return .gain
         }
@@ -187,8 +188,8 @@ struct DriftBadge: View {
 
     private var background: Color {
         switch status {
-        case .act: return .lossSoft
-        case .watch: return .alertSoft
+        case .over: return .lossSoft
+        case .under: return .alertSoft
         case .noTarget: return .neutralSoft
         case .onTrack: return .gainSoft
         }

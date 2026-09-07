@@ -103,7 +103,7 @@ struct ProjectionTests {
         var withEvent = input(years: 10, start: 100_000_000, monthly: 1_000_000, returnBP: 800)
         withEvent.cashEvents = [
             CashEventInput(date: date("2027-01-01"), amount: Money(100_000_000, currency: .krw),
-                           label: "전세보증금 전환")
+                           label: "전월세보증금 전환")
         ]
         let result = Projection.run(withEvent, calendar: calendar)
         let plain = Projection.run(input(years: 10, start: 100_000_000, monthly: 1_000_000, returnBP: 800),
@@ -397,7 +397,7 @@ struct ReturnProfileTests {
         #expect(result.last?.nominal == Money(476_842_216, currency: .krw))
     }
 
-    @Test("전세보증금은 23년이 지나도 그대로다 — 이 항목의 요지다")
+    @Test("전월세보증금은 23년이 지나도 그대로다 — 이 항목의 요지다")
     func fixedBucketDoesNotGrow() {
         let result = Projection.run(
             input(years: 23, buckets: [bucket(.fixed, 200_000_000, 0)]),
@@ -431,7 +431,7 @@ struct ReturnProfileTests {
 
     @Test("투자자산 덩어리가 없어도 적립은 0%로 굴지 않는다")
     func contributionsLandInTheInvestmentBucket() {
-        // 전세보증금만 있는 초기 상태. 투자자산 덩어리가 없으면 적립이 고정
+        // 전월세보증금만 있는 초기 상태. 투자자산 덩어리가 없으면 적립이 고정
         // 덩어리로 들어가 한 푼도 안 불어난다. 그래서 빈 투자자산을 만들어 둔다.
         let onlyFixed = input(years: 1, buckets: [bucket(.fixed, 0, 0)], monthly: 1_000_000)
         #expect(onlyFixed.buckets.contains { $0.profile == .investment })

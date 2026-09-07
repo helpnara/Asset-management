@@ -36,6 +36,14 @@ public enum Allocation {
         /// 목표 비중. **적은 그대로**다 (정규화하지 않는다).
         /// 없으면 nil — 그 자체가 알림거리다.
         public let target: Decimal?
+        /// 화면에 적는 정수 퍼센트. **같은 층의 합이 정확히 100 이 되도록**
+        /// 최대잔여법으로 맞춰 둔다 (docs/08-feedback.md 18번).
+        ///
+        /// 줄마다 따로 반올림하면 `32 + 8 + 16 + 7 + 38 = 101` 처럼 어긋난다.
+        /// 비중 화면에서 합이 100 이 아닌 것은 그 자체로 틀려 보인다.
+        public let actualPercent: Int
+        /// 목표의 정수 퍼센트. 입력이 1%p 단위라 반올림이 필요 없다.
+        public let targetPercent: Int?
         public let status: DriftStatus
 
         public var id: String { label }
@@ -50,51 +58,60 @@ public enum Allocation {
         /// 한 줄에 실제와 목표가 같이 서야 "지금 어떤 상황인지" 를 배지 없이도
         /// 읽을 수 있다. 조치·주의만으로는 얼마나 벗어났는지 알 수 없었다.
         public var comparisonLabel: String {
-            let now = PercentFormatter.oneDecimal(actual)
-            guard let target else { return "\(now)%" }
-            return "\(now)/\(PercentFormatter.oneDecimal(target))%"
+            guard let targetPercent else { return "\(actualPercent)%" }
+            return "\(actualPercent)/\(targetPercent)%"
         }
     }
 
+    /// 목표 대비 어느 쪽으로 얼마나 벗어났나 (docs/08-feedback.md 20번).
+    ///
+    /// 예전에는 `주의`·`조치` 두 단계였는데, **어느 쪽으로 벗어났는지**를
+    /// 말해 주지 않아서 배지를 봐도 무엇을 해야 할지 알 수 없었다.
+    /// 이제 방향을 말한다 — 넘쳤으면 `초과`, 모자라면 `부족`.
+    ///
+    /// **허용 오차 안이면 아무 말도 안 한다.** 지킴 배지를 달면 화면이
+    /// 배지로 뒤덮이는데, 지키고 있는 것은 원래 조용해야 한다.
     public enum DriftStatus: Sendable, Hashable {
-        /// 허용 오차 안.
+        /// 허용 오차 안. **화면에 아무것도 안 띄운다.**
         case onTrack
-        /// 허용 오차를 벗어남.
-        case watch
-        /// 허용 오차의 두 배를 벗어남.
-        case act
+        /// 목표보다 많다.
+        case over
+        /// 목표보다 적다.
+        case under
         /// 목표를 아직 안 정했다. **조용히 넘어가지 않는다** — 목표를 세우는
         /// 연습을 시키는 것도 이 앱이 하는 일이다.
         case noTarget
 
         public var label: String {
             switch self {
-            case .onTrack: return "지킴"
-            case .watch: return "주의"
-            case .act: return "조치"
+            case .onTrack: return ""
+            case .over: return "초과"
+            case .under: return "부족"
             case .noTarget: return "목표 없음"
             }
         }
+
+        /// 목표에서 벗어났나. 진단이 셀 때 쓴다.
+        public var isDrifting: Bool { self == .over || self == .under }
     }
 
-    /// 판정 기준. 목표가 작은 종목에 절대 오차만 쓰면 영영 안 걸리므로
-    /// **절대와 상대 중 큰 쪽**을 쓴다.
+    /// 판정 기준 — **퍼센트포인트 하나**다 (docs/08-feedback.md 20번).
+    ///
+    /// 예전에는 절대와 상대 중 큰 쪽을 썼는데, 두 숫자가 어떻게 맞물리는지
+    /// 설명하기 어렵고 사용자가 조절하기도 어려웠다. **목표 비중을 지키는 것이
+    /// 중요하다**는 것이 사용자의 판단이라, 기준은 좁고 단순한 편이 낫다.
+    ///
+    /// 기본 ±3%p — 목표 20%인 종목은 17~23% 안에 있으면 지키는 것으로 본다.
     public struct Tolerance: Sendable, Hashable {
-        /// 절대 허용 오차 (퍼센트포인트). 기본 5%p.
+        /// 허용 오차 (퍼센트포인트). 기본 3%p.
         public var absolute: Ratio
-        /// 상대 허용 오차 (목표 대비). 기본 25%.
-        public var relative: Ratio
 
-        public init(absolute: Ratio = Ratio(basisPoints: 500),
-                    relative: Ratio = Ratio(basisPoints: 2_500)) {
+        public init(absolute: Ratio = Ratio(basisPoints: 300)) {
             self.absolute = absolute
-            self.relative = relative
         }
 
-        /// 목표가 `target` 일 때 실제로 허용되는 폭.
-        public func allowed(for target: Decimal) -> Decimal {
-            max(absolute.fraction, target * relative.fraction)
-        }
+        /// 실제로 허용되는 폭. 목표 크기와 무관하게 같다.
+        public var allowed: Decimal { absolute.fraction }
     }
 
     /// 비중을 잴 한 덩어리.
@@ -141,7 +158,11 @@ public enum Allocation {
         let total = amounts.values.reduce(0, +)
         guard total > 0 else { return [] }
 
-        return order.map { label in
+        // 정수 퍼센트는 **줄마다 따로** 반올림하면 합이 100 이 안 된다.
+        // 최대잔여법으로 한꺼번에 맞춘다.
+        let percents = integerPercents(order.map { Decimal(amounts[$0] ?? 0) / Decimal(total) })
+
+        return zip(order, percents).map { label, percent in
             let amount = amounts[label] ?? 0
             let actual = Decimal(amount) / Decimal(total)
             let bp = targets[label] ?? nil
@@ -151,9 +172,44 @@ public enum Allocation {
                 amount: Money(minorUnits: amount, currency: currency),
                 actual: actual,
                 target: target,
+                actualPercent: percent,
+                targetPercent: bp.map { Int((Double($0) / 100).rounded()) },
                 status: status(actual: actual, target: target, tolerance: tolerance)
             )
         }
+    }
+
+    /// 비율들을 정수 퍼센트로 바꾸되 **합이 정확히 100 이 되게** 한다.
+    ///
+    /// 최대잔여법(Hamilton). 먼저 다 내림하고, 남은 자리를 소수부가 큰 것부터
+    /// 하나씩 나눠 준다. 선거구 의석을 나누는 그 방법이고, 여기서 필요한 성질도
+    /// 같다 — **각자 제 값에 가장 가깝게, 그러면서 총합이 딱 맞게.**
+    ///
+    /// 합이 100 이 아닌 값들(예: 목표를 덜 적어 60%뿐)에는 쓰지 않는다.
+    /// 그때는 100 으로 부풀리는 것이 거짓말이 된다.
+    public static func integerPercents(_ fractions: [Decimal]) -> [Int] {
+        guard !fractions.isEmpty else { return [] }
+        let sum = fractions.reduce(Decimal(0), +)
+        // 합이 1 이 아니면(=한 층이 아니면) 그냥 각자 반올림한다.
+        guard abs(sum - 1) < Decimal(string: "0.0001")! else {
+            return fractions.map { Decimals.roundedInt($0 * 100, rounding: .plain) }
+        }
+
+        let scaled = fractions.map { $0 * 100 }
+        var result = scaled.map { Decimals.roundedInt($0, rounding: .down) }
+        var remaining = 100 - result.reduce(0, +)
+        guard remaining > 0 else { return result }
+
+        // 소수부가 큰 것부터. 같으면 앞선 것에 준다 — 순서가 정해져야 결과가 늘 같다.
+        let order = scaled.enumerated()
+            .map { (index: $0.offset, fraction: $0.element - Decimal(result[$0.offset])) }
+            .sorted { $0.fraction == $1.fraction ? $0.index < $1.index : $0.fraction > $1.fraction }
+
+        for entry in order where remaining > 0 {
+            result[entry.index] += 1
+            remaining -= 1
+        }
+        return result
     }
 
     /// 적어 둔 목표의 합 (basis point). 100%(10,000)가 아니면 화면이 그렇게 적는다.
@@ -171,10 +227,9 @@ public enum Allocation {
 
     static func status(actual: Decimal, target: Decimal?, tolerance: Tolerance) -> DriftStatus {
         guard let target else { return .noTarget }
-        let gap = abs(actual - target)
-        let allowed = tolerance.allowed(for: target)
-        if gap <= allowed { return .onTrack }
-        return gap <= allowed * 2 ? .watch : .act
+        let gap = actual - target
+        if abs(gap) <= tolerance.allowed { return .onTrack }
+        return gap > 0 ? .over : .under
     }
 
     /// **팔지 않고 적립으로 맞춘다.**

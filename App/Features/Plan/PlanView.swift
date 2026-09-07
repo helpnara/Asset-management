@@ -39,6 +39,12 @@ struct PlanView: View {
                     context.delete(cashEvents[index])
                 }
             }
+            // 계획의 어떤 값이든 달라지면 수정 시각을 찍는다. 화면을 열기만
+            // 해서는 안 찍힌다 — 지문이 실제로 달라져야 한다.
+            .onChange(of: plans.first?.editFingerprint) { previous, _ in
+                guard previous != nil else { return }   // 첫 진입은 변경이 아니다
+                plans.first?.touch()
+            }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(item: $editingEvent) { CashEventEditView(event: $0) }
@@ -46,21 +52,28 @@ struct PlanView: View {
         }
     }
 
+    /// `2026. 9. 7. 오후 2:31` 처럼. 날짜만으로는 "오늘 고쳤나" 를 못 본다.
+    private static func updatedText(_ date: Date) -> String {
+        date.formatted(date: .numeric, time: .shortened)
+    }
+
     private func form(_ plan: Plan) -> some View {
         @Bindable var plan = plan
         return Form {
+            // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
+            // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
             Section {
-                TextField("우리 가족 노후자금 준비", text: $plan.title)
-                DatePicker("계획 시작일",
+                DatePicker("최초 계획 수립일",
                            selection: Binding(get: { plan.startedOn ?? .now },
                                               set: { plan.startedOn = $0 }),
                            displayedComponents: .date)
-                TextField("2026.08 기준 · 이사 후 자산", text: $plan.asOfNote)
-                TextField("계획은 끝났다. 이제는 시간이 일한다.", text: $plan.declaration)
-            } header: {
-                Text("계획 제목")
+                LabeledContent("마지막 수정") {
+                    Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
+                        .font(.system(size: 13))
+                        .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
+                }
             } footer: {
-                Text("**기준 시점**은 같은 자산을 두 번 세지 않기 위한 선언입니다. 아래 한 줄은 1페이지 맨 밑에 들어갑니다. 셋 다 1페이지에만 쓰이고 계산은 건드리지 않습니다.")
+                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 문서**에서 고칩니다.")
             }
 
             Section {
@@ -97,7 +110,7 @@ struct PlanView: View {
             } header: {
                 Text("잘 자라지 않는 돈")
             } footer: {
-                Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
+                Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
             }
 
             Section("기간") {
@@ -251,7 +264,7 @@ struct PlanView: View {
         } header: {
             Text("목돈 이벤트")
         } footer: {
-            Text("퇴직금 유입, 전세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 23년 복리에서는 목돈 하나가 결과를 크게 바꿉니다.")
+            Text("퇴직금 유입, 전월세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 23년 복리에서는 목돈 하나가 결과를 크게 바꿉니다.")
         }
     }
 
@@ -325,7 +338,9 @@ struct PlanView: View {
             HStack {
                 Text(title)
                 Spacer()
-                Text("\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10000))%")
+                Text(step % 100 == 0
+                     ? "\(PercentFormatter.integer(Decimal(value.wrappedValue) / 10_000))%"
+                     : "\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10_000))%")
                     .font(.figure(14, weight: .medium))
                     .foregroundStyle(Color.ink)
             }

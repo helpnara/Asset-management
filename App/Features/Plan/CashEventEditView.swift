@@ -16,7 +16,7 @@ struct CashEventEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("이름 (퇴직금 · 전세보증금 전환 …)", text: $event.label)
+                    TextField("이름 (퇴직금 · 전월세보증금 전환 …)", text: $event.label)
                     DatePicker("시점", selection: $event.date, displayedComponents: .date)
                 }
 

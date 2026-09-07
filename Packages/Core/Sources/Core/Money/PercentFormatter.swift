@@ -12,4 +12,16 @@ public enum PercentFormatter {
         let tenths = Decimals.roundedInt(fraction * 1000, rounding: .plain)
         return "\(tenths / 10).\(abs(tenths % 10))"
     }
+
+    /// 정수 퍼센트. **비중은 전부 이쪽을 쓴다** (docs/08-feedback.md 18번).
+    ///
+    /// 소수 첫째 자리까지 적었더니 화면이 산만했다. 비중은 어림으로 읽는
+    /// 숫자라 `31.7%` 와 `32%` 가 알려 주는 것이 같다.
+    ///
+    /// ⚠️ **한 줄씩 따로 반올림하면 합이 100이 안 된다.** 여러 줄을 함께
+    /// 보여줄 때는 `Allocation.Slice.actualPercent` 를 쓰라 — 그쪽은
+    /// 최대잔여법으로 합을 100 에 맞춰 둔다.
+    public static func integer(_ fraction: Decimal) -> String {
+        "\(Decimals.roundedInt(fraction * 100, rounding: .plain))"
+    }
 }

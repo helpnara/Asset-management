@@ -37,7 +37,7 @@ public struct Rollup: Sendable, Equatable {
     /// 부채를 뺀 자산 합계.
     public var assets: Money
     public var liabilities: Money
-    /// 투자자산. 전세보증금·부동산은 빠진다.
+    /// 투자자산. 전월세보증금·부동산은 빠진다.
     public var investable: Money
     /// 구성원별 순자산 (그 사람의 부채는 음수로 반영).
     public var byMember: [UUID: Money]
@@ -45,7 +45,7 @@ public struct Rollup: Sendable, Equatable {
     public var byAssetClass: [AssetClass: Money]
     /// 국가별 — **투자자산만** 기준.
     ///
-    /// 전세보증금을 넣으면 분모(투자자산)보다 분자가 커져 비중이 100%를 넘는다.
+    /// 전월세보증금을 넣으면 분모(투자자산)보다 분자가 커져 비중이 100%를 넘는다.
     /// 1페이지의 `한국 29.8 / 미국 70.2` 도 투자자산 기준이다.
     public var byCountry: [String: Money]
 
@@ -62,7 +62,7 @@ public enum Valuation {
 
     /// 보유 항목을 현황판이 쓰는 합계로 굴린다.
     ///
-    /// 부채는 자산에서 빼고, 투자자산 합계에는 전세보증금·부동산을 넣지 않는다.
+    /// 부채는 자산에서 빼고, 투자자산 합계에는 전월세보증금·부동산을 넣지 않는다.
     /// 1페이지가 "투자자산 합계"와 "가족 총자산"을 따로 적는 것과 같은 구분이다.
     public static func rollUp(_ positions: [Position], base: CurrencyCode) -> Rollup {
         var assets = Money.zero(base)

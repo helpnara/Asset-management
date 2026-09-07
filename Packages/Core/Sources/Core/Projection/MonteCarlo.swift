@@ -77,7 +77,7 @@ public enum MonteCarlo {
         let monthlySigma = NSDecimalNumber(decimal: input.annualVolatility.fraction).doubleValue / 12.0.squareRoot()
 
         // 덩어리마다 자기 속도로 굴린다. **변동성은 투자자산에만 붙인다** —
-        // 전세보증금이 ±15% 로 흔들리면 밴드가 거짓말을 한다
+        // 전월세보증금이 ±15% 로 흔들리면 밴드가 거짓말을 한다
         // (docs/08-feedback.md 3번 (d) · 11번).
         let startBalances = base.buckets.map { Double($0.amount.minorUnits) }
         let bucketMeans = base.buckets.map { bucket -> Double in

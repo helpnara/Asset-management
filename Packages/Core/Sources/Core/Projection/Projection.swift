@@ -3,7 +3,7 @@ import Foundation
 /// 결정론적 프로젝션의 입력.
 ///
 /// 몬테카를로(신뢰구간 밴드)는 이 위에 얹는다. 먼저 중앙값 한 줄을 정확히 그린다.
-/// 특정 시점의 큰 자금 이동. 전세보증금 전환, 퇴직금 유입, 주택 구입 같은 것들.
+/// 특정 시점의 큰 자금 이동. 전월세보증금 전환, 퇴직금 유입, 주택 구입 같은 것들.
 ///
 /// 23년 복리에서 목돈 하나가 결과를 크게 바꾼다 — 1억이 9년 굴러 2억이 된다.
 /// 이걸 빼놓고 그린 궤적은 궤적이 아니다.
@@ -57,7 +57,7 @@ public struct IncomeStreamInput: Sendable, Hashable {
 
 /// 프로필이 같은 돈 한 덩어리.
 ///
-/// 순자산을 통째로 한 수익률에 굴리면 전세보증금까지 복리로 불어난다
+/// 순자산을 통째로 한 수익률에 굴리면 전월세보증금까지 복리로 불어난다
 /// (docs/08-feedback.md 11번). 그래서 덩어리로 나눠 각자의 속도로 굴린다.
 public struct BalanceBucket: Sendable, Hashable {
     public var profile: ReturnProfile
@@ -155,7 +155,7 @@ public struct ProjectionInput: Sendable, Hashable {
         monthlyRetirementSpending: Money? = nil,
         incomes: [IncomeStreamInput] = []
     ) {
-        // **적립과 목돈이 들어갈 자리는 투자자산이다.** 하나도 없으면(전세보증금만
+        // **적립과 목돈이 들어갈 자리는 투자자산이다.** 하나도 없으면(전월세보증금만
         // 있는 초기 상태 등) 빈 덩어리를 만들어 둔다. 이게 없으면 적립이 고정
         // 덩어리로 들어가 0% 로 굴러간다.
         var resolved = buckets
@@ -347,7 +347,7 @@ public enum Projection {
 
                 balances[inflowIndex] += event
 
-                // **투자자산부터 꺼낸다.** 전세보증금은 꺼내 쓸 수 있는 돈이
+                // **투자자산부터 꺼낸다.** 전월세보증금은 꺼내 쓸 수 있는 돈이
                 // 아니므로 마지막이다. 전부 비면 그 달이 고갈 시점이다.
                 var remaining = withdrawal
                 for index in order where remaining.minorUnits > 0 {

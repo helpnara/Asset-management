@@ -76,7 +76,7 @@ struct FamilyAllocationView: View {
                     Spacer(minLength: 6)
                     WeightLabel(slice: slice, hidesNoTarget: true)
                     Stepper("", value: binding(dimension, key: key(for: slice, in: dimension)),
-                            in: 0...10_000, step: 250)
+                            in: 0...10_000, step: 100)
                         .labelsHidden()
                 }
             }
@@ -104,7 +104,7 @@ struct FamilyAllocationView: View {
         // 아직 하나도 안 적었으면 다그치지 않는다. 목표는 선택이다.
         let tone: Color = sum == 0 ? .faint : (sum == 10_000 ? .gain : .loss)
         return Text(sum == 0 ? "목표 없음"
-                    : "목표 합 \(PercentFormatter.oneDecimal(Decimal(sum) / 10_000))%")
+                    : "목표 합 \(PercentFormatter.integer(Decimal(sum) / 10_000))%")
             .font(.figure(10, weight: sum == 10_000 || sum == 0 ? .regular : .semibold))
             .foregroundStyle(tone)
     }

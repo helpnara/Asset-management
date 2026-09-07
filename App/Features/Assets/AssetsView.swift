@@ -183,7 +183,7 @@ struct AssetsView: View {
             Text(signedAmount(total, false))
                 .font(.figure(12, weight: .semibold))
                 .foregroundStyle(Color.ink)
-            if let share = familyShare(total) {
+            if let share = familyShare(member) {
                 Text(share)
                     .font(.figure(10))
                     .foregroundStyle(Color.faint)
@@ -300,11 +300,15 @@ struct AssetsView: View {
     }
 
     /// 이 계좌가 주인의 자산에서 차지하는 몫.
+    ///
+    /// **정수로 적되 같은 사람의 계좌 합이 100 이 되어야** 한다. 그래서 줄마다
+    /// 따로 반올림하지 않고 `accountSlices` 가 최대잔여법으로 맞춰 둔 값을
+    /// 꺼내 쓴다 (docs/08-feedback.md 18번).
     private func memberShare(of account: Account) -> String? {
         guard !account.kind.isLiability, let owner = account.owner else { return nil }
-        let total = owner.assetTotalMinor
-        guard total > 0, account.totalMinor > 0 else { return nil }
-        return "\(PercentFormatter.oneDecimal(Decimal(account.totalMinor) / Decimal(total)))%"
+        guard let slice = owner.accountSlices.first(where: { $0.label == account.weightLabel })
+        else { return nil }
+        return "\(slice.actualPercent)%"
     }
 
     // MARK: - 접기 · 펼치기
@@ -344,11 +348,17 @@ struct AssetsView: View {
         members.reduce(0) { $0 + memberTotal($1) }
     }
 
-    /// 가족 안에서 이 사람이 차지하는 비중. 합계가 0이거나 음수면 적지 않는다.
-    private func familyShare(_ total: Int) -> String? {
-        guard familyTotal > 0, total > 0 else { return nil }
-        let fraction = Decimal(total) / Decimal(familyTotal)
-        return "\(PercentFormatter.oneDecimal(fraction))%"
+    /// 가족 안에서 이 사람이 차지하는 비중. 여기도 합이 100 이 되게 맞춘 값을 쓴다.
+    private func familyShare(_ member: Member) -> String? {
+        guard let slice = memberSlices.first(where: {
+            $0.label == (member.name.isEmpty ? "이름 없음" : member.name)
+        }) else { return nil }
+        return "\(slice.actualPercent)%"
+    }
+
+    /// 한 번만 계산해서 여러 줄이 나눠 쓴다.
+    private var memberSlices: [Allocation.Slice] {
+        FamilyAllocation.memberSlices(members)
     }
 
     private func holdingRow(_ holding: Holding) -> some View {
@@ -435,7 +445,7 @@ struct AssetsView: View {
 
     private func addHolding(to account: Account) {
         // 점검 주기는 계좌 종류가 정해 준다. 새 종목이 무조건 `매주` 라서
-        // 전세보증금까지 매주 물어봤다 (docs/08-feedback.md 의 Claude 질문 1).
+        // 전월세보증금까지 매주 물어봤다 (docs/08-feedback.md 의 Claude 질문 1).
         let holding = Holding(name: "", cadence: account.kind.defaultCadence,
                               account: account, sortIndex: account.sortedHoldings.count)
         context.insert(holding)

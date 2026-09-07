@@ -175,7 +175,7 @@ struct AccountEditView: View {
             return "부채 계좌입니다. 총자산에서 뺍니다."
         }
         if !account.kind.countsAsInvestable {
-            return "자산에는 넣지만 '투자자산 합계'와 국가 비중에서는 뺍니다. 전세보증금·부동산·받을 돈이 여기 해당합니다."
+            return "자산에는 넣지만 '투자자산 합계'와 국가 비중에서는 뺍니다. 전월세보증금·부동산·받을 돈이 여기 해당합니다."
         }
         return "투자자산으로 셉니다."
     }
@@ -205,7 +205,7 @@ struct AccountEditView: View {
         case .realEstate:
             return "부동산은 계획의 부동산 상승률을 따릅니다."
         case .fixed:
-            return "전세보증금·받을 돈은 **자라지 않는 돈**으로 봅니다. 궤적에서 명목 그대로 남습니다."
+            return "전월세보증금·받을 돈은 **자라지 않는 돈**으로 봅니다. 궤적에서 명목 그대로 남습니다."
         }
     }
 }
@@ -314,7 +314,7 @@ struct HoldingEditView: View {
         switch holding.cadence {
         case .weekly: return "매주 토요일 점검에서 물어봅니다."
         case .monthly: return "월 1회만 물어봅니다. 연금보험 해지환급금처럼 자주 안 바뀌는 항목에 씁니다."
-        case .fixed: return "주간 점검에서 건너뜁니다. 전세보증금처럼 값이 고정된 항목에 씁니다."
+        case .fixed: return "주간 점검에서 건너뜁니다. 전월세보증금처럼 값이 고정된 항목에 씁니다."
         }
     }
 }

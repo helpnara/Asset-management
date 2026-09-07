@@ -50,14 +50,16 @@ final class Plan {
     var monthlyIncomeMinor: Int = 0
     /// 최소 저축률. 1000 = 10%.
     var savingsFloorBP: Int = 1_000
-    /// 부동산 · 전세보증금 비중 상한. 3500 = 35%.
+    /// 부동산 · 전월세보증금 비중 상한. 3500 = 35%.
     var illiquidCapBP: Int = 3_500
     /// 미국 목표 비중. 6000 = 60%.
-    var usTargetBP: Int = 6_000
+    var usTargetBP: Int = 5_000
     /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
     var mixToleranceBP: Int = 500
     /// 목표 비중 허용 오차 — 절대(퍼센트포인트). 기본 5%p.
-    var driftToleranceBP: Int = 500
+    /// 목표 비중 허용 오차 (퍼센트포인트). 기본 ±3%p — 목표 20%인 종목은
+    /// 17~23% 안이면 지키는 것으로 본다 (docs/08-feedback.md 20번).
+    var driftToleranceBP: Int = 300
     /// 목표 비중 허용 오차 — 상대(목표 대비). 기본 25%.
     /// 목표가 작은 종목에 절대값만 쓰면 영영 안 걸린다.
     var driftRelativeBP: Int = 2_500
@@ -73,11 +75,16 @@ final class Plan {
     var horizonYear: Int = Calendar.current.component(.year, from: .now) + 23 + 35
 
     var createdAt: Date = Date.now
+    /// 마지막으로 고친 때. 계획은 한 번 세우고 계속 다듬는 것이라, 제목보다
+    /// **언제 갱신했는지**가 알고 싶은 값이다 (docs/08-feedback.md 21번).
+    ///
+    /// `touch()` 로 찍는다. 화면이 값을 바꿀 때마다 부른다.
+    var updatedAt: Date?
 
     init() {}
 }
 
-/// 특정 시점의 큰 자금 이동. 전세보증금 전환, 퇴직금 유입, 주택 구입.
+/// 특정 시점의 큰 자금 이동. 전월세보증금 전환, 퇴직금 유입, 주택 구입.
 @Model
 final class CashEvent {
     var id: UUID = UUID()
@@ -155,10 +162,33 @@ extension Plan {
     var usTarget: Ratio { Ratio(basisPoints: usTargetBP) }
     var mixTolerance: Ratio { Ratio(basisPoints: mixToleranceBP) }
 
-    /// 목표 비중 판정 기준.
+    /// 목표 비중 판정 기준. 퍼센트포인트 하나다.
     var driftTolerance: Allocation.Tolerance {
-        Allocation.Tolerance(absolute: Ratio(basisPoints: driftToleranceBP),
-                             relative: Ratio(basisPoints: driftRelativeBP))
+        Allocation.Tolerance(absolute: Ratio(basisPoints: driftToleranceBP))
+    }
+
+    /// 계획에서 사람이 고칠 수 있는 값들을 한 줄로 묶은 지문.
+    ///
+    /// 화면이 이걸 지켜보다 달라지면 `touch()` 를 부른다. 필드마다 `onChange`
+    /// 를 붙이면 스무 개가 되고, 하나 빠뜨려도 티가 안 난다.
+    var editFingerprint: String {
+        [startYear, retirementYear, horizonYear, monthlyContributionMinor,
+         contributionGrowthBP, annualReturnBP, inflationBP, lowYieldReturnBP,
+         realEstateReturnBP, targetAmountMinor, monthlySpendingMinor,
+         withdrawalRateBP, monthlyIncomeMinor, savingsFloorBP, illiquidCapBP,
+         usTargetBP, mixToleranceBP, driftToleranceBP,
+         usesMemberContributions ? 1 : 0]
+            .map(String.init).joined(separator: "-")
+        + "|\(title)|\(asOfNote)|\(declaration)|\(startedOn?.timeIntervalSince1970 ?? 0)"
+    }
+
+    /// 계획을 고친 시각을 찍는다. **값이 실제로 달라졌을 때만** 찍어야
+    /// 화면을 열기만 해도 날짜가 바뀌는 일이 없다.
+    func touch() {
+        let now = Date.now
+        // 같은 편집 흐름에서 여러 번 불려도 초 단위로 뭉갠다.
+        if let updatedAt, now.timeIntervalSince(updatedAt) < 1 { return }
+        updatedAt = now
     }
     var monthlySpending: Money { Money(minorUnits: monthlySpendingMinor, currency: .krw) }
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
@@ -240,7 +270,7 @@ extension Plan {
 
     /// 순자산을 **자라는 속도별로 나눈다.**
     ///
-    /// 예전에는 순자산 전액을 연 8% 로 굴렸다. 그래서 전세보증금 2억이 23년 뒤
+    /// 예전에는 순자산 전액을 연 8% 로 굴렸다. 그래서 전월세보증금 2억이 23년 뒤
     /// 궤적에서 11.8억이 됐다 — 실제로는 2억 그대로인 돈인데도
     /// (docs/08-feedback.md 11번).
     ///
@@ -272,7 +302,7 @@ extension Plan {
             }
 
         // 적립과 목돈이 들어갈 자리가 반드시 있어야 한다. 투자자산이 하나도
-        // 없으면(전세보증금만 있는 초기 상태 등) 빈 덩어리를 만들어 둔다.
+        // 없으면(전월세보증금만 있는 초기 상태 등) 빈 덩어리를 만들어 둔다.
         if !buckets.contains(where: { $0.profile == .investment }) {
             buckets.insert(BalanceBucket(profile: .investment, amount: .zero(.krw),
                                          annualReturn: annualReturn), at: 0)
@@ -320,7 +350,7 @@ extension Plan {
         // 인출 구간까지 그리기 시작하면서 끝값이 은퇴 후 30년 뒤 잔고가 됐다.
         let atRetirement = projection?.point(inYear: retirementYear, calendar: calendar)?.nominal
             ?? projection?.last?.nominal
-        // 부동산 · 전세보증금 = 자산 − 투자자산.
+        // 부동산 · 전월세보증금 = 자산 − 투자자산.
         // countsAsInvestable 이 false 인 것들이 정확히 이 몫이다.
         let illiquid = rollup.assets - rollup.investable
         let year = calendar.component(.year, from: .now)

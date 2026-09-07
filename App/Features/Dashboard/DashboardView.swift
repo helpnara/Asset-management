@@ -393,7 +393,7 @@ struct DashboardView: View {
         var line = "이대로 가면 \(String(plan.retirementYear))년에 \(nominal) · 오늘 돈으로 \(real)"
         if plan.targetAmountMinor > 0 {
             let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
-            line += " · 목표의 \(PercentFormatter.oneDecimal(ratio))%"
+            line += " · 목표의 \(PercentFormatter.integer(ratio))%"
         }
         if let depletion = projection?.depletion {
             line += " · \(String(Calendar.current.component(.year, from: depletion)))년 고갈"
@@ -519,10 +519,13 @@ struct DashboardView: View {
         let usa = rollup.countryShare("US")
         if let korea, let usa, !rollup.investable.isZero {
             VStack(spacing: 7) {
+                // 둘을 함께 반올림해 합이 100 이 되게 한다. 따로 반올림하면
+                // `한국 30 / 미국 71` 같은 줄이 나온다.
                 HStack {
-                    Text("한국 \(PercentFormatter.oneDecimal(korea))")
+                    let split = Allocation.integerPercents([korea, usa])
+                    Text("한국 \(split[0])")
                     Spacer()
-                    Text("미국 \(PercentFormatter.oneDecimal(usa))")
+                    Text("미국 \(split[1])")
                 }
                 .font(.system(size: 10.5))
                 .foregroundStyle(Color.muted)

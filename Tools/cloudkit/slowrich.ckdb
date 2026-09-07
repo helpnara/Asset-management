@@ -227,6 +227,7 @@ DEFINE SCHEMA
         CD_usesMemberContributions INT64,
         CD_horizonYear INT64,
         CD_createdAt TIMESTAMP,
+        CD_updatedAt TIMESTAMP,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"

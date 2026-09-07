@@ -29,7 +29,7 @@ public enum AccountKind: String, Codable, Sendable, CaseIterable, Identifiable {
     case retirementPension  // 퇴직연금
     case insurance          // 연금보험 — 해지환급금 기준
     case deposit            // 예적금 · 현금
-    case leaseDeposit       // 전세보증금
+    case leaseDeposit       // 전월세보증금
     case realEstate
     case loan               // 부채
     case receivable         // 받을 돈 — 지인에게 빌려준 돈. `loan` 의 거울상이다
@@ -46,7 +46,7 @@ public enum AccountKind: String, Codable, Sendable, CaseIterable, Identifiable {
         case .retirementPension: return "퇴직연금"
         case .insurance: return "연금보험"
         case .deposit: return "예적금 · 현금"
-        case .leaseDeposit: return "전세보증금"
+        case .leaseDeposit: return "전월세보증금"
         case .realEstate: return "부동산"
         case .loan: return "대출"
         case .receivable: return "받을 돈"
@@ -59,7 +59,7 @@ public enum AccountKind: String, Codable, Sendable, CaseIterable, Identifiable {
 
     /// 투자자산으로 셀 것인가.
     ///
-    /// 전세보증금·부동산은 자산이지만 "투자자산 합계"에서는 빼고 센다.
+    /// 전월세보증금·부동산은 자산이지만 "투자자산 합계"에서는 빼고 센다.
     /// 1페이지가 투자자산과 총자산을 나눠 적는 것과 같은 이유다.
     public var countsAsInvestable: Bool {
         switch self {
@@ -80,18 +80,18 @@ public enum AccountKind: String, Codable, Sendable, CaseIterable, Identifiable {
 /// 이 돈이 어떤 속도로 자라는가.
 ///
 /// 예전에는 **순자산 전액**을 계획의 기대수익률(연 8%)로 굴렸다. 그래서
-/// 전세보증금 2억이 23년 뒤 궤적에서 11.8억이 됐다 — 실제로는 2억 그대로인
+/// 전월세보증금 2억이 23년 뒤 궤적에서 11.8억이 됐다 — 실제로는 2억 그대로인
 /// 돈인데도 그랬다 (docs/08-feedback.md 11번).
 ///
 /// 인출 순서도 이 프로필이 정한다. 생활비는 **투자자산에서 먼저** 꺼낸다.
-/// 전세보증금은 꺼내 쓸 수 있는 돈이 아니므로 마지막이다.
+/// 전월세보증금은 꺼내 쓸 수 있는 돈이 아니므로 마지막이다.
 public enum ReturnProfile: String, Codable, Sendable, CaseIterable, Identifiable {
     /// 계획의 기대수익률로 굴린다. 적립과 목돈이 들어오는 곳도 여기다.
     case investment
     /// 이자는 붙지만 투자 수익률과는 다른 세계. 예적금·연금보험.
     case lowYield
     case realEstate
-    /// 명목 그대로. 전세보증금·받을 돈처럼 자라지 않는 돈.
+    /// 명목 그대로. 전월세보증금·받을 돈처럼 자라지 않는 돈.
     case fixed
 
     public var id: String { rawValue }
@@ -133,7 +133,7 @@ public extension AccountKind {
 
     /// 주간 점검에서 얼마나 자주 물어볼 것인가의 기본값.
     ///
-    /// 새 계좌가 무조건 `매주` 라서 전세보증금까지 매주 물어봤다.
+    /// 새 계좌가 무조건 `매주` 라서 전월세보증금까지 매주 물어봤다.
     /// 종류를 고르면 주기가 따라오게 하고, 필요하면 사람이 바꾼다.
     var defaultCadence: EntryCadence {
         switch self {
@@ -154,11 +154,14 @@ public enum AssetClass: String, Codable, Sendable, CaseIterable, Identifiable {
     /// "기타" 로 뭉개진다 (docs/08-feedback.md 7번).
     case commodity
     case realEstate
-    /// 전세보증금. `realEstate` 에 섞으면 "집을 얼마나 갖고 있나" 와
+    /// 전월세보증금. `realEstate` 에 섞으면 "집을 얼마나 갖고 있나" 와
     /// "돌려받을 보증금이 얼마인가" 가 한 칸이 된다 — 성격이 다른 돈이다
     /// (docs/08-feedback.md 14번).
     case leaseDeposit
     case insurance
+    /// 남에게 빌려준 돈. 자산군 도넛에서 `other` 로 뭉개지면 안 된다 —
+    /// 성격이 뚜렷하고 회수 시점이 따로 있는 돈이다 (docs/08-feedback.md 19번).
+    case receivable
     case other
 
     public var id: String { rawValue }
@@ -172,8 +175,9 @@ public enum AssetClass: String, Codable, Sendable, CaseIterable, Identifiable {
         case .crypto: return "암호화폐"
         case .commodity: return "금 · 원자재"
         case .realEstate: return "부동산"
-        case .leaseDeposit: return "전세보증금"
+        case .leaseDeposit: return "전월세보증금"
         case .insurance: return "보험"
+        case .receivable: return "받을 돈"
         case .other: return "기타"
         }
     }
@@ -227,7 +231,7 @@ public enum HoldingStatus: String, Codable, Sendable, CaseIterable, Identifiable
 public enum EntryCadence: String, Codable, Sendable, CaseIterable, Identifiable {
     case weekly     // 매주
     case monthly    // 월 1회 — 연금보험 해지환급금 등
-    case fixed      // 고정 — 전세보증금처럼 잘 안 바뀌는 것. 점검에서 건너뛴다
+    case fixed      // 고정 — 전월세보증금처럼 잘 안 바뀌는 것. 점검에서 건너뛴다
 
     public var id: String { rawValue }
 
@@ -243,7 +247,7 @@ public enum EntryCadence: String, Codable, Sendable, CaseIterable, Identifiable 
 /// 상장 국가를 묶은 지역. 가족 전체 자산의 **미국 · 한국 비중**을 볼 때 쓴다
 /// (docs/08-feedback.md 15번).
 ///
-/// 상장 종목이 아닌 것(부동산 · 전세보증금 · 예적금 · 보험)은 `listingCountryCode`
+/// 상장 종목이 아닌 것(부동산 · 전월세보증금 · 예적금 · 보험)은 `listingCountryCode`
 /// 가 `"KR"` 이라 한국으로 잡힌다. 실제로 그 돈은 한국에 있으니 맞다.
 public enum Region: String, Codable, Sendable, CaseIterable, Identifiable {
     case korea

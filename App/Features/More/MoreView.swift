@@ -26,6 +26,7 @@ struct MoreView: View {
         case milestones
         case security
         case export
+        case onePagerSettings
     }
 
     var body: some View {
@@ -57,6 +58,9 @@ struct MoreView: View {
                     }
                     NavigationLink(value: Destination.milestones) {
                         Label("내 마일스톤", systemImage: "flag")
+                    }
+                    NavigationLink(value: Destination.onePagerSettings) {
+                        Label("1페이지 문서", systemImage: "text.document")
                     }
                     NavigationLink(value: Destination.export) {
                         Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
@@ -96,6 +100,7 @@ struct MoreView: View {
                 case .principles: PrincipleListView()
                 case .security: SecuritySettingsView()
                 case .export: ExportView()
+                case .onePagerSettings: OnePagerSettingsView()
                 }
             }
         }

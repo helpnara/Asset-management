@@ -21,7 +21,7 @@ enum SampleData {
                               taxResidency: .usa, colorIndex: 3, sortIndex: 3)
         [dad, mom, son, daughter].forEach(context.insert)
 
-        // 아빠 — 일반 위탁 · 연금보험 · 전세보증금 · 마이너스통장
+        // 아빠 — 일반 위탁 · 연금보험 · 전월세보증금 · 마이너스통장
         let dadBrokerage = account("종합계좌", "증권사 A", .general, dad, 0, context)
         holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 48_200_000, dadBrokerage, 0, context, targetBP: 4_000)
         holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly, 26_400_000, dadBrokerage, 1, context, targetBP: 4_000)
@@ -43,10 +43,19 @@ enum SampleData {
         dadIRP.annualContributionMinor = 1_800_000
         holding("채권 혼합형", .bond, .fund, "KR", .accumulating, .monthly, 18_500_000, dadIRP, 0, context)
 
-        let dadLease = account("전세보증금", "", .leaseDeposit, dad, 4, context)
+        // 받을 돈 — 종목 자리에 빌려준 사람들이 늘어선다. 비중·목표가 없는
+        // 것이 맞는 계좌라, 예외 처리가 화면에 찍히는지 보려고 넣어 둔다
+        // (docs/08-feedback.md 19번).
+        let dadLent = account("받을 돈", "", .receivable, dad, 4, context)
+        holding("지인 A", .receivable, .other, "KR", .accumulating, .fixed,
+                5_000_000, dadLent, 0, context)
+        holding("지인 B", .receivable, .other, "KR", .accumulating, .fixed,
+                3_000_000, dadLent, 1, context)
+
+        let dadLease = account("전월세보증금", "", .leaseDeposit, dad, 5, context)
         holding("보증금", .leaseDeposit, .physical, "KR", .accumulating, .fixed, 100_000_000, dadLease, 0, context)
 
-        let dadLoan = account("마이너스통장", "은행 C", .loan, dad, 5, context)
+        let dadLoan = account("마이너스통장", "은행 C", .loan, dad, 6, context)
         holding("사용액", .cash, .cash, "KR", .accumulating, .weekly, 4_500_000, dadLoan, 0, context)
 
         // 엄마 — 국내 개별주만 (PFIC 회피)
@@ -115,7 +124,7 @@ enum SampleData {
         let calendar = Calendar.current
         let deposit = CashEvent(
             date: calendar.date(byAdding: .month, value: 3, to: .now) ?? .now,
-            label: "전세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
+            label: "전월세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
         )
         context.insert(deposit)
 
