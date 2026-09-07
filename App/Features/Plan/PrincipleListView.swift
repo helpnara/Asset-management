@@ -74,7 +74,15 @@ struct PrincipleListView: View {
                         perform: delete)
         .navigationTitle("운용 원칙")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { if canManageHousehold { EditButton() } }
+        // `.toolbar { if ... }` 로는 못 쓴다. 조건이 붙는 순간 `ViewBuilder` 판과
+        // `ToolbarContentBuilder` 판 중 어느 쪽인지 컴파일러가 못 고른다
+        // ("ambiguous use of 'toolbar(content:)'"). `ToolbarItem` 으로 감싸면
+        // ToolbarContent 로 확정된다.
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if canManageHousehold { EditButton() }
+            }
+        }
         .overlay {
             if principles.isEmpty {
                 VStack(spacing: 10) {
