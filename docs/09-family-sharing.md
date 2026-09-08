@@ -605,3 +605,100 @@ let key = Key(profile: profile,
 
 ⚠️ **그 빌드를 깔기 전에 백업을 먼저 받으세요.** 더보기 → 내보내기.
 저장소 파일을 그대로 이어받는 이전이라 되돌릴 곳이 필요합니다.
+
+## 1c 에서 걸린 것 — **동기화만 안 붙었다**
+
+기기에서 확인한 결과 1·2·4·5 는 되는데 3번만 안 됐다:
+
+> 저장 방식 — **이 기기에만 저장**
+> iCloud를 붙이지 못했습니다. 기록은 이 기기에만 있고…
+
+### 먼저 이유를 볼 수 있게 만들었다
+
+`Mode.localOnly(reason:)` 이 실패 이유를 **처음부터 들고 있었는데 화면에
+안 내놓고 있었다.** 맥이 없어 디버거를 못 붙이는 이 저장소에서 유일한 길이
+"화면에 띄우고 사용자가 읽어 주는 것" 인데, 그 길이 막혀 있었다.
+
+추측으로 빌드를 태우지 않고 셋을 넣었다:
+
+1. 이유를 동기화 화면에 그대로 (길게 눌러 복사됨)
+2. `NSError` 를 펴서 `NSLocalizedFailureReason` 까지 —
+   `String(describing:)` 은 정작 필요한 그 줄을 뭉갠다
+3. **빈 저장소 탐침** — 실패한 뒤 임시 빈 파일로 한 번 더 열어 본다.
+   그것도 실패하면 자격·모델 문제, 그것만 되면 쓰던 파일이 문제다
+
+그 전에 무죄부터 가려냈다. 엔타이틀먼트는 빌드 24 IPA 에
+`icloud-container-environment=Production` 까지 다 박혀 있었고, 모델도
+유니크 제약 0 · 순서 있는 관계 0 · 관계 전부 옵셔널 · 타입은
+Bool/Date/Int64/String/UUID 뿐이었다.
+
+### 답 — **필수 UUID 열여섯 개**
+
+```
+NSCocoaErrorDomain 134060
+CloudKit integration requires that all attributes be optional, or have a
+default value set. The following attributes are marked non-optional but do
+not have a default value:
+  Account: id · CashEvent: id · … · SnapshotLine: memberID · (16개)
+
+빈 저장소로도 iCloud 를 못 붙였습니다 — 파일 탓이 아닙니다: (같은 오류)
+```
+
+탐침이 "파일 탓이 아니다" 까지 한 번에 답했다.
+
+**그런데 파일에는 열여섯 곳 모두 기본값이 적혀 있다:**
+
+```xml
+<attribute name="id" attributeType="UUID"
+           defaultValueString="00000000-0000-0000-0000-000000000000"/>
+```
+
+**Core Data 는 UUID 속성에서 그 글자를 읽지 않는다.** Xcode 모델 편집기가
+UUID 에 기본값 칸을 아예 안 내주는 것과 같은 이유다. 런타임의
+`attribute.defaultValue` 는 `nil` 이고, CloudKit 은 그걸 본다.
+`momc` 도 통과시킨다 — **파일에는 있고 런타임에는 없다.**
+
+### 옵셔널로 돌리는 길은 못 쓴다
+
+그게 첫 생각이었는데, **옵셔널 여부는 판본 해시에 들어간다.** 열여섯 곳을
+옵셔널로 돌리면 해시가 달라지고 쓰던 저장소가 안 열린다 — 앱은 멀쩡히 뜨고
+화면만 비는, 이 이전에서 제일 무서운 실패다.
+
+**기본값은 해시에 안 들어간다.** 그래서 코드로 심는다
+(`App/Persistence/ModelDefaults.swift`). SwiftData 가 이걸 어떻게 넘겼는지도
+이제 설명이 된다 — 모델을 **코드로 만들어서** 심을 수 있었던 것이다.
+
+### 심판을 세웠더니 한 시간 만에 값했다
+
+파일 검사도 `momc` 도 못 잡는 종류라, **컴파일된 모델을 진짜 Core Data 로
+열어** 묻는 검사기를 만들었다 (`Tools/coredata/check-cloudkit-model.swift`).
+리눅스에서는 못 하는 일이라 macOS 러너에서만 돈다. 앱이 쓰는
+`ModelDefaults` 를 **같이 컴파일해서 그대로 부른다** — 흉내 내면 둘이
+어긋나는 날이 온다.
+
+세운 지 한 시간도 안 돼서 첫 고침을 잡았다:
+
+```
+NSInternalInconsistencyException: 'Can't modify an immutable model.'
+  -[NSAttributeDescription setDefaultValue:]
+```
+
+**컴파일된 `.momd` 에서 읽은 모델은 못 고친다.** 그대로 배포했으면 기기에서
+앱이 뜨자마자 죽었다. `byMerging:` 으로 옮겨 담고 나서 심는다 — `copy()` 는
+변경 불가 객체가 자기 자신을 돌려주는 흔한 최적화 때문에 안 쓴다.
+
+검사기에 하나 더 물렸다: **옮겨 담은 뒤 판본 해시가 그대로인가.** 해시에
+기본값이 안 들어간다는 것은 알지만, **그 믿음에 사용자의 기록을 걸지 않는다.**
+
+### 남는 교훈
+
+| 심판 | 잡는 것 | 못 잡는 것 |
+|---|---|---|
+| `check-model-matches-ckdb.py` | 세 파일이 서로 맞는지 | 파일에 적혀도 런타임이 안 읽는 것 |
+| `momc` (컴파일) | 모델 문법 | 같음 |
+| **`check-cloudkit-model.swift`** | **런타임이 실제로 보는 것** | 기기에서만 나는 것(자격·계정) |
+| 기기 + 화면에 띄운 이유 | 나머지 전부 | — |
+
+**아래로 갈수록 한 바퀴가 비싸다.** 그래서 위에서 잡을 수 있는 것을
+아래로 흘려보내지 않는 것이 이 저장소의 규칙이고, 이번에 그 사다리에
+한 칸이 비어 있었다.
