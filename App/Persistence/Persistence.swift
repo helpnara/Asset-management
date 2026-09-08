@@ -130,6 +130,8 @@ enum Persistence {
     /// 다른 기기에서 이미 확정된 값을 이 기기의 낡은 값으로 덮지 않는다.
     private static func configure(_ context: NSManagedObjectContext) {
         context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
+        // 전역 `var NSMergeByPropertyStoreTrumpMergePolicy` 는 Swift 6 에서
+        // "not concurrency-safe" 로 막힌다. 같은 정책을 값으로 만든다.
+        context.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
     }
 }

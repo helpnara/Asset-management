@@ -9,7 +9,10 @@ import CoreData
 import Foundation
 
 @objc(ChangeLog)
-public class ChangeLog: NSManagedObject {
+/// `Identifiable` 은 손으로 붙인다. SwiftData 의 `@Model` 은 거저 줬지만
+/// `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
+/// 엔티티마다 `id: UUID` 가 있으므로 준수는 자동으로 합성된다.
+public class ChangeLog: NSManagedObject, Identifiable {
 
     /// 모델의 기본값은 **자리 채우기**다 (`00000000-…` · 2001-01-01).
     /// 진짜 값은 여기서 넣는다 — 안 그러면 모든 행의 id 가 같아진다.

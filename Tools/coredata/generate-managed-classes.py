@@ -190,9 +190,14 @@ def class_file(entity, body, class_names):
     }}
 """
     # `final` 을 붙이지 않는다. Core Data 가 런타임에 하위 클래스를 만들 수 있다.
+    # `Identifiable` 은 손으로 붙여야 한다. SwiftData 의 `@Model` 은 거저 줬지만
+    # `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
     return f"""{HEADER}
+/// `Identifiable` 은 손으로 붙인다. SwiftData 의 `@Model` 은 거저 줬지만
+/// `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
+/// 엔티티마다 `id: UUID` 가 있으므로 준수는 자동으로 합성된다.
 @objc({entity})
-public class {entity}: NSManagedObject {{
+public class {entity}: NSManagedObject, Identifiable {{
 {awake}}}
 """
 
