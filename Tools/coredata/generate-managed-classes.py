@@ -197,7 +197,9 @@ def class_file(entity, body, class_names):
     #   in public protocol 'Identifiable'
     # `Identifiable` 은 손으로 붙여야 한다. SwiftData 의 `@Model` 은 거저 줬지만
     # `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
-    return f"""{HEADER}
+    # `import Core` 를 붙인다 — 열거형 기본값(`AccountKind.general.rawValue` 등)이
+    # 그 패키지에 있다.
+    return f"""{HEADER.replace("import CoreData", "import Core\nimport CoreData", 1)}
 /// `Identifiable` 은 손으로 붙인다. SwiftData 의 `@Model` 은 거저 줬지만
 /// `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
 /// 엔티티마다 `id: UUID` 가 있으므로 준수는 자동으로 합성된다.
