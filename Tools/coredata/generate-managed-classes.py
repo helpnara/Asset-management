@@ -184,12 +184,17 @@ def class_file(entity, body, class_names):
         awake = f"""
     /// 모델의 기본값은 **자리 채우기**다 (`00000000-…` · 2001-01-01).
     /// 진짜 값은 여기서 넣는다 — 안 그러면 모든 행의 id 가 같아진다.
-    public override func awakeFromInsert() {{
+    override func awakeFromInsert() {{
         super.awakeFromInsert()
 {body_lines}
     }}
 """
     # `final` 을 붙이지 않는다. Core Data 가 런타임에 하위 클래스를 만들 수 있다.
+    #
+    # **`public` 도 붙이지 않는다.** 앱이 타깃 하나라 얻는 것이 없고, 붙이면
+    # `@NSManaged var id` 가 internal 이라 `Identifiable` 준수에서 막힌다:
+    #   property 'id' must be declared public because it matches a requirement
+    #   in public protocol 'Identifiable'
     # `Identifiable` 은 손으로 붙여야 한다. SwiftData 의 `@Model` 은 거저 줬지만
     # `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
     return f"""{HEADER}
@@ -197,7 +202,7 @@ def class_file(entity, body, class_names):
 /// `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
 /// 엔티티마다 `id: UUID` 가 있으므로 준수는 자동으로 합성된다.
 @objc({entity})
-public class {entity}: NSManagedObject, Identifiable {{
+class {entity}: NSManagedObject, Identifiable {{
 {awake}}}
 """
 
