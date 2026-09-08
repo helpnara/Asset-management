@@ -82,11 +82,15 @@ App Store Connect → 앱 → **App 개인정보 보호** → **시작하기**
 `PrivacyInfo.xcprivacy` 도 같은 내용으로 이미 들어 있습니다
 (`NSPrivacyTracking: false`, 수집 항목 없음, UserDefaults 사용 사유 `CA92.1`).
 
-**이 파일에는 XML 주석을 넣지 않는다 (2026-09-09).** 주석과 빈
-`NSPrivacyTrackingDomains` 를 넣은 채 올렸더니 베타 앱 심사에서
-`ITMS-91056: Invalid privacy manifest` 메일이 왔다. 로컬 plist 파서는 통과하지만
-애플 쪽 검사기는 더 엄격하다. 설명은 여기 문서에 적고, 파일은 값만 둔다.
-`NSPrivacyTrackingDomains` 는 `NSPrivacyTracking` 이 true 일 때만 필요하다.
+**키 이름은 Xcode 의 정의 파일과 대조한다 (2026-09-09).** 사유 배열의 키를
+`NSPrivacyAccessedAPIReasons` 라고 적어 두 빌드(24 · 37)가 베타 앱 심사에서
+`ITMS-91056: Invalid privacy manifest` 로 돌아왔다. 맞는 이름은
+`NSPrivacyAccessedAPITypeReasons` 다. `plutil` 은 키 이름을 모르니 통과시키고,
+`altool --validate-app` 도 이 검사를 안 한다 — 올린 뒤 메일로만 알 수 있다.
+그래서 `Tools/privacy/check-privacy-manifest.py` 가 Xcode 26.6 의 정의
+(`DVTCorePlistStructDefs.xcplugindata`)에서 옮겨 적은 허용 목록으로 키·값을
+대조하고, CI 가 매번 돌린다. 처음엔 주석 탓으로 짚고 한 빌드를 더 썼다 —
+**"파일이 이상하다" 는 메일에는 추측 대신 정의 파일을 찾는다.**
 
 ## 3-1단계 · 앱 아이콘
 
