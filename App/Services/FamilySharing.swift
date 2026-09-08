@@ -43,24 +43,9 @@ final class FamilySharing {
 
     private init() {}
 
-    /// 오류를 코드까지 펴서 적는다. `CKError` 는 코드가 곧 원인이다.
+    /// 오류를 **가장 안쪽 이유까지** 펴서 적는다 (`CloudKitErrorText`).
     func record(_ error: Error, while step: String) {
-        let ns = error as NSError
-        var lines = ["\(step): \(ns.domain) \(ns.code)"]
-        if let reason = ns.localizedFailureReason { lines.append(reason) }
-        lines.append(ns.localizedDescription)
-        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
-            lines.append("바탕: \(underlying.domain) \(underlying.code) "
-                         + underlying.localizedDescription)
-        }
-        // CloudKit 이 레코드마다 다른 이유를 줄 때가 있다. 그게 진짜 답이다.
-        if let perItem = ns.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
-            for (_, item) in perItem.prefix(3) {
-                let e = item as NSError
-                lines.append("항목: \(e.domain) \(e.code) \(e.localizedDescription)")
-            }
-        }
-        lastFailure = lines.joined(separator: "\n")
+        lastFailure = "\(step)\n" + CloudKitErrorText.describe(error)
     }
 
     private var cloudContainer: NSPersistentCloudKitContainer? {

@@ -93,23 +93,6 @@ final class CloudKitSyncMonitor {
     /// 사람이 읽을 수 있게 줄인다. **스키마가 없는 경우를 콕 집어 알려 준다** —
     /// 이 앱에서 실제로 마주칠 가능성이 가장 큰 실패이기 때문이다.
     static func describe(_ error: Error) -> String {
-        let ck = error as? CKError
-            ?? (error as NSError).userInfo[NSUnderlyingErrorKey] as? CKError
-        if let ck {
-            switch ck.code {
-            case .invalidArguments:
-                // "Cannot create new type ... in production schema"
-                return "CloudKit Production 스키마에 레코드 타입이 없습니다. 스키마를 배포해야 합니다. (\(ck.localizedDescription))"
-            case .notAuthenticated:
-                return "iCloud에 로그인되어 있지 않습니다."
-            case .quotaExceeded:
-                return "iCloud 저장 공간이 부족합니다."
-            case .networkUnavailable, .networkFailure:
-                return "네트워크에 연결되지 않았습니다."
-            default:
-                return ck.localizedDescription
-            }
-        }
-        return error.localizedDescription
+        CloudKitErrorText.describe(error)
     }
 }

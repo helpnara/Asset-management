@@ -317,9 +317,12 @@ struct SyncStatusSection: View {
                 attemptRow("마지막 내보내기", monitor.lastExport)
                 attemptRow("마지막 가져오기", monitor.lastImport)
                 if let failure = monitor.lastExport?.failure ?? monitor.lastSetup?.failure {
+                    // **길게 눌러 복사된다.** 이 글자가 맥 없는 이 저장소에서
+                    // 유일한 단서다. 복사할 수 없으면 옮겨 적다 틀린다.
                     Text(failure)
                         .font(.system(size: 11))
                         .foregroundStyle(Color.loss)
+                        .textSelection(.enabled)
                 }
             }
             // **못 붙었으면 왜 못 붙었는지 그대로 보여 준다.**
