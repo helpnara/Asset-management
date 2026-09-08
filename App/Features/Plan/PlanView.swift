@@ -70,89 +70,82 @@ struct PlanView: View {
             if !canManageHousehold {
                 Section { ReadOnlyNote(text: "계획의 가정은 관리자만 고칠 수 있습니다.") }
             }
-            // **한 겹으로 잠근다.** 입력 하나하나를 잠그면 스무 곳이 되고, 하나
-            // 빠뜨리면 참가자가 가구 전체의 가정을 조용히 바꿔 놓게 된다.
-            // `Form` 자체에 걸지 않는 이유는 그러면 스크롤까지 멎기 때문이다 —
-            // 읽지도 못하는 화면이 된다. `Group` 은 목록에서 투명해서 구역
-            // 모양을 그대로 두고 안쪽에만 걸린다. (한 Group 은 열 개까지다.)
-            Group {
-                // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
-                // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
-                Section {
-                    DatePicker("최초 계획 수립일",
-                               selection: Binding(get: { plan.startedOn ?? .now },
-                                                  set: { plan.startedOn = $0 }),
-                               displayedComponents: .date)
-                    LabeledContent("마지막 수정") {
-                        Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
-                            .font(.system(size: 13))
-                            .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
-                    }
-                } footer: {
-                    Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 문서**에서 고칩니다.")
+            // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
+            // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
+            Section {
+                DatePicker("최초 계획 수립일",
+                           selection: Binding(get: { plan.startedOn ?? .now },
+                                              set: { plan.startedOn = $0 }),
+                           displayedComponents: .date)
+                    .disabled(!canManageHousehold)
+                LabeledContent("마지막 수정") {
+                    Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
+                        .font(.system(size: 13))
+                        .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
                 }
-
-                Section {
-                    if plan.usesMemberContributions {
-                        LabeledContent("매월 적립 합계") {
-                            Text(Won.abbreviated(
-                                plan.effectiveMonthlyContribution(members: members), suffix: "원"))
-                                .font(.figure(15, weight: .semibold))
-                                .foregroundStyle(Color.ink)
-                        }
-                    } else {
-                        MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
-                    }
-                    percentRow("적립액 연 증가율", $plan.contributionGrowthBP, range: 0...1000, step: 50)
-                    Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
-                } footer: {
-                    Text(plan.usesMemberContributions
-                         ? "아래에서 사람마다 넣습니다. 합계가 궤적에 쓰입니다."
-                         : "가구 전체의 월 적립 합계입니다. 사람마다 나누고 싶으면 위 스위치를 켜세요.")
-                }
-
-                if plan.usesMemberContributions { memberContributionSection }
-
-                Section {
-                    percentRow("연 기대수익률", $plan.annualReturnBP, range: 0...1500, step: 25)
-                    percentRow("물가상승률", $plan.inflationBP, range: 0...800, step: 25)
-                } footer: {
-                    Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
-                }
-
-                Section {
-                    percentRow("예적금 · 연금보험", $plan.lowYieldReturnBP, range: 0...800, step: 10)
-                    percentRow("부동산", $plan.realEstateReturnBP, range: 0...800, step: 25)
-                } header: {
-                    Text("잘 자라지 않는 돈")
-                } footer: {
-                    Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
-                }
-
-                Section("기간") {
-                    Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
-                        // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
-                        // 연도에는 자릿수 구분을 넣지 않는다.
-                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
-                    }
-                    LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
-                }
-
+            } footer: {
+                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 문서**에서 고칩니다.")
             }
-            .disabled(!canManageHousehold)
 
-            Group {
-                Section {
-                    MoneyField(title: "은퇴 목표 금액", minorUnits: $plan.targetAmountMinor)
-                } footer: {
-                    Text("0으로 두면 목표선을 그리지 않습니다.")
+            Section {
+                if plan.usesMemberContributions {
+                    LabeledContent("매월 적립 합계") {
+                        Text(Won.abbreviated(
+                            plan.effectiveMonthlyContribution(members: members), suffix: "원"))
+                            .font(.figure(15, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                    }
+                } else {
+                    MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
+                        .disabled(!canManageHousehold)
                 }
-
-                retirementSection(plan)
-                incomeSection(plan)
-                cashEventSection
+                percentRow("적립액 연 증가율", $plan.contributionGrowthBP, range: 0...1000, step: 50)
+                Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
+                    .disabled(!canManageHousehold)
+            } footer: {
+                Text(plan.usesMemberContributions
+                     ? "아래에서 사람마다 넣습니다. 합계가 궤적에 쓰입니다."
+                     : "가구 전체의 월 적립 합계입니다. 사람마다 나누고 싶으면 위 스위치를 켜세요.")
             }
-            .disabled(!canManageHousehold)
+
+            if plan.usesMemberContributions { memberContributionSection }
+
+            Section {
+                percentRow("연 기대수익률", $plan.annualReturnBP, range: 0...1500, step: 25)
+                percentRow("물가상승률", $plan.inflationBP, range: 0...800, step: 25)
+            } footer: {
+                Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
+            }
+
+            Section {
+                percentRow("예적금 · 연금보험", $plan.lowYieldReturnBP, range: 0...800, step: 10)
+                percentRow("부동산", $plan.realEstateReturnBP, range: 0...800, step: 25)
+            } header: {
+                Text("잘 자라지 않는 돈")
+            } footer: {
+                Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
+            }
+
+            Section("기간") {
+                Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
+                    // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
+                    // 연도에는 자릿수 구분을 넣지 않는다.
+                    Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                }
+                .disabled(!canManageHousehold)
+                LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
+            }
+
+            Section {
+                MoneyField(title: "은퇴 목표 금액", minorUnits: $plan.targetAmountMinor)
+                    .disabled(!canManageHousehold)
+            } footer: {
+                Text("0으로 두면 목표선을 그리지 않습니다.")
+            }
+
+            retirementSection(plan)
+            incomeSection(plan)
+            cashEventSection
 
             // 요약은 잠그지 않는다 — 참가자가 이 화면에서 가장 보고 싶은 것이다.
             Section("이대로 가면") {
@@ -169,6 +162,7 @@ struct PlanView: View {
                 @Bindable var member = member
                 MoneyField(title: member.name.isEmpty ? "이름 없음" : member.name,
                            minorUnits: $member.monthlyContributionMinor)
+                    .disabled(!canManageHousehold)
             }
             if members.isEmpty {
                 Text("자산 탭에서 구성원을 먼저 추가하세요.")
@@ -187,10 +181,12 @@ struct PlanView: View {
         @Bindable var plan = plan
         return Section {
             MoneyField(title: "은퇴 후 월 생활비", minorUnits: $plan.monthlySpendingMinor)
+                .disabled(!canManageHousehold)
             Stepper(value: $plan.horizonYear,
                     in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
                 Text(verbatim: "\(plan.horizonYear)년까지 본다")
             }
+            .disabled(!canManageHousehold)
         } header: {
             Text("은퇴 이후")
         } footer: {
@@ -201,30 +197,12 @@ struct PlanView: View {
     private func incomeSection(_ plan: Plan) -> some View {
         Section {
             ForEach(incomes) { stream in
-                Button {
-                    editingIncome = stream
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(stream.label.isEmpty ? "이름 없음" : stream.label)
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.ink)
-                            HStack(spacing: 5) {
-                                Text(verbatim: stream.endYear > 0
-                                     ? "\(stream.startYear)~\(stream.endYear)년"
-                                     : "\(stream.startYear)년부터 종신")
-                                    .font(.figure(10))
-                                    .foregroundStyle(Color.faint)
-                                if !stream.isInflationLinked {
-                                    StatusBadge(text: "물가 미연동")
-                                }
-                            }
-                        }
-                        Spacer()
-                        Text(Won.abbreviated(stream.monthlyAmount, suffix: "원"))
-                            .font(.figure(12.5, weight: .medium))
-                            .foregroundStyle(Color.ink)
-                    }
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editingIncome = stream } label: { incomeRow(stream) }
+                } else {
+                    incomeRow(stream)
                 }
             }
             .onDelete(perform: canManageHousehold
@@ -247,33 +225,37 @@ struct PlanView: View {
         }
     }
 
+    private func incomeRow(_ stream: IncomeStream) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(stream.label.isEmpty ? "이름 없음" : stream.label)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.ink)
+                HStack(spacing: 5) {
+                    Text(verbatim: stream.endYear > 0
+                         ? "\(stream.startYear)~\(stream.endYear)년"
+                         : "\(stream.startYear)년부터 종신")
+                        .font(.figure(10))
+                        .foregroundStyle(Color.faint)
+                    if !stream.isInflationLinked {
+                        StatusBadge(text: "물가 미연동")
+                    }
+                }
+            }
+            Spacer()
+            Text(Won.abbreviated(stream.monthlyAmount, suffix: "원"))
+                .font(.figure(12.5, weight: .medium))
+                .foregroundStyle(Color.ink)
+        }
+    }
+
     private var cashEventSection: some View {
         Section {
             ForEach(cashEvents) { event in
-                Button {
-                    editingEvent = event
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(event.label.isEmpty ? "이름 없음" : event.label)
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.ink)
-                            HStack(spacing: 5) {
-                                Text(event.date, format: .dateTime.year().month())
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(Color.faint)
-                                if event.isAlreadyReflected {
-                                    StatusBadge(text: "이미 반영됨")
-                                }
-                            }
-                        }
-                        Spacer()
-                        Text((event.isInflow ? "+" : "−")
-                             + Won.grouped(abs(event.amountMinor)))
-                            .font(.figure(12.5, weight: .medium))
-                            .foregroundStyle(event.isAlreadyReflected ? Color.faint
-                                             : (event.isInflow ? Color.gain : Color.loss))
-                    }
+                if canManageHousehold {
+                    Button { editingEvent = event } label: { cashEventRow(event) }
+                } else {
+                    cashEventRow(event)
                 }
             }
             .onDelete(perform: canManageHousehold
@@ -293,6 +275,30 @@ struct PlanView: View {
             Text("목돈 이벤트")
         } footer: {
             Text("퇴직금 유입, 전월세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 23년 복리에서는 목돈 하나가 결과를 크게 바꿉니다.")
+        }
+    }
+
+    private func cashEventRow(_ event: CashEvent) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(event.label.isEmpty ? "이름 없음" : event.label)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.ink)
+                HStack(spacing: 5) {
+                    Text(event.date, format: .dateTime.year().month())
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.faint)
+                    if event.isAlreadyReflected {
+                        StatusBadge(text: "이미 반영됨")
+                    }
+                }
+            }
+            Spacer()
+            Text((event.isInflow ? "+" : "−")
+                 + Won.grouped(abs(event.amountMinor)))
+                .font(.figure(12.5, weight: .medium))
+                .foregroundStyle(event.isAlreadyReflected ? Color.faint
+                                 : (event.isInflow ? Color.gain : Color.loss))
         }
     }
 
@@ -360,6 +366,8 @@ struct PlanView: View {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
     }
 
+    /// **여기서 잠근다.** 네 곳에서 쓰이므로 부르는 쪽마다 적으면 하나를
+    /// 빠뜨리고, 빠뜨린 하나로 참가자가 가구 전체의 가정을 바꿀 수 있다.
     private func percentRow(_ title: String, _ value: Binding<Int>,
                             range: ClosedRange<Int>, step: Int) -> some View {
         Stepper(value: value, in: range, step: step) {
@@ -373,5 +381,6 @@ struct PlanView: View {
                     .foregroundStyle(Color.ink)
             }
         }
+        .disabled(!canManageHousehold)
     }
 }
