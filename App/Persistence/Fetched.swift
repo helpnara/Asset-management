@@ -30,18 +30,32 @@ struct Fetched<Result: NSManagedObject>: DynamicProperty {
 
     /// 정렬 없이. 예전 `@Query private var plans: [Plan]` 자리다.
     init() {
-        _results = FetchRequest(sortDescriptors: [])
+        _results = FetchRequest(fetchRequest: Self.request(sortedBy: []))
     }
 
     /// 키패스 하나로 정렬. 82곳 중 47곳이 이 꼴이다.
     ///
-    /// **키패스에 `& Sendable` 을 적는다.** Swift 6 의 `SortDescriptor` 가
-    /// 그것을 요구한다 — 안 적으면
-    /// `type 'KeyPath<Result, Value>' does not conform to 'Sendable'` 로 막힌다.
-    /// 부르는 쪽은 `\Member.sortIndex` 같은 리터럴이라 그대로 통과한다.
-    init<Value>(sort keyPath: KeyPath<Result, Value> & Sendable,
+    /// **Swift 의 `SortDescriptor` 를 쓰지 않는다.** 그걸로 만들면 컴파일은
+    /// 통과하고 **앱이 뜨자마자 죽는다**:
+    ///
+    ///     Foundation/SortDescriptor.swift:1215: Fatal error:
+    ///     Attempt to convert SortDescriptor with Compared being non-NSObject
+    ///
+    /// Core Data 가 원하는 것은 `NSSortDescriptor` 이고, 그건 **속성 이름
+    /// 문자열**로 만든다. 키패스는 이름을 얻는 데만 쓴다 — 그래야 부르는 쪽이
+    /// 오타를 컴파일 때 잡힌다(`\Member.sortIndex`).
+    init<Value>(sort keyPath: KeyPath<Result, Value>,
                 order: SortOrder = .forward) where Value: Comparable {
-        _results = FetchRequest(sortDescriptors: [SortDescriptor(keyPath, order: order)])
+        let name = NSExpression(forKeyPath: keyPath).keyPath
+        _results = FetchRequest(fetchRequest: Self.request(
+            sortedBy: [NSSortDescriptor(key: name, ascending: order == .forward)]))
+    }
+
+    /// 엔티티 이름은 클래스 이름과 같다 — 생성기가 그렇게 뽑았다.
+    private static func request(sortedBy descriptors: [NSSortDescriptor]) -> NSFetchRequest<Result> {
+        let request = NSFetchRequest<Result>(entityName: String(describing: Result.self))
+        request.sortDescriptors = descriptors
+        return request
     }
 }
 

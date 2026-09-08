@@ -214,6 +214,7 @@ jobs:
           xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
 
           mkdir -p screenshots
+          rm -f /tmp/shoot-failures
 
           # 앱을 켜기만 하면 빈 화면밖에 못 본다.
           # 가상 데이터를 시드하고 탭을 지정해 화면마다 한 장씩 찍는다.
@@ -247,7 +248,11 @@ jobs:
               echo "  빈 화면 같습니다 ($size 바이트). 다시 ($attempt/3)"
               sleep 3
             done
-            echo "::warning::$file — 세 번 찍었지만 화면이 비어 있습니다"
+            echo "::error::$file — 세 번 찍었지만 화면이 비어 있습니다"
+            # **못 찍은 것을 세어 둔다.** 예전에는 경고만 찍고 넘어가서,
+            # 스물넷이 전부 빈 화면인데도 CI 가 초록이었다 (4차 1b-2).
+            # 화면을 못 찍었다는 것은 대개 앱이 죽었다는 뜻이다.
+            echo "$file" >> /tmp/shoot-failures
           }
 
           # 환영 화면은 첫 실행에만 뜬다. 나머지 장면은 -skipOnboarding 으로 건너뛴다.
@@ -306,6 +311,17 @@ jobs:
           xcrun simctl ui "$UDID" appearance light
 
           ls -la screenshots screenshots/dark
+
+          # 한 장이라도 못 찍었으면 막는다. 스크린샷은 이 저장소에서 앱이
+          # 실제로 도는지 보는 유일한 창구라, 못 찍은 채 초록이면 그게 제일
+          # 위험하다.
+          if [ -s /tmp/shoot-failures ]; then
+            echo "::error::못 찍은 화면 $(wc -l < /tmp/shoot-failures)장:"
+            cat /tmp/shoot-failures
+            echo "위의 '콘솔을 붙여 한 번 띄워 본다' 출력에 이유가 있습니다."
+            exit 1
+          fi
+          echo "전부 찍었습니다."
 
       - name: 스크린샷을 브랜치에 커밋
         run: |
