@@ -1,0 +1,31 @@
+name: macOS 탐침
+
+# 맥이 없는 저장소에서 macOS 러너에게 명령 하나를 시켜 보는 도구.
+# 빌드 없이 1분 안에 끝난다. 예: Xcode 안의 템플릿 파일 보기, 지난 실행의
+# IPA 뜯어 보기, 도구 버전 확인. 비밀값은 찍지 않는다 — 명령이 시크릿을
+# 받지 않게 env 를 비워 둔다 (GITHUB_TOKEN 만, 산출물을 받기 위해).
+#
+#   Actions → macOS 탐침 → Run workflow → command 에 셸 명령
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "macOS 러너에서 돌릴 셸 명령 (bash)"
+        required: true
+        type: string
+
+jobs:
+  probe:
+    name: 명령 실행
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 실행
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          echo "Xcode: $(xcode-select -p)"
+          bash -c ${{ toJSON(inputs.command) }}
