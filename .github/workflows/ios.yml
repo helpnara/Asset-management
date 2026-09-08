@@ -64,6 +64,18 @@ jobs:
           # "고치고 하나만 다시 돌렸다" 를 잡는다.
           python3 Tools/coredata/check-model-matches-ckdb.py
 
+          # `@NSManaged` 선언도 같은 곳에서 뽑는다 (1b-1). **빠진 선언은
+          # 컴파일을 통과한다** — 그 값을 읽는 코드가 없을 뿐이라, 화면에서
+          # 값 하나가 조용히 비는 것으로만 드러난다. 그래서 여기서 잡는다.
+          python3 Tools/coredata/generate-managed-classes.py > /dev/null
+          if ! git diff --quiet App/Persistence/Generated; then
+            echo "::error::모델이 바뀌었는데 @NSManaged 선언이 그대로입니다."
+            echo "python3 Tools/coredata/generate-managed-classes.py 를 돌리고 커밋하세요."
+            git diff --stat App/Persistence/Generated
+            exit 1
+          fi
+          python3 Tools/coredata/check-managed-matches-model.py
+
       - name: swift test
         working-directory: Packages/Core
         run: swift test --enable-code-coverage

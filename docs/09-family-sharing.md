@@ -349,3 +349,50 @@ Swift 쪽 기본값이 리터럴이면 그대로 쓰고(`1990` · `""` · `false
 | `@Query` 82곳 | `@FetchRequest` 로. 35곳은 인자 없고 47곳은 정렬 하나뿐이라 기계적이다 | |
 | 심판 | CI 스크린샷 20여 장이 **이전과 같아야 한다** | 화면이 하나라도 달라 보이면 옮기다 흘린 것이 있다 |
 | 되돌아갈 길 | 40번 백업·되돌리기 + 이전 TestFlight 빌드 | |
+
+
+## 1b-1 — `@NSManaged` 선언을 뽑았다 (빌드에는 아직 안 넣음)
+
+`Tools/coredata/generate-managed-classes.py` 가 **1a 와 같은 파서**를 써서
+`App/Persistence/Generated/` 에 931줄을 뽑는다. 엔티티 15개 · 선언 148개.
+
+`project.yml` 이 `Persistence/Generated/**` 를 제외하므로 **빌드에 안 들어간다.**
+지금 넣으면 `@Model` 클래스와 이름이 겹쳐 깨진다. 이 단계의 일은 뽑아 놓고
+**눈으로 보는 것**이고, 갈아타는 것은 1b-2 다.
+
+### 눈으로 보는 것이 값했다
+
+첫 판은 `awakeFromInsert` 를 프로퍼티 익스텐션에 넣고 있었다.
+**Swift 는 익스텐션에서 메서드를 재정의할 수 없다.** 빌드에 들어가 있었다면
+CI 한 바퀴를 썼을 것이다. 파일을 둘로 나눴다 —
+`+CoreDataClass`(클래스 본문) · `+CoreDataProperties`(선언). Xcode 관례와 같다.
+
+### 까다로운 곳 셋 — 어떻게 풀었나
+
+| | 무엇이 문제인가 | 어떻게 |
+|---|---|---|
+| 옵셔널 스칼라 `Int?` (2개) | `@NSManaged` 가 값 타입 옵셔널을 못 든다 | `NSNumber?` 로 저장하고 `@objc(expectedReturnBP)` 로 KVC 이름만 맞춘 뒤, 쓰는 쪽 이름은 계산 프로퍼티로 되돌린다. **이미 있는 1,700줄이 안 바뀐다** |
+| 일대다 (3개) | Core Data 는 `NSSet?` 이다. `[Account]?` 가 아니다 | 선언은 `NSSet?` 으로 두고, 정렬해 쓰는 곳(`sortedAccounts` 등 관계마다 한 곳)에서 푼다 |
+| `id` · `createdAt` | 모델의 기본값이 자리 채우기다 (`00000000-…` · 2001-01-01) | `awakeFromInsert` 에서 진짜 값을 넣는다. 안 그러면 **모든 행의 id 가 같아진다** |
+
+### 심판 하나를 더 세웠다
+
+**빠진 `@NSManaged` 선언은 컴파일을 통과한다.** 그 값을 읽는 코드가 없을 뿐
+빌드는 멀쩡하고, 화면에서 값 하나가 조용히 비는 것으로만 드러난다. 컴파일러가
+못 잡는 자리다.
+
+`check-managed-matches-model.py` 가 모델 파일의 칸과 생성물의 선언을 대조한다.
+`@objc(x)` 가 붙은 것은 **KVC 이름 쪽**으로 견준다 — 모델이 아는 이름이 그것이다.
+이것도 일부러 선언 하나를 지워서 확인했다:
+`Member: 선언이 없는 칸 — colorIndex` · 종료코드 1.
+
+### 1b-2 에 남은 것
+
+| | |
+|---|---|
+| `@Model final class` 15개를 걷어내고 생성된 클래스로 바꾸기 | 계산 프로퍼티 1,700줄은 `extension` 으로 그대로 옮긴다 |
+| `project.yml` 의 `excludes` 지우기 | 그 순간 생성물이 빌드에 들어간다 |
+| `Persistence.swift` → `NSPersistentCloudKitContainer` | **저장소 경로를 SwiftData 가 쓰던 그 자리로 못박는다** |
+| `@Query` 82곳 → `@FetchRequest` | 35곳은 인자 없고 47곳은 정렬 하나뿐이다 |
+| `context.insert(x)` 등 생성 자리 | Core Data 는 `X(context:)` 로 만든다 |
+| 심판 | CI 스크린샷 20여 장이 이전과 같아야 한다 |
