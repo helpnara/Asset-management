@@ -34,7 +34,12 @@ struct Fetched<Result: NSManagedObject>: DynamicProperty {
     }
 
     /// 키패스 하나로 정렬. 82곳 중 47곳이 이 꼴이다.
-    init<Value>(sort keyPath: KeyPath<Result, Value>,
+    ///
+    /// **키패스에 `& Sendable` 을 적는다.** Swift 6 의 `SortDescriptor` 가
+    /// 그것을 요구한다 — 안 적으면
+    /// `type 'KeyPath<Result, Value>' does not conform to 'Sendable'` 로 막힌다.
+    /// 부르는 쪽은 `\Member.sortIndex` 같은 리터럴이라 그대로 통과한다.
+    init<Value>(sort keyPath: KeyPath<Result, Value> & Sendable,
                 order: SortOrder = .forward) where Value: Comparable {
         _results = FetchRequest(sortDescriptors: [SortDescriptor(keyPath, order: order)])
     }
