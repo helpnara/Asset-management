@@ -73,11 +73,15 @@ struct PlanView: View {
             // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
             // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
             Section {
-                DatePicker("최초 계획 수립일",
-                           selection: Binding(get: { plan.startedOn ?? .now },
-                                              set: { plan.startedOn = $0 }),
-                           displayedComponents: .date)
-                    .disabled(!canManageHousehold)
+                if canManageHousehold {
+                    DatePicker("최초 계획 수립일",
+                               selection: Binding(get: { plan.startedOn ?? .now },
+                                                  set: { plan.startedOn = $0 }),
+                               displayedComponents: .date)
+                } else {
+                    readOnlyRow("최초 계획 수립일",
+                                (plan.startedOn ?? .now).formatted(date: .numeric, time: .omitted))
+                }
                 LabeledContent("마지막 수정") {
                     Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
                         .font(.system(size: 13))
@@ -95,13 +99,18 @@ struct PlanView: View {
                             .font(.figure(15, weight: .semibold))
                             .foregroundStyle(Color.ink)
                     }
-                } else {
+                } else if canManageHousehold {
                     MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
-                        .disabled(!canManageHousehold)
+                } else {
+                    readOnlyMoney("매월 적립", plan.monthlyContributionMinor)
                 }
                 percentRow("적립액 연 증가율", $plan.contributionGrowthBP, range: 0...1000, step: 50)
-                Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
-                    .disabled(!canManageHousehold)
+                if canManageHousehold {
+                    Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
+                } else {
+                    readOnlyRow("구성원별로 나눠 넣기",
+                                plan.usesMemberContributions ? "켬" : "끔")
+                }
             } footer: {
                 Text(plan.usesMemberContributions
                      ? "아래에서 사람마다 넣습니다. 합계가 궤적에 쓰입니다."
@@ -127,18 +136,24 @@ struct PlanView: View {
             }
 
             Section("기간") {
-                Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
-                    // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
-                    // 연도에는 자릿수 구분을 넣지 않는다.
-                    Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                if canManageHousehold {
+                    Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
+                        // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
+                        // 연도에는 자릿수 구분을 넣지 않는다.
+                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                    }
+                } else {
+                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
                 }
-                .disabled(!canManageHousehold)
                 LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
             }
 
             Section {
-                MoneyField(title: "은퇴 목표 금액", minorUnits: $plan.targetAmountMinor)
-                    .disabled(!canManageHousehold)
+                if canManageHousehold {
+                    MoneyField(title: "은퇴 목표 금액", minorUnits: $plan.targetAmountMinor)
+                } else {
+                    readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
+                }
             } footer: {
                 Text("0으로 두면 목표선을 그리지 않습니다.")
             }
@@ -160,9 +175,13 @@ struct PlanView: View {
         Section {
             ForEach(members) { member in
                 @Bindable var member = member
-                MoneyField(title: member.name.isEmpty ? "이름 없음" : member.name,
-                           minorUnits: $member.monthlyContributionMinor)
-                    .disabled(!canManageHousehold)
+                if canManageHousehold {
+                    MoneyField(title: member.name.isEmpty ? "이름 없음" : member.name,
+                               minorUnits: $member.monthlyContributionMinor)
+                } else {
+                    readOnlyMoney(member.name.isEmpty ? "이름 없음" : member.name,
+                                  member.monthlyContributionMinor)
+                }
             }
             if members.isEmpty {
                 Text("자산 탭에서 구성원을 먼저 추가하세요.")
@@ -180,13 +199,16 @@ struct PlanView: View {
     private func retirementSection(_ plan: Plan) -> some View {
         @Bindable var plan = plan
         return Section {
-            MoneyField(title: "은퇴 후 월 생활비", minorUnits: $plan.monthlySpendingMinor)
-                .disabled(!canManageHousehold)
-            Stepper(value: $plan.horizonYear,
-                    in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
-                Text(verbatim: "\(plan.horizonYear)년까지 본다")
+            if canManageHousehold {
+                MoneyField(title: "은퇴 후 월 생활비", minorUnits: $plan.monthlySpendingMinor)
+                Stepper(value: $plan.horizonYear,
+                        in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
+                    Text(verbatim: "\(plan.horizonYear)년까지 본다")
+                }
+            } else {
+                readOnlyMoney("은퇴 후 월 생활비", plan.monthlySpendingMinor)
+                readOnlyRow("보는 기간", "\(plan.horizonYear)년까지")
             }
-            .disabled(!canManageHousehold)
         } header: {
             Text("은퇴 이후")
         } footer: {
@@ -368,19 +390,46 @@ struct PlanView: View {
 
     /// **여기서 잠근다.** 네 곳에서 쓰이므로 부르는 쪽마다 적으면 하나를
     /// 빠뜨리고, 빠뜨린 하나로 참가자가 가구 전체의 가정을 바꿀 수 있다.
+    ///
+    /// **`.disabled` 로는 부족했다.** 손대지 못하게는 하지만 화면이 그대로라
+    /// (스크린샷이 픽셀 단위로 같았다) 잠긴 줄을 알 수가 없다. 그래서 아예
+    /// 스테퍼를 안 세우고 값만 적는다 — 다른 화면에서 버튼을 안 세운 것과 같다.
+    @ViewBuilder
     private func percentRow(_ title: String, _ value: Binding<Int>,
                             range: ClosedRange<Int>, step: Int) -> some View {
-        Stepper(value: value, in: range, step: step) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(step % 100 == 0
-                     ? "\(PercentFormatter.integer(Decimal(value.wrappedValue) / 10_000))%"
-                     : "\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10_000))%")
-                    .font(.figure(14, weight: .medium))
-                    .foregroundStyle(Color.ink)
+        if canManageHousehold {
+            Stepper(value: value, in: range, step: step) {
+                HStack {
+                    Text(title)
+                    Spacer()
+                    Text(percentText(value.wrappedValue, step: step))
+                        .font(.figure(14, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                }
             }
+        } else {
+            readOnlyRow(title, percentText(value.wrappedValue, step: step))
         }
-        .disabled(!canManageHousehold)
+    }
+
+    private func percentText(_ value: Int, step: Int) -> String {
+        step % 100 == 0
+            ? "\(PercentFormatter.integer(Decimal(value) / 10_000))%"
+            : "\(PercentFormatter.oneDecimal(Decimal(value) / 10_000))%"
+    }
+
+    /// 보기 전용일 때 `MoneyField` 자리에 세우는 줄. `원` 까지 같이 적는다 —
+    /// 안 그러면 한 화면에 `4,100,000 원` 과 `4,100,000` 이 섞인다.
+    private func readOnlyMoney(_ title: String, _ minorUnits: Int) -> some View {
+        readOnlyRow(title, Won.grouped(minorUnits) + " 원")
+    }
+
+    /// 보기 전용일 때 입력칸 자리에 세우는 줄. 값은 그대로 읽힌다.
+    private func readOnlyRow(_ title: String, _ value: String) -> some View {
+        LabeledContent(title) {
+            Text(value)
+                .font(.figure(15, weight: .medium))
+                .foregroundStyle(Color.bodyText)
+        }
     }
 }
