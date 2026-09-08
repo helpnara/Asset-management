@@ -82,6 +82,12 @@ App Store Connect → 앱 → **App 개인정보 보호** → **시작하기**
 `PrivacyInfo.xcprivacy` 도 같은 내용으로 이미 들어 있습니다
 (`NSPrivacyTracking: false`, 수집 항목 없음, UserDefaults 사용 사유 `CA92.1`).
 
+**이 파일에는 XML 주석을 넣지 않는다 (2026-09-09).** 주석과 빈
+`NSPrivacyTrackingDomains` 를 넣은 채 올렸더니 베타 앱 심사에서
+`ITMS-91056: Invalid privacy manifest` 메일이 왔다. 로컬 plist 파서는 통과하지만
+애플 쪽 검사기는 더 엄격하다. 설명은 여기 문서에 적고, 파일은 값만 둔다.
+`NSPrivacyTrackingDomains` 는 `NSPrivacyTracking` 이 true 일 때만 필요하다.
+
 ## 3-1단계 · 앱 아이콘
 
 `Tools/icon-source.png` 를 App Store 규격(1024×1024, RGB, 알파 없음)으로 구워
