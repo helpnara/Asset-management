@@ -10,41 +10,31 @@ struct FamilyShareSection: View {
 
     @Fetched private var plans: [Plan]
 
-    @State private var sharing = FamilySharing.shared
-    /// 이미 공유가 있는지. 화면이 뜰 때 한 번 본다.
-    @State private var alreadyShared = false
+    @State private var presenting = false
+    /// 이미 만들어 둔 공유. 없으면 `nil` 이고, 그때는 시트가 만든다.
+    @State private var existing: FamilyInvite?
 
     var body: some View {
         Section {
             if canManageHousehold {
                 Button {
-                    start()
+                    // **공유를 미리 만들지 않는다.** 시트가 만들게 두는 것이
+                    // 애플이 문서화한 길이고, 미리 만들어 넘겼다가 "링크를
+                    // 생성할 수 없습니다" 로 막혔다 (FamilySharing 참고).
+                    existing = currentInvite()
+                    presenting = true
                 } label: {
                     HStack {
-                        // 만들어진 뒤에는 "관리" 다 — 같은 시트에서 사람을
-                        // 더하고 권한을 바꾸고 공유를 끊는다.
-                        Text(alreadyShared || sharing.invite != nil ? "공유 관리" : "가족 초대")
+                        Text(existing == nil ? "가족 초대" : "공유 관리")
                         Spacer()
-                        if sharing.isWorking {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "person.2")
-                                .foregroundStyle(Color.muted)
-                        }
+                        Image(systemName: "person.2")
+                            .foregroundStyle(Color.muted)
                     }
                 }
-                .disabled(sharing.isWorking)
             } else {
                 // 참가자에게는 초대 버튼을 안 내놓는다. `CKShare` 는 소유자만
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
                 LabeledContent("가족 공유", value: "참가 중")
-            }
-
-            if let failure = sharing.failure {
-                Text(failure)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.loss)
-                    .textSelection(.enabled)
             }
         } header: {
             Text("가족")
@@ -53,16 +43,12 @@ struct FamilyShareSection: View {
                  ? "초대하면 기록 전체가 상대 기기에도 보입니다. 기본은 **보기 전용**이고, 이 화면에서 사람마다 넓힐 수 있습니다."
                  : "관리자가 공유한 기록을 보고 있습니다.")
         }
-        .sheet(item: $sharing.invite) { invite in
-            CloudSharingSheet(invite: invite, title: title)
+        .sheet(isPresented: $presenting) {
+            CloudSharingSheet(existing: existing, title: title)
                 .ignoresSafeArea()
         }
         .task {
-            // **가구를 여기서 만들지 않는다.** 저장할 때 `Household.attachNew`
-            // 가 만든다. 여기서는 이미 있는 것만 본다 — 더보기를 열었다는
-            // 이유로 빈 가구가 생기면 안 된다.
-            guard let household = context.all(Household.self).first else { return }
-            alreadyShared = sharing.existingShare(for: household) != nil
+            existing = currentInvite()
         }
     }
 
@@ -71,8 +57,12 @@ struct FamilyShareSection: View {
         plans.first?.title ?? "우리 가족"
     }
 
-    private func start() {
-        // 가구가 아직 없으면 여기서 만든다 — 공유하려면 뿌리가 있어야 한다.
-        sharing.start(for: Household.current(in: context), titled: title)
+    /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
+    /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
+    private func currentInvite() -> FamilyInvite? {
+        guard let household = context.all(Household.self).first,
+              let share = FamilySharing.shared.existingShare(for: household) else { return nil }
+        return FamilyInvite(share: share,
+                            container: CKContainer(identifier: Persistence.cloudKitContainerID))
     }
 }

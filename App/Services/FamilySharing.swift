@@ -40,27 +40,14 @@ enum FamilySharingFailure: LocalizedError {
 /// 여러 장 만들어야 하는데, 그러면 자료를 어느 장에 매달지부터 갈라진다.
 /// 그래서 **공유는 한 장으로 두고 역할은 앱 안에서 판정한다.**
 ///
-/// **왜 완료 클로저를 안 받나.** 처음에는 `share(_:to:) { ... }` 처럼 부르는
-/// 쪽의 클로저를 받았는데 Swift 6 가 막았다:
-///
-///     sending 'finish' risks causing data races
-///
-/// `share(_:to:)` 의 완료 블록이 `@Sendable` 이라, 그 안에서 화면의 클로저를
-/// 부르면 격리를 건너뛴다. 그래서 **결과를 값으로 들고 있고 화면이 그것을
-/// 본다** — `CloudKitSyncMonitor` 와 같은 꼴이다.
+/// **실패는 시트가 알린다.** 우리가 따로 문구를 만들지 않는다 — 참가자
+/// 추가·링크 생성이 막히면 `UICloudSharingController` 가 그 자리에서
+/// 알림을 띄운다. 실제로 그 알림이 이번 버그를 알려 줬다.
 @MainActor
 @Observable
 final class FamilySharing {
 
     static let shared = FamilySharing()
-
-    /// 만들어진 초대. 화면이 이걸 보고 시트를 띄운다.
-    var invite: FamilyInvite?
-
-    /// 실패 이유. 조용히 삼키지 않는다.
-    var failure: String?
-
-    private(set) var isWorking = false
 
     private init() {}
 
@@ -78,40 +65,45 @@ final class FamilySharing {
             .fetchShares(matching: [household.objectID])[household.objectID]
     }
 
-    /// 공유를 만들거나, 이미 있으면 그것을 내놓는다.
-    func start(for household: Household, titled title: String) {
+    /// **초대 시트가 공유를 만들 때 부르는 자리.**
+    ///
+    /// 처음에는 우리가 먼저 공유를 만들고 `UICloudSharingController(share:container:)`
+    /// 로 넘겼는데, 기기에서 이렇게 막혔다:
+    ///
+    ///     사람을 추가할 수 없음 — 공유를 위한 링크를 생성할 수 없습니다.
+    ///
+    /// 그 초기화 함수는 **이미 서버에 저장된 공유**를 요구한다. 게다가 우리는
+    /// 만든 **뒤에** 제목을 덧쓰고 저장하지 않아서, 서버본과 어긋난 것을
+    /// 넘기고 있었다. 시트는 열리고 참가자를 더하는 순간 저장이 막힌다.
+    ///
+    /// 애플이 Core Data 용으로 문서화한 길은 `preparationHandler` 다 —
+    /// **UIKit 이 공유를 만들고 저장까지 맡는다.** 우리는 뿌리 객체를 넘기고
+    /// 제목만 얹는다.
+    func prepareShare(titled title: String,
+                      completion: @escaping (CKShare?, CKContainer?, Error?) -> Void) {
         guard let cloudContainer else {
-            failure = FamilySharingFailure.noCloudKit.localizedDescription
+            completion(nil, nil, FamilySharingFailure.noCloudKit)
             return
         }
 
-        // **저장 안 된 객체는 공유할 수 없다.** 가구를 방금 만들었다면 아직
-        // 디스크에 없다. 모아 둔 것을 여기서 먼저 쓴다.
+        // 뿌리가 없으면 만든다. **저장 안 된 객체는 공유할 수 없으므로**
+        // 만든 직후 바로 쓴다.
+        let household = Household.current(in: Persistence.viewContext)
         Autosave.shared.flush()
 
-        if let existing = existingShare(for: household) {
-            invite = FamilyInvite(share: existing,
-                                  container: CKContainer(identifier: Persistence.cloudKitContainerID))
-            return
-        }
-
-        isWorking = true
-        failure = nil
-        cloudContainer.share([household], to: nil) { [weak self] _, share, container, error in
+        // `completion` 은 `Sendable` 이 아닌데 아래 블록은 `@Sendable` 이다.
+        // 그대로 잡으면 "sending 'completion' risks causing data races" 로 막힌다.
+        // **실제로는 안전하다** — 블록도 여기도 전부 메인에서 돈다. 그 사실을
+        // 아는 상자에 담아 건넨다 (`Persistence.ModelBox` 와 같은 수법).
+        let box = UncheckedBox(completion)
+        cloudContainer.share([household], to: nil) { _, share, container, error in
             MainActor.assumeIsolated {
-                guard let self else { return }
-                self.isWorking = false
-                if let error {
-                    self.failure = (error as NSError).localizedDescription
-                    return
+                // 상대가 초대 화면에서 보는 이름. **넘기기 전에** 얹는다 —
+                // 넘긴 뒤에 고치면 UIKit 이 저장한 것과 어긋난다.
+                if let share {
+                    share[CKShare.SystemFieldKey.title] = title
                 }
-                guard let share, let container else {
-                    self.failure = FamilySharingFailure.noShare.localizedDescription
-                    return
-                }
-                // 상대가 초대 화면에서 보는 이름. 계획 제목을 그대로 쓴다.
-                share[CKShare.SystemFieldKey.title] = title
-                self.invite = FamilyInvite(share: share, container: container)
+                box.value(share, container, error)
             }
         }
     }
@@ -127,17 +119,35 @@ final class FamilySharing {
     }
 }
 
+/// `@Sendable` 클로저 안으로 격리되지 않은 값을 들고 들어가기 위한 상자.
+///
+/// 검사를 끄는 것이 아니라 **안전한 이유를 아는 자리**를 만드는 것이다:
+/// 담긴 클로저를 부르는 곳도 만드는 곳도 전부 메인 액터다.
+private final class UncheckedBox<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
+}
+
 /// 애플이 주는 초대 시트. 메시지·메일·링크 복사가 전부 여기 들어 있다.
 ///
 /// **직접 만들지 않는다.** 참가자 추가·권한 변경·공유 중단이 다 이 화면에
 /// 붙어 있고, 그것을 우리가 다시 만들면 애플이 고칠 때마다 어긋난다.
 struct CloudSharingSheet: UIViewControllerRepresentable {
-    let invite: FamilyInvite
+    /// 이미 만들어 둔 공유. 없으면 `nil` — 그때는 **UIKit 이 만든다.**
+    let existing: FamilyInvite?
     let title: String
 
     func makeUIViewController(context: Context) -> UICloudSharingController {
-        let controller = UICloudSharingController(share: invite.share,
-                                                  container: invite.container)
+        let controller: UICloudSharingController
+        if let existing {
+            // 이미 서버에 있는 공유다. 이 길은 그럴 때만 옳다.
+            controller = UICloudSharingController(share: existing.share,
+                                                  container: existing.container)
+        } else {
+            controller = UICloudSharingController { _, completion in
+                FamilySharing.shared.prepareShare(titled: title, completion: completion)
+            }
+        }
         // 보기 전용이 **기본**이다 (확정된 요구). 넓히는 것은 이 화면에서
         // 아빠가 참가자별로 정한다.
         controller.availablePermissions = [.allowReadOnly, .allowReadWrite, .allowPrivate]
