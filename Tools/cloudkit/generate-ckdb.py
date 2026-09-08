@@ -132,7 +132,10 @@ def main():
     # 내부적으로 관리하고 스키마에 드러내지 않는다. 읽기는 `_world` 다:
     # 초대 링크를 받은 사람이 수락하기 전에 공유 정보를 읽어야 하기
     # 때문이고, 레코드 내용 접근은 별개로 CKShare 의 참가자 목록이 정한다.
-    print("    RECORD TYPE cloudkit.share (")
+    # **따옴표가 필요하다.** 점이 든 이름을 그냥 쓰면 서버 파서가 막는다:
+    #     Encountered "." at line 433, column 25. Was expecting "("
+    # 로컬 `validate` 는 통과시켰다 — 그쪽이 더 너그럽다. 서버가 판정한다.
+    print('    RECORD TYPE "cloudkit.share" (')
     print('        "___createTime" TIMESTAMP,')
     print('        "___createdBy"  REFERENCE,')
     print('        "___etag"       STRING,')
