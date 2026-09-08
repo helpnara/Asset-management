@@ -112,6 +112,38 @@ def main():
         print("    );")
         print()
 
+    # **공유의 레코드 타입.** 우리 모델에는 없지만 CloudKit 이 요구한다.
+    #
+    # 기기에서 이렇게 막혔다 (4차 2b):
+    #
+    #     Cannot create new type cloudkit.share in production schema
+    #
+    # CKShare 는 `cloudkit.share` 라는 시스템 레코드 타입으로 저장된다.
+    # CloudKit 은 그것을 **Development 에서 앱이 처음 공유를 시도할 때**
+    # 자동으로 만든다. 그런데 이 앱은 맥이 없어 Development 에서 돌아간 적이
+    # 없고 TestFlight(Production)만 썼다. Production 은 타입을 즉석에서
+    # 안 만들어 주므로 공유 레코드 자체를 저장할 수 없었다.
+    #
+    # `CD_*` 타입에서 한 번 겪은 함정(CLAUDE.md "CloudKit 스키마는 저절로
+    # 생기지 않는다")을 시스템 타입에서 다시 겪은 것이다. 그래서 여기서
+    # 함께 뽑아 같은 길(apply → Deploy)로 올린다.
+    #
+    # 필드는 시스템 필드뿐이다 — 참가자·권한 같은 것은 CloudKit 이
+    # 내부적으로 관리하고 스키마에 드러내지 않는다. 읽기는 `_world` 다:
+    # 초대 링크를 받은 사람이 수락하기 전에 공유 정보를 읽어야 하기
+    # 때문이고, 레코드 내용 접근은 별개로 CKShare 의 참가자 목록이 정한다.
+    print("    RECORD TYPE cloudkit.share (")
+    print('        "___createTime" TIMESTAMP,')
+    print('        "___createdBy"  REFERENCE,')
+    print('        "___etag"       STRING,')
+    print('        "___modTime"    TIMESTAMP,')
+    print('        "___modifiedBy" REFERENCE,')
+    print('        "___recordID"   REFERENCE,')
+    print('        GRANT WRITE TO "_creator",')
+    print('        GRANT READ TO "_world"')
+    print("    );")
+    print()
+
 
 if __name__ == "__main__":
     main()
