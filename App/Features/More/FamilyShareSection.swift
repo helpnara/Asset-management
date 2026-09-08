@@ -72,6 +72,8 @@ struct FamilyShareSection: View {
     /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
     private func currentShareExists() -> Bool {
         guard let household = context.all(Household.self).first else { return false }
-        return sharing.existingShare(for: household) != nil
+        // **서버에 저장된 것만 센다.** 반쪽짜리를 "공유 관리" 라고 부르면
+        // 눌렀을 때 관리 화면이 아니라 만들기 화면이 떠서 사용자가 헷갈린다.
+        return sharing.savedShare(for: household) != nil
     }
 }

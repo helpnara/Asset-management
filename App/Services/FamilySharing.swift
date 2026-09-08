@@ -57,7 +57,21 @@ final class FamilySharing {
         Persistence.container as? NSPersistentCloudKitContainer
     }
 
-    /// 이미 만들어 둔 공유. 없으면 `nil`.
+    /// **서버에 진짜로 저장된 공유.** 없으면 `nil`.
+    ///
+    /// `url` 이 있으면 서버에 있다 — CloudKit 이 저장하면서 붙여 주는 값이라
+    /// **반쪽짜리와 진짜를 가르는 유일한 기준**이다. 첫 시도에서 로컬에만
+    /// 만들어진 공유는 `url` 이 없다.
+    ///
+    /// 이 구분을 몰라서 한동안 두 갈래를 하나로 합쳐 두었고, 그 바람에
+    /// **관리 화면이 통째로 사라졌다.** 갈래를 없앨 것이 아니라 가르는
+    /// 기준을 찾았어야 했다.
+    func savedShare(for household: Household) -> CKShare? {
+        guard let share = existingShare(for: household), share.url != nil else { return nil }
+        return share
+    }
+
+    /// 로컬에 있는 공유. 반쪽짜리도 포함한다.
     ///
     /// 두 번 만들면 안 된다 — 자료가 어느 쪽에 매달렸는지가 갈린다.
     /// 그래서 만들기 전에 항상 여기부터 본다.
@@ -197,9 +211,7 @@ private final class UncheckedBox<T>: @unchecked Sendable {
 enum FamilyShareSheet {
 
     static func present(titled title: String) {
-        let controller = UICloudSharingController { _, completion in
-            FamilySharing.shared.prepareShare(titled: title, completion: completion)
-        }
+        let controller = makeController(titled: title)
         // 보기 전용이 **기본**이다 (확정된 요구). 넓히는 것은 이 화면에서
         // 아빠가 참가자별로 정한다.
         controller.availablePermissions = [.allowReadOnly, .allowReadWrite, .allowPrivate]
@@ -212,6 +224,26 @@ enum FamilyShareSheet {
         }
         controller.popoverPresentationController?.sourceView = top.view
         top.present(controller, animated: true)
+    }
+
+    /// **저장된 공유가 있으면 관리 화면, 없으면 만들기.**
+    ///
+    /// 두 화면은 하는 일이 다르다. 관리 쪽은 참가자 목록·권한·공유 중단을
+    /// 내놓고, 만들기 쪽은 초대 링크를 보낼 곳을 고르게 한다. 하나로 합치면
+    /// 관리할 방법이 없어진다.
+    ///
+    /// 가르는 기준은 `share.url` 이다 — 서버에 저장돼야 생기는 값이라
+    /// 반쪽짜리를 관리 화면으로 보내는 일이 없다.
+    private static func makeController(titled title: String) -> UICloudSharingController {
+        let household = Household.current(in: Persistence.viewContext)
+        if let saved = FamilySharing.shared.savedShare(for: household) {
+            return UICloudSharingController(
+                share: saved,
+                container: CKContainer(identifier: Persistence.cloudKitContainerID))
+        }
+        return UICloudSharingController { _, completion in
+            FamilySharing.shared.prepareShare(titled: title, completion: completion)
+        }
     }
 
     /// 지금 화면 맨 위. 시트 위에 시트를 띄우면 아무것도 안 보인다.
