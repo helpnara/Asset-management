@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 주간 점검 — 이 앱의 심장.
@@ -15,11 +15,11 @@ struct WeeklyReviewView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var sessions: [ReviewSession]
-    @Query private var plans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var sessions: [ReviewSession]
+    @Fetched private var plans: [Plan]
 
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []
@@ -300,32 +300,29 @@ struct WeeklyReviewView: View {
             .filter { $0.isComplete && $0.weekAnchor < anchor }
             .max { $0.weekAnchor < $1.weekAnchor }
 
-        let session = ReviewSession(weekAnchor: anchor, totalCount: queue.count)
+        let session = ReviewSession(context: context, weekAnchor: anchor, totalCount: queue.count)
         session.enteredCount = queue.count
         session.completedAt = .now
         session.totalValueMinor = rollup.netWorth.minorUnits
         session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
-        context.insert(session)
 
-        let snapshot = Snapshot(
+        let snapshot = Snapshot(context: context,
             weekAnchor: anchor,
             netWorthMinor: rollup.netWorth.minorUnits,
             investableMinor: rollup.investable.minorUnits,
             liabilitiesMinor: rollup.liabilities.minorUnits
         )
-        context.insert(snapshot)
 
         // 구성원별 분해를 함께 남긴다. 이게 없으면 나중에 이 점검을 다시 열었을 때
         // 총액은 그때 값인데 구성원별은 현재 값이라 합이 안 맞는다.
         for (position, member) in members.enumerated() {
-            let line = SnapshotLine(
+            let line = SnapshotLine(context: context,
                 memberID: member.id,
                 memberName: member.name,
                 valueMinor: (rollup.byMember[member.id] ?? .zero(.krw)).minorUnits,
                 sortIndex: position
             )
             line.snapshot = snapshot
-            context.insert(line)
         }
 
         // 다음 주 증감 표시의 기준이 된다.

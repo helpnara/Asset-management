@@ -1,6 +1,6 @@
 import CloudKit
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 import UserNotifications
 
@@ -11,8 +11,8 @@ struct MoreView: View {
     /// 역할 미리보기 (docs/09-family-sharing.md). 공유가 붙으면 이 구역은 사라진다.
     @AppStorage(RolePreview.key) private var previewedRole = FamilyRole.owner.rawValue
 
-    @Query private var sessions: [ReviewSession]
-    @Query private var holdings: [Holding]
+    @Fetched private var sessions: [ReviewSession]
+    @Fetched private var holdings: [Holding]
 
     @State private var route = AppRoute.shared
 
@@ -166,8 +166,8 @@ struct NotificationSettingsView: View {
     @AppStorage(ReviewSettings.minuteKey) private var minute = ReviewSettings.defaultMinute
     @AppStorage(ReviewSettings.followUpKey) private var followUpEnabled = true
 
-    @Query private var holdings: [Holding]
-    @Query private var sessions: [ReviewSession]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var sessions: [ReviewSession]
 
     @State private var status: UNAuthorizationStatus = .notDetermined
 

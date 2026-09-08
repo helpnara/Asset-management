@@ -17,6 +17,7 @@ extension ReviewSession {
 
     @NSManaged var id: UUID
 
+    /// 그 주 토요일(00:00)로 정규화한 값. 주차의 키다.
     @NSManaged var weekAnchor: Date
 
     @NSManaged var startedAt: Date
@@ -27,6 +28,7 @@ extension ReviewSession {
 
     @NSManaged var totalCount: Int
 
+    /// 알림에서 총액만 적고 넘어간 주. 궤적의 점은 남고 분해는 비어 있다.
     @NSManaged var isTotalOnly: Bool
 
     @NSManaged var totalValueMinor: Int

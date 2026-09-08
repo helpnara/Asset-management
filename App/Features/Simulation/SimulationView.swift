@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// What-if — "월 30만원 더 넣으면 얼마나 달라지나"에 답하는 화면.
@@ -15,19 +15,19 @@ struct SimulationView: View {
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     /// **손잡이는 누구나 돌린다.** 이 화면은 계획을 바꾸지 않으므로
     /// 보기 전용이어도 막을 이유가 없다 — 막으면 남는 것이 그림 한 장뿐이다.
     /// 다만 이름 붙여 **저장하는 것**은 가족이 함께 보는 목록에 남으므로 잠근다.
     @Environment(\.canEdit) private var canEdit
-    @Query private var plans: [Plan]
-    @Query private var holdings: [Holding]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var plans: [Plan]
+    @Fetched private var holdings: [Holding]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
-    @Query(sort: \Scenario.createdAt) private var scenarios: [Scenario]
-    @Environment(\.modelContext) private var modelContext
+    @Fetched(sort: \Scenario.createdAt) private var scenarios: [Scenario]
+    @Environment(\.managedObjectContext) private var context
 
     @State private var knobs: Knobs?
     @State private var isNamingScenario = false
@@ -454,7 +454,7 @@ struct SimulationView: View {
             if canEdit {
                 DeleteButton(title: "\(scenario.name.isEmpty ? "이 시나리오" : scenario.name) 을(를) 삭제할까요?",
                              consequence: "저장해 둔 가정이 사라집니다. 되돌릴 수 없습니다.") {
-                    modelContext.delete(scenario)
+                    context.delete(scenario)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 14))
@@ -467,7 +467,7 @@ struct SimulationView: View {
     }
 
     private func save(_ knobs: Knobs) {
-        let scenario = Scenario(
+        let scenario = Scenario(context: context,
             name: scenarioName.isEmpty ? "시나리오 \(scenarios.count + 1)" : scenarioName,
             monthlyMinor: knobs.monthlyMinor,
             retirementYear: knobs.retirementYear,
@@ -475,7 +475,6 @@ struct SimulationView: View {
             volatilityBP: knobs.volatilityBP,
             projectedMinor: outcome?.expected.minorUnits ?? 0
         )
-        modelContext.insert(scenario)
     }
 
     private var disclaimer: some View {

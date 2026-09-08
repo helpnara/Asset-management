@@ -1,11 +1,14 @@
+import CoreData
 import Foundation
-import SwiftData
 
 enum Persistence {
 
     /// iCloud 컨테이너. Apple Developer 계정에서 같은 이름으로 만들어 둬야 한다
     /// (docs/06-testflight.md). 번들 ID 앞에 `iCloud.` 를 붙인 것이 관례다.
     static let cloudKitContainerID = "iCloud.com.helpnara.slowrich"
+
+    /// 컴파일된 모델 이름. `App/SlowRich.xcdatamodeld` 가 `SlowRich.momd` 가 된다.
+    static let modelName = "SlowRich"
 
     /// 저장소가 실제로 어떤 모드로 열렸는지.
     ///
@@ -20,21 +23,33 @@ enum Persistence {
         case inMemory
     }
 
-    struct Store: Sendable {
-        let container: ModelContainer
+    struct Store {
+        let container: NSPersistentContainer
         let mode: Mode
     }
 
-    /// `Schema` 는 `Sendable` 이 아니라서 `static let` 으로 두면 Swift 6 동시성 검사에
-    /// 걸린다("static property is not concurrency-safe"). 계산 프로퍼티는 매번 새 인스턴스를
-    /// 돌려주므로 공유 가변 상태가 아니다.
-    static var schema: Schema {
-        Schema([Member.self, Account.self, Holding.self, ReviewSession.self, Snapshot.self, SnapshotLine.self, Plan.self, CashEvent.self, IncomeStream.self, UserMilestone.self, TodoItem.self, Scenario.self, Principle.self, ChangeLog.self, FamilyTarget.self])
+    /// **SwiftData 가 쓰던 그 파일이다.** 여기가 이 이전에서 제일 위험한 한 줄이다
+    /// (docs/09-family-sharing.md 1단계, 걸린 것 2번).
+    ///
+    /// SwiftData 는 경로를 안 주면 `Application Support/default.store` 를 쓴다.
+    /// `NSPersistentContainer` 는 기본값이 `<이름>.sqlite` 라, 그대로 두면 **빈
+    /// 저장소를 새로 만든다.** 앱은 멀쩡히 뜨고 화면만 비는데, 사용자에게는
+    /// 몇 달치 기록이 날아간 것으로 보인다.
+    ///
+    /// **같은 파일만 열면 그대로 읽힌다.** CI 탐침이 확인했다 — 판본 해시
+    /// 15/15, 마이그레이션 없이 열렸고 값과 관계까지 읽혔다. 탐침 자체는
+    /// SwiftData 로 저장소를 만들어야 해서 이 커밋에서 지웠고, **그 답이
+    /// 남은 자리가 여기다.**
+    static var storeURL: URL {
+        let directory = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("default.store")
     }
 
     static let shared: Store = open()
 
-    static var container: ModelContainer { shared.container }
+    static var container: NSPersistentContainer { shared.container }
+    static var viewContext: NSManagedObjectContext { shared.container.viewContext }
     static var mode: Mode { shared.mode }
 
     /// iCloud → 기기 로컬 순으로 시도한다.
@@ -46,47 +61,75 @@ enum Persistence {
     /// 되돌아가도 **자료를 잃지 않는다** — 두 설정 모두 같은 로컬 sqlite 를 쓰고,
     /// iCloud 여부는 그 위에 미러링을 얹느냐 마느냐의 차이다.
     static func open() -> Store {
-        let schema = Persistence.schema
-
         // CI 스크린샷은 인메모리다. 여기에 iCloud 를 붙이면 안 된다.
         if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            guard let container = try? ModelContainer(for: schema, configurations: [configuration]) else {
-                fatalError("인메모리 저장소를 열지 못했습니다")
-            }
+            let container = NSPersistentContainer(name: modelName)
+            let description = NSPersistentStoreDescription()
+            description.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [description]
+            var failure: Error?
+            container.loadPersistentStores { _, error in failure = error }
+            if let failure { fatalError("인메모리 저장소를 열지 못했습니다: \(failure)") }
+            configure(container.viewContext)
             #if DEBUG
-            SampleData.seed(into: ModelContext(container))
+            SampleData.seed(into: container.viewContext)
             #endif
             return Store(container: container, mode: .inMemory)
         }
 
         // CI 는 `CODE_SIGNING_ALLOWED=NO` 로 빌드해서 entitlement 가 붙지 않는다.
-        // 아래 fallback 이 그 경우도 받아내지만, 스크린샷이 SwiftData 의 예외
-        // 처리 방식에 기대게 두고 싶지 않아 실행 인자로 명시적으로 끈다.
+        // 아래 fallback 이 그 경우도 받아내지만, 스크린샷이 예외 처리 방식에
+        // 기대게 두고 싶지 않아 실행 인자로 명시적으로 끈다.
         if ProcessInfo.processInfo.arguments.contains("-localStoreOnly") {
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            if let container = try? ModelContainer(for: schema, configurations: [configuration]) {
+            if let container = try? load(cloudKit: false) {
                 return Store(container: container, mode: .localOnly(reason: "-localStoreOnly"))
             }
         }
 
         do {
-            let configuration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false,
-                cloudKitDatabase: .private(cloudKitContainerID)
-            )
-            return Store(container: try ModelContainer(for: schema, configurations: [configuration]),
-                         mode: .cloudKit)
+            return Store(container: try load(cloudKit: true), mode: .cloudKit)
         } catch {
             let reason = String(describing: error)
             do {
-                let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-                return Store(container: try ModelContainer(for: schema, configurations: [configuration]),
+                return Store(container: try load(cloudKit: false),
                              mode: .localOnly(reason: reason))
             } catch {
                 fatalError("데이터 저장소를 열지 못했습니다: \(error)")
             }
         }
+    }
+
+    private static func load(cloudKit: Bool) throws -> NSPersistentContainer {
+        let container: NSPersistentContainer = cloudKit
+            ? NSPersistentCloudKitContainer(name: modelName)
+            : NSPersistentContainer(name: modelName)
+
+        let description = NSPersistentStoreDescription(url: storeURL)
+        if cloudKit {
+            description.cloudKitContainerOptions =
+                NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerID)
+        }
+        // **미러링이 요구한다.** 둘 다 없으면 `NSPersistentCloudKitContainer` 가
+        // 아예 안 뜬다.
+        description.setOption(true as NSNumber,
+                              forKey: NSPersistentHistoryTrackingKey)
+        description.setOption(true as NSNumber,
+                              forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        container.persistentStoreDescriptions = [description]
+
+        var failure: Error?
+        container.loadPersistentStores { _, error in failure = error }
+        if let failure { throw failure }
+
+        configure(container.viewContext)
+        return container
+    }
+
+    /// **바깥에서 온 변경을 자동으로 받아들인다.** iCloud 로 내려온 값이
+    /// 화면에 반영되려면 이게 있어야 한다. 충돌은 **저장소 쪽 값**을 택한다 —
+    /// 다른 기기에서 이미 확정된 값을 이 기기의 낡은 값으로 덮지 않는다.
+    private static func configure(_ context: NSManagedObjectContext) {
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
     }
 }

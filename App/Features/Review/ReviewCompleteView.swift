@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 점검 완료 — 입력의 보상.
@@ -7,8 +7,8 @@ import SwiftUI
 /// 손으로 적는 수고에 값을 붙이는 자리다. 끝낸 직후 이번 주 변화와
 /// 연속 기록을 즉시 보여준다 (ADR-0005).
 struct ReviewCompleteView: View {
-    @Query(sort: \Member.sortIndex) private var driftMembers: [Member]
-    @Query private var driftPlans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var driftMembers: [Member]
+    @Fetched private var driftPlans: [Plan]
 
     /// 목표에서 벗어난 종목 수. 가족 전체를 센다.
     private var driftCount: Int {
@@ -23,10 +23,10 @@ struct ReviewCompleteView: View {
     let session: ReviewSession
 
     @Environment(\.dismiss) private var dismiss
-    @Query private var sessions: [ReviewSession]
-    @Query private var snapshots: [Snapshot]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched private var sessions: [ReviewSession]
+    @Fetched private var snapshots: [Snapshot]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     /// 화면의 모든 숫자를 이 스냅샷 하나에서 읽는다.
     /// 현재 값과 섞으면 과거 점검을 열었을 때 총액과 구성원별 합이 어긋난다.

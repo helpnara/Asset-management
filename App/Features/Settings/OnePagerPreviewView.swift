@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 1페이지를 뽑기 전에 화면에서 본다.
@@ -12,14 +12,14 @@ import SwiftUI
 /// 종이 크기(A4 595×842pt)를 그대로 그리고 **한 장 끝 선**을 함께 그어,
 /// 넘치면 넘친 만큼이 눈에 보이게 한다.
 struct OnePagerPreviewView: View {
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var holdings: [Holding]
-    @Query private var plans: [Plan]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \Principle.order) private var principles: [Principle]
-    @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
-    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var plans: [Plan]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \Principle.order) private var principles: [Principle]
+    @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
 
     /// A4 @72dpi. `OnePagerView` 의 폭과 같은 값이라야 미리보기가 거짓말을 안 한다.
     private let paperWidth: CGFloat = 595

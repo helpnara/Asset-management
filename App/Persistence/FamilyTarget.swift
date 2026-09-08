@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 /// 가족 전체를 가로지르는 목표 — 지역과 자산군 (docs/08-feedback.md 15번).
 ///
@@ -10,16 +10,9 @@ import SwiftData
 /// 아무리 잘 세워도 이 질문에는 답이 안 나온다.
 ///
 /// 목표를 안 적어도 된다. 그러면 화면은 실제 비중만 보여준다.
-@Model
-final class FamilyTarget {
-    var id: UUID = UUID()
-    /// `Dimension.rawValue`. 지역인지 자산군인지.
-    var dimensionRaw: String = FamilyTarget.Dimension.assetClass.rawValue
-    /// 그 축 안에서의 키 — `Region.rawValue` 또는 `AssetClass.rawValue`.
-    var key: String = ""
-    var targetBP: Int = 0
-
-    init(dimension: Dimension = .assetClass, key: String = "", targetBP: Int = 0) {
+extension FamilyTarget {
+    convenience init(context: NSManagedObjectContext, dimension: Dimension = .assetClass, key: String = "", targetBP: Int = 0) {
+        self.init(context: context)
         self.dimensionRaw = dimension.rawValue
         self.key = key
         self.targetBP = targetBP

@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct PlanView: View {
@@ -7,15 +7,15 @@ struct PlanView: View {
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     // 계획의 가정은 **가구 전체**에 걸린다. 한 사람이 기대수익률을 바꾸면
     // 모두의 궤적이 바뀌므로 관리자만 고친다 (docs/09-family-sharing.md).
     @Environment(\.canManageHousehold) private var canManageHousehold
-    @Query private var plans: [Plan]
-    @Query private var holdings: [Holding]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var plans: [Plan]
+    @Fetched private var holdings: [Holding]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editingEvent: CashEvent?
     @State private var editingIncome: IncomeStream?
     @State private var pendingIncomeDelete: IndexSet?
@@ -65,7 +65,7 @@ struct PlanView: View {
     }
 
     private func form(_ plan: Plan) -> some View {
-        @Bindable var plan = plan
+        let bind = plan.bindings
         return Form {
             if !canManageHousehold {
                 Section { ReadOnlyNote(text: "계획의 가정은 관리자만 고칠 수 있습니다.") }
@@ -100,13 +100,13 @@ struct PlanView: View {
                             .foregroundStyle(Color.ink)
                     }
                 } else if canManageHousehold {
-                    MoneyField(title: "매월 적립", minorUnits: $plan.monthlyContributionMinor)
+                    MoneyField(title: "매월 적립", minorUnits: bind.monthlyContributionMinor)
                 } else {
                     readOnlyMoney("매월 적립", plan.monthlyContributionMinor)
                 }
-                percentRow("적립액 연 증가율", $plan.contributionGrowthBP, range: 0...1000, step: 50)
+                percentRow("적립액 연 증가율", bind.contributionGrowthBP, range: 0...1000, step: 50)
                 if canManageHousehold {
-                    Toggle("구성원별로 나눠 넣기", isOn: $plan.usesMemberContributions)
+                    Toggle("구성원별로 나눠 넣기", isOn: bind.usesMemberContributions)
                 } else {
                     readOnlyRow("구성원별로 나눠 넣기",
                                 plan.usesMemberContributions ? "켬" : "끔")
@@ -120,15 +120,15 @@ struct PlanView: View {
             if plan.usesMemberContributions { memberContributionSection }
 
             Section {
-                percentRow("연 기대수익률", $plan.annualReturnBP, range: 0...1500, step: 25)
-                percentRow("물가상승률", $plan.inflationBP, range: 0...800, step: 25)
+                percentRow("연 기대수익률", bind.annualReturnBP, range: 0...1500, step: 25)
+                percentRow("물가상승률", bind.inflationBP, range: 0...800, step: 25)
             } footer: {
                 Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
             }
 
             Section {
-                percentRow("예적금 · 연금보험", $plan.lowYieldReturnBP, range: 0...800, step: 10)
-                percentRow("부동산", $plan.realEstateReturnBP, range: 0...800, step: 25)
+                percentRow("예적금 · 연금보험", bind.lowYieldReturnBP, range: 0...800, step: 10)
+                percentRow("부동산", bind.realEstateReturnBP, range: 0...800, step: 25)
             } header: {
                 Text("잘 자라지 않는 돈")
             } footer: {
@@ -137,7 +137,7 @@ struct PlanView: View {
 
             Section("기간") {
                 if canManageHousehold {
-                    Stepper(value: $plan.retirementYear, in: currentYear...(currentYear + 60)) {
+                    Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
                         // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
                         // 연도에는 자릿수 구분을 넣지 않는다.
                         Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
@@ -150,7 +150,7 @@ struct PlanView: View {
 
             Section {
                 if canManageHousehold {
-                    MoneyField(title: "은퇴 목표 금액", minorUnits: $plan.targetAmountMinor)
+                    MoneyField(title: "은퇴 목표 금액", minorUnits: bind.targetAmountMinor)
                 } else {
                     readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
                 }
@@ -174,10 +174,10 @@ struct PlanView: View {
     private var memberContributionSection: some View {
         Section {
             ForEach(members) { member in
-                @Bindable var member = member
+                let bind = member.bindings
                 if canManageHousehold {
                     MoneyField(title: member.name.isEmpty ? "이름 없음" : member.name,
-                               minorUnits: $member.monthlyContributionMinor)
+                               minorUnits: bind.monthlyContributionMinor)
                 } else {
                     readOnlyMoney(member.name.isEmpty ? "이름 없음" : member.name,
                                   member.monthlyContributionMinor)
@@ -197,11 +197,11 @@ struct PlanView: View {
 
     /// 은퇴 이후. 이걸 넣어야 궤적이 은퇴에서 멈추지 않고 이어진다.
     private func retirementSection(_ plan: Plan) -> some View {
-        @Bindable var plan = plan
+        let bind = plan.bindings
         return Section {
             if canManageHousehold {
-                MoneyField(title: "은퇴 후 월 생활비", minorUnits: $plan.monthlySpendingMinor)
-                Stepper(value: $plan.horizonYear,
+                MoneyField(title: "은퇴 후 월 생활비", minorUnits: bind.monthlySpendingMinor)
+                Stepper(value: bind.horizonYear,
                         in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
                     Text(verbatim: "\(plan.horizonYear)년까지 본다")
                 }
@@ -232,8 +232,7 @@ struct PlanView: View {
 
             if canManageHousehold {
                 Button {
-                    let stream = IncomeStream(startYear: plan.retirementYear, sortIndex: incomes.count)
-                    context.insert(stream)
+                    let stream = IncomeStream(context: context, startYear: plan.retirementYear, sortIndex: incomes.count)
                     editingIncome = stream
                 } label: {
                     Label("은퇴 후 소득 추가", systemImage: "plus")
@@ -285,8 +284,7 @@ struct PlanView: View {
 
             if canManageHousehold {
                 Button {
-                    let event = CashEvent(date: .now, label: "", sortIndex: cashEvents.count)
-                    context.insert(event)
+                    let event = CashEvent(context: context, date: .now, label: "", sortIndex: cashEvents.count)
                     editingEvent = event
                 } label: {
                     Label("목돈 이벤트 추가", systemImage: "plus")

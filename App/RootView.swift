@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct RootView: View {
@@ -9,10 +9,10 @@ struct RootView: View {
     /// 공유가 붙기 전까지는 더보기의 토글이 이 값을 바꾼다.
     @AppStorage(RolePreview.key) private var previewedRole = FamilyRole.owner.rawValue
 
-    @Query private var holdings: [Holding]
-    @Query private var sessions: [ReviewSession]
-    @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
-    @Query private var accounts: [Account]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var sessions: [ReviewSession]
+    @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    @Fetched private var accounts: [Account]
 
     /// 실행 인자가 있으면 그것이 이긴다 — CI 가 보기 전용 화면을 찍을 때 쓴다.
     private var role: FamilyRole {

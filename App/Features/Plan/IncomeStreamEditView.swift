@@ -1,12 +1,12 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 은퇴 후 소득 하나. 국민연금 · 퇴직연금 · 개인연금 · 임대소득.
 struct IncomeStreamEditView: View {
-    @Bindable var stream: IncomeStream
+    @ObservedObject var stream: IncomeStream
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
     @State private var hasEnd: Bool
 

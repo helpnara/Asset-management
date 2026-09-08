@@ -1,6 +1,6 @@
 import Charts
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 한 사람의 자산이 어떻게 늘어 왔고 어떻게 늘어갈지.
@@ -15,10 +15,10 @@ struct MemberTrajectoryView: View {
     let member: Member
 
     @Environment(\.dismiss) private var dismiss
-    @Query private var plans: [Plan]
-    @Query private var holdings: [Holding]
-    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
-    @Query(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
+    @Fetched private var plans: [Plan]
+    @Fetched private var holdings: [Holding]
+    @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Fetched(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
 
     /// 손잡이. nil 이면 지금 계획대로다.
     @State private var monthlyMinor: Int?

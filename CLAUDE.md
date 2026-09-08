@@ -10,7 +10,7 @@
 
 **Claude Code 웹/원격 세션은 Linux 컨테이너라 iOS 앱을 빌드·실행·스크린샷할 수 없습니다.**
 Xcode도 Swift 툴체인도 없고, 네트워크 정책상 `download.swift.org`도 막혀 있습니다.
-SwiftUI·SwiftData는 애초에 Apple 플랫폼 전용이라 Linux Swift로도 컴파일되지 않습니다.
+SwiftUI·Core Data는 애초에 Apple 플랫폼 전용이라 Linux Swift로도 컴파일되지 않습니다.
 
 따라서 원격 세션에서는:
 - ✅ Swift 소스 작성·수정, 설계 문서 갱신, 계산 로직 검증(파이썬 등으로 기댓값 대조)
@@ -81,11 +81,11 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   예외는 몬테카를로 하나뿐이고, 거기서도 정확한 숫자는 `Projection.run`(결정론)에서 가져온다.
 - **반올림은 `Decimals` 한 곳에서만** 일어난다. 기본은 은행가 반올림.
 - **숫자는 전부 고정폭 tabular, 우측 정렬.** `Font.figure(_:weight:)` 사용.
-- **SwiftData `@Model` 객체를 `async` 경계 너머로 넘기지 않는다.** 참조 타입이라
+- **관리 객체(`NSManagedObject`)를 `async` 경계 너머로 넘기지 않는다.** 참조 타입이라
   `Sendable` 이 아니어서 Swift 6 가 "sending ... risks causing data races" 로 막는다.
   화면 쪽에서 필요한 값(Int·Date·Money 등)만 뽑아 `Sendable` 구조체로 건넨다.
   `@preconcurrency` 로 검사를 끄지 않는다 — 세 번 밟고 세 번 다 값으로 풀었다.
-- **`Core`는 SwiftUI·SwiftData를 import하지 않는다.** 이 경계가 깨지면 테스트가 느려지고
+- **`Core`는 SwiftUI·Core Data를 import하지 않는다.** 이 경계가 깨지면 테스트가 느려지고
   원격 세션에서 검증할 수 있는 범위가 사라진다.
 - **외부 네트워크 요청을 추가하지 않는다.** 시세·환율을 가져오지 않는 것은 의도된 설계다
   ([ADR-0005](docs/adr/0005-manual-entry.md)).
@@ -93,7 +93,16 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   해외 종목도 원화로 환산해서 적기 때문이다. `Money` 는 통화를 들고 다니지만
   이 앱은 `.krw` 하나만 쓴다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
-- SwiftData 스키마를 건드릴 때는 CloudKit 제약을 지킨다
+- **저장 계층은 Core Data다** (4차에서 SwiftData에서 옮겼다 — [09-family-sharing](docs/09-family-sharing.md)).
+  SwiftData는 `CKShare` 공유를 못 해서, 가족 공유를 하려면 옮길 수밖에 없었다.
+  화면에서 쓰는 것은 `@Fetched`(속은 `@FetchRequest`, 겉은 `[T]`)와
+  `@ObservedObject`다. `@Query`·`@Model`·`@Bindable`은 이제 없다.
+- **모델의 원본은 `App/SlowRich.xcdatamodeld` 다.** `@NSManaged` 선언
+  (`App/Persistence/Generated/`)과 CloudKit 스키마(`Tools/cloudkit/slowrich.ckdb`)가
+  거기서 파생된다. **칸을 더하면 셋을 함께 고친다** — CI가 서로 대조해서
+  하나만 고치면 막는다. 빠진 `@NSManaged` 선언은 컴파일을 통과하고
+  화면에서 값 하나가 조용히 비는 것으로만 드러나므로, 이 대조가 유일한 심판이다.
+- 스키마를 건드릴 때는 CloudKit 제약을 지킨다
   (유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널 — [ADR-0001](docs/adr/0001-swiftdata-cloudkit.md)).
 
 ## 아이폰에 올리기
@@ -107,7 +116,7 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 **팀에 기기가 하나는 등록돼 있어야 한다** — 자동 서명이 아카이브를 개발용
 프로파일로 굽는데, 개발용은 기기 없이 발급되지 않는다.
 
-**CloudKit 스키마는 저절로 생기지 않는다.** SwiftData 는 Development 환경에서만
+**CloudKit 스키마는 저절로 생기지 않는다.** 저장 계층은 Development 환경에서만
 레코드 타입을 자동 생성하고, TestFlight 빌드는 Production 을 쓴다 —
 엔타이틀먼트로 이걸 바꿀 수 없다. 맥으로 개발용 빌드를 한 번도 안 돌렸다면
 Development 가 비어 있어 배포할 것이 없다. 앱은 로컬로 정상 동작하지만
@@ -118,9 +127,9 @@ Development 가 비어 있어 배포할 것이 없다. 앱은 로컬로 정상 �
 Development 에 밀어 넣고, Production 승격만 웹 콘솔의 Deploy 버튼을 사람이
 누른다. 앱에서 `더보기 → 동기화 → 마지막 내보내기: 성공` 으로 확인했다.
 
-**`@Model` 을 고치면 스키마를 다시 올려야 한다.** 안 그러면 새 필드가 iCloud 에
-안 올라가는데 화면에서는 티가 안 난다. CI 가 모델과 `Tools/cloudkit/slowrich.ckdb`
-를 대조해 어긋나면 빌드를 막는다. 절차는
+**모델을 고치면 스키마를 다시 올려야 한다.** 안 그러면 새 필드가 iCloud 에
+안 올라가는데 화면에서는 티가 안 난다. CI 가 `.xcdatamodeld` 와
+`Tools/cloudkit/slowrich.ckdb` 를 대조해 어긋나면 빌드를 막는다. 절차는
 [docs/06-testflight.md](docs/06-testflight.md) 에 있다.
 App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있다.
 

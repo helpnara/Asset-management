@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 가족 전체 자산을 세 가지로 갈라 본다 (docs/08-feedback.md 15번).
@@ -11,10 +11,10 @@ import SwiftUI
 /// 2와 3은 **계좌 구조를 가로지르는 질문**이다. 계좌 안 종목 목표를 아무리 잘
 /// 세워도 "우리 집 돈에서 미국이 몇 %인가" 에는 답이 안 나온다. 그래서 따로 둔다.
 struct FamilyAllocationView: View {
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var plans: [Plan]
-    @Query private var targets: [FamilyTarget]
-    @Environment(\.modelContext) private var context
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var plans: [Plan]
+    @Fetched private var targets: [FamilyTarget]
+    @Environment(\.managedObjectContext) private var context
     // 가족 전체의 목표 비중은 가구 하나에 한 벌이다.
     @Environment(\.canManageHousehold) private var canManageHousehold
 
@@ -120,7 +120,7 @@ struct FamilyAllocationView: View {
                 if let target = existing(dimension, key: key) {
                     target.targetBP = newValue
                 } else {
-                    context.insert(FamilyTarget(dimension: dimension, key: key, targetBP: newValue))
+                    _ = FamilyTarget(context: context, dimension: dimension, key: key, targetBP: newValue)
                 }
             }
         )

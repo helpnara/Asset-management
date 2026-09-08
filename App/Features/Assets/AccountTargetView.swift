@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 한 계좌 안 종목의 목표 비중을 세우는 곳 (docs/08-feedback.md 15번).
@@ -13,8 +13,8 @@ import SwiftUI
 struct AccountTargetView: View {
     let account: Account
 
-    @Query private var plans: [Plan]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Environment(\.canEdit) private var canEdit
 
     private var tolerance: Allocation.Tolerance {
@@ -29,7 +29,6 @@ struct AccountTargetView: View {
         List {
             Section {
                 ForEach(account.weightedHoldings) { holding in
-                    @Bindable var holding = holding
                     let slice = slices.first { $0.label == holding.weightLabel }
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {

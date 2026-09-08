@@ -1,11 +1,11 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct CashEventEditView: View {
-    @Bindable var event: CashEvent
+    @ObservedObject var event: CashEvent
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
     /// 화면에서는 절댓값을 다루고 방향은 따로 고른다.
     /// 마이너스 부호를 숫자패드로 치게 하면 실수가 잦다.

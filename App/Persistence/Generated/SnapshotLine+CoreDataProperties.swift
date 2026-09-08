@@ -19,6 +19,7 @@ extension SnapshotLine {
 
     @NSManaged var memberID: UUID
 
+    /// 구성원을 지워도 과거 기록은 남아야 하므로 이름을 복사해 둔다.
     @NSManaged var memberName: String
 
     @NSManaged var valueMinor: Int

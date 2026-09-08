@@ -1,41 +1,16 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 // CloudKit 미러링 제약을 처음부터 지킨다 (ADR-0001):
 // 유니크 제약 없음 · 모든 속성에 기본값 · 모든 관계 옵셔널.
 // 나중에 켜려면 스키마를 다시 만들어야 하므로 지금 지킨다.
 
-@Model
-final class Member {
-    var id: UUID = UUID()
-    var name: String = ""
-    var roleNote: String = ""            // "본인", "2022년생"
-    var birthYear: Int = 1990
-    var birthMonth: Int = 1
-    var taxResidencyRaw: String = TaxResidency.korea.rawValue
-    var targetRetirementAge: Int = 65
-    /// 이 사람 몫의 월 적립액. 계획 탭에서 "구성원별로 나눠 넣기"를 켰을 때만 쓴다.
-    var monthlyContributionMinor: Int = 0
-    /// 회사가 넣어 주는 몫. `monthlyContributionMinor` 는 **본인 부담**이라는
-    /// 뜻 그대로 두었으므로 이미 적어 둔 값을 고칠 필요가 없다.
-    ///
-    /// 궤적에는 합계가 쓰이고, **저축률 진단에는 본인 부담만** 쓴다 —
-    /// 회사가 넣어 주는 돈을 내 저축으로 세면 저축률이 부풀려진다
-    /// (docs/08-feedback.md 10번).
-    var employerMatchMinor: Int = 0
-    /// 그 사람에게만 걸리는 한도·재검토 시점. 1페이지 구성원 카드의 `※` 줄.
-    var note: String = ""
-    var colorIndex: Int = 0
-    var sortIndex: Int = 0
-    var createdAt: Date = Date.now
-
-    @Relationship(deleteRule: .cascade, inverse: \Account.owner)
-    var accounts: [Account]? = []
-
-    init(name: String = "", roleNote: String = "", birthYear: Int = 1990,
+extension Member {
+    convenience init(context: NSManagedObjectContext, name: String = "", roleNote: String = "", birthYear: Int = 1990,
          birthMonth: Int = 1, taxResidency: TaxResidency = .korea,
          targetRetirementAge: Int = 65, colorIndex: Int = 0, sortIndex: Int = 0) {
+        self.init(context: context)
         self.name = name
         self.roleNote = roleNote
         self.birthYear = birthYear
@@ -47,44 +22,10 @@ final class Member {
     }
 }
 
-@Model
-final class Account {
-    var id: UUID = UUID()
-    var name: String = ""
-    var institution: String = ""
-    var kindRaw: String = AccountKind.general.rawValue
-    var isArchived: Bool = false
-    var sortIndex: Int = 0
-    var createdAt: Date = Date.now
-
-    /// 올해 이 계좌에 넣은 금액. 사용자가 직접 적는다 (ADR-0005 — 가져오지 않는다).
-    var annualContributionMinor: Int = 0
-    /// 연간 납입 한도. 0이면 진단에서 판단하지 않는다.
-    ///
-    /// **앱은 세법을 따라가지 않는다.** 한도가 바뀌면 사용자가 직접 고친다.
-    /// 여기에 숫자를 박아 두고 세법이 바뀌면, 앱이 조용히 틀린 조언을 하게 된다.
-    var annualLimitMinor: Int = 0
-    /// 이 계좌만의 기대수익률(basis point). 비워 두면 계좌 종류의 기본값을 따른다.
-    /// 예금마다 금리가 다르므로 계좌 단위로 적을 수 있어야 한다
-    /// (docs/08-feedback.md 11번).
-    var expectedReturnBP: Int?
-    /// 만기일. ISA 만기처럼 기한이 있는 계좌에 적는다. 1페이지의 유의사항과
-    /// 푸터가 읽는다.
-    var maturesOn: Date?
-    /// 소유자 UUID. 관계(`owner`)와 **함께** 들고 다닌다.
-    ///
-    /// 공유로 넘어갈 때 레코드를 커스텀 존으로 옮기게 되는데, 그때 관계만
-    /// 있으면 옮기다 끊어져도 복구할 근거가 없다. ADR-0004 가 이걸 하라고
-    /// 적어 두고도 안 돼 있었다 (docs/08-feedback.md 13번).
-    var ownerID: UUID?
-
-    var owner: Member?
-
-    @Relationship(deleteRule: .cascade, inverse: \Holding.account)
-    var holdings: [Holding]? = []
-
-    init(name: String = "", institution: String = "",
+extension Account {
+    convenience init(context: NSManagedObjectContext, name: String = "", institution: String = "",
          kind: AccountKind = .general, owner: Member? = nil, sortIndex: Int = 0) {
+        self.init(context: context)
         self.ownerID = owner?.id
         self.name = name
         self.institution = institution
@@ -94,42 +35,12 @@ final class Account {
     }
 }
 
-@Model
-final class Holding {
-    var id: UUID = UUID()
-    var name: String = ""
-    var assetClassRaw: String = AssetClass.equity.rawValue
-    var instrumentTypeRaw: String = InstrumentType.stock.rawValue
-    var listingCountryCode: String = "KR"
-    var statusRaw: String = HoldingStatus.accumulating.rawValue
-    var cadenceRaw: String = EntryCadence.weekly.rawValue
-
-    /// 사용자가 매주 직접 적어 넣는 평가액. 이 앱의 진실의 원천이다 (ADR-0005).
-    var valueMinor: Int = 0
-    /// 직전 점검에서 적은 값. 증감 표시에만 쓴다.
-    var lastEnteredValueMinor: Int = 0
-    var lastEnteredAt: Date?
-
-    var note: String = ""
-    /// **이 종목이 속한 계좌 안에서**의 목표 비중 (basis point).
-    ///
-    /// 분모가 계좌인 이유는 계좌마다 투자 목적과 규모가 다르기 때문이다.
-    /// 한 계좌 안 종목들의 목표는 **합이 100%** 가 되어야 한다
-    /// (docs/08-feedback.md 15번).
-    ///
-    /// nil 이면 아직 안 정한 것이고, 그건 조용히 넘어갈 일이 아니라 알림거리다.
-    var targetWeightBP: Int?
-    var sortIndex: Int = 0
-    var createdAt: Date = Date.now
-
-    var account: Account?
-    /// 계좌 UUID. `Account.ownerID` 와 같은 이유로 관계와 함께 들고 다닌다.
-    var accountID: UUID?
-
-    init(name: String = "", assetClass: AssetClass = .equity,
+extension Holding {
+    convenience init(context: NSManagedObjectContext, name: String = "", assetClass: AssetClass = .equity,
          instrumentType: InstrumentType = .stock, listingCountryCode: String = "KR",
          status: HoldingStatus = .accumulating, cadence: EntryCadence = .weekly,
          valueMinor: Int = 0, account: Account? = nil, sortIndex: Int = 0) {
+        self.init(context: context)
         self.accountID = account?.id
         self.name = name
         self.assetClassRaw = assetClass.rawValue
@@ -173,7 +84,8 @@ extension Member {
     }
 
     var sortedAccounts: [Account] {
-        (accounts ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+        // Core Data 의 일대다는 `NSSet?` 이다. 여기 한 곳에서만 푼다.
+        (accounts as? Set<Account> ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
     }
 }
 
@@ -184,7 +96,7 @@ extension Account {
     }
 
     var sortedHoldings: [Holding] {
-        (holdings ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+        (holdings as? Set<Holding> ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
     }
 }
 

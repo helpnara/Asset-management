@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 지난 기록 직접 입력.
@@ -18,11 +18,11 @@ struct PastRecordsView: View {
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     // 지난 기록을 고치는 것은 궤적의 과거를 고치는 일이라 관리자만이다.
     @Environment(\.canManageHousehold) private var canManageHousehold
-    @Query(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
-    @Query private var sessions: [ReviewSession]
+    @Fetched(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
+    @Fetched private var sessions: [ReviewSession]
 
     @State private var pendingDelete: IndexSet?
     @State private var editing: PastRecordDraft?
@@ -108,9 +108,8 @@ struct PastRecordsView: View {
         // 한 주에 점이 둘이면 선이 꺾여 보인다.
         let snapshot = snapshots.first { $0.weekAnchor == anchor }
             ?? {
-                let new = Snapshot(weekAnchor: anchor, netWorthMinor: 0,
+                let new = Snapshot(context: context, weekAnchor: anchor, netWorthMinor: 0,
                                    investableMinor: 0, liabilitiesMinor: 0)
-                context.insert(new)
                 return new
             }()
 
@@ -122,8 +121,7 @@ struct PastRecordsView: View {
         // 어긋나고, 다음 주간 점검이 직전 값을 못 찾아 증감이 0으로 나온다.
         let session = sessions.first { $0.weekAnchor == anchor }
             ?? {
-                let new = ReviewSession(weekAnchor: anchor, totalCount: 0)
-                context.insert(new)
+                let new = ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
                 return new
             }()
 

@@ -1,10 +1,10 @@
-import SwiftData
+import CoreData
 import SwiftUI
 import UserNotifications
 
 @main
 struct SlowRichApp: App {
-    private let container: ModelContainer
+    private let container: NSPersistentContainer
     private let notifications: NotificationCoordinator
 
     @Environment(\.scenePhase) private var scenePhase
@@ -16,13 +16,6 @@ struct SlowRichApp: App {
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
 
     init() {
-        // **저장소를 열기 전에** 답해야 하는 질문 하나 (docs/09-family-sharing.md 1단계).
-        // 4차 1b 를 시작해도 되는지 SDK 에 직접 묻는다. 실행 인자가 있을 때만 돌고,
-        // 결과를 찍은 뒤 앱을 끝낸다.
-        #if DEBUG
-        if CoreDataProbe.isRequested { CoreDataProbe.run() }
-        #endif
-
         let container = Persistence.shared.container
         self.container = container
         self.notifications = NotificationCoordinator(container: container)
@@ -64,6 +57,8 @@ struct SlowRichApp: App {
             // "인증이 취소되었습니다" 가 반복해서 났다 (docs/08-feedback.md 4번).
             if phase == .background { lock.lock() }
         }
-        .modelContainer(container)
+        // SwiftData 의 `.modelContainer(_:)` 자리. Core Data 는 컨텍스트를
+        // 환경으로 내리고, `@Fetched` 가 그것을 읽는다.
+        .environment(\.managedObjectContext, container.viewContext)
     }
 }

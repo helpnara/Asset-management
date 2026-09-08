@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 /// 전체 백업. **이 파일 하나에 앱의 모든 기록이 들어간다.**
 ///
@@ -238,12 +238,9 @@ extension BackupDocument {
     /// 때문이다. 화면에서 필요한 값만 뽑아 구조체로 건넨다는 규칙 그대로다
     /// (CLAUDE.md).
     @MainActor
-    static func make(from context: ModelContext) -> BackupDocument {
-        func all<T: PersistentModel>(_ type: T.Type) -> [T] {
-            (try? context.fetch(FetchDescriptor<T>())) ?? []
-        }
+    static func make(from context: NSManagedObjectContext) -> BackupDocument {
 
-        let members = all(Member.self)
+        let members = context.all(Member.self)
             .sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
             .map { member in
                 MemberData(
@@ -289,7 +286,7 @@ extension BackupDocument {
                 )
             }
 
-        let plan = all(Plan.self).first.map { plan in
+        let plan = context.all(Plan.self).first.map { plan in
             PlanData(
                 id: plan.id, title: plan.title,
                 startedOn: plan.startedOn, asOfNote: plan.asOfNote,
@@ -323,38 +320,38 @@ extension BackupDocument {
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?",
             plan: plan,
             members: members,
-            cashEvents: all(CashEvent.self).sorted { $0.date < $1.date }.map {
+            cashEvents: context.all(CashEvent.self).sorted { $0.date < $1.date }.map {
                 CashEventData(id: $0.id, date: $0.date, label: $0.label,
                               amountMinor: $0.amountMinor,
                               isAlreadyReflected: $0.isAlreadyReflected,
                               note: $0.note, sortIndex: $0.sortIndex)
             },
-            incomes: all(IncomeStream.self).sorted { $0.sortIndex < $1.sortIndex }.map {
+            incomes: context.all(IncomeStream.self).sorted { $0.sortIndex < $1.sortIndex }.map {
                 IncomeStreamData(id: $0.id, label: $0.label,
                                  monthlyAmountMinor: $0.monthlyAmountMinor,
                                  startYear: $0.startYear, endYear: $0.endYear,
                                  isInflationLinked: $0.isInflationLinked,
                                  sortIndex: $0.sortIndex)
             },
-            milestones: all(UserMilestone.self).sorted { $0.year < $1.year }.map {
+            milestones: context.all(UserMilestone.self).sorted { $0.year < $1.year }.map {
                 MilestoneData(id: $0.id, year: $0.year, label: $0.label,
                               note: $0.note, sortIndex: $0.sortIndex,
                               memberID: $0.memberID)
             },
-            todos: all(TodoItem.self).sorted { $0.sortIndex < $1.sortIndex }.map {
+            todos: context.all(TodoItem.self).sorted { $0.sortIndex < $1.sortIndex }.map {
                 TodoData(id: $0.id, title: $0.title, detail: $0.detail,
                          category: $0.categoryRaw, dueDate: $0.dueDate,
                          isDone: $0.isDone, repeatsYearly: $0.repeatsYearly,
                          completedAt: $0.completedAt, sortIndex: $0.sortIndex,
                          createdAt: $0.createdAt)
             },
-            scenarios: all(Scenario.self).sorted { $0.createdAt < $1.createdAt }.map {
+            scenarios: context.all(Scenario.self).sorted { $0.createdAt < $1.createdAt }.map {
                 ScenarioData(id: $0.id, name: $0.name, monthlyMinor: $0.monthlyMinor,
                              retirementYear: $0.retirementYear, returnBP: $0.returnBP,
                              volatilityBP: $0.volatilityBP,
                              projectedMinor: $0.projectedMinor, createdAt: $0.createdAt)
             },
-            reviewSessions: all(ReviewSession.self).sorted { $0.weekAnchor < $1.weekAnchor }.map {
+            reviewSessions: context.all(ReviewSession.self).sorted { $0.weekAnchor < $1.weekAnchor }.map {
                 ReviewSessionData(id: $0.id, weekAnchor: $0.weekAnchor,
                                   startedAt: $0.startedAt, completedAt: $0.completedAt,
                                   enteredCount: $0.enteredCount, totalCount: $0.totalCount,
@@ -362,7 +359,7 @@ extension BackupDocument {
                                   totalValueMinor: $0.totalValueMinor,
                                   previousTotalValueMinor: $0.previousTotalValueMinor)
             },
-            snapshots: all(Snapshot.self).sorted { $0.weekAnchor < $1.weekAnchor }.map { snapshot in
+            snapshots: context.all(Snapshot.self).sorted { $0.weekAnchor < $1.weekAnchor }.map { snapshot in
                 SnapshotData(id: snapshot.id, weekAnchor: snapshot.weekAnchor,
                              netWorthMinor: snapshot.netWorthMinor,
                              investableMinor: snapshot.investableMinor,
@@ -374,16 +371,16 @@ extension BackupDocument {
                                                   sortIndex: $0.sortIndex)
                              })
             },
-            principles: all(Principle.self).sorted { $0.order < $1.order }.map {
+            principles: context.all(Principle.self).sorted { $0.order < $1.order }.map {
                 PrincipleData(id: $0.id, order: $0.order, title: $0.title,
                               detail: $0.detail, reviewNote: $0.reviewNote,
                               createdAt: $0.createdAt)
             },
-            changeLog: all(ChangeLog.self).sorted { $0.at < $1.at }.map {
+            changeLog: context.all(ChangeLog.self).sorted { $0.at < $1.at }.map {
                 ChangeLogData(id: $0.id, at: $0.at, actor: $0.actor,
                               kind: $0.kindRaw, subject: $0.subject, summary: $0.summary)
             },
-            familyTargets: all(FamilyTarget.self)
+            familyTargets: context.all(FamilyTarget.self)
                 .sorted { ($0.dimensionRaw, $0.key) < ($1.dimensionRaw, $1.key) }
                 .map {
                     FamilyTargetData(id: $0.id, dimension: $0.dimensionRaw,
@@ -433,7 +430,7 @@ extension BackupDocument {
     /// UUID 를 그대로 살려 넣으므로 되돌린 뒤에도 스냅샷의 구성원별 줄이
     /// 같은 사람을 가리킨다.
     @MainActor
-    static func restore(_ document: BackupDocument, into context: ModelContext) {
+    static func restore(_ document: BackupDocument, into context: NSManagedObjectContext) {
         // 1) 비운다. 관계로 딸려 가는 것까지 확실히 하려고 전부 명시한다.
         deleteAll(Member.self, in: context)
         deleteAll(Account.self, in: context)
@@ -455,7 +452,7 @@ extension BackupDocument {
         if let data = document.plan { insert(plan: data, into: context) }
 
         for memberData in document.members {
-            let member = Member(name: memberData.name, roleNote: memberData.roleNote,
+            let member = Member(context: context, name: memberData.name, roleNote: memberData.roleNote,
                                 birthYear: memberData.birthYear,
                                 birthMonth: memberData.birthMonth,
                                 taxResidency: TaxResidency(rawValue: memberData.taxResidency) ?? .korea,
@@ -467,10 +464,9 @@ extension BackupDocument {
             member.employerMatchMinor = memberData.employerMatchMinor
             member.note = memberData.note
             member.createdAt = memberData.createdAt
-            context.insert(member)
 
             for accountData in memberData.accounts {
-                let account = Account(name: accountData.name,
+                let account = Account(context: context, name: accountData.name,
                                       institution: accountData.institution,
                                       kind: AccountKind(rawValue: accountData.kind) ?? .general,
                                       owner: member, sortIndex: accountData.sortIndex)
@@ -481,10 +477,9 @@ extension BackupDocument {
                 account.expectedReturnBP = accountData.expectedReturnBP
                 account.maturesOn = accountData.maturesOn
                 account.createdAt = accountData.createdAt
-                context.insert(account)
 
                 for holdingData in accountData.holdings {
-                    let holding = Holding(
+                    let holding = Holding(context: context,
                         name: holdingData.name,
                         assetClass: AssetClass(rawValue: holdingData.assetClass) ?? .equity,
                         instrumentType: InstrumentType(rawValue: holdingData.instrumentType) ?? .etf,
@@ -501,40 +496,36 @@ extension BackupDocument {
                     holding.note = holdingData.note
                     holding.targetWeightBP = holdingData.targetWeightBP
                     holding.createdAt = holdingData.createdAt
-                    context.insert(holding)
                 }
             }
         }
 
         for data in document.cashEvents {
-            let event = CashEvent(date: data.date, label: data.label,
+            let event = CashEvent(context: context, date: data.date, label: data.label,
                                   amountMinor: data.amountMinor, sortIndex: data.sortIndex)
             event.id = data.id
             event.isAlreadyReflected = data.isAlreadyReflected
             event.note = data.note
-            context.insert(event)
         }
 
         for data in document.incomes {
-            let income = IncomeStream(label: data.label,
+            let income = IncomeStream(context: context, label: data.label,
                                       monthlyAmountMinor: data.monthlyAmountMinor,
                                       startYear: data.startYear, sortIndex: data.sortIndex)
             income.id = data.id
             income.endYear = data.endYear
             income.isInflationLinked = data.isInflationLinked
-            context.insert(income)
         }
 
         for data in document.milestones {
-            let milestone = UserMilestone(year: data.year, label: data.label,
+            let milestone = UserMilestone(context: context, year: data.year, label: data.label,
                                           sortIndex: data.sortIndex, memberID: data.memberID)
             milestone.id = data.id
             milestone.note = data.note
-            context.insert(milestone)
         }
 
         for data in document.todos {
-            let todo = TodoItem(title: data.title,
+            let todo = TodoItem(context: context, title: data.title,
                                 category: TodoCategory(rawValue: data.category) ?? .note,
                                 sortIndex: data.sortIndex)
             todo.id = data.id
@@ -544,21 +535,19 @@ extension BackupDocument {
             todo.repeatsYearly = data.repeatsYearly
             todo.completedAt = data.completedAt
             todo.createdAt = data.createdAt
-            context.insert(todo)
         }
 
         for data in document.scenarios {
-            let scenario = Scenario(name: data.name, monthlyMinor: data.monthlyMinor,
+            let scenario = Scenario(context: context, name: data.name, monthlyMinor: data.monthlyMinor,
                                     retirementYear: data.retirementYear,
                                     returnBP: data.returnBP, volatilityBP: data.volatilityBP,
                                     projectedMinor: data.projectedMinor)
             scenario.id = data.id
             scenario.createdAt = data.createdAt
-            context.insert(scenario)
         }
 
         for data in document.reviewSessions {
-            let session = ReviewSession(weekAnchor: data.weekAnchor, totalCount: data.totalCount)
+            let session = ReviewSession(context: context, weekAnchor: data.weekAnchor, totalCount: data.totalCount)
             session.id = data.id
             session.startedAt = data.startedAt
             session.completedAt = data.completedAt
@@ -566,48 +555,42 @@ extension BackupDocument {
             session.isTotalOnly = data.isTotalOnly
             session.totalValueMinor = data.totalValueMinor
             session.previousTotalValueMinor = data.previousTotalValueMinor
-            context.insert(session)
         }
 
         for data in document.snapshots {
-            let snapshot = Snapshot(weekAnchor: data.weekAnchor,
+            let snapshot = Snapshot(context: context, weekAnchor: data.weekAnchor,
                                     netWorthMinor: data.netWorthMinor,
                                     investableMinor: data.investableMinor,
                                     liabilitiesMinor: data.liabilitiesMinor)
             snapshot.id = data.id
-            context.insert(snapshot)
             for lineData in data.lines {
-                let line = SnapshotLine(memberID: lineData.memberID,
+                let line = SnapshotLine(context: context, memberID: lineData.memberID,
                                         memberName: lineData.memberName,
                                         valueMinor: lineData.valueMinor,
                                         sortIndex: lineData.sortIndex)
                 line.id = lineData.id
                 line.snapshot = snapshot
-                context.insert(line)
             }
         }
 
         for data in document.principles {
-            let principle = Principle(order: data.order, title: data.title, detail: data.detail)
+            let principle = Principle(context: context, order: data.order, title: data.title, detail: data.detail)
             principle.id = data.id
             principle.reviewNote = data.reviewNote
             principle.createdAt = data.createdAt
-            context.insert(principle)
         }
 
         for data in document.changeLog {
-            let log = ChangeLog(kind: ChangeKind(rawValue: data.kind) ?? .other,
+            let log = ChangeLog(context: context, kind: ChangeKind(rawValue: data.kind) ?? .other,
                                 subject: data.subject, summary: data.summary, actor: data.actor)
             log.id = data.id
             log.at = data.at
-            context.insert(log)
         }
 
         for data in document.familyTargets {
-            let target = FamilyTarget(dimension: FamilyTarget.Dimension(rawValue: data.dimension) ?? .region,
+            let target = FamilyTarget(context: context, dimension: FamilyTarget.Dimension(rawValue: data.dimension) ?? .region,
                                       key: data.key, targetBP: data.targetBP)
             target.id = data.id
-            context.insert(target)
         }
 
         try? context.save()
@@ -621,14 +604,13 @@ extension BackupDocument {
     }
 
     @MainActor
-    private static func deleteAll<T: PersistentModel>(_ type: T.Type, in context: ModelContext) {
-        let items = (try? context.fetch(FetchDescriptor<T>())) ?? []
-        for item in items { context.delete(item) }
+    private static func deleteAll<T: NSManagedObject>(_ type: T.Type, in context: NSManagedObjectContext) {
+        for item in context.all(type) { context.delete(item) }
     }
 
     @MainActor
-    private static func insert(plan data: PlanData, into context: ModelContext) {
-        let plan = Plan()
+    private static func insert(plan data: PlanData, into context: NSManagedObjectContext) {
+        let plan = Plan(context: context)
         plan.id = data.id
         plan.title = data.title
         plan.startedOn = data.startedOn
@@ -658,6 +640,5 @@ extension BackupDocument {
         plan.contributionOrderRaw = data.contributionOrderRaw ?? ""
         plan.createdAt = data.createdAt
         plan.updatedAt = data.updatedAt
-        context.insert(plan)
     }
 }

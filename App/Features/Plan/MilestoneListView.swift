@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 직접 찍는 마일스톤.
@@ -12,10 +12,10 @@ import SwiftUI
 /// (docs/08-feedback.md 5번), 마일스톤은 현황판의 `인생 이벤트` 줄과 순자산
 /// 궤적의 세로 눈금으로 간다. 누구의 일인지도 고를 수 있다 (32번).
 struct MilestoneListView: View {
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     @Environment(\.canEdit) private var canEdit
-    @Query(sort: \UserMilestone.year) private var milestones: [UserMilestone]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched(sort: \UserMilestone.year) private var milestones: [UserMilestone]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: UserMilestone?
     @State private var pendingDelete: IndexSet?
 
@@ -54,8 +54,7 @@ struct MilestoneListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if canEdit {
                     Button {
-                        let milestone = UserMilestone(sortIndex: milestones.count)
-                        context.insert(milestone)
+                        let milestone = UserMilestone(context: context, sortIndex: milestones.count)
                         editing = milestone
                     } label: {
                         Image(systemName: "plus")
@@ -108,10 +107,10 @@ struct MilestoneListView: View {
 }
 
 struct MilestoneEditView: View {
-    @Bindable var milestone: UserMilestone
+    @ObservedObject var milestone: UserMilestone
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.managedObjectContext) private var context
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 

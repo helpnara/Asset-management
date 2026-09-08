@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 1페이지 한 장을 **한 곳에서** 만든다.

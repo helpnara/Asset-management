@@ -27,6 +27,7 @@ extension Scenario {
 
     @NSManaged var volatilityBP: Int
 
+    /// 저장할 때의 은퇴 시점 예상. 목록에서 비교할 때 쓴다.
     @NSManaged var projectedMinor: Int
 
     @NSManaged var createdAt: Date

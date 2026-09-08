@@ -19,11 +19,14 @@ extension ChangeLog {
 
     @NSManaged var at: Date
 
+    /// 누가. 공유 전에는 기기 이름, 공유 후에는 참가자 이름이 들어간다.
     @NSManaged var actor: String
 
     @NSManaged var kindRaw: String
 
+    /// 무엇을. `아빠 / ISA / TIGER 미국S&P500` 처럼 사람이 읽는 경로다.
     @NSManaged var subject: String
 
+    /// 어떻게. `2,850,199 → 2,910,000`
     @NSManaged var summary: String
 }

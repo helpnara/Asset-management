@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 /// 계획선 — **계획을 세운 날에서 출발해 계획 가정대로 굴린 궤적**
 /// (docs/08-feedback.md 37·46번).

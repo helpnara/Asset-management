@@ -1,11 +1,11 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct MemberEditView: View {
-    @Bindable var member: Member
+    @ObservedObject var member: Member
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
     /// 열었을 때의 이름. 닫을 때 견줘서 **추가인지 이름 변경인지** 가린다
     /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
@@ -118,9 +118,9 @@ struct MemberEditView: View {
 }
 
 struct AccountEditView: View {
-    @Bindable var account: Account
+    @ObservedObject var account: Account
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?
@@ -321,9 +321,9 @@ struct AccountEditView: View {
 }
 
 struct HoldingEditView: View {
-    @Bindable var holding: Holding
+    @ObservedObject var holding: Holding
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
 
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?

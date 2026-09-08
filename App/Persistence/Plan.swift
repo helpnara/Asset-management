@@ -1,123 +1,27 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 /// 계획의 가정. 가구당 하나만 둔다.
 ///
 /// 지금은 가구 전체를 하나의 숫자로 굴린다. 구성원별 적립 계획·연금·목돈 이벤트는
 /// M2 후반에 세분화한다. 먼저 궤적 한 줄을 끝까지 그려 보는 것이 순서다.
-@Model
-final class Plan {
-    var id: UUID = UUID()
-    var title: String = "우리 가족 노후자금 준비"
-    /// 계획을 세운 해. 로드맵 타임라인의 왼쪽 끝.
-    var startYear: Int = Calendar.current.component(.year, from: .now)
-    /// 계획을 시작한 날. "언제부터 체계적으로 관리했는지" 를 1페이지에 적는다.
-    /// 연도만으로는 그걸 알 수 없다 (docs/08-feedback.md 10번).
-    var startedOn: Date?
-    /// 기준 시점 라벨 — `2026.08 기준 · 이사 후 자산` 같은 선언.
-    /// **같은 자산을 두 번 세지 않기 위한 것**이라 1페이지 머리에 크게 적는다.
-    var asOfNote: String = ""
-    /// 1페이지 맨 아래 한 줄. `계획은 끝났다. 이제는 시간이 일한다.`
-    var declaration: String = ""
-    /// 은퇴 목표 연도. 궤적은 여기서 멈춘다.
-    var retirementYear: Int = Calendar.current.component(.year, from: .now) + 23
-
-    var monthlyContributionMinor: Int = 0
-    /// 연 기대수익률 (basis point). 800 = 8%
-    var annualReturnBP: Int = 800
-    /// 적립액의 연 증가율. 연봉 상승률에 맞춘다.
-    var contributionGrowthBP: Int = 0
-    var inflationBP: Int = 200
-    /// 저수익 자산의 기대수익률. 예적금·연금보험이 여기 붙는다.
-    /// 계좌마다 따로 적으면 그 값이 이긴다 (`Account.expectedReturnBP`).
-    var lowYieldReturnBP: Int = 200
-    /// 부동산 기대수익률. 기본은 물가상승률과 같게 둔다.
-    var realEstateReturnBP: Int = 200
-    /// 은퇴 시점 목표 금액. 0이면 목표선을 그리지 않는다.
-    var targetAmountMinor: Int = 0
-
+extension Plan {
     // MARK: 진단 기준
     //
     // 전부 사용자가 고칠 수 있는 값이다. 기본값은 흔히 쓰는 수치일 뿐
     // 정답이 아니다. CloudKit 제약 때문에 모두 기본값을 갖는다 (ADR-0001).
 
-    /// 은퇴 후 한 달 생활비. 0이면 은퇴 필요 자금을 판단하지 않는다.
-    var monthlySpendingMinor: Int = 0
-    /// 인출률. 400 = 4% (4% 규칙).
-    var withdrawalRateBP: Int = 400
-    /// 세후 월 소득. 저축률 계산에만 쓴다.
-    var monthlyIncomeMinor: Int = 0
-    /// 최소 저축률. 1000 = 10%.
-    var savingsFloorBP: Int = 1_000
-    /// 부동산 · 전월세보증금 비중 상한. 3500 = 35%.
-    var illiquidCapBP: Int = 3_500
-    /// 미국 목표 비중. 6000 = 60%.
-    var usTargetBP: Int = 5_000
-    /// 목표에서 이만큼 벗어나도 조치로 보지 않는다. 500 = 5%p.
-    var mixToleranceBP: Int = 500
-    /// 목표 비중 허용 오차 — 절대(퍼센트포인트). 기본 5%p.
-    /// 목표 비중 허용 오차 (퍼센트포인트). 기본 ±3%p — 목표 20%인 종목은
-    /// 17~23% 안이면 지키는 것으로 본다 (docs/08-feedback.md 20번).
-    var driftToleranceBP: Int = 300
-    /// 목표 비중 허용 오차 — 상대(목표 대비). 기본 25%.
-    /// 목표가 작은 종목에 절대값만 쓰면 영영 안 걸린다.
-    /// ⚠️ **쓰지 않는다** (docs/08-feedback.md 38번).
-    ///
-    /// 20번에서 허용 오차를 퍼센트포인트 하나로 단순화하면서 상대 오차를
-    /// 걷어냈다. 그런데 **지우지 않고 남겨 둔다** — CloudKit Production
-    /// 스키마는 필드를 지울 수 없고(더하기만 된다), 모델에서만 지우면 저장소
-    /// 마이그레이션 위험까지 진다. 안 쓰는 정수 하나가 남는 값은 0에 가깝다.
-    /// 다음에 스키마를 크게 손볼 일이 있으면 그때 함께 뺀다.
-    var driftRelativeBP: Int = 2_500
-
-    /// 꺼 둔 진단 규칙 (docs/08-feedback.md 47번). 쉼표로 이어 붙인 rawValue.
-    ///
-    /// **끈 것을 저장한다** — 켠 것을 저장하면 나중에 규칙이 늘었을 때
-    /// 새 규칙이 꺼진 채로 태어난다. 빈 문자열이면 전부 켜져 있다는 뜻이다.
-    var disabledDiagnosesRaw: String = ""
-
-    /// 세제혜택 계좌를 채우는 순서. 쉼표로 이어 붙인 `AccountKind` rawValue.
-    /// 비어 있으면 기본 순서(IRP → 연금저축 → ISA)를 쓴다.
-    var contributionOrderRaw: String = ""
-
-    /// 월 적립을 구성원별로 나눠 넣는가. 켜면 Member 의 몫을 합해서 쓴다.
-    ///
-    /// 합계 하나로도 궤적은 똑같이 그려진다. 나누는 이유는 "누가 얼마를 넣고
-    /// 있는가"가 가족이 함께 보는 화면에서 의미를 갖기 때문이다.
-    var usesMemberContributions: Bool = false
-
-    /// 궤적을 어디까지 그릴 것인가. 은퇴 이후 인출 구간의 끝이다.
-    /// 기본은 은퇴 후 35년 — 65세 은퇴면 100세까지 본다.
-    var horizonYear: Int = Calendar.current.component(.year, from: .now) + 23 + 35
-
-    var createdAt: Date = Date.now
-    /// 마지막으로 고친 때. 계획은 한 번 세우고 계속 다듬는 것이라, 제목보다
-    /// **언제 갱신했는지**가 알고 싶은 값이다 (docs/08-feedback.md 21번).
-    ///
-    /// `touch()` 로 찍는다. 화면이 값을 바꿀 때마다 부른다.
-    var updatedAt: Date?
-
-    init() {}
+    // `init(context:)` 를 따로 두지 않는다. `NSManagedObject` 가 이미 주는
+    // 이니셜라이저와 이름이 같아 **자기를 부르는 무한 재귀**가 된다.
 }
 
 /// 특정 시점의 큰 자금 이동. 전월세보증금 전환, 퇴직금 유입, 주택 구입.
-@Model
-final class CashEvent {
-    var id: UUID = UUID()
-    var date: Date = Date.now
-    var label: String = ""
-    /// 부호로 방향을 표현한다. 양수는 유입, 음수는 유출.
-    var amountMinor: Int = 0
-    /// 이미 현재 잔고에 반영된 이벤트. 예측에서 빼야 두 번 세지 않는다.
-    ///
-    /// 1페이지의 "이 표의 모든 금액은 이사 완료 후 기준 — 중복 계산 방지" 가
-    /// 바로 이 문제였다.
-    var isAlreadyReflected: Bool = false
-    var note: String = ""
-    var sortIndex: Int = 0
-
-    init(date: Date = .now, label: String = "", amountMinor: Int = 0, sortIndex: Int = 0) {
+extension CashEvent {
+    convenience init(context: NSManagedObjectContext,
+                     date: Date = .now, label: String = "",
+                     amountMinor: Int = 0, sortIndex: Int = 0) {
+        self.init(context: context)
         self.date = date
         self.label = label
         self.amountMinor = amountMinor
@@ -129,22 +33,10 @@ final class CashEvent {
 ///
 /// **금액은 오늘 돈 기준으로 적는다.** "65세부터 월 150만원"의 150만원은
 /// 지금 물가로 말한 것이지 20년 뒤의 액면가가 아니다.
-@Model
-final class IncomeStream {
-    var id: UUID = UUID()
-    var label: String = ""
-    /// 오늘 돈 기준 월 수령액.
-    var monthlyAmountMinor: Int = 0
-    var startYear: Int = Calendar.current.component(.year, from: .now) + 20
-    /// 0이면 종신.
-    var endYear: Int = 0
-    /// 물가에 연동되는가. 국민연금은 연동되고 확정형 개인연금은 안 된다.
-    /// 30년이면 이 차이가 결과를 절반으로 가른다.
-    var isInflationLinked: Bool = true
-    var sortIndex: Int = 0
-
-    init(label: String = "", monthlyAmountMinor: Int = 0, startYear: Int? = nil,
+extension IncomeStream {
+    convenience init(context: NSManagedObjectContext, label: String = "", monthlyAmountMinor: Int = 0, startYear: Int? = nil,
          sortIndex: Int = 0) {
+        self.init(context: context)
         self.label = label
         self.monthlyAmountMinor = monthlyAmountMinor
         self.startYear = startYear ?? (Calendar.current.component(.year, from: .now) + 20)
@@ -496,12 +388,11 @@ extension Plan {
     }
 
     /// 저장소에 하나뿐인 계획을 꺼내고, 없으면 만든다.
-    static func current(in context: ModelContext) -> Plan {
-        if let existing = (try? context.fetch(FetchDescriptor<Plan>()))?.first {
+    static func current(in context: NSManagedObjectContext) -> Plan {
+        if let existing = context.all(Plan.self).first {
             return existing
         }
-        let plan = Plan()
-        context.insert(plan)
-        return plan
+        // Core Data 는 만드는 순간 컨텍스트에 들어간다 — `insert` 를 따로 안 부른다.
+        return Plan(context: context)
     }
 }

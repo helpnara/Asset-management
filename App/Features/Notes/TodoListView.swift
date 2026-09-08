@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 유의사항 · 할 일. 1페이지 아래쪽의 `※ 주석` 이 여기로 온다.
@@ -7,10 +7,10 @@ import SwiftUI
 /// 규칙 점검(자산 진단)이 **숫자로 판정하는 것**이라면, 여기는 **숫자로 판정할 수
 /// 없는 것**이다. "연금저축 5월까지 채우기", "전세 만기 전에 알아보기" 같은 것들.
 struct TodoListView: View {
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     @Environment(\.canEdit) private var canEdit
-    @Query(sort: \TodoItem.sortIndex) private var items: [TodoItem]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched(sort: \TodoItem.sortIndex) private var items: [TodoItem]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: TodoItem?
     @State private var showsDone = false
 
@@ -94,8 +94,7 @@ struct TodoListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if canEdit {
                     Button {
-                        let item = TodoItem(sortIndex: items.count)
-                        context.insert(item)
+                        let item = TodoItem(context: context, sortIndex: items.count)
                         editing = item
                     } label: {
                         Image(systemName: "plus")
@@ -209,11 +208,11 @@ struct TodoListView: View {
 }
 
 struct TodoEditView: View {
-    @Bindable var item: TodoItem
+    @ObservedObject var item: TodoItem
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Query(sort: \TodoItem.sortIndex) private var items: [TodoItem]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.managedObjectContext) private var context
+    @Fetched(sort: \TodoItem.sortIndex) private var items: [TodoItem]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var hasDue: Bool
 

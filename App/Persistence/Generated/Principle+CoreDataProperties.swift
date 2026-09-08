@@ -17,12 +17,14 @@ extension Principle {
 
     @NSManaged var id: UUID
 
+    /// 1페이지에 붙는 번호. 1부터.
     @NSManaged var order: Int
 
     @NSManaged var title: String
 
     @NSManaged var detail: String
 
+    /// 점검 주기 메모 — `분기 1회` 처럼 자유롭게 적는다.
     @NSManaged var reviewNote: String
 
     @NSManaged var createdAt: Date

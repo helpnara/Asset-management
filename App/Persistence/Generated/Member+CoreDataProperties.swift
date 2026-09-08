@@ -29,10 +29,18 @@ extension Member {
 
     @NSManaged var targetRetirementAge: Int
 
+    /// 이 사람 몫의 월 적립액. 계획 탭에서 "구성원별로 나눠 넣기"를 켰을 때만 쓴다.
     @NSManaged var monthlyContributionMinor: Int
 
+    /// 회사가 넣어 주는 몫. `monthlyContributionMinor` 는 **본인 부담**이라는
+    /// 뜻 그대로 두었으므로 이미 적어 둔 값을 고칠 필요가 없다.
+    ///
+    /// 궤적에는 합계가 쓰이고, **저축률 진단에는 본인 부담만** 쓴다 —
+    /// 회사가 넣어 주는 돈을 내 저축으로 세면 저축률이 부풀려진다
+    /// (docs/08-feedback.md 10번).
     @NSManaged var employerMatchMinor: Int
 
+    /// 그 사람에게만 걸리는 한도·재검토 시점. 1페이지 구성원 카드의 `※` 줄.
     @NSManaged var note: String
 
     @NSManaged var colorIndex: Int

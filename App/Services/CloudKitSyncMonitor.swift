@@ -13,7 +13,7 @@ import Foundation
 /// 아니었다" 는 되돌릴 방법이 없다. 그래서 **마지막 내보내기가 성공했는지**를
 /// 직접 본다.
 ///
-/// SwiftData 는 속으로 `NSPersistentCloudKitContainer` 를 쓰므로 그것이 쏘는
+/// 저장 계층이 `NSPersistentCloudKitContainer` 이므로 그것이 쏘는
 /// 알림을 그대로 받을 수 있다.
 @MainActor
 @Observable
@@ -57,7 +57,7 @@ final class CloudKitSyncMonitor {
             queue: .main
         ) { [weak self] note in
             // `Event` 는 Sendable 이 아니다. 값만 뽑아서 넘긴다 —
-            // `@Model` 을 async 경계 너머로 넘기지 않는 것과 같은 이유다.
+            // 관리 객체를 async 경계 너머로 넘기지 않는 것과 같은 이유다.
             guard let event = note.userInfo?[
                 NSPersistentCloudKitContainer.eventNotificationUserInfoKey
             ] as? NSPersistentCloudKitContainer.Event else { return }

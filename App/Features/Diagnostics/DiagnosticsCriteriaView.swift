@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 진단 기준. **전부 사용자가 정한다.**
@@ -8,7 +8,7 @@ import SwiftUI
 /// 미국 50%도 마찬가지다. 앱이 정답을 아는 척하면 사용자는 자기 기준을
 /// 세우지 못하고, 그러면 규칙이 자기 것이 되지 않는다.
 struct DiagnosticsCriteriaView: View {
-    @Bindable var plan: Plan
+    @ObservedObject var plan: Plan
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

@@ -21,8 +21,13 @@ extension CashEvent {
 
     @NSManaged var label: String
 
+    /// 부호로 방향을 표현한다. 양수는 유입, 음수는 유출.
     @NSManaged var amountMinor: Int
 
+    /// 이미 현재 잔고에 반영된 이벤트. 예측에서 빼야 두 번 세지 않는다.
+    ///
+    /// 1페이지의 "이 표의 모든 금액은 이사 완료 후 기준 — 중복 계산 방지" 가
+    /// 바로 이 문제였다.
     @NSManaged var isAlreadyReflected: Bool
 
     @NSManaged var note: String

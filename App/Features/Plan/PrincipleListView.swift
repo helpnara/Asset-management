@@ -1,4 +1,4 @@
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 운용 원칙 — 1페이지 D블록을 채우는 곳.
@@ -10,10 +10,10 @@ import SwiftUI
 /// 보고, 여기는 **"하락장에도 멈추지 않는다"** 처럼 계산으로는 못 보는 것을
 /// 글로 남긴다.
 struct PrincipleListView: View {
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     // 원칙은 1페이지에 실려 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
     @Environment(\.canManageHousehold) private var canManageHousehold
-    @Query(sort: \Principle.order) private var principles: [Principle]
+    @Fetched(sort: \Principle.order) private var principles: [Principle]
     @State private var pendingDelete: IndexSet?
 
     var body: some View {
@@ -41,20 +41,20 @@ struct PrincipleListView: View {
     private var list: some View {
         List {
             ForEach(principles) { principle in
-                @Bindable var principle = principle
+                let bind = principle.bindings
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text(verbatim: "\(principle.order).")
                             .font(.figure(13, weight: .semibold))
                             .foregroundStyle(Color.faint)
-                        TextField("한 줄 제목", text: $principle.title)
+                        TextField("한 줄 제목", text: bind.title)
                             .font(.system(size: 14, weight: .medium))
                     }
-                    TextField("부연 설명", text: $principle.detail, axis: .vertical)
+                    TextField("부연 설명", text: bind.detail, axis: .vertical)
                         .font(.system(size: 12))
                         .foregroundStyle(Color.bodyText)
                         .lineLimit(1...4)
-                    TextField("점검 주기 (분기 1회 …)", text: $principle.reviewNote)
+                    TextField("점검 주기 (분기 1회 …)", text: bind.reviewNote)
                         .font(.system(size: 11))
                         .foregroundStyle(Color.muted)
                 }
@@ -116,7 +116,7 @@ struct PrincipleListView: View {
     }
 
     private func add() {
-        context.insert(Principle(order: principles.count + 1))
+        _ = Principle(context: context, order: principles.count + 1)
     }
 
     /// 아직 없는 기본 원칙들. 전부 있으면 버튼 자체가 사라진다.
@@ -129,7 +129,7 @@ struct PrincipleListView: View {
         var order = principles.count
         for title in missingDefaults {
             order += 1
-            context.insert(Principle(order: order, title: title))
+            _ = Principle(context: context, order: order, title: title)
         }
     }
 

@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 자산 진단 — 상시 점검.
@@ -14,13 +14,13 @@ struct DiagnosticsView: View {
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
-    @Environment(\.modelContext) private var context
-    @Query private var plans: [Plan]
-    @Query private var holdings: [Holding]
-    @Query private var accounts: [Account]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.managedObjectContext) private var context
+    @Fetched private var plans: [Plan]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var accounts: [Account]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     @State private var expanded: Set<String> = []
     @State private var isEditingCriteria = false

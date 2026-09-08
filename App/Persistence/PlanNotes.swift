@@ -1,30 +1,15 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 /// 사용자가 직접 찍는 마일스톤.
 ///
 /// 자동 판정(수익 > 적립금 · 자산 2배 · 목표 달성)만으로는 담기지 않는 것들이 있다.
 /// "아이 대학 입학", "전세 만기", "차 교체" 같은 것들. 금액이 아니라 **연도에
 /// 이름을 붙이는 일**이라 사용자만 할 수 있다.
-@Model
-final class UserMilestone {
-    var id: UUID = UUID()
-    var year: Int = Calendar.current.component(.year, from: .now) + 5
-    var label: String = ""
-    var note: String = ""
-    var sortIndex: Int = 0
-    /// 누구의 일인가. `nil` 이면 **가족 전체**의 일이다
-    /// (docs/08-feedback.md 32번).
-    ///
-    /// 관계가 아니라 UUID 로 든다 — 마일스톤은 그 사람이 지워져도 남아야
-    /// 하는 기록이고(전학·이사처럼 사람이 빠져도 그 해는 있었다), 관계로
-    /// 묶으면 cascade 에 딸려 사라진다.
-    ///
-    /// CloudKit 제약대로 옵셔널이고 기본값이 있다 (ADR-0001).
-    var memberID: UUID?
-
-    init(year: Int? = nil, label: String = "", sortIndex: Int = 0, memberID: UUID? = nil) {
+extension UserMilestone {
+    convenience init(context: NSManagedObjectContext, year: Int? = nil, label: String = "", sortIndex: Int = 0, memberID: UUID? = nil) {
+        self.init(context: context)
         self.memberID = memberID
         self.year = year ?? (Calendar.current.component(.year, from: .now) + 5)
         self.label = label
@@ -36,22 +21,9 @@ final class UserMilestone {
 ///
 /// 1페이지 아래쪽의 `※ 주석` 과 `연간 한도` 메모가 여기로 온다.
 /// 기한이 있으면 그날 아침에 한 번 부른다 — 매주 점검과 섞이지 않게 따로 건다.
-@Model
-final class TodoItem {
-    var id: UUID = UUID()
-    var title: String = ""
-    var detail: String = ""
-    var categoryRaw: String = TodoCategory.note.rawValue
-    /// 기한. nil 이면 기한 없는 메모다.
-    var dueDate: Date?
-    var isDone: Bool = false
-    /// 해마다 되돌아오는 항목인가 (연간 한도 채우기 등).
-    var repeatsYearly: Bool = false
-    var completedAt: Date?
-    var sortIndex: Int = 0
-    var createdAt: Date = Date.now
-
-    init(title: String = "", category: TodoCategory = .note, sortIndex: Int = 0) {
+extension TodoItem {
+    convenience init(context: NSManagedObjectContext, title: String = "", category: TodoCategory = .note, sortIndex: Int = 0) {
+        self.init(context: context)
         self.title = title
         self.categoryRaw = category.rawValue
         self.sortIndex = sortIndex
@@ -109,20 +81,10 @@ extension TodoItem {
 /// 시뮬레이션 손잡이는 저장되지 않는다 — 그게 [계획에 반영]과 나눈 이유다.
 /// 그런데 "월 500만 · 은퇴 5년 늦춤"처럼 마음에 든 조합을 다시 찾으려면
 /// 손잡이를 처음부터 다시 돌려야 한다. 그 조합에 이름을 붙여 두는 것이 이것이다.
-@Model
-final class Scenario {
-    var id: UUID = UUID()
-    var name: String = ""
-    var monthlyMinor: Int = 0
-    var retirementYear: Int = Calendar.current.component(.year, from: .now) + 23
-    var returnBP: Int = 800
-    var volatilityBP: Int = 1_500
-    /// 저장할 때의 은퇴 시점 예상. 목록에서 비교할 때 쓴다.
-    var projectedMinor: Int = 0
-    var createdAt: Date = Date.now
-
-    init(name: String = "", monthlyMinor: Int = 0, retirementYear: Int = 0,
+extension Scenario {
+    convenience init(context: NSManagedObjectContext, name: String = "", monthlyMinor: Int = 0, retirementYear: Int = 0,
          returnBP: Int = 800, volatilityBP: Int = 1_500, projectedMinor: Int = 0) {
+        self.init(context: context)
         self.name = name
         self.monthlyMinor = monthlyMinor
         self.retirementYear = retirementYear > 0

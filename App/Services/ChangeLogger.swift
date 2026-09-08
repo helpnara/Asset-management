@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 import UIKit
 
 /// 무엇이 언제 바뀌었는지 남긴다 (docs/08-feedback.md 29번).
@@ -26,14 +26,14 @@ enum ChangeLogger {
     static var actor: String { UIDevice.current.name }
 
     static func record(_ kind: ChangeKind, subject: String, summary: String,
-                       in context: ModelContext) {
+                       in context: NSManagedObjectContext) {
         guard !subject.isEmpty || !summary.isEmpty else { return }
-        context.insert(ChangeLog(kind: kind, subject: subject, summary: summary, actor: actor))
+        _ = ChangeLog(context: context, kind: kind, subject: subject, summary: summary, actor: actor)
         prune(context)
     }
 
     /// 계좌·종목·구성원이 늘거나 줄었을 때.
-    static func structureChanged(_ what: String, _ how: String, in context: ModelContext) {
+    static func structureChanged(_ what: String, _ how: String, in context: NSManagedObjectContext) {
         record(.structure, subject: what, summary: how, in: context)
     }
 
@@ -42,15 +42,14 @@ enum ChangeLogger {
     /// 금액 칸은 글자 하나를 칠 때마다 값이 달라지므로 그대로 남기면 `410만`
     /// 하나 고치는 데 이력이 일곱 줄 생긴다. 몇 분 안의 계획 변경은 **같은
     /// 한 줄에 항목만 더한다** — 사람이 느끼기에도 그게 한 번의 편집이다.
-    static func planChanged(labels: [String], in context: ModelContext) {
+    static func planChanged(labels: [String], in context: NSManagedObjectContext) {
         guard !labels.isEmpty else { return }
-        var descriptor = FetchDescriptor<ChangeLog>(
-            predicate: #Predicate { $0.kindRaw == "planValue" },
-            sortBy: [SortDescriptor(\.at, order: .reverse)]
-        )
-        descriptor.fetchLimit = 1
-
-        let recent = (try? context.fetch(descriptor))?.first
+        let recent = context.all(
+            ChangeLog.self,
+            sortedBy: [NSSortDescriptor(key: "at", ascending: false)],
+            predicate: NSPredicate(format: "kindRaw == %@", "planValue"),
+            limit: 1
+        ).first
         if let recent, Date.now.timeIntervalSince(recent.at) < mergeWindow {
             var names = recent.summary
                 .replacingOccurrences(of: " 을(를) 고쳤습니다", with: "")
@@ -69,10 +68,11 @@ enum ChangeLogger {
     /// 이 시간 안의 계획 변경은 한 번으로 본다.
     private static let mergeWindow: TimeInterval = 180
 
-    private static func prune(_ context: ModelContext) {
-        var descriptor = FetchDescriptor<ChangeLog>(sortBy: [SortDescriptor(\.at, order: .reverse)])
-        descriptor.fetchLimit = limit * 2
-        guard let logs = try? context.fetch(descriptor), logs.count > limit else { return }
+    private static func prune(_ context: NSManagedObjectContext) {
+        let logs = context.all(ChangeLog.self,
+                               sortedBy: [NSSortDescriptor(key: "at", ascending: false)],
+                               limit: limit * 2)
+        guard logs.count > limit else { return }
         for log in logs.dropFirst(limit) { context.delete(log) }
     }
 }

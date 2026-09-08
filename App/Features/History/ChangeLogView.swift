@@ -1,4 +1,4 @@
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 변경 이력 — 무엇이 언제 바뀌었나 (docs/08-feedback.md 29번).
@@ -9,7 +9,7 @@ import SwiftUI
 /// **1페이지에는 넣지 않는다.** 종이는 남에게 건네는 문서인데 이력에는
 /// 금액이 남는다.
 struct ChangeLogView: View {
-    @Query(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
+    @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
 
     var body: some View {
         List {

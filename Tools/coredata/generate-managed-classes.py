@@ -8,9 +8,13 @@
 1a 에서 모델 파일을 뽑은 것과 같은 이유이고, **같은 곳(`App/Persistence/*.swift`)을
 읽으므로** 모델 파일·CloudKit 스키마·이 선언 셋이 어긋날 수 없다.
 
-**아직 빌드에 안 들어간다.** `project.yml` 이 `App/Persistence/Generated` 를
-제외한다. 지금 넣으면 `@Model` 클래스와 이름이 겹쳐 빌드가 깨진다. 이 단계의
-일은 **뽑아 놓고 눈으로 보는 것**이고, 갈아타는 것은 1b-2 다.
+**⚠️ 1b-2 뒤로는 돌지 않는다.** 저장 계층을 Core Data 로 갈아타면서 `@Model`
+선언이 사라졌기 때문이다. 이제 원본은 `App/SlowRich.xcdatamodeld` 이고,
+생성물은 **커밋된 채로 손으로 고친다.** CI 가 셋(모델 파일 · 생성물 ·
+CloudKit 스키마)이 서로 맞는지 대조하므로 빠뜨리면 막힌다.
+
+이 스크립트는 그 최초 한 벌을 만든 도구로 남겨 둔다 — 어떻게 나왔는지가
+남아 있어야 다음 사람이 규칙을 안다.
 
 ## 까다로운 곳 셋
 
@@ -60,23 +64,47 @@ def swift_type(raw):
     return raw.strip()
 
 
+def doc_comment(body, start):
+    """프로퍼티 바로 위에 붙은 `///` 뭉치를 그대로 가져온다.
+
+    **이 주석이 이 저장소의 자산이다.** "왜 이 칸이 있나" 가 거기 적혀 있고,
+    1b-2 에서 원본 선언을 지울 때 같이 사라지면 안 된다. 그래서 생성물이
+    데려간다.
+    """
+    lines = body[:start].split("\n")
+    if lines and not lines[-1].strip():
+        lines = lines[:-1]                 # 선언 줄 앞의 들여쓰기 조각
+    picked = []
+    for line in reversed(lines):
+        text = line.strip()
+        if text.startswith("///"):
+            picked.append("    " + text)
+        else:
+            break                          # 빈 줄이나 다른 코드를 만나면 끝
+    return list(reversed(picked))
+
+
 def properties(entity, body, class_names):
     """(선언 줄들, 옵셔널 스칼라 개수)."""
     lines = []
     tricky = 0
 
-    for field, raw, _ in xcd.FIELD_RE.findall(body):
+    for match in xcd.FIELD_RE.finditer(body):
+        field, raw = match.group(1), match.group(2)
         declared = swift_type(raw)
         bare = declared.rstrip("?")
         if bare.startswith("[") or bare in class_names:
             continue                                  # 관계는 아래에서
         optional = declared.endswith("?")
+        docs = doc_comment(body, match.start())
+        prefix = ("\n".join(docs) + "\n") if docs else ""
 
         if optional and bare not in OBJECT_TYPES:
             # 옵셔널 스칼라. NSNumber 로 저장하고 이름만 되돌린다.
             tricky += 1
             lines.append(
-                f"    /// `{bare}?` 는 `@NSManaged` 가 직접 못 든다. 저장은 `NSNumber?` 로 하고\n"
+                prefix
+                + f"    /// `{bare}?` 는 `@NSManaged` 가 직접 못 든다. 저장은 `NSNumber?` 로 하고\n"
                 f"    /// KVC 이름만 `{field}` 로 붙여 준다 — 모델의 칸 이름이 그것이기 때문이다.\n"
                 f"    @NSManaged @objc({field}) var {field}Number: NSNumber?\n"
                 f"\n"
@@ -86,7 +114,7 @@ def properties(entity, body, class_names):
                 f"        set {{ {field}Number = newValue.map(NSNumber.init(value:)) }}\n"
                 f"    }}")
         else:
-            lines.append(f"    @NSManaged var {field}: {declared}")
+            lines.append(prefix + f"    @NSManaged var {field}: {declared}")
 
     for field, target, _inverse, is_many in xcd.relationships(body, entity, class_names):
         if is_many:
@@ -171,10 +199,19 @@ public class {entity}: NSManagedObject {{
 
 def main():
     all_models = xcd.models()
+    # **아무것도 못 찾았으면 손대지 않는다.** 1b-2 로 `@Model` 이 사라진 뒤
+    # 무심코 돌렸다가 생성물 서른 개를 **전부 지웠다.** 지우는 것이 찾는 것보다
+    # 먼저였던 탓이다. 빈손으로는 아무 일도 하지 않는다.
+    if not all_models:
+        sys.exit(f"{xcd.SOURCES} 에서 @Model 을 하나도 못 찾았습니다 — "
+                 f"아무것도 고치지 않았습니다.\n"
+                 f"1b-2 뒤로 원본은 App/SlowRich.xcdatamodeld 입니다 "
+                 f"(docs/09-family-sharing.md).")
+
     class_names = {n for n, _ in all_models}
     os.makedirs(DEST, exist_ok=True)
 
-    # 예전 생성물은 지운다. `@Model` 을 지웠는데 파일이 남으면 빌드가 깨진다.
+    # 예전 생성물은 지운다. 엔티티를 지웠는데 파일이 남으면 빌드가 깨진다.
     for name in os.listdir(DEST):
         if name.endswith(".swift"):
             os.remove(os.path.join(DEST, name))

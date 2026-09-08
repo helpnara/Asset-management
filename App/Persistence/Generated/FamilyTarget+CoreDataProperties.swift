@@ -17,8 +17,10 @@ extension FamilyTarget {
 
     @NSManaged var id: UUID
 
+    /// `Dimension.rawValue`. 지역인지 자산군인지.
     @NSManaged var dimensionRaw: String
 
+    /// 그 축 안에서의 키 — `Region.rawValue` 또는 `AssetClass.rawValue`.
     @NSManaged var key: String
 
     @NSManaged var targetBP: Int

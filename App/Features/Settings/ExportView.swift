@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -10,16 +10,16 @@ import UniformTypeIdentifiers
 /// 내보내기는 다르다. iCloud 가 꺼져 있거나 계정에 문제가 생겼을 때
 /// 기록을 꺼낼 길이 하나도 없으면 몇 달치가 통째로 날아간다.
 struct ExportView: View {
-    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var holdings: [Holding]
-    @Query private var plans: [Plan]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \Principle.order) private var principles: [Principle]
-    @Query(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var plans: [Plan]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \Principle.order) private var principles: [Principle]
+    @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     /// **되돌리기는 관리자만이다.** iCloud 는 삭제까지 퍼뜨리므로, 참가자가
     /// 자기 기기에서 되돌리면 관리자의 기록까지 갈아 끼운다 (40번).
     @Environment(\.canManageHousehold) private var canManageHousehold

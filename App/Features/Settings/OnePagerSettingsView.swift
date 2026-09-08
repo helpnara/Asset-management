@@ -1,4 +1,4 @@
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 1페이지 인쇄물에만 쓰이는 글귀들 (docs/08-feedback.md 21번).
@@ -7,7 +7,7 @@ import SwiftUI
 /// 화면에는 언제 세웠고 언제 갱신했는지만 있으면 된다. 이 셋은 자주 안
 /// 건드리는 값이고 계산에도 안 쓰이므로 인쇄물 쪽에 두는 편이 맞다.
 struct OnePagerSettingsView: View {
-    @Query private var plans: [Plan]
+    @Fetched private var plans: [Plan]
     // 1페이지는 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
     @Environment(\.canManageHousehold) private var canManageHousehold
 
@@ -17,9 +17,9 @@ struct OnePagerSettingsView: View {
                 Section { ReadOnlyNote(text: "1페이지 문서는 관리자만 고칠 수 있습니다.") }
             }
             if let plan = plans.first {
-                @Bindable var plan = plan
+                let bind = plan.bindings
                 Section {
-                    TextField("우리 가족 노후자금 준비", text: $plan.title)
+                    TextField("우리 가족 노후자금 준비", text: bind.title)
                         .disabled(!canManageHousehold)
                 } header: {
                     Text("문서 제목")
@@ -28,7 +28,7 @@ struct OnePagerSettingsView: View {
                 }
 
                 Section {
-                    TextField("2026.08 기준 · 이사 후 자산", text: $plan.asOfNote)
+                    TextField("2026.08 기준 · 이사 후 자산", text: bind.asOfNote)
                         .disabled(!canManageHousehold)
                 } header: {
                     Text("기준 시점")
@@ -38,7 +38,7 @@ struct OnePagerSettingsView: View {
 
                 Section {
                     TextField("계획은 끝났다. 이제는 시간이 일한다.",
-                              text: $plan.declaration, axis: .vertical)
+                              text: bind.declaration, axis: .vertical)
                         .lineLimit(1...3)
                         .disabled(!canManageHousehold)
                 } header: {

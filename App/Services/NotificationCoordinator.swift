@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 import UserNotifications
 
 /// 알림 응답 처리. 앱이 꺼져 있어도 총액 한 줄은 남길 수 있어야 한다.
@@ -9,9 +9,9 @@ import UserNotifications
 /// 데이터 경합 위험으로 컴파일이 막힌다. 그래서 실제 처리는 **Sendable 한 값만 받는
 /// 정적 메서드**로 뺐다. `@preconcurrency` 로 검사를 끄는 대신 실제로 안전한 형태를 골랐다.
 final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate {
-    private let container: ModelContainer
+    private let container: NSPersistentContainer
 
-    init(container: ModelContainer) {
+    init(container: NSPersistentContainer) {
         self.container = container
         super.init()
     }
@@ -30,14 +30,14 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
     ) async {
         let action = response.actionIdentifier
         let typed = (response as? UNTextInputNotificationResponse)?.userText
-        let container = container   // ModelContainer 는 Sendable 이다
+        let container = container   // 메인 컨텍스트만 건드린다 — 컨테이너를 async 경계 너머로 넘기지 않는다
         await MainActor.run {
             Self.handle(action: action, text: typed, container: container)
         }
     }
 
     @MainActor
-    private static func handle(action: String, text: String?, container: ModelContainer) {
+    private static func handle(action: String, text: String?, container: NSPersistentContainer) {
         switch action {
         case ReviewNotifications.Action.quickTotal:
             if let text { recordTotalOnly(text, container: container) }
@@ -53,13 +53,13 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
     /// 총액만 기록한다. 궤적의 점 하나는 남고 구성원별 분해는 비어 있다.
     /// 완벽한 한 주보다 이어지는 스무 주가 낫다 (ADR-0005).
     @MainActor
-    private static func recordTotalOnly(_ text: String, container: ModelContainer) {
+    private static func recordTotalOnly(_ text: String, container: NSPersistentContainer) {
         let digits = String(text.filter(\.isNumber).prefix(15))
         guard let value = Int(digits), value > 0 else { return }
 
-        let context = ModelContext(container)
+        let context = container.viewContext
         let anchor = ReviewWeek.anchor(for: .now)
-        let allSessions = (try? context.fetch(FetchDescriptor<ReviewSession>())) ?? []
+        let allSessions = context.all(ReviewSession.self)
 
         let existing = allSessions.first { $0.weekAnchor == anchor }
         guard existing?.isComplete != true else { return }
@@ -68,19 +68,18 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
             .filter { $0.completedAt != nil && $0.weekAnchor < anchor }
             .max { $0.weekAnchor < $1.weekAnchor }
 
-        let session = existing ?? ReviewSession(weekAnchor: anchor, totalCount: 0)
+        let session = existing ?? ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
         session.isTotalOnly = true
         session.completedAt = .now
         session.totalValueMinor = value
         session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
-        if existing == nil { context.insert(session) }
 
-        context.insert(Snapshot(
+        _ = Snapshot(context: context,
             weekAnchor: anchor,
             netWorthMinor: value,
             investableMinor: 0,
             liabilitiesMinor: 0
-        ))
+        )
 
         try? context.save()
 

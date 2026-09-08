@@ -23,10 +23,12 @@ extension TodoItem {
 
     @NSManaged var categoryRaw: String
 
+    /// 기한. nil 이면 기한 없는 메모다.
     @NSManaged var dueDate: Date?
 
     @NSManaged var isDone: Bool
 
+    /// 해마다 되돌아오는 항목인가 (연간 한도 채우기 등).
     @NSManaged var repeatsYearly: Bool
 
     @NSManaged var completedAt: Date?

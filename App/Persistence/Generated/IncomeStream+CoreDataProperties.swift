@@ -19,12 +19,16 @@ extension IncomeStream {
 
     @NSManaged var label: String
 
+    /// 오늘 돈 기준 월 수령액.
     @NSManaged var monthlyAmountMinor: Int
 
     @NSManaged var startYear: Int
 
+    /// 0이면 종신.
     @NSManaged var endYear: Int
 
+    /// 물가에 연동되는가. 국민연금은 연동되고 확정형 개인연금은 안 된다.
+    /// 30년이면 이 차이가 결과를 절반으로 가른다.
     @NSManaged var isInflationLinked: Bool
 
     @NSManaged var sortIndex: Int

@@ -1,6 +1,6 @@
 import Core
 import Foundation
-import SwiftData
+import CoreData
 
 #if DEBUG
 /// CI 스크린샷과 미리보기용 가상 데이터.
@@ -10,16 +10,15 @@ import SwiftData
 /// 실행 인자 `-seedSampleData` 가 있을 때만 인메모리 저장소에 채운다.
 enum SampleData {
 
-    static func seed(into context: ModelContext) {
-        let dad = Member(name: "아빠", roleNote: "본인", birthYear: 1984, birthMonth: 3,
+    static func seed(into context: NSManagedObjectContext) {
+        let dad = Member(context: context, name: "아빠", roleNote: "본인", birthYear: 1984, birthMonth: 3,
                          taxResidency: .korea, colorIndex: 0, sortIndex: 0)
-        let mom = Member(name: "엄마", roleNote: "미국 시민권자", birthYear: 1986, birthMonth: 7,
+        let mom = Member(context: context, name: "엄마", roleNote: "미국 시민권자", birthYear: 1986, birthMonth: 7,
                          taxResidency: .usa, colorIndex: 1, sortIndex: 1)
-        let son = Member(name: "아들", roleNote: "2022년생", birthYear: 2022, birthMonth: 5,
+        let son = Member(context: context, name: "아들", roleNote: "2022년생", birthYear: 2022, birthMonth: 5,
                          taxResidency: .usa, colorIndex: 2, sortIndex: 2)
-        let daughter = Member(name: "딸", roleNote: "2023년생", birthYear: 2023, birthMonth: 9,
+        let daughter = Member(context: context, name: "딸", roleNote: "2023년생", birthYear: 2023, birthMonth: 9,
                               taxResidency: .usa, colorIndex: 3, sortIndex: 3)
-        [dad, mom, son, daughter].forEach(context.insert)
 
         // 아빠 — 일반 위탁 · 연금보험 · 전월세보증금 · 마이너스통장
         let dadBrokerage = account("종합계좌", "증권사 A", .general, dad, 0, context)
@@ -84,7 +83,7 @@ enum SampleData {
 
         seedPastReviews(members: [dad, mom, son, daughter], into: context)
 
-        let plan = Plan()
+        let plan = Plan(context: context)
         plan.monthlyContributionMinor = 4_100_000
         plan.annualReturnBP = 800
         plan.contributionGrowthBP = 300
@@ -99,36 +98,31 @@ enum SampleData {
 
         // 은퇴 후 소득 — 전부 예시 수치다.
         // 하나는 물가연동(국민연금), 하나는 확정형이라 갈수록 힘이 빠진다.
-        let pension = IncomeStream(label: "국민연금", monthlyAmountMinor: 1_400_000,
+        let pension = IncomeStream(context: context, label: "국민연금", monthlyAmountMinor: 1_400_000,
                                    startYear: plan.retirementYear + 2, sortIndex: 0)
-        context.insert(pension)
 
-        let privatePension = IncomeStream(label: "개인연금 (확정)", monthlyAmountMinor: 600_000,
+        let privatePension = IncomeStream(context: context, label: "개인연금 (확정)", monthlyAmountMinor: 600_000,
                                           startYear: plan.retirementYear, sortIndex: 1)
         privatePension.endYear = plan.retirementYear + 20
         privatePension.isInflationLinked = false
-        context.insert(privatePension)
 
         // 유의사항 · 할 일 — 전부 예시다.
-        let limitTodo = TodoItem(title: "연금저축 한도 채우기", category: .limit, sortIndex: 0)
+        let limitTodo = TodoItem(context: context, title: "연금저축 한도 채우기", category: .limit, sortIndex: 0)
         limitTodo.dueDate = Calendar.current.date(byAdding: .day, value: 26, to: .now)
         limitTodo.repeatsYearly = true
         limitTodo.detail = "12월 말까지 넣어야 올해 세액공제에 들어갑니다."
-        context.insert(limitTodo)
 
-        let taxTodo = TodoItem(title: "아이 계좌 해외 ETF 정리 검토", category: .tax, sortIndex: 1)
+        let taxTodo = TodoItem(context: context, title: "아이 계좌 해외 ETF 정리 검토", category: .tax, sortIndex: 1)
         taxTodo.detail = "미국 세적이라 한국 상장 ETF 는 PFIC 로 분류됩니다."
-        context.insert(taxTodo)
 
-        let leaseTodo = TodoItem(title: "전세 만기 6개월 전 알아보기", category: .deadline, sortIndex: 2)
+        let leaseTodo = TodoItem(context: context, title: "전세 만기 6개월 전 알아보기", category: .deadline, sortIndex: 2)
         leaseTodo.dueDate = Calendar.current.date(byAdding: .day, value: 120, to: .now)
-        context.insert(leaseTodo)
 
         // 운용 원칙 — **기본 열여섯을 그대로 넣는다.** 1페이지가 가장 꽉 차는
         // 경우라, CI 스크린샷이 "한 장에 들어가나" 를 최악의 조건에서 보여준다
         // (docs/08-feedback.md 24번).
         for (index, title) in DefaultPrinciples.titles.enumerated() {
-            context.insert(Principle(order: index + 1, title: title))
+            _ = Principle(context: context, order: index + 1, title: title)
         }
 
         // 변경 이력 — 비어 있으면 CI 스크린샷이 빈 화면만 찍어서, 이력이
@@ -139,36 +133,31 @@ enum SampleData {
             (.planValue, "계획", "월 적립 · 연 기대수익률 을(를) 고쳤습니다", 9)
         ]
         for (kind, subject, summary, daysAgo) in logs {
-            let log = ChangeLog(kind: kind, subject: subject, summary: summary, actor: "이 아이폰")
+            let log = ChangeLog(context: context, kind: kind, subject: subject, summary: summary, actor: "이 아이폰")
             log.at = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
-            context.insert(log)
         }
 
         // 직접 찍은 마일스톤
         // 구성원에게 붙은 마일스톤. 현황판 `인생 이벤트` 줄이 그 해 나이를
         // 함께 적는지 스크린샷으로 본다 (docs/08-feedback.md 32번).
-        let college = UserMilestone(year: Calendar.current.component(.year, from: .now) + 14,
+        let college = UserMilestone(context: context, year: Calendar.current.component(.year, from: .now) + 14,
                                     label: "첫째 대학 입학", sortIndex: 0, memberID: son.id)
-        context.insert(college)
-        context.insert(plan)
 
         let calendar = Calendar.current
-        let deposit = CashEvent(
+        let deposit = CashEvent(context: context,
             date: calendar.date(byAdding: .month, value: 3, to: .now) ?? .now,
             label: "전월세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
         )
-        context.insert(deposit)
 
-        let severance = CashEvent(
+        let severance = CashEvent(context: context,
             date: calendar.date(byAdding: .month, value: 18, to: .now) ?? .now,
             label: "퇴직금 유입", amountMinor: 70_000_000, sortIndex: 1
         )
-        context.insert(severance)
     }
 
     /// 지난 점검 기록. 연속 기록과 주간 증감이 화면에 실제로 보이게 한다.
     /// 이번 주는 일부러 비워 둬서 "지금 입력" 상태를 확인할 수 있게 한다.
-    private static func seedPastReviews(members: [Member], into context: ModelContext) {
+    private static func seedPastReviews(members: [Member], into context: NSManagedObjectContext) {
         let thisWeek = ReviewWeek.anchor(for: .now)
         let calendar = Calendar.current
         let weeklyCount = members
@@ -186,18 +175,16 @@ enum SampleData {
             let previous = running
             running += 500_000 + weeksAgo * 37_000
 
-            let session = ReviewSession(weekAnchor: anchor, totalCount: weeklyCount)
+            let session = ReviewSession(context: context, weekAnchor: anchor, totalCount: weeklyCount)
             session.enteredCount = weeklyCount
             session.completedAt = anchor
             session.totalValueMinor = running
             session.previousTotalValueMinor = previous
-            context.insert(session)
 
-            let snapshot = Snapshot(weekAnchor: anchor,
+            let snapshot = Snapshot(context: context, weekAnchor: anchor,
                                     netWorthMinor: running,
                                     investableMinor: running - 100_000_000,
                                     liabilitiesMinor: 4_500_000)
-            context.insert(snapshot)
 
             var assigned = 0
             for (position, member) in members.enumerated() {
@@ -207,10 +194,9 @@ enum SampleData {
                     : running * weights[position % weights.count] / totalWeight
                 assigned += value
 
-                let line = SnapshotLine(memberID: member.id, memberName: member.name,
+                let line = SnapshotLine(context: context, memberID: member.id, memberName: member.name,
                                         valueMinor: value, sortIndex: position)
                 line.snapshot = snapshot
-                context.insert(line)
             }
         }
     }
@@ -218,10 +204,9 @@ enum SampleData {
     @discardableResult
     private static func account(_ name: String, _ institution: String, _ kind: AccountKind,
                                 _ owner: Member, _ sortIndex: Int,
-                                _ context: ModelContext) -> Account {
-        let account = Account(name: name, institution: institution, kind: kind,
+                                _ context: NSManagedObjectContext) -> Account {
+        let account = Account(context: context, name: name, institution: institution, kind: kind,
                               owner: owner, sortIndex: sortIndex)
-        context.insert(account)
         return account
     }
 
@@ -232,8 +217,8 @@ enum SampleData {
                                 _ instrumentType: InstrumentType, _ country: String,
                                 _ status: HoldingStatus, _ cadence: EntryCadence,
                                 _ valueMinor: Int, _ account: Account, _ sortIndex: Int,
-                                _ context: ModelContext, targetBP: Int? = nil) {
-        let holding = Holding(name: name, assetClass: assetClass, instrumentType: instrumentType,
+                                _ context: NSManagedObjectContext, targetBP: Int? = nil) {
+        let holding = Holding(context: context, name: name, assetClass: assetClass, instrumentType: instrumentType,
                               listingCountryCode: country, status: status, cadence: cadence,
                               valueMinor: valueMinor, account: account, sortIndex: sortIndex)
         holding.targetWeightBP = targetBP
@@ -242,7 +227,6 @@ enum SampleData {
             ? valueMinor - valueMinor / 40      // 이번 주 상승
             : valueMinor + valueMinor / 60      // 이번 주 하락
         holding.lastEnteredAt = Calendar.current.date(byAdding: .day, value: -7, to: .now)
-        context.insert(holding)
     }
 }
 #endif

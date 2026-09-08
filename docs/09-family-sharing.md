@@ -396,3 +396,55 @@ CI 한 바퀴를 썼을 것이다. 파일을 둘로 나눴다 —
 | `@Query` 82곳 → `@FetchRequest` | 35곳은 인자 없고 47곳은 정렬 하나뿐이다 |
 | `context.insert(x)` 등 생성 자리 | Core Data 는 `X(context:)` 로 만든다 |
 | 심판 | CI 스크린샷 20여 장이 이전과 같아야 한다 |
+
+
+## 1b-2 — 갈아탔다
+
+`@Model` 15개가 사라지고 저장 계층이 `NSPersistentCloudKitContainer` 가 됐다.
+**화면은 하나도 안 바뀌어야 한다** — 심판은 CI 스크린샷 20여 장이다.
+
+| 무엇 | 어떻게 |
+|---|---|
+| `@Model final class X { 저장 프로퍼티 · init }` | 클래스는 생성물이 들고, 남은 계산 로직은 `extension X` 로. **저장 프로퍼티의 주석은 생성물이 데려갔다** |
+| `init(...)` 15개 | `convenience init(context:...)`. Core Data 는 만드는 순간 컨텍스트에 들어가므로 `context.insert(...)` 50줄을 지웠다 |
+| `@Query` 82곳 | `@Fetched` — 속은 `@FetchRequest`, 겉은 `[T]` |
+| `@Bindable` 14곳 | 뷰 프로퍼티 8곳은 `@ObservedObject`, 지역 그림자 6곳은 `x.bindings` |
+| `FetchDescriptor` 6곳 | `context.all(T.self, sortedBy:predicate:limit:)` |
+| 일대다 3곳 | `NSSet?` 을 `sortedAccounts` 등 **한 곳씩에서만** 푼다 |
+| `ModelContext` · `ModelContainer` | `NSManagedObjectContext` · `NSPersistentContainer` |
+
+### `@Fetched` 를 왜 만들었나
+
+`@FetchRequest` 를 직접 쓰면 타입이 `[Holding]` 에서 `FetchedResults<Holding>` 으로
+바뀐다. 그러면 82곳이 아니라 **그 값을 넘겨받는 자리까지** 줄줄이 깨진다 —
+`ReviewScheduling.Input(holdings:)` 처럼 `[Holding]` 을 받는 곳이 곳곳에 있고,
+그건 CI 한 바퀴에 한 파일씩 발견하게 된다.
+
+겉을 `[T]` 로 둔 덕에 82곳은 **이름 한 토큰만** 바뀌었다.
+
+### 이 커밋에서 잃은 것 하나 — 그리고 되찾은 방법
+
+**생성기가 더는 못 돈다.** `@Model` 을 읽어서 뽑는 도구였는데 그 `@Model` 이
+사라졌기 때문이다. 실제로 무심코 한 번 돌렸다가 **생성물 서른 개를 전부
+지웠다** — 지우는 것이 찾는 것보다 먼저였던 탓이다. 되살리고 빈손이면
+아무것도 안 하도록 막아 두었다.
+
+그래서 **원본을 옮겼다.**
+
+```
+App/SlowRich.xcdatamodeld          ← 원본
+  ├─ App/Persistence/Generated/    ← @NSManaged 선언
+  └─ Tools/cloudkit/slowrich.ckdb  ← CloudKit 스키마
+```
+
+칸을 더하면 셋을 함께 고친다. CI 는 이제 "다시 뽑아서 diff" 가 아니라
+**셋을 서로 대조**한다(`check-model-matches-ckdb.py` ·
+`check-managed-matches-model.py`). 파일만 읽으므로 생성기가 안 돌아도
+잡아내고, 잡는 범위는 예전과 같다.
+
+### 배포 전에 꼭 — **백업을 먼저 받으세요**
+
+이 빌드를 깔기 전에 `더보기 → 1페이지 · 백업 내보내기 → 전체 백업 만들기`
+를 한 번 받아 파일 앱에 두세요. 저장소 경로를 SwiftData 가 쓰던 그 자리로
+못박았고 판본 해시가 같다는 것도 확인했지만(15/15), **되돌아갈 길은 있어야
+합니다.** 40번이 여기서 값합니다.

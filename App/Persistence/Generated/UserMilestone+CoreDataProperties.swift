@@ -25,5 +25,13 @@ extension UserMilestone {
 
     @NSManaged var sortIndex: Int
 
+    /// 누구의 일인가. `nil` 이면 **가족 전체**의 일이다
+    /// (docs/08-feedback.md 32번).
+    ///
+    /// 관계가 아니라 UUID 로 든다 — 마일스톤은 그 사람이 지워져도 남아야
+    /// 하는 기록이고(전학·이사처럼 사람이 빠져도 그 해는 있었다), 관계로
+    /// 묶으면 cascade 에 딸려 사라진다.
+    ///
+    /// CloudKit 제약대로 옵셔널이고 기본값이 있다 (ADR-0001).
     @NSManaged var memberID: UUID?
 }

@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct DashboardView: View {
@@ -9,15 +9,15 @@ struct DashboardView: View {
     // 주간 점검은 **숫자를 적어 넣는** 화면이라 보기 전용이면 열 이유가 없다.
     @Environment(\.canEdit) private var canEdit
 
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var holdings: [Holding]
-    @Query private var sessions: [ReviewSession]
-    @Query(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
-    @Query private var plans: [Plan]
-    @Query(sort: \CashEvent.date) private var cashEvents: [CashEvent]
-    @Query private var accounts: [Account]
-    @Query(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
-    @Query(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var holdings: [Holding]
+    @Fetched private var sessions: [ReviewSession]
+    @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
+    @Fetched private var plans: [Plan]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched private var accounts: [Account]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
+    @Fetched(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")

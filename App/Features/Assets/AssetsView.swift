@@ -1,5 +1,5 @@
 import Core
-import SwiftData
+import CoreData
 import SwiftUI
 
 /// 계속 입력하는 화면. 구성원 → 계좌 → 종목 3단.
@@ -16,12 +16,12 @@ struct AssetsView: View {
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
-    @Environment(\.modelContext) private var context
+    @Environment(\.managedObjectContext) private var context
     // 보기 전용으로 열었을 때 고칠 자리를 감춘다 (docs/09-family-sharing.md).
     @Environment(\.canEdit) private var canEdit
     @Environment(\.canManageHousehold) private var canManageHousehold
-    @Query(sort: \Member.sortIndex) private var members: [Member]
-    @Query private var plans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched private var plans: [Plan]
 
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
@@ -463,23 +463,20 @@ struct AssetsView: View {
     }
 
     private func addMember() {
-        let member = Member(name: "", colorIndex: members.count, sortIndex: members.count)
-        context.insert(member)
+        let member = Member(context: context, name: "", colorIndex: members.count, sortIndex: members.count)
         editingMember = member
     }
 
     private func addAccount(to member: Member) {
-        let account = Account(name: "", owner: member, sortIndex: member.sortedAccounts.count)
-        context.insert(account)
+        let account = Account(context: context, name: "", owner: member, sortIndex: member.sortedAccounts.count)
         editingAccount = account
     }
 
     private func addHolding(to account: Account) {
         // 점검 주기는 계좌 종류가 정해 준다. 새 종목이 무조건 `매주` 라서
         // 전월세보증금까지 매주 물어봤다 (docs/08-feedback.md 의 Claude 질문 1).
-        let holding = Holding(name: "", cadence: account.kind.defaultCadence,
+        let holding = Holding(context: context, name: "", cadence: account.kind.defaultCadence,
                               account: account, sortIndex: account.sortedHoldings.count)
-        context.insert(holding)
         editingHolding = holding
     }
 
