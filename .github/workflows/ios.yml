@@ -48,6 +48,11 @@ jobs:
           echo "칸을 더했다면: .xcdatamodeld · Generated/ · slowrich.ckdb 셋을 함께 고치고,"
           echo "Actions → CloudKit 스키마 → apply 뒤 콘솔에서 Deploy Schema Changes 를 누르세요."
 
+      # 애플 서버가 올린 뒤 메일로만 알려 주는 종류(ITMS-91056)를 올리기 전에
+      # 잡는다. 키 이름 하나가 틀려서 두 빌드가 돌아온 적이 있다.
+      - name: 개인정보 명세의 키와 값이 Xcode 정의와 맞는지
+        run: python3 Tools/privacy/check-privacy-manifest.py
+
       - name: swift test
         working-directory: Packages/Core
         run: swift test --enable-code-coverage
