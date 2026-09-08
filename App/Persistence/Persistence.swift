@@ -233,6 +233,14 @@ enum Persistence {
         return "빈 저장소로는 붙습니다 — 쓰던 파일 쪽 문제입니다."
     }
 
+    /// 참가자 쪽 자료가 사는 파일. **개인 저장소와 따로 둔다.**
+    ///
+    /// CloudKit 은 private 과 shared 를 다른 데이터베이스로 본다. Core Data 는
+    /// 그 둘을 **저장소 두 개**로 받으며, 한 파일에 섞을 수 없다.
+    static var sharedStoreURL: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("shared.store")
+    }
+
     private static func load(cloudKit: Bool) throws -> NSPersistentContainer {
         let container: NSPersistentContainer = cloudKit
             ? NSPersistentCloudKitContainer(name: modelName,
@@ -253,8 +261,33 @@ enum Persistence {
                               forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
         container.persistentStoreDescriptions = [description]
 
+        // **공유받은 자료가 들어올 자리** (docs/09-family-sharing.md 2b).
+        //
+        // 아내분 기기에서는 여기가 본체가 된다 — 초대를 수락하면 가구가 통째로
+        // 이 저장소로 들어온다. 아빠 기기에서는 비어 있다.
+        //
+        // **아빠 기기에도 연다.** 안 열면 참가자가 고친 것이 안 내려오고,
+        // 그때 화면에는 아무 표시도 안 난다. 비어 있는 저장소를 여는 값은
+        // 거의 없지만, 없어서 못 받는 값은 "아내가 적은 것이 아빠 화면에
+        // 안 나타남" 이다.
+        if cloudKit {
+            let shared = NSPersistentStoreDescription(url: sharedStoreURL)
+            let options =
+                NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerID)
+            options.databaseScope = .shared
+            shared.cloudKitContainerOptions = options
+            shared.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+            shared.setOption(true as NSNumber,
+                             forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+            container.persistentStoreDescriptions.append(shared)
+        }
+
+        // **블록이 저장소마다 한 번씩 불린다.** 하나만 실패해도 잡는다 —
+        // 공유 저장소가 조용히 안 열리면 참가자 자료가 통째로 안 보인다.
         var failure: Error?
-        container.loadPersistentStores { _, error in failure = error }
+        container.loadPersistentStores { _, error in
+            if failure == nil { failure = error }
+        }
         if let failure { throw failure }
 
         configure(container.viewContext)

@@ -82,6 +82,8 @@ struct MoreView: View {
                     LabeledContent("고정 (건너뜀)", value: "\(holdings.filter { $0.cadence == .fixed }.count)건")
                 }
 
+                FamilyShareSection()
+
                 SyncStatusSection()
 
                 rolePreviewSection
