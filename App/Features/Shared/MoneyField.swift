@@ -51,11 +51,19 @@ struct MoneyField: View {
         // 겨냥하는 것보다 손이 편하다.
         .contentShape(Rectangle())
         .onTapGesture { isFocused = true }
-        .onAppear {
+        .task {
             // CI 가 키보드 올라온 상태를 찍을 수 있게 하는 갈고리.
             // 이게 없으면 `완료` 버튼이 제대로 붙었는지 그림으로 확인할 방법이
             // 없다 — 실제로 빌드 13 에서 네 개가 생긴 것을 사용자가 먼저 봤다.
-            if MoneyField.shouldAutoFocus { isFocused = true }
+            guard MoneyField.shouldAutoFocus else { return }
+            // **한 박자 뒤에 준다.** 화면이 뜨는 그 자리에서 바로 포커스를 주면
+            // 키보드는 올라오는데 툴바가 그 변화를 못 받는 때가 있다 — 키패드
+            // 위 줄이 빈 채로 찍힌다. 스물두 장 중 이 한 장만 빌드마다
+            // 들쭉날쭉했던 이유이고, 7초를 더 기다려도 채워지지 않았다
+            // (docs/09-family-sharing.md 1b-2). 사람이 탭할 때는 화면이 다
+            // 선 뒤에 눌리므로 이 문제가 없다. 그 순서를 흉내 낸다.
+            try? await Task.sleep(for: .milliseconds(400))
+            isFocused = true
         }
     }
 
