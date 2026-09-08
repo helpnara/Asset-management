@@ -34,10 +34,37 @@ enum FamilySharingFailure: LocalizedError {
     }
 }
 
+/// **가족 공유.** 가구 하나 = `CKShare` 한 장 (docs/09-family-sharing.md 2b).
+///
+/// `CKShare` 는 **한 장에 권한이 하나**다. 구성원마다 다른 권한을 주려면 공유를
+/// 여러 장 만들어야 하는데, 그러면 자료를 어느 장에 매달지부터 갈라진다.
+/// 그래서 **공유는 한 장으로 두고 역할은 앱 안에서 판정한다.**
+///
+/// **왜 완료 클로저를 안 받나.** 처음에는 `share(_:to:) { ... }` 처럼 부르는
+/// 쪽의 클로저를 받았는데 Swift 6 가 막았다:
+///
+///     sending 'finish' risks causing data races
+///
+/// `share(_:to:)` 의 완료 블록이 `@Sendable` 이라, 그 안에서 화면의 클로저를
+/// 부르면 격리를 건너뛴다. 그래서 **결과를 값으로 들고 있고 화면이 그것을
+/// 본다** — `CloudKitSyncMonitor` 와 같은 꼴이다.
 @MainActor
-enum FamilySharing {
+@Observable
+final class FamilySharing {
 
-    private static var cloudContainer: NSPersistentCloudKitContainer? {
+    static let shared = FamilySharing()
+
+    /// 만들어진 초대. 화면이 이걸 보고 시트를 띄운다.
+    var invite: FamilyInvite?
+
+    /// 실패 이유. 조용히 삼키지 않는다.
+    var failure: String?
+
+    private(set) var isWorking = false
+
+    private init() {}
+
+    private var cloudContainer: NSPersistentCloudKitContainer? {
         Persistence.container as? NSPersistentCloudKitContainer
     }
 
@@ -45,22 +72,16 @@ enum FamilySharing {
     ///
     /// 두 번 만들면 안 된다 — 자료가 어느 쪽에 매달렸는지가 갈린다.
     /// 그래서 만들기 전에 항상 여기부터 본다.
-    static func existingShare(for household: Household) -> CKShare? {
+    func existingShare(for household: Household) -> CKShare? {
         guard let cloudContainer else { return nil }
         return try? cloudContainer
             .fetchShares(matching: [household.objectID])[household.objectID]
     }
 
-    /// 공유를 만들거나, 이미 있으면 그것을 돌려준다.
-    ///
-    /// **`async` 를 안 쓴다.** `CKShare` 도 `CKContainer` 도 `Sendable` 이 아니라
-    /// 연속 함수로 넘기면 Swift 6 가 막는다. 관리 객체를 async 경계 너머로
-    /// 넘기지 않는 것과 같은 이유다 (CLAUDE.md).
-    static func share(_ household: Household,
-                      titled title: String,
-                      then finish: @escaping (Result<FamilyInvite, Error>) -> Void) {
+    /// 공유를 만들거나, 이미 있으면 그것을 내놓는다.
+    func start(for household: Household, titled title: String) {
         guard let cloudContainer else {
-            finish(.failure(FamilySharingFailure.noCloudKit))
+            failure = FamilySharingFailure.noCloudKit.localizedDescription
             return
         }
 
@@ -69,23 +90,28 @@ enum FamilySharing {
         Autosave.shared.flush()
 
         if let existing = existingShare(for: household) {
-            finish(.success(FamilyInvite(share: existing, container: cloudContainer.ckContainer)))
+            invite = FamilyInvite(share: existing,
+                                  container: CKContainer(identifier: Persistence.cloudKitContainerID))
             return
         }
 
-        cloudContainer.share([household], to: nil) { _, share, container, error in
+        isWorking = true
+        failure = nil
+        cloudContainer.share([household], to: nil) { [weak self] _, share, container, error in
             MainActor.assumeIsolated {
+                guard let self else { return }
+                self.isWorking = false
                 if let error {
-                    finish(.failure(error))
+                    self.failure = (error as NSError).localizedDescription
                     return
                 }
                 guard let share, let container else {
-                    finish(.failure(FamilySharingFailure.noShare))
+                    self.failure = FamilySharingFailure.noShare.localizedDescription
                     return
                 }
                 // 상대가 초대 화면에서 보는 이름. 계획 제목을 그대로 쓴다.
                 share[CKShare.SystemFieldKey.title] = title
-                finish(.success(FamilyInvite(share: share, container: container)))
+                self.invite = FamilyInvite(share: share, container: container)
             }
         }
     }
@@ -95,16 +121,9 @@ enum FamilySharing {
     /// 참가자 쪽에서는 `CKShare` 의 권한이 답한다. 소유자 쪽에서는 늘 참이다.
     /// 4단계에서 `\.canEdit` 에 꽂을 값이 이것이다 — 화면은 이미 그 환경값
     /// 하나만 읽게 해 두었다 (08-feedback 48번).
-    static func canEdit(_ object: NSManagedObject) -> Bool {
+    func canEdit(_ object: NSManagedObject) -> Bool {
         guard let cloudContainer else { return true }
         return cloudContainer.canUpdateRecord(forManagedObjectWith: object.objectID)
-    }
-}
-
-private extension NSPersistentCloudKitContainer {
-    /// `share(_:to:)` 가 컨테이너를 돌려주기 전에도 하나가 필요하다.
-    var ckContainer: CKContainer {
-        CKContainer(identifier: Persistence.cloudKitContainerID)
     }
 }
 
