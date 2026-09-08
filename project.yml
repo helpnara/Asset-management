@@ -47,6 +47,10 @@ targets:
         # 없어서 `com.apple.LocalAuthentication 오류 -6` 이 났다
         # (docs/08-feedback.md 4번).
         NSFaceIDUsageDescription: 가족 자산 기록을 열 때 본인 확인에 씁니다.
+        # **초대 링크가 이 앱으로 오게 하는 조건** (4차 2b). 이게 없으면 iOS 는
+        # 링크를 눌러도 이 앱을 후보로 안 본다 — 앱은 열리지도 않고, 사용자는
+        # "링크가 안 된다" 만 본다.
+        CKSharingSupported: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich

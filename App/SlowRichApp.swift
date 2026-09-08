@@ -10,6 +10,9 @@ struct SlowRichApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var lock = AppLock.shared
 
+    /// 초대 링크를 받으려면 씬 델리게이트가 있어야 한다 (`ShareAcceptance.swift`).
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     /// 첫 실행에만 환영 화면을 띄운다. RootView 가 아니라 여기에 두는 이유는
     /// RootView 가 이미 주간 점검용 `fullScreenCover` 를 쓰고 있어서,
     /// 같은 뷰에 둘을 겹치면 서로를 막기 때문이다.

@@ -93,6 +93,15 @@ enum Persistence {
 
     static var container: NSPersistentContainer { shared.container }
     static var viewContext: NSManagedObjectContext { shared.container.viewContext }
+
+    /// 공유받은 자료가 들어가는 저장소. iCloud 모드가 아니면 `nil`.
+    ///
+    /// 초대를 수락할 때 **어느 저장소로 들여올지** 를 이걸로 가리킨다.
+    /// 개인 저장소를 가리키면 남의 기록이 내 것에 섞인다.
+    static var sharedStore: NSPersistentStore? {
+        shared.container.persistentStoreCoordinator.persistentStores
+            .first { $0.url == sharedStoreURL }
+    }
     static var mode: Mode { shared.mode }
 
     /// iCloud → 기기 로컬 순으로 시도한다.

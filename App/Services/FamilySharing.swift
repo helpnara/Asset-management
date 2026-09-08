@@ -219,6 +219,41 @@ final class FamilySharing {
         return share
     }
 
+    /// **초대를 받아들인다** — 참가자 쪽에서 링크를 눌렀을 때.
+    ///
+    /// 공유 존을 **공유 저장소**로 들여온다. 개인 저장소를 가리키면 남의
+    /// 기록이 내 것에 섞이므로 `Persistence.sharedStore` 여야 한다.
+    ///
+    /// 이것도 백그라운드에서 부른다. 네트워크 작업이고, 메인을 붙잡는
+    /// Core Data 호출에 한 번 데었다 (워치독).
+    func accept(_ metadata: CKShare.Metadata) {
+        guard let container = cloudContainer, let store = Persistence.sharedStore else {
+            lastFailure = "초대 받기: iCloud 로 열리지 않아 받을 수 없습니다."
+            return
+        }
+        lastFailure = nil
+        let carried = UncheckedBox((container, metadata, store))
+        DispatchQueue.global(qos: .userInitiated).async {
+            let (container, metadata, store) = carried.value
+            container.acceptShareInvitations(from: [metadata], into: store) { _, error in
+                let text = error.map { CloudKitErrorText.describe($0) }
+                Task { @MainActor in
+                    let sharing = FamilySharing.shared
+                    if let text {
+                        sharing.lastFailure = "초대 받기\n" + text
+                    } else {
+                        sharing.lastFailure = nil
+                        sharing.didAcceptInvitation = true
+                    }
+                    sharing.refreshState()
+                }
+            }
+        }
+    }
+
+    /// 이 기기에서 초대를 받아들인 적이 있나. 참가자 화면의 근거다.
+    var didAcceptInvitation = false
+
     /// **이 기기가 이 객체를 고칠 수 있나.**
     ///
     /// 참가자 쪽에서는 `CKShare` 의 권한이 답한다. 소유자 쪽에서는 늘 참이다.

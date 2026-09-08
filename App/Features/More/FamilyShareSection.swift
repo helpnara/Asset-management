@@ -11,7 +11,9 @@ struct FamilyShareSection: View {
 
     var body: some View {
         Section {
-            if canManageHousehold {
+            // 초대를 받아들인 기기는 참가자다 — 역할 미리보기가 뭐라고 하든.
+            // 참가자 쪽에서 "가족 초대" 를 내놓으면 공유가 둘이 된다.
+            if canManageHousehold && !sharing.didAcceptInvitation {
                 Button {
                     // **공유를 미리 만들지 않고, SwiftUI 시트에도 안 담는다.**
                     // 둘 다 기기에서 막혔다 — 앞은 "링크를 생성할 수 없습니다",
