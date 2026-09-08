@@ -61,13 +61,30 @@ enum Persistence {
     ///
     /// 둘, CloudKit 이 요구하는 기본값을 여기서 심는다 — `ModelDefaults` 에
     /// 왜 파일이 아니라 코드로 심는지 적어 두었다.
-    static let managedObjectModel: NSManagedObjectModel = {
+    static var managedObjectModel: NSManagedObjectModel { modelBox.model }
+
+    /// `NSManagedObjectModel` 은 `Sendable` 이 아니라 `static let` 으로 못 둔다:
+    ///
+    ///     static property 'managedObjectModel' is not concurrency-safe because
+    ///     non-'Sendable' type 'NSManagedObjectModel' may have shared mutable state
+    ///
+    /// 그런데 이 모델은 **만든 뒤로 아무도 안 고친다.** `ModelDefaults.fill` 은
+    /// 저장소 코디네이터가 가져가기 전에 한 번만 돌고, 그 뒤로는 읽기 전용이다.
+    /// 모델 하나를 여러 컨테이너가 나눠 쓰는 것은 Core Data 가 권하는 쓰임이다.
+    ///
+    /// 그래서 검사를 끄는 대신(`@preconcurrency` 는 안 쓴다 — CLAUDE.md),
+    /// **안전한 이유를 아는 상자**에 담아 건넨다. 상자는 이 파일 밖으로 안 나간다.
+    private struct ModelBox: @unchecked Sendable {
+        let model: NSManagedObjectModel
+    }
+
+    private static let modelBox: ModelBox = {
         guard let url = Bundle.main.url(forResource: modelName, withExtension: "momd"),
               let model = NSManagedObjectModel(contentsOf: url) else {
             fatalError("\(modelName).momd 를 찾지 못했습니다")
         }
         ModelDefaults.fill(model)
-        return model
+        return ModelBox(model: model)
     }()
 
     static let shared: Store = open()
