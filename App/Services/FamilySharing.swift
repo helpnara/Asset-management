@@ -95,34 +95,60 @@ final class FamilySharing {
         let household = Household.current(in: Persistence.viewContext)
         Autosave.shared.flush()
 
-        // **이미 있는 공유도 여기를 지나가게 한다.**
-        //
-        // 처음에는 "이미 있으면 `init(share:container:)` 로" 라고 두었는데,
-        // 그것이 두 번째 실패를 만들었다. 첫 시도에서 공유가 **로컬에만**
-        // 만들어지고 서버 저장이 실패하면, 다음부터 그 반쪽짜리를 찾아내
-        // **고친 길을 아예 안 지나간다.** 겉으로는 같은 오류가 반복된다.
-        //
-        // `share(_:to:)` 에 그것을 넘기면 그 공유를 이어서 쓰고, 저장은
-        // UIKit 이 맡는다. 반쪽으로 남아 있어도 여기서 아물어진다.
+        // **이미 있는 공유도 여기를 지나가게 한다.** 처음에는 "이미 있으면
+        // `init(share:container:)` 로" 라고 갈랐는데, 첫 시도에서 공유가
+        // 로컬에만 만들어지면 그 반쪽짜리가 골라져 고친 길을 안 지나간다.
         let existing = existingShare(for: household)
 
-        // `completion` 은 `Sendable` 이 아닌데 아래 블록은 `@Sendable` 이다.
-        // 그대로 잡으면 "sending 'completion' risks causing data races" 로 막힌다.
-        // **실제로는 안전하다** — 블록도 여기도 전부 메인에서 돈다. 그 사실을
-        // 아는 상자에 담아 건넨다 (`Persistence.ModelBox` 와 같은 수법).
+        // `completion` 도 `CKShare` 도 `Sendable` 이 아니다. 안전한 이유를
+        // 아는 상자에 담아 건넨다.
         let box = UncheckedBox(completion)
-        // `self` 는 메인 액터다. 아래 블록도 메인에서 돈다.
+        let state = PreparationState()
+
+        // **빈 화면을 영원히 두지 않는다.**
+        //
+        // 준비가 끝날 때까지 시트는 비어 있다. 저쪽이 아무 말도 안 하면
+        // 사용자는 흰 화면만 보고 무엇이 잘못됐는지 알 방법이 없다.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(25))
+            guard !state.finished else { return }
+            state.finished = true
+            self.lastFailure = "공유 만들기: 25초 안에 끝나지 않았습니다.\n"
+                + "더보기 → 동기화의 마지막 내보내기가 실패 중이면 "
+                + "성공으로 돌아온 뒤 다시 시도하세요."
+            box.value(nil, nil, FamilySharingFailure.timedOut)
+        }
+
+        // **이 블록은 메인이라는 보장이 없다.**
+        //
+        // Core Data 가 백그라운드에서 부른다. 여기서 `MainActor.assumeIsolated`
+        // 를 쓰면 **그 자리에서 앱이 죽는다** — 실제로 공유 대상을 누르는
+        // 순간(= 저장이 일어나는 순간) 죽었다.
+        //
+        // `CloudKitSyncMonitor` 가 같은 모양으로 멀쩡한 것은 그쪽 옵저버가
+        // `queue: .main` 으로 등록돼 **메인이 보장되기 때문**이다. 그 보장
+        // 없이 모양만 베끼면 이렇게 된다.
+        //
+        // `CKShare` 는 `Sendable` 이 아니라 `Task` 로 못 넘긴다. 상자에 담아
+        // 메인 큐로 건너간 뒤, **거기서는 정말 메인이므로** `assumeIsolated`
+        // 가 옳다.
         cloudContainer.share([household], to: existing) { _, share, container, error in
-            MainActor.assumeIsolated {
-                // 상대가 초대 화면에서 보는 이름. **넘기기 전에** 얹는다 —
-                // 넘긴 뒤에 고치면 UIKit 이 저장한 것과 어긋난다.
-                if let error {
-                    self.record(error, while: "공유 만들기")
+            let carried = UncheckedBox((share, container, error))
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard !state.finished else { return }   // 시간 초과로 이미 끝냈다
+                    state.finished = true
+                    let (share, container, error) = carried.value
+                    if let error {
+                        self.record(error, while: "공유 만들기")
+                    }
+                    // 상대가 초대 화면에서 보는 이름. **넘기기 전에** 얹는다 —
+                    // 넘긴 뒤에 고치면 UIKit 이 저장한 것과 어긋난다.
+                    if let share {
+                        share[CKShare.SystemFieldKey.title] = title
+                    }
+                    box.value(share, container, error)
                 }
-                if let share {
-                    share[CKShare.SystemFieldKey.title] = title
-                }
-                box.value(share, container, error)
             }
         }
     }
@@ -210,19 +236,23 @@ enum FamilyShareSheet {
         /// **시트가 실패한 이유를 여기서 붙잡는다.** 시트의 알림은 "링크를
         /// 생성할 수 없습니다" 까지만 말한다. CloudKit 오류 코드는 이
         /// 콜백으로만 온다.
+        /// **이 콜백들도 메인이라는 보장이 없다.** 공유 저장은 네트워크
+        /// 작업이라 백그라운드에서 온다. 오류를 **여기서 미리 글로 바꿔**
+        /// 놓으면 건너가는 것이 문자열뿐이라 안전하다.
         func cloudSharingController(_ controller: UICloudSharingController,
                                     failedToSaveShareWithError error: Error) {
-            MainActor.assumeIsolated {
-                FamilySharing.shared.record(error, while: "시트가 공유를 저장")
+            let text = CloudKitErrorText.describe(error)
+            Task { @MainActor in
+                FamilySharing.shared.lastFailure = "시트가 공유를 저장\n" + text
             }
         }
 
         func cloudSharingControllerDidSaveShare(_ controller: UICloudSharingController) {
-            MainActor.assumeIsolated { FamilySharing.shared.lastFailure = nil }
+            Task { @MainActor in FamilySharing.shared.lastFailure = nil }
         }
 
         func cloudSharingControllerDidStopSharing(_ controller: UICloudSharingController) {
-            MainActor.assumeIsolated { FamilySharing.shared.lastFailure = nil }
+            Task { @MainActor in FamilySharing.shared.lastFailure = nil }
         }
     }
 }
