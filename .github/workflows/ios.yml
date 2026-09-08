@@ -48,6 +48,22 @@ jobs:
           fi
           echo "모델과 스키마 파일이 일치합니다."
 
+      # Core Data 모델 파일도 같은 `@Model` 에서 뽑는다 (docs/09-family-sharing.md 1a).
+      # 뽑는 규칙이 달라서 한쪽만 고치는 실수가 나는데, 어긋났을 때의 값이 비싸다 —
+      # 모델이 저장소와 안 맞으면 **앱은 멀쩡히 뜨고 화면만 빈다.**
+      - name: Core Data 모델이 모델과 맞는지
+        run: |
+          python3 Tools/coredata/generate-xcdatamodel.py > /dev/null
+          if ! git diff --quiet App/SlowRich.xcdatamodeld; then
+            echo "::error::모델이 바뀌었는데 Core Data 모델 파일이 그대로입니다."
+            echo "python3 Tools/coredata/generate-xcdatamodel.py 를 돌리고 커밋하세요."
+            git diff --stat App/SlowRich.xcdatamodeld
+            exit 1
+          fi
+          # 두 생성물이 서로 같은 것을 말하는지도 본다. 파일 둘만 읽으므로
+          # "고치고 하나만 다시 돌렸다" 를 잡는다.
+          python3 Tools/coredata/check-model-matches-ckdb.py
+
       - name: swift test
         working-directory: Packages/Core
         run: swift test --enable-code-coverage
@@ -163,6 +179,23 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # **모델 파일이 정말 컴파일됐는지 본다** (docs/09-family-sharing.md 1a).
+      #
+      # XcodeGen 이 `.xcdatamodeld` 를 소스가 아니라 리소스로 잡으면, 빌드는
+      # 통과하는데 XML 이 그대로 번들에 복사될 뿐 아무도 안 읽는다. 그러면
+      # 1a 가 하려던 일(컴파일러를 심판으로 세우기)이 통째로 헛것이 된다.
+      # `momc` 를 거치면 `.momd` 가 나오므로, 그것이 있는지로 가른다.
+      - name: Core Data 모델이 컴파일됐는지
+        run: |
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          if [ ! -d "$APP/SlowRich.momd" ]; then
+            echo "::error::$APP 안에 SlowRich.momd 가 없습니다 — 모델이 컴파일되지 않았습니다."
+            echo "XcodeGen 이 .xcdatamodeld 를 소스가 아니라 리소스로 잡았을 수 있습니다."
+            ls -la "$APP" | head -40
+            exit 1
+          fi
+          echo "SlowRich.momd 확인 — 모델이 컴파일됩니다."
 
       - name: 시뮬레이터에서 화면별 스크린샷
         run: |

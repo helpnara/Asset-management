@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23507" systemVersion="25A000" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
+    <entity name="Account" representedClassName="Account" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="institution" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="isArchived" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="annualContributionMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="annualLimitMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="maturesOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="ownerID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Holding" inverseName="account" inverseEntity="Holding"/>
+        <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Member" inverseName="accounts" inverseEntity="Member"/>
+    </entity>
+    <entity name="CashEvent" representedClassName="CashEvent" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="label" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="amountMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="isAlreadyReflected" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="note" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="ChangeLog" representedClassName="ChangeLog" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="at" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="actor" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="subject" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="summary" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="FamilyTarget" representedClassName="FamilyTarget" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="dimensionRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="key" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="targetBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="Holding" representedClassName="Holding" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="assetClassRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="instrumentTypeRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="listingCountryCode" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="statusRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="cadenceRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="valueMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="lastEnteredValueMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="lastEnteredAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="note" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="targetWeightBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="accountID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="holdings" inverseEntity="Account"/>
+    </entity>
+    <entity name="IncomeStream" representedClassName="IncomeStream" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="label" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="monthlyAmountMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="endYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="isInflationLinked" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="Member" representedClassName="Member" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="roleNote" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="birthYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="birthMonth" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="taxResidencyRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="targetRetirementAge" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="monthlyContributionMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="employerMatchMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="note" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="colorIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Account" inverseName="owner" inverseEntity="Account"/>
+    </entity>
+    <entity name="Plan" representedClassName="Plan" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="startYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startedOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="asOfNote" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="declaration" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="retirementYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="monthlyContributionMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="annualReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="contributionGrowthBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="inflationBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="lowYieldReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="realEstateReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="targetAmountMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="monthlySpendingMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="withdrawalRateBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="monthlyIncomeMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="savingsFloorBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="illiquidCapBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="usTargetBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="mixToleranceBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="driftToleranceBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="driftRelativeBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="disabledDiagnosesRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="contributionOrderRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="usesMemberContributions" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="horizonYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="Principle" representedClassName="Principle" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="order" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="title" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="detail" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="reviewNote" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="ReviewSession" representedClassName="ReviewSession" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="weekAnchor" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="startedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="enteredCount" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="totalCount" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="isTotalOnly" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="totalValueMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="previousTotalValueMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="Scenario" representedClassName="Scenario" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="monthlyMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="retirementYear" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="returnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="volatilityBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="projectedMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="Snapshot" representedClassName="Snapshot" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="weekAnchor" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="netWorthMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="investableMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="liabilitiesMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <relationship name="lines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SnapshotLine" inverseName="snapshot" inverseEntity="SnapshotLine"/>
+    </entity>
+    <entity name="SnapshotLine" representedClassName="SnapshotLine" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memberID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memberName" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="valueMinor" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <relationship name="snapshot" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Snapshot" inverseName="lines" inverseEntity="Snapshot"/>
+    </entity>
+    <entity name="TodoItem" representedClassName="TodoItem" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="detail" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="categoryRaw" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="dueDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isDone" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="repeatsYearly" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="UserMilestone" representedClassName="UserMilestone" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="year" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="label" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="note" optional="YES" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="sortIndex" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="memberID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+    </entity>
+</model>
