@@ -11,8 +11,9 @@ struct FamilyShareSection: View {
     @Fetched private var plans: [Plan]
 
     @State private var presenting = false
-    /// 이미 만들어 둔 공유. 없으면 `nil` 이고, 그때는 시트가 만든다.
-    @State private var existing: FamilyInvite?
+    @State private var sharing = FamilySharing.shared
+    /// 이미 공유가 있나. 버튼 문구에만 쓴다 — 여는 길은 하나뿐이다.
+    @State private var alreadyShared = false
 
     var body: some View {
         Section {
@@ -21,11 +22,10 @@ struct FamilyShareSection: View {
                     // **공유를 미리 만들지 않는다.** 시트가 만들게 두는 것이
                     // 애플이 문서화한 길이고, 미리 만들어 넘겼다가 "링크를
                     // 생성할 수 없습니다" 로 막혔다 (FamilySharing 참고).
-                    existing = currentInvite()
                     presenting = true
                 } label: {
                     HStack {
-                        Text(existing == nil ? "가족 초대" : "공유 관리")
+                        Text(alreadyShared ? "공유 관리" : "가족 초대")
                         Spacer()
                         Image(systemName: "person.2")
                             .foregroundStyle(Color.muted)
@@ -36,6 +36,22 @@ struct FamilyShareSection: View {
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
                 LabeledContent("가족 공유", value: "참가 중")
             }
+
+            // **왜 안 됐는지 그대로 내놓는다.** 시트의 알림은 "링크를 생성할
+            // 수 없습니다" 까지만 말하고 CloudKit 오류 코드를 안 보여 준다.
+            // 그 코드가 없어서 오늘 한 바퀴를 추측으로 버렸다. 길게 누르면
+            // 복사된다.
+            if let failure = sharing.lastFailure {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("공유가 안 된 이유")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.muted)
+                    Text(failure)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.loss)
+                        .textSelection(.enabled)
+                }
+            }
         } header: {
             Text("가족")
         } footer: {
@@ -44,11 +60,11 @@ struct FamilyShareSection: View {
                  : "관리자가 공유한 기록을 보고 있습니다.")
         }
         .sheet(isPresented: $presenting) {
-            CloudSharingSheet(existing: existing, title: title)
+            CloudSharingSheet(title: title)
                 .ignoresSafeArea()
         }
         .task {
-            existing = currentInvite()
+            alreadyShared = currentShareExists()
         }
     }
 
@@ -59,10 +75,8 @@ struct FamilyShareSection: View {
 
     /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
     /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
-    private func currentInvite() -> FamilyInvite? {
-        guard let household = context.all(Household.self).first,
-              let share = FamilySharing.shared.existingShare(for: household) else { return nil }
-        return FamilyInvite(share: share,
-                            container: CKContainer(identifier: Persistence.cloudKitContainerID))
+    private func currentShareExists() -> Bool {
+        guard let household = context.all(Household.self).first else { return false }
+        return sharing.existingShare(for: household) != nil
     }
 }
