@@ -25,7 +25,9 @@ jobs:
       - name: 실행
         env:
           GH_TOKEN: ${{ github.token }}
+          COMMAND: ${{ inputs.command }}
         run: |
           set -uo pipefail
           echo "Xcode: $(xcode-select -p)"
-          bash -c ${{ toJSON(inputs.command) }}
+          printf '%s\n' "$COMMAND" > "$RUNNER_TEMP/probe.sh"
+          bash "$RUNNER_TEMP/probe.sh"
