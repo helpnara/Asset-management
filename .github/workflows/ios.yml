@@ -200,6 +200,19 @@ jobs:
           echo "설치: $APP"
           xcrun simctl install "$UDID" "$APP"
 
+          # **앱이 왜 안 뜨는지 먼저 듣는다** (4차 1b-2).
+          #
+          # 스크린샷 고리는 "안 떴다" 만 말해 주고 이유는 안 말한다. 저장 계층을
+          # 바꾼 뒤로는 그 이유가 대개 Core Data 쪽이라, 한 번은 콘솔을 붙여
+          # 띄워 보고 표준 출력·오류를 그대로 남긴다. 앱이 살아 있으면 25초 뒤
+          # 끊는다 (macOS 에는 `timeout` 이 없어 perl 의 alarm 을 쓴다).
+          echo "── 콘솔을 붙여 한 번 띄워 본다 ──"
+          perl -e 'alarm 25; exec @ARGV' \
+            xcrun simctl launch --console-pty "$UDID" "$BUNDLE" -localStoreOnly 2>&1 \
+            | head -60 || true
+          echo "── 여기까지 ──"
+          xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+
           mkdir -p screenshots
 
           # 앱을 켜기만 하면 빈 화면밖에 못 본다.
