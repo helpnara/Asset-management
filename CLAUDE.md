@@ -141,4 +141,4 @@ App Store 출시 절차는 [docs/07-app-store.md](docs/07-app-store.md) 에 있�
 - **앱 이름은 `느린 부자의 기록`** 이다. 빌드용 식별자는 `SlowRich`,
   번들 ID는 `com.helpnara.slowrich`.
   화면 상단의 `우리 가족 노후자금 준비` 는 앱 이름이 아니라 **계획 제목**이며
-  사용자가 바꿀 수 있는 값이다 (`Household.title`). 둘을 섞지 않는다.
+  사용자가 바꿀 수 있는 값이다 (`Plan.title`). 둘을 섞지 않는다.
