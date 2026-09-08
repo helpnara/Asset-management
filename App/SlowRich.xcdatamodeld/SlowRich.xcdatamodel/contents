@@ -10,9 +10,9 @@
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="annualContributionMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="annualLimitMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
         <attribute name="maturesOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="ownerID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="ownerID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Holding" inverseName="account" inverseEntity="Holding"/>
         <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Member" inverseName="accounts" inverseEntity="Member"/>
     </entity>
@@ -51,10 +51,10 @@
         <attribute name="lastEnteredValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="lastEnteredAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="targetWeightBP" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="targetWeightBP" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
-        <attribute name="accountID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="accountID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="holdings" inverseEntity="Account"/>
     </entity>
     <entity name="IncomeStream" representedClassName="IncomeStream" syncable="YES">
@@ -176,6 +176,6 @@
         <attribute name="label" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="memberID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="memberID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
     </entity>
 </model>

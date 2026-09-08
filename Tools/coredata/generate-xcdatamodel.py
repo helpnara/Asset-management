@@ -190,15 +190,26 @@ def contents(all_models):
             if optional:
                 parts.append('optional="YES"')
             parts.append(f'attributeType="{kind}"')
-            if not optional:
+            if optional:
+                # **옵셔널에는 기본값을 붙이지 않는다.** 붙이면 Core Data 가
+                # `nil` 대신 그 값을 돌려주는데, 이 앱에서 `nil` 은 "안 정했다"
+                # 라는 **뜻이 있는 값**이다.
+                #
+                # 실제로 크게 당했다: `Account.expectedReturnBP` 에 기본값 0 이
+                # 붙어 있어서 `?? 기본수익률` 이 한 번도 안 걸렸고, 모든 덩어리가
+                # **연 0% 로 자랐다.** 은퇴 예상이 63.1억에서 21.0억으로 떨어졌는데
+                # 화면은 멀쩡해 보였다 (4차 1b-2).
+                #
+                # 스칼라 힌트도 끈다 — 옵셔널 숫자는 `NSNumber?` 로 다룬다.
+                if kind in ("Integer 64", "Double", "Boolean"):
+                    scalar = "NO"
+            else:
                 # 필수 속성에는 반드시 기본값이 있어야 한다 (momc · CloudKit).
                 if kind == "Date":
                     # 날짜만 다른 칸을 쓴다. 0 은 2001-01-01 이다.
                     parts.append('defaultDateTimeInterval="0"')
                 elif default is not None:
                     parts.append(f'defaultValueString="{default}"')
-            elif default is not None:
-                parts.append(f'defaultValueString="{default}"')
             parts.append(f'usesScalarValueType="{scalar}"')
             lines.append("        <attribute " + " ".join(parts) + "/>")
         for field, target, inverse_name, is_many in relationships(body, entity, class_names):

@@ -77,6 +77,19 @@ def cloudkit_rules():
                 problems.append(
                     f"{entity.get('name')}.{attribute.get('name')}: "
                     f"필수인데 기본값이 없습니다 (momc 가 막습니다)")
+            # **옵셔널에는 기본값이 붙으면 안 된다.** 붙으면 Core Data 가 `nil`
+            # 대신 그 값을 돌려주는데, 이 앱에서 `nil` 은 "안 정했다" 라는 뜻이
+            # 있는 값이다. `expectedReturnBP` 에 0 이 붙어 모든 덩어리가 연 0%
+            # 로 자란 적이 있다 — 화면은 멀쩡하고 숫자만 틀렸다.
+        for attribute in entity.findall("attribute"):
+            if attribute.get("optional") != "YES":
+                continue
+            if (attribute.get("defaultValueString") is not None
+                    or attribute.get("defaultDateTimeInterval") is not None):
+                problems.append(
+                    f"{entity.get('name')}.{attribute.get('name')}: "
+                    f"옵셔널인데 기본값이 붙어 있습니다 — nil 이 안 나옵니다")
+
         for relationship in entity.findall("relationship"):
             if relationship.get("optional") != "YES":
                 problems.append(
