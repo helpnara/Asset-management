@@ -27,8 +27,6 @@ struct SimulationView: View {
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     @Fetched(sort: \Scenario.createdAt) private var scenarios: [Scenario]
-    @Environment(\.managedObjectContext) private var context
-
     @State private var knobs: Knobs?
     @State private var isNamingScenario = false
     @State private var scenarioName = ""

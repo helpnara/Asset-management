@@ -63,7 +63,20 @@ extension NSManagedObjectContext {
 
 // MARK: - 지역 바인딩
 
-extension NSManagedObject {
+/// `bindings` 를 **프로토콜로** 준다.
+///
+/// `extension NSManagedObject { var bindings: ObservedObject<Self>.Wrapper }`
+/// 로 두면 컴파일러가 막는다:
+///
+///     covariant 'Self' or 'Self?' can only appear at the top level of property type
+///
+/// 클래스 익스텐션의 프로퍼티 타입 **안쪽**에는 `Self` 를 못 쓴다. 프로토콜
+/// 익스텐션에서는 된다.
+protocol ManagedBindable: NSManagedObject {}
+
+extension NSManagedObject: ManagedBindable {}
+
+extension ManagedBindable {
 
     /// `@Bindable` 자리 (docs/09-family-sharing.md 1b-2).
     ///
