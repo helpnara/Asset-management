@@ -265,8 +265,10 @@ struct SyncStatusSection: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(modeColor)
             }
+            // 계정 상태는 **어느 모드에서나** 본다. 못 붙었을 때야말로
+            // 계정이 문제인지 아닌지가 갈림길이다.
+            LabeledContent("iCloud 계정", value: accountLabel)
             if case .cloudKit = Persistence.mode {
-                LabeledContent("iCloud 계정", value: accountLabel)
                 // **여기가 진짜 답이다.** 위의 둘이 초록이어도 밀어 넣기가
                 // 전부 실패하고 있을 수 있다. 마지막 내보내기가 성공했는지를
                 // 봐야 "정말 백업되고 있나" 에 답할 수 있다.
@@ -278,13 +280,34 @@ struct SyncStatusSection: View {
                         .foregroundStyle(Color.loss)
                 }
             }
+            // **못 붙었으면 왜 못 붙었는지 그대로 보여 준다.**
+            //
+            // 이 값은 처음부터 `Mode.localOnly(reason:)` 이 들고 있었는데
+            // 화면에 내놓지 않고 있었다. 그래서 4차 1c 에서 "안 붙었다" 는
+            // 것만 알고 이유는 못 알아, 맥 없는 이 저장소에서 유일하게
+            // 남은 길인 **사용자가 읽어서 알려 주는 것**조차 막혀 있었다.
+            //
+            // 길게 누르면 복사된다 (`.textSelection`).
+            if case .localOnly(let reason) = Persistence.mode {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("붙지 못한 이유")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.muted)
+                    Text(reason)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.loss)
+                        .textSelection(.enabled)
+                }
+            }
         } header: {
             Text("동기화")
         } footer: {
             Text(footer)
         }
         .task {
-            guard case .cloudKit = Persistence.mode else { return }
+            // 인메모리(미리보기)에서만 건너뛴다. 못 붙은 경우에도 물어봐야
+            // 계정 탓인지 아닌지를 가른다.
+            guard Persistence.mode != .inMemory else { return }
             accountStatus = try? await CKContainer(identifier: Persistence.cloudKitContainerID)
                 .accountStatus()
         }

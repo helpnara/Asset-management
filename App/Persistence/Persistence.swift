@@ -89,7 +89,9 @@ enum Persistence {
         do {
             return Store(container: try load(cloudKit: true), mode: .cloudKit)
         } catch {
-            let reason = String(describing: error)
+            // **여기서 한 번 더 물어본다.** 아래 탐침이 답하는 것은
+            // "내 설정이 틀렸나, 아니면 이 파일이 문제인가" 다.
+            let reason = describe(error) + "\n\n" + probeWithEmptyStore()
             do {
                 return Store(container: try load(cloudKit: false),
                              mode: .localOnly(reason: reason))
@@ -97,6 +99,71 @@ enum Persistence {
                 fatalError("데이터 저장소를 열지 못했습니다: \(error)")
             }
         }
+    }
+
+    /// 오류를 **읽을 수 있게** 편다.
+    ///
+    /// `String(describing:)` 은 `Error Domain=... Code=...` 한 줄로 뭉개서
+    /// 정작 필요한 `NSLocalizedFailureReason` 이 안 보인다. CloudKit 통합이
+    /// 거절할 때 진짜 이유는 거기 들어 있다.
+    private static func describe(_ error: Error) -> String {
+        let ns = error as NSError
+        var lines = ["\(ns.domain) \(ns.code)"]
+        for key in [NSLocalizedFailureReasonErrorKey,
+                    NSLocalizedDescriptionKey,
+                    NSDebugDescriptionErrorKey] {
+            if let value = ns.userInfo[key] as? String, !value.isEmpty {
+                lines.append(value)
+            }
+        }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+            lines.append("바탕: \(underlying.domain) \(underlying.code) "
+                         + (underlying.localizedFailureReason ?? underlying.localizedDescription))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// **빈 저장소로는 붙나?** — 원인을 둘로 가르는 탐침.
+    ///
+    /// iCloud 로 못 열었을 때 답이 갈리는 곳은 딱 여기다:
+    ///
+    ///  · 빈 파일로도 실패한다 → 자격·컨테이너·모델 쪽 문제다.
+    ///    저장소 파일은 죄가 없다.
+    ///  · 빈 파일로는 열린다 → **SwiftData 가 쓰던 그 파일**이 문제다.
+    ///    미러링 메타데이터가 안 맞는 것이므로, 옮겨 담는 길로 가야 한다.
+    ///
+    /// 맥이 없어 디버거를 못 붙이는 이 저장소에서, 한 번의 배포로 이 갈림길을
+    /// 넘는 유일한 방법이다 (판본 해시 탐침과 같은 수법).
+    ///
+    /// **안전한가.** 임시 파일은 비어 있으므로 iCloud 로 **밀어 넣을 것이
+    /// 없다.** 미러링은 로컬이 비었다고 원격을 지우지 않는다. 읽고 나서
+    /// 파일을 지운다. 그리고 이 길은 **이미 실패한 뒤에만** 지나간다.
+    private static func probeWithEmptyStore() -> String {
+        let url = URL.temporaryDirectory
+            .appendingPathComponent("cloudkit-probe-\(UUID().uuidString).store")
+        defer {
+            for suffix in ["", "-wal", "-shm"] {
+                try? FileManager.default.removeItem(
+                    at: URL(fileURLWithPath: url.path(percentEncoded: false) + suffix))
+            }
+        }
+
+        let container = NSPersistentCloudKitContainer(name: modelName)
+        let description = NSPersistentStoreDescription(url: url)
+        description.cloudKitContainerOptions =
+            NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerID)
+        description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        description.setOption(true as NSNumber,
+                              forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        container.persistentStoreDescriptions = [description]
+
+        var failure: Error?
+        container.loadPersistentStores { _, error in failure = error }
+        if let failure {
+            return "빈 저장소로도 iCloud 를 못 붙였습니다 — 파일 탓이 아닙니다:\n"
+                + describe(failure)
+        }
+        return "빈 저장소로는 붙습니다 — 쓰던 파일 쪽 문제입니다."
     }
 
     private static func load(cloudKit: Bool) throws -> NSPersistentContainer {
