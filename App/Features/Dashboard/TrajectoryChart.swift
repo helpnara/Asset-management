@@ -126,6 +126,9 @@ struct TrajectoryChart: View {
             .pickerStyle(.segmented)
             .frame(maxWidth: 260)
 
+            // **폭을 묶지 않는다.** 위 세그먼트 컨트롤을 따라 260 으로 잘라 뒀더니
+            // 스위치가 카드 한가운데 떠서 고장처럼 보였다. 스위치는 차트·범례의
+            // 오른쪽 끝과 맞아야 한 덩어리로 읽힌다.
             Toggle(isOn: $showsReal) {
                 Text("오늘 돈으로 보기")
                     .font(.system(size: 11.5))
@@ -133,7 +136,6 @@ struct TrajectoryChart: View {
             }
             .toggleStyle(.switch)
             .controlSize(.mini)
-            .frame(maxWidth: 260)
 
             if visiblePoints.count < 2 {
                 placeholder
