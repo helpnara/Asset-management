@@ -24,80 +24,115 @@ enum FamilySharingFailure: LocalizedError {
     }
 }
 
+/// 공유가 지금 어떤 상태인가. **값이라 스레드를 넘겨도 안전하다.**
+struct FamilyShareState: Sendable {
+    var households = 0
+    var hasLocalShare = false
+    var isSaved = false
+    var participants = 0
+
+    /// 사람이 읽을 한 줄.
+    var label: String {
+        if households == 0 { return "아직 없음" }
+        if !hasLocalShare { return "공유 안 함" }
+        if !isSaved { return "만들다 만 상태" }
+        return "공유 중 · 참가자 \(participants)명"
+    }
+
+    var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) }
+}
+
 /// **가족 공유.** 가구 하나 = `CKShare` 한 장 (docs/09-family-sharing.md 2b).
 ///
 /// `CKShare` 는 **한 장에 권한이 하나**다. 구성원마다 다른 권한을 주려면 공유를
 /// 여러 장 만들어야 하는데, 그러면 자료를 어느 장에 매달지부터 갈라진다.
 /// 그래서 **공유는 한 장으로 두고 역할은 앱 안에서 판정한다.**
 ///
-/// **실패는 시트가 알린다.** 우리가 따로 문구를 만들지 않는다 — 참가자
-/// 추가·링크 생성이 막히면 `UICloudSharingController` 가 그 자리에서
-/// 알림을 띄운다. 실제로 그 알림이 이번 버그를 알려 줬다.
+/// ## ⚠️ `share(_:to:)` 를 메인에서 부르면 앱이 죽는다
+///
+/// 기기 크래시 로그가 알려 줬다:
+///
+///     FRONTBOARD 0x8BADF00D — scene-update watchdog transgression:
+///     exhausted real (wall clock) time allowance of 10.00 seconds
+///
+///     Thread 0 (com.apple.main-thread):
+///       _dispatch_group_wait_slow
+///       -[_PFRequestExecutor wait]
+///       -[NSPersistentCloudKitContainer shareManagedObjects:toShare:completion:]
+///       -[UICloudSharingController __viewControllerWillBePresented:]
+///
+/// **`share(_:to:)` 는 완료 블록을 받으면서도 부른 스레드를 붙잡고 기다린다.**
+/// 그런데 `UICloudSharingController` 는 준비 핸들러를 **메인에서** 부른다.
+/// 옮길 레코드가 수백 건이면 10초를 넘고, 워치독이 앱을 죽인다.
+///
+/// 그래서 여기서는 **백그라운드 컨텍스트에서** 부른다. 관리 객체는 스레드를
+/// 넘기지 않고 `objectID` 만 넘겨 그쪽에서 다시 꺼낸다 (CLAUDE.md).
+///
+/// `fetchShares` 도 같은 실행기를 쓰므로 상태를 읽는 것도 메인에서 안 한다.
 @MainActor
 @Observable
 final class FamilySharing {
 
     static let shared = FamilySharing()
 
-    /// **공유가 왜 안 됐나.** 시트가 띄우는 알림은 "링크를 생성할 수
-    /// 없습니다" 까지만 말하고 CloudKit 오류 코드를 안 보여 준다. 그 코드가
-    /// 없으면 원인을 추측하게 되고, 오늘 그것으로 한 바퀴를 버렸다.
-    ///
-    /// 저장소를 못 열었을 때 이유를 화면에 내놓아 답을 얻은 것과 같은 수법이다.
+    /// **공유가 왜 안 됐나.** 시트가 띄우는 알림은 CloudKit 오류 코드를 안
+    /// 보여 준다. 그 코드가 없으면 원인을 추측하게 된다.
     var lastFailure: String?
 
+    /// 화면이 읽는 상태. 백그라운드에서 읽어 여기에 얹는다.
+    private(set) var state = FamilyShareState()
+
     private init() {}
+
+    private var cloudContainer: NSPersistentCloudKitContainer? {
+        Persistence.container as? NSPersistentCloudKitContainer
+    }
 
     /// 오류를 **가장 안쪽 이유까지** 펴서 적는다 (`CloudKitErrorText`).
     func record(_ error: Error, while step: String) {
         lastFailure = "\(step)\n" + CloudKitErrorText.describe(error)
     }
 
-    private var cloudContainer: NSPersistentCloudKitContainer? {
-        Persistence.container as? NSPersistentCloudKitContainer
-    }
-
-    /// **서버에 진짜로 저장된 공유.** 없으면 `nil`.
+    /// **상태를 백그라운드에서 읽는다.**
     ///
-    /// `url` 이 있으면 서버에 있다 — CloudKit 이 저장하면서 붙여 주는 값이라
-    /// **반쪽짜리와 진짜를 가르는 유일한 기준**이다. 첫 시도에서 로컬에만
-    /// 만들어진 공유는 `url` 이 없다.
-    ///
-    /// 이 구분을 몰라서 한동안 두 갈래를 하나로 합쳐 두었고, 그 바람에
-    /// **관리 화면이 통째로 사라졌다.** 갈래를 없앨 것이 아니라 가르는
-    /// 기준을 찾았어야 했다.
-    func savedShare(for household: Household) -> CKShare? {
-        guard let share = existingShare(for: household), share.url != nil else { return nil }
-        return share
-    }
-
-    /// 로컬에 있는 공유. 반쪽짜리도 포함한다.
-    ///
-    /// 두 번 만들면 안 된다 — 자료가 어느 쪽에 매달렸는지가 갈린다.
-    /// 그래서 만들기 전에 항상 여기부터 본다.
-    func existingShare(for household: Household) -> CKShare? {
-        guard let cloudContainer else { return nil }
-        return try? cloudContainer
-            .fetchShares(matching: [household.objectID])[household.objectID]
+    /// `fetchShares` 도 `share(_:to:)` 와 같은 실행기를 쓴다. 더보기 화면을
+    /// 여는 것만으로 메인이 멈추면 안 된다.
+    func refreshState() {
+        guard let container = cloudContainer else {
+            state = FamilyShareState()
+            return
+        }
+        let carried = UncheckedBox(container)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let container = carried.value
+            let context = container.newBackgroundContext()
+            context.perform {
+                var next = FamilyShareState()
+                let households = (try? context.fetch(Household.fetchRequest())) ?? []
+                next.households = households.count
+                // 가장 오래된 것이 진짜다 — 나중 것은 뒤늦게 내려온 사본이다.
+                if let household = households.min(by: { $0.createdAt < $1.createdAt }),
+                   let share = try? container
+                       .fetchShares(matching: [household.objectID])[household.objectID] {
+                    next.hasLocalShare = true
+                    // **`url` 이 있어야 서버에 있는 것이다.** 만들다 만 것과 가른다.
+                    next.isSaved = share.url != nil
+                    next.participants = share.participants.count
+                }
+                let result = next
+                Task { @MainActor in FamilySharing.shared.state = result }
+            }
+        }
     }
 
     /// **초대 시트가 공유를 만들 때 부르는 자리.**
     ///
-    /// 처음에는 우리가 먼저 공유를 만들고 `UICloudSharingController(share:container:)`
-    /// 로 넘겼는데, 기기에서 이렇게 막혔다:
-    ///
-    ///     사람을 추가할 수 없음 — 공유를 위한 링크를 생성할 수 없습니다.
-    ///
-    /// 그 초기화 함수는 **이미 서버에 저장된 공유**를 요구한다. 게다가 우리는
-    /// 만든 **뒤에** 제목을 덧쓰고 저장하지 않아서, 서버본과 어긋난 것을
-    /// 넘기고 있었다. 시트는 열리고 참가자를 더하는 순간 저장이 막힌다.
-    ///
     /// 애플이 Core Data 용으로 문서화한 길은 `preparationHandler` 다 —
-    /// **UIKit 이 공유를 만들고 저장까지 맡는다.** 우리는 뿌리 객체를 넘기고
-    /// 제목만 얹는다.
+    /// UIKit 이 공유를 만들고 저장까지 맡는다. 우리는 뿌리 객체를 넘기고
+    /// 제목만 얹는다. 다만 **부르는 것은 백그라운드에서** 한다 (위 참고).
     func prepareShare(titled title: String,
                       completion: @escaping (CKShare?, CKContainer?, Error?) -> Void) {
-        guard let cloudContainer else {
+        guard let container = cloudContainer else {
             completion(nil, nil, FamilySharingFailure.noCloudKit)
             return
         }
@@ -105,83 +140,95 @@ final class FamilySharing {
         lastFailure = nil
 
         // 뿌리가 없으면 만든다. **저장 안 된 객체는 공유할 수 없으므로**
-        // 만든 직후 바로 쓴다.
+        // 만든 직후 바로 쓴다. 여기까지는 메인이어야 한다 — viewContext 다.
         let household = Household.current(in: Persistence.viewContext)
         Autosave.shared.flush()
+        let rootID = household.objectID
 
-        // **이미 있는 공유도 여기를 지나가게 한다.** 처음에는 "이미 있으면
-        // `init(share:container:)` 로" 라고 갈랐는데, 첫 시도에서 공유가
-        // 로컬에만 만들어지면 그 반쪽짜리가 골라져 고친 길을 안 지나간다.
-        let existing = existingShare(for: household)
-
-        // `completion` 도 `CKShare` 도 `Sendable` 이 아니다. 안전한 이유를
-        // 아는 상자에 담아 건넨다.
+        // `completion` 도 `CKShare` 도 컨테이너도 `Sendable` 이 아니다.
+        // 안전한 이유를 아는 상자에 담아 건넨다.
         let box = UncheckedBox(completion)
-        let state = PreparationState()
+        let carried = UncheckedBox(container)
+        let progress = PreparationState()
 
-        // **빈 화면을 영원히 두지 않는다.**
-        //
-        // 준비가 끝날 때까지 시트는 비어 있다. 저쪽이 아무 말도 안 하면
-        // 사용자는 흰 화면만 보고 무엇이 잘못됐는지 알 방법이 없다.
+        // **빈 화면을 영원히 두지 않는다.** 옮길 것이 많으면 오래 걸리므로
+        // 넉넉히 두되, 끝내 안 끝나면 늦었다고 말한다.
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(25))
-            guard !state.finished else { return }
-            state.finished = true
-            self.lastFailure = "공유 만들기: 25초 안에 끝나지 않았습니다.\n"
-                + "더보기 → 동기화의 마지막 내보내기가 실패 중이면 "
-                + "성공으로 돌아온 뒤 다시 시도하세요."
+            try? await Task.sleep(for: .seconds(90))
+            guard !progress.finished else { return }
+            progress.finished = true
+            self.lastFailure = "공유 만들기: 90초 안에 끝나지 않았습니다.\n"
+                + "더보기 → 동기화의 마지막 내보내기가 성공인지 먼저 보세요."
             box.value(nil, nil, FamilySharingFailure.timedOut)
         }
 
-        // **이 블록은 메인이라는 보장이 없다.**
-        //
-        // Core Data 가 백그라운드에서 부른다. 여기서 `MainActor.assumeIsolated`
-        // 를 쓰면 **그 자리에서 앱이 죽는다** — 실제로 공유 대상을 누르는
-        // 순간(= 저장이 일어나는 순간) 죽었다.
-        //
-        // `CloudKitSyncMonitor` 가 같은 모양으로 멀쩡한 것은 그쪽 옵저버가
-        // `queue: .main` 으로 등록돼 **메인이 보장되기 때문**이다. 그 보장
-        // 없이 모양만 베끼면 이렇게 된다.
-        //
-        // `CKShare` 는 `Sendable` 이 아니라 `Task` 로 못 넘긴다. 상자에 담아
-        // 메인 큐로 건너간 뒤, **거기서는 정말 메인이므로** `assumeIsolated`
-        // 가 옳다.
-        cloudContainer.share([household], to: existing) { _, share, container, error in
-            let carried = UncheckedBox((share, container, error))
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    guard !state.finished else { return }   // 시간 초과로 이미 끝냈다
-                    state.finished = true
-                    let (share, container, error) = carried.value
-                    if let error {
-                        self.record(error, while: "공유 만들기")
-                    }
-                    // 상대가 초대 화면에서 보는 이름. **넘기기 전에** 얹는다 —
-                    // 넘긴 뒤에 고치면 UIKit 이 저장한 것과 어긋난다.
-                    if let share {
-                        share[CKShare.SystemFieldKey.title] = title
-                    }
-                    box.value(share, container, error)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let container = carried.value
+            let context = container.newBackgroundContext()
+            context.perform {
+                guard let root = try? context.existingObject(with: rootID) else {
+                    Self.finish(progress, box, nil, nil, FamilySharingFailure.noShare, title)
+                    return
+                }
+                // 이미 있는 공유는 이어서 쓴다. 만들다 만 것도 여기서 아물어진다.
+                let existing = try? container.fetchShares(matching: [rootID])[rootID]
+                container.share([root], to: existing) { _, share, ckContainer, error in
+                    Self.finish(progress, box, share, ckContainer, error, title)
                 }
             }
         }
     }
 
+    /// 결과를 **메인으로 건너가서** 한 번만 넘긴다.
+    ///
+    /// 시간 초과와 진짜 응답이 둘 다 완료를 부르면 안 된다.
+    private nonisolated static func finish(_ progress: PreparationState,
+                                           _ box: UncheckedBox<(CKShare?, CKContainer?, Error?) -> Void>,
+                                           _ share: CKShare?,
+                                           _ container: CKContainer?,
+                                           _ error: Error?,
+                                           _ title: String) {
+        let carried = UncheckedBox((share, container, error))
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                guard !progress.finished else { return }
+                progress.finished = true
+                let (share, container, error) = carried.value
+                if let error {
+                    FamilySharing.shared.record(error, while: "공유 만들기")
+                }
+                // 상대가 보는 이름. **넘기기 전에** 얹는다.
+                if let share {
+                    share[CKShare.SystemFieldKey.title] = title
+                }
+                box.value(share, container, error)
+            }
+        }
+    }
+
+    /// 서버에 저장된 공유. **`state.isSaved` 가 참일 때만 부른다.**
+    ///
+    /// `fetchShares` 는 메타데이터 조회라 `shareManagedObjects` 처럼 무겁지
+    /// 않다 — 앱을 죽인 것은 그쪽이다. 그래도 이미 있다는 것을 알고 부를 때만
+    /// 쓴다.
+    func savedShare(for household: Household) -> CKShare? {
+        guard let cloudContainer,
+              let share = try? cloudContainer
+                  .fetchShares(matching: [household.objectID])[household.objectID],
+              share.url != nil else { return nil }
+        return share
+    }
+
     /// **이 기기가 이 객체를 고칠 수 있나.**
     ///
     /// 참가자 쪽에서는 `CKShare` 의 권한이 답한다. 소유자 쪽에서는 늘 참이다.
-    /// 4단계에서 `\.canEdit` 에 꽂을 값이 이것이다 — 화면은 이미 그 환경값
-    /// 하나만 읽게 해 두었다 (08-feedback 48번).
+    /// 4단계에서 `\.canEdit` 에 꽂을 값이 이것이다.
     func canEdit(_ object: NSManagedObject) -> Bool {
         guard let cloudContainer else { return true }
         return cloudContainer.canUpdateRecord(forManagedObjectWith: object.objectID)
     }
 }
 
-/// `@Sendable` 클로저 안으로 격리되지 않은 값을 들고 들어가기 위한 상자.
-///
-/// 검사를 끄는 것이 아니라 **안전한 이유를 아는 자리**를 만드는 것이다:
-/// 담긴 클로저를 부르는 곳도 만드는 곳도 전부 메인 액터다.
 /// 준비가 끝났는지. 시간 초과와 진짜 응답이 **둘 다** 완료를 부르면 안 된다.
 private final class PreparationState: @unchecked Sendable {
     var finished = false
@@ -235,8 +282,11 @@ enum FamilyShareSheet {
     /// 가르는 기준은 `share.url` 이다 — 서버에 저장돼야 생기는 값이라
     /// 반쪽짜리를 관리 화면으로 보내는 일이 없다.
     private static func makeController(titled title: String) -> UICloudSharingController {
+        // **저장된 공유가 있다고 화면이 이미 알고 있을 때만** 조회한다.
+        // 모르는 채로 물어보면 없는 경우까지 기다리게 된다.
         let household = Household.current(in: Persistence.viewContext)
-        if let saved = FamilySharing.shared.savedShare(for: household) {
+        if FamilySharing.shared.state.isSaved,
+           let saved = FamilySharing.shared.savedShare(for: household) {
             return UICloudSharingController(
                 share: saved,
                 container: CKContainer(identifier: Persistence.cloudKitContainerID))

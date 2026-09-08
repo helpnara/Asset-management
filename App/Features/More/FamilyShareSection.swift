@@ -1,35 +1,13 @@
-import CloudKit
-import CoreData
 import SwiftUI
 
 /// **가족 초대.** 여기서 만든 `CKShare` 한 장이 가구 전체를 따라다닌다
 /// (docs/09-family-sharing.md 2b).
 struct FamilyShareSection: View {
-    @Environment(\.managedObjectContext) private var context
     @Environment(\.canManageHousehold) private var canManageHousehold
 
     @Fetched private var plans: [Plan]
 
     @State private var sharing = FamilySharing.shared
-    /// **앱이 지금 무엇을 믿고 있나.** 화면에 그대로 내놓는다.
-    @State private var state = ShareState()
-
-    struct ShareState {
-        var households = 0
-        var hasLocalShare = false
-        var isSaved = false
-        var participants = 0
-
-        /// 사람이 읽을 한 줄.
-        var label: String {
-            if households == 0 { return "아직 없음" }
-            if !hasLocalShare { return "공유 안 함" }
-            if !isSaved { return "만들다 만 상태" }
-            return "공유 중 · 참가자 \(participants)명"
-        }
-
-        var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) }
-    }
 
     var body: some View {
         Section {
@@ -41,7 +19,7 @@ struct FamilyShareSection: View {
                     FamilyShareSheet.present(titled: title)
                 } label: {
                     HStack {
-                        Text(state.isSaved ? "공유 관리" : "가족 초대")
+                        Text(sharing.state.isSaved ? "공유 관리" : "가족 초대")
                         Spacer()
                         Image(systemName: "person.2")
                             .foregroundStyle(Color.muted)
@@ -59,13 +37,13 @@ struct FamilyShareSection: View {
             // 실은 저장된 공유가 없어서 만들기 화면이 뜬 것이 맞았는데,
             // 앱이 그 사실을 아무 데도 안 보여 줘서 알 방법이 없었다.
             LabeledContent("상태") {
-                Text(state.label)
+                Text(sharing.state.label)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(state.isTrouble ? Color.loss
-                                     : (state.isSaved ? Color.gain : Color.muted))
+                    .foregroundStyle(sharing.state.isTrouble ? Color.loss
+                                     : (sharing.state.isSaved ? Color.gain : Color.muted))
             }
-            if state.households > 1 {
-                Text("가구가 \(state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다.")
+            if sharing.state.households > 1 {
+                Text("가구가 \(sharing.state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.loss)
             }
@@ -93,7 +71,9 @@ struct FamilyShareSection: View {
                  : "관리자가 공유한 기록을 보고 있습니다.")
         }
         .task {
-            state = readState()
+            // **메인에서 읽지 않는다.** 공유 조회는 Core Data 의 같은 실행기를
+            // 쓰는데, 그것이 메인을 붙잡으면 워치독이 앱을 죽인다.
+            sharing.refreshState()
         }
     }
 
@@ -102,24 +82,4 @@ struct FamilyShareSection: View {
         plans.first?.title ?? "우리 가족"
     }
 
-    /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
-    /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
-    /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
-    /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
-    private func readState() -> ShareState {
-        var state = ShareState()
-        state.households = Household.count(in: context)
-        guard let household = context.all(
-            Household.self,
-            sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)]
-        ).first else { return state }
-
-        guard let share = sharing.existingShare(for: household) else { return state }
-        state.hasLocalShare = true
-        // **저장된 것만 "공유 중" 이다.** `url` 은 CloudKit 이 저장하면서
-        // 붙여 주는 값이라, 만들다 만 것과 진짜를 가른다.
-        state.isSaved = share.url != nil
-        state.participants = share.participants.count
-        return state
-    }
 }
