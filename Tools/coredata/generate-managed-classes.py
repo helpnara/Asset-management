@@ -199,7 +199,9 @@ def class_file(entity, body, class_names):
     # `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
     # `import Core` 를 붙인다 — 열거형 기본값(`AccountKind.general.rawValue` 등)이
     # 그 패키지에 있다.
-    return f"""{HEADER.replace("import CoreData", "import Core\nimport CoreData", 1)}
+    # f-string 표현식 안에는 역슬래시를 못 쓴다 (파이썬 3.11 까지). 밖에서 만든다.
+    header = HEADER.replace("import CoreData", "import Core\nimport CoreData", 1)
+    return f"""{header}
 /// `Identifiable` 은 손으로 붙인다. SwiftData 의 `@Model` 은 거저 줬지만
 /// `NSManagedObject` 는 안 준다 — `ForEach` · `sheet(item:)` 이 요구한다.
 /// 엔티티마다 `id: UUID` 가 있으므로 준수는 자동으로 합성된다.
@@ -210,6 +212,26 @@ class {entity}: NSManagedObject, Identifiable {{
 
 
 def main():
+    # **이 생성기는 더 돌리지 않는다.**
+    #
+    # 4차 1b-2 로 `@Model` 이 사라져 읽을 원본이 없어졌다. 그리고 설령 모델
+    # 파일(`.xcdatamodeld`)에서 다시 뽑게 고치더라도, **모델 파일에는 주석
+    # 칸이 없다** — 생성된 파일의 `///` 들은 "왜 이 칸이 있나" 를 적어 둔
+    # 이 저장소의 자산인데 그것이 전부 날아간다.
+    #
+    # 한 번은 실제로 30개를 통째로 지웠다. 그래서 여기서 멈춘다.
+    sys.exit(
+        "이 생성기는 더 쓰지 않습니다.\n"
+        "  · 원본이던 @Model 은 4차 1b-2 에서 사라졌습니다.\n"
+        "  · 모델 파일에는 주석 칸이 없어, 다시 뽑으면 Generated/ 의 `///` 이\n"
+        "    전부 날아갑니다. 그 주석이 이 저장소의 자산입니다.\n"
+        "\n"
+        "칸을 더할 때는 셋을 함께 손으로 고치세요:\n"
+        "  App/SlowRich.xcdatamodeld\n"
+        "  App/Persistence/Generated/<엔티티>+CoreDataProperties.swift\n"
+        "  python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb\n"
+        "CI 가 셋을 대조합니다.")
+
     all_models = xcd.models()
     # **아무것도 못 찾았으면 손대지 않는다.** 1b-2 로 `@Model` 이 사라진 뒤
     # 무심코 돌렸다가 생성물 서른 개를 **전부 지웠다.** 지우는 것이 찾는 것보다

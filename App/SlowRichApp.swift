@@ -26,6 +26,9 @@ struct SlowRichApp: App {
         // 계정이 붙어 있어도 밀어 넣기는 전부 실패하고 있을 수 있다
         // (Production 스키마에 레코드 타입이 없을 때가 그렇다).
         MainActor.assumeIsolated { CloudKitSyncMonitor.shared.start() }
+        // **저장을 켠다.** Core Data 는 스스로 저장하지 않는다 —
+        // SwiftData 에서 갈아탈 때 조용히 사라진 것이다 (Autosave 참고).
+        MainActor.assumeIsolated { Autosave.shared.start(container.viewContext) }
     }
 
     /// CI 스크린샷은 매 실행마다 환영 화면에 막히면 안 되므로 실행 인자로 건너뛴다.
@@ -56,6 +59,10 @@ struct SlowRichApp: App {
             // 스스로 판을 엎고, 시스템이 그 평가를 취소한다 — 실제로
             // "인증이 취소되었습니다" 가 반복해서 났다 (docs/08-feedback.md 4번).
             if phase == .background { lock.lock() }
+            // **내려가기 전에 쓴다.** `.inactive` 부터 잡는다 — 앱 전환기에
+            // 올라간 순간 사용자가 쓸어 올려 끝낼 수 있고, 그때는 `.background`
+            // 가 안 올 수도 있다. 모아 둔 것이 없으면 아무 일도 안 한다.
+            if phase != .active { Autosave.shared.flush() }
         }
         // SwiftData 의 `.modelContainer(_:)` 자리. Core Data 는 컨텍스트를
         // 환경으로 내리고, `@Fetched` 가 그것을 읽는다.

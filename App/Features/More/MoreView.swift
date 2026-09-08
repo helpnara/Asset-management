@@ -257,6 +257,7 @@ struct NotificationSettingsView: View {
 struct SyncStatusSection: View {
     @State private var accountStatus: CKAccountStatus?
     @State private var monitor = CloudKitSyncMonitor.shared
+    @State private var autosave = Autosave.shared
 
     var body: some View {
         Section {
@@ -264,6 +265,20 @@ struct SyncStatusSection: View {
                 Text(modeLabel)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(modeColor)
+            }
+            // **기기에 쓰는 것부터가 먼저다.** iCloud 로 올라가느냐 이전에,
+            // 이 기기에 저장이 되고 있느냐가 먼저다. 1b-2 에서 자동 저장이
+            // 조용히 사라진 적이 있어(Autosave 참고) 여기에 내놓는다.
+            if let failure = autosave.lastFailure {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("저장 실패")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.muted)
+                    Text(failure)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.loss)
+                        .textSelection(.enabled)
+                }
             }
             // 계정 상태는 **어느 모드에서나** 본다. 못 붙었을 때야말로
             // 계정이 문제인지 아닌지가 갈림길이다.

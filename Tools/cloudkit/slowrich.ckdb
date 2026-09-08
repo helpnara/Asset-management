@@ -26,6 +26,7 @@ DEFINE SCHEMA
         CD_ownerID STRING,
         CD_ownerID_ckAsset ASSET,
         CD_owner STRING,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -49,6 +50,7 @@ DEFINE SCHEMA
         CD_note STRING,
         CD_note_ckAsset ASSET,
         CD_sortIndex INT64,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -73,6 +75,7 @@ DEFINE SCHEMA
         CD_subject_ckAsset ASSET,
         CD_summary STRING,
         CD_summary_ckAsset ASSET,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -93,6 +96,7 @@ DEFINE SCHEMA
         CD_key STRING,
         CD_key_ckAsset ASSET,
         CD_targetBP INT64,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -128,9 +132,28 @@ DEFINE SCHEMA
         CD_targetWeightBP INT64,
         CD_sortIndex INT64,
         CD_createdAt TIMESTAMP,
-        CD_account STRING,
         CD_accountID STRING,
         CD_accountID_ckAsset ASSET,
+        CD_account STRING,
+        CD_household STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_creator",
+        GRANT READ TO "_creator"
+    );
+
+    RECORD TYPE CD_Household (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        CD_entityName   STRING,
+        CD_id STRING,
+        CD_id_ckAsset ASSET,
+        CD_title STRING,
+        CD_title_ckAsset ASSET,
+        CD_createdAt TIMESTAMP,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -153,6 +176,7 @@ DEFINE SCHEMA
         CD_endYear INT64,
         CD_isInflationLinked INT64,
         CD_sortIndex INT64,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -184,6 +208,7 @@ DEFINE SCHEMA
         CD_colorIndex INT64,
         CD_sortIndex INT64,
         CD_createdAt TIMESTAMP,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -232,6 +257,7 @@ DEFINE SCHEMA
         CD_horizonYear INT64,
         CD_createdAt TIMESTAMP,
         CD_updatedAt TIMESTAMP,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -255,6 +281,7 @@ DEFINE SCHEMA
         CD_reviewNote STRING,
         CD_reviewNote_ckAsset ASSET,
         CD_createdAt TIMESTAMP,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -278,6 +305,7 @@ DEFINE SCHEMA
         CD_isTotalOnly INT64,
         CD_totalValueMinor INT64,
         CD_previousTotalValueMinor INT64,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -301,6 +329,7 @@ DEFINE SCHEMA
         CD_volatilityBP INT64,
         CD_projectedMinor INT64,
         CD_createdAt TIMESTAMP,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -320,6 +349,7 @@ DEFINE SCHEMA
         CD_netWorthMinor INT64,
         CD_investableMinor INT64,
         CD_liabilitiesMinor INT64,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -342,6 +372,7 @@ DEFINE SCHEMA
         CD_valueMinor INT64,
         CD_sortIndex INT64,
         CD_snapshot STRING,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -369,6 +400,7 @@ DEFINE SCHEMA
         CD_completedAt TIMESTAMP,
         CD_sortIndex INT64,
         CD_createdAt TIMESTAMP,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"
@@ -392,6 +424,7 @@ DEFINE SCHEMA
         CD_sortIndex INT64,
         CD_memberID STRING,
         CD_memberID_ckAsset ASSET,
+        CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"

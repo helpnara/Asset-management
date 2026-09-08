@@ -15,6 +15,7 @@
         <attribute name="ownerID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Holding" inverseName="account" inverseEntity="Holding"/>
         <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Member" inverseName="accounts" inverseEntity="Member"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="accounts" inverseEntity="Household"/>
     </entity>
     <entity name="CashEvent" representedClassName="CashEvent" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -24,6 +25,7 @@
         <attribute name="isAlreadyReflected" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="cashEvents" inverseEntity="Household"/>
     </entity>
     <entity name="ChangeLog" representedClassName="ChangeLog" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -32,12 +34,14 @@
         <attribute name="kindRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="subject" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="summary" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="changeLogs" inverseEntity="Household"/>
     </entity>
     <entity name="FamilyTarget" representedClassName="FamilyTarget" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="dimensionRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="key" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="targetBP" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="familyTargets" inverseEntity="Household"/>
     </entity>
     <entity name="Holding" representedClassName="Holding" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -56,6 +60,27 @@
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="accountID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="holdings" inverseEntity="Account"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="holdings" inverseEntity="Household"/>
+    </entity>
+    <entity name="Household" representedClassName="Household" syncable="YES">
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="title" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Account" inverseName="household" inverseEntity="Account"/>
+        <relationship name="cashEvents" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="CashEvent" inverseName="household" inverseEntity="CashEvent"/>
+        <relationship name="changeLogs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ChangeLog" inverseName="household" inverseEntity="ChangeLog"/>
+        <relationship name="familyTargets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FamilyTarget" inverseName="household" inverseEntity="FamilyTarget"/>
+        <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Holding" inverseName="household" inverseEntity="Holding"/>
+        <relationship name="incomeStreams" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="IncomeStream" inverseName="household" inverseEntity="IncomeStream"/>
+        <relationship name="members" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Member" inverseName="household" inverseEntity="Member"/>
+        <relationship name="plans" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Plan" inverseName="household" inverseEntity="Plan"/>
+        <relationship name="principles" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Principle" inverseName="household" inverseEntity="Principle"/>
+        <relationship name="reviewSessions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ReviewSession" inverseName="household" inverseEntity="ReviewSession"/>
+        <relationship name="scenarios" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Scenario" inverseName="household" inverseEntity="Scenario"/>
+        <relationship name="snapshots" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Snapshot" inverseName="household" inverseEntity="Snapshot"/>
+        <relationship name="snapshotLines" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SnapshotLine" inverseName="household" inverseEntity="SnapshotLine"/>
+        <relationship name="todoItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TodoItem" inverseName="household" inverseEntity="TodoItem"/>
+        <relationship name="userMilestones" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="UserMilestone" inverseName="household" inverseEntity="UserMilestone"/>
     </entity>
     <entity name="IncomeStream" representedClassName="IncomeStream" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -65,6 +90,7 @@
         <attribute name="endYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="isInflationLinked" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="incomeStreams" inverseEntity="Household"/>
     </entity>
     <entity name="Member" representedClassName="Member" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -81,6 +107,7 @@
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Account" inverseName="owner" inverseEntity="Account"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="members" inverseEntity="Household"/>
     </entity>
     <entity name="Plan" representedClassName="Plan" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -112,6 +139,7 @@
         <attribute name="horizonYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="plans" inverseEntity="Household"/>
     </entity>
     <entity name="Principle" representedClassName="Principle" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -120,6 +148,7 @@
         <attribute name="detail" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="reviewNote" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="principles" inverseEntity="Household"/>
     </entity>
     <entity name="ReviewSession" representedClassName="ReviewSession" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -131,6 +160,7 @@
         <attribute name="isTotalOnly" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="totalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="previousTotalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="reviewSessions" inverseEntity="Household"/>
     </entity>
     <entity name="Scenario" representedClassName="Scenario" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -141,6 +171,7 @@
         <attribute name="volatilityBP" attributeType="Integer 64" defaultValueString="1500" usesScalarValueType="YES"/>
         <attribute name="projectedMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="scenarios" inverseEntity="Household"/>
     </entity>
     <entity name="Snapshot" representedClassName="Snapshot" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -149,6 +180,7 @@
         <attribute name="investableMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="liabilitiesMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="lines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SnapshotLine" inverseName="snapshot" inverseEntity="SnapshotLine"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="snapshots" inverseEntity="Household"/>
     </entity>
     <entity name="SnapshotLine" representedClassName="SnapshotLine" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -157,6 +189,7 @@
         <attribute name="valueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="snapshot" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Snapshot" inverseName="lines" inverseEntity="Snapshot"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="snapshotLines" inverseEntity="Household"/>
     </entity>
     <entity name="TodoItem" representedClassName="TodoItem" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -169,6 +202,7 @@
         <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="todoItems" inverseEntity="Household"/>
     </entity>
     <entity name="UserMilestone" representedClassName="UserMilestone" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -177,5 +211,6 @@
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="memberID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="userMilestones" inverseEntity="Household"/>
     </entity>
 </model>
