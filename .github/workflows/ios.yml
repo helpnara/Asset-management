@@ -181,6 +181,22 @@ jobs:
           fi
           echo "SlowRich.momd 확인 — 모델이 컴파일됩니다."
 
+          # 개인정보 명세가 번들에 어떤 모양으로 들어갔는지. 애플이 ITMS-91056
+          # (Invalid privacy manifest) 로 두 번 돌려보냈는데, 저장소의 파일은
+          # 로컬 파서를 통과한다 — 그러니 번들 안의 실물을 봐야 한다.
+          echo "── 개인정보 명세 ──"
+          find "$APP" -name '*.xcprivacy' -print
+          MANIFEST="$APP/PrivacyInfo.xcprivacy"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::$MANIFEST 가 없습니다."
+            exit 1
+          fi
+          file "$MANIFEST"
+          plutil -lint "$MANIFEST"
+          plutil -p "$MANIFEST"
+          echo "── 원문(앞 400바이트) ──"
+          head -c 400 "$MANIFEST" | cat -v; echo
+
       # **여기가 그 심판이다.**
       #
       # 파일 검사(check-model-matches-ckdb.py)도 momc 도 통과한 모델이 기기에서
