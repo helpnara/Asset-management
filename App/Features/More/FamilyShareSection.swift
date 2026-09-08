@@ -11,8 +11,25 @@ struct FamilyShareSection: View {
     @Fetched private var plans: [Plan]
 
     @State private var sharing = FamilySharing.shared
-    /// 이미 공유가 있나. 버튼 문구에만 쓴다 — 여는 길은 하나뿐이다.
-    @State private var alreadyShared = false
+    /// **앱이 지금 무엇을 믿고 있나.** 화면에 그대로 내놓는다.
+    @State private var state = ShareState()
+
+    struct ShareState {
+        var households = 0
+        var hasLocalShare = false
+        var isSaved = false
+        var participants = 0
+
+        /// 사람이 읽을 한 줄.
+        var label: String {
+            if households == 0 { return "아직 없음" }
+            if !hasLocalShare { return "공유 안 함" }
+            if !isSaved { return "만들다 만 상태" }
+            return "공유 중 · 참가자 \(participants)명"
+        }
+
+        var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) }
+    }
 
     var body: some View {
         Section {
@@ -24,7 +41,7 @@ struct FamilyShareSection: View {
                     FamilyShareSheet.present(titled: title)
                 } label: {
                     HStack {
-                        Text(alreadyShared ? "공유 관리" : "가족 초대")
+                        Text(state.isSaved ? "공유 관리" : "가족 초대")
                         Spacer()
                         Image(systemName: "person.2")
                             .foregroundStyle(Color.muted)
@@ -34,6 +51,23 @@ struct FamilyShareSection: View {
                 // 참가자에게는 초대 버튼을 안 내놓는다. `CKShare` 는 소유자만
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
                 LabeledContent("가족 공유", value: "참가 중")
+            }
+
+            // **앱이 믿는 상태를 그대로 내놓는다.**
+            //
+            // "공유 관리를 눌렀는데 초대 화면이 뜬다" 로 한 바퀴를 썼다.
+            // 실은 저장된 공유가 없어서 만들기 화면이 뜬 것이 맞았는데,
+            // 앱이 그 사실을 아무 데도 안 보여 줘서 알 방법이 없었다.
+            LabeledContent("상태") {
+                Text(state.label)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(state.isTrouble ? Color.loss
+                                     : (state.isSaved ? Color.gain : Color.muted))
+            }
+            if state.households > 1 {
+                Text("가구가 \(state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.loss)
             }
 
             // **왜 안 됐는지 그대로 내놓는다.** 시트의 알림은 "링크를 생성할
@@ -59,7 +93,7 @@ struct FamilyShareSection: View {
                  : "관리자가 공유한 기록을 보고 있습니다.")
         }
         .task {
-            alreadyShared = currentShareExists()
+            state = readState()
         }
     }
 
@@ -70,10 +104,22 @@ struct FamilyShareSection: View {
 
     /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
     /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
-    private func currentShareExists() -> Bool {
-        guard let household = context.all(Household.self).first else { return false }
-        // **서버에 저장된 것만 센다.** 반쪽짜리를 "공유 관리" 라고 부르면
-        // 눌렀을 때 관리 화면이 아니라 만들기 화면이 떠서 사용자가 헷갈린다.
-        return sharing.savedShare(for: household) != nil
+    /// **가구를 여기서 만들지 않는다.** 더보기를 열었다는 이유로 빈 가구가
+    /// 생기면 안 된다. 만드는 것은 실제로 공유할 때다.
+    private func readState() -> ShareState {
+        var state = ShareState()
+        state.households = Household.count(in: context)
+        guard let household = context.all(
+            Household.self,
+            sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)]
+        ).first else { return state }
+
+        guard let share = sharing.existingShare(for: household) else { return state }
+        state.hasLocalShare = true
+        // **저장된 것만 "공유 중" 이다.** `url` 은 CloudKit 이 저장하면서
+        // 붙여 주는 값이라, 만들다 만 것과 진짜를 가른다.
+        state.isSaved = share.url != nil
+        state.participants = share.participants.count
+        return state
     }
 }
