@@ -139,6 +139,28 @@ enum Persistence {
     /// 없다.** 미러링은 로컬이 비었다고 원격을 지우지 않는다. 읽고 나서
     /// 파일을 지운다. 그리고 이 길은 **이미 실패한 뒤에만** 지나간다.
     private static func probeWithEmptyStore() -> String {
+        // **한 번 죽으면 다시 안 지나간다.**
+        //
+        // `loadPersistentStores` 는 조건에 따라 Error 가 아니라 ObjC 예외를
+        // 던지는데, Swift 는 그걸 못 잡는다. 그러면 앱이 뜨자마자 죽고
+        // 사용자는 앱을 **아예 못 연다** — 이유를 모르는 것보다 훨씬 나쁘다.
+        //
+        // 그래서 지나가기 전에 표식을 남기고 무사히 끝나면 지운다. 표식이
+        // 남아 있으면 지난번에 여기서 죽었다는 뜻이므로 건너뛴다. 최악의
+        // 경우가 "앱을 못 씀" 에서 "한 번 죽고 두 번째부터는 됨" 이 된다.
+        //
+        // (첫 시도가 예외 대신 Error 를 돌려줬으니 같은 설정인 이 탐침도
+        // 그럴 것이다. 그래도 그 판단에 앱의 실행 여부를 걸지는 않는다.)
+        let marker = URL.applicationSupportDirectory
+            .appendingPathComponent("cloudkit-probe.running")
+        if FileManager.default.fileExists(atPath: marker.path(percentEncoded: false)) {
+            try? FileManager.default.removeItem(at: marker)
+            return "빈 저장소 탐침은 건너뛰었습니다 — 지난번에 이 자리에서 앱이 죽었습니다."
+        }
+        FileManager.default.createFile(atPath: marker.path(percentEncoded: false),
+                                       contents: nil)
+        defer { try? FileManager.default.removeItem(at: marker) }
+
         let url = URL.temporaryDirectory
             .appendingPathComponent("cloudkit-probe-\(UUID().uuidString).store")
         defer {
