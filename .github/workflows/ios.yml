@@ -310,6 +310,32 @@ jobs:
 
           ls -la screenshots screenshots/dark
 
+      # **1b 를 시작해도 되는지 여기서 갈린다** (docs/09-family-sharing.md).
+      #
+      # Core Data 는 저장소에 모델 판본 해시를 적어 두고 열 때 대조한다.
+      # SwiftData 가 `@Model` 에서 만들어 내는 모델에 우리가 모르는 것이 하나라도
+      # 더 있으면 해시가 달라지고, 그러면 우리 모델로는 그 저장소를 못 연다.
+      # 문서로는 알 수 없어서 SDK 에 직접 묻는다 — 82곳을 손대기 **전에**.
+      - name: Core Data 가 SwiftData 저장소를 열 수 있나
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          BUNDLE=com.helpnara.slowrich
+          xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+          xcrun simctl launch --console-pty "$UDID" "$BUNDLE" -probeCoreDataStore \
+            2>&1 | tee /tmp/probe.log || true
+
+          if grep -q "PROBE-RESULT: IDENTICAL" /tmp/probe.log; then
+            echo "::notice::판본이 똑같습니다 — 1b 는 마이그레이션 없이 갑니다."
+          elif grep -q "PROBE-RESULT: LIGHTWEIGHT" /tmp/probe.log; then
+            echo "::warning::판본은 다르지만 경량 마이그레이션으로 열립니다. 1b 는 갈 수 있고, 첫 실행에 한 번 변환이 일어납니다."
+          elif grep -q "PROBE-RESULT: INCOMPATIBLE" /tmp/probe.log; then
+            echo "::error::우리 모델로는 SwiftData 저장소를 못 엽니다. 이대로 1b 로 가면 사용자 화면이 빕니다."
+            exit 1
+          else
+            echo "::error::탐침이 결과를 못 냈습니다. 위 로그를 보세요."
+            exit 1
+          fi
+
       - name: 스크린샷을 브랜치에 커밋
         run: |
           git config user.name "github-actions[bot]"

@@ -16,6 +16,13 @@ struct SlowRichApp: App {
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
 
     init() {
+        // **저장소를 열기 전에** 답해야 하는 질문 하나 (docs/09-family-sharing.md 1단계).
+        // 4차 1b 를 시작해도 되는지 SDK 에 직접 묻는다. 실행 인자가 있을 때만 돌고,
+        // 결과를 찍은 뒤 앱을 끝낸다.
+        #if DEBUG
+        if CoreDataProbe.isRequested { CoreDataProbe.run() }
+        #endif
+
         let container = Persistence.shared.container
         self.container = container
         self.notifications = NotificationCoordinator(container: container)
