@@ -312,6 +312,9 @@ jobs:
           # 자리가 정말 사라졌는지, 남은 화면이 읽을 만한지.
           shoot 19-viewer-dashboard.png -skipOnboarding -seedSampleData -startTab dashboard -rolePreview viewer
           shoot 20-viewer-assets.png    -skipOnboarding -seedSampleData -startTab assets    -rolePreview viewer
+          # **스크롤 아래 구역은 따로 찍어야 보인다.** 2b 에서 더보기에
+          # "가족" 을 붙였는데 08-more 는 화면 맨 위만 담아서 심판이 못 봤다.
+          shoot 22-family-share.png -skipOnboarding -seedSampleData -startTab more -scrollTo family
           shoot 21-viewer-plan.png      -skipOnboarding -seedSampleData -startTab plan      -rolePreview viewer
 
           # ── 다크 모드 ──

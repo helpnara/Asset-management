@@ -33,8 +33,21 @@ struct MoreView: View {
         case changeLog
     }
 
+    /// CI 가 스크롤 아래 구역을 찍을 수 있게 하는 갈고리.
+    ///
+    /// **이게 없어서 한 번 놓쳤다.** 2b 에서 더보기에 "가족" 구역을 붙였는데
+    /// `08-more.png` 는 화면 맨 위만 찍는다. 새로 만든 것이 스크롤 아래에
+    /// 있으면 심판이 못 본다 — 이번 차수에서 배운 사각지대가 또 하나였다.
+    private static let scrollTarget: String? = {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-scrollTo"),
+              index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }()
+
     var body: some View {
         NavigationStack(path: $path) {
+            ScrollViewReader { proxy in
             List {
                 Section("점검") {
                     NavigationLink(value: Destination.notifications) {
@@ -83,6 +96,7 @@ struct MoreView: View {
                 }
 
                 FamilyShareSection()
+                    .id("family")
 
                 SyncStatusSection()
 
@@ -93,6 +107,11 @@ struct MoreView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(Color.faint)
                 }
+            }
+            .onAppear {
+                guard let target = MoreView.scrollTarget else { return }
+                proxy.scrollTo(target, anchor: .top)
+            }
             }
             .navigationTitle("더보기")
             .navigationBarTitleDisplayMode(.inline)
