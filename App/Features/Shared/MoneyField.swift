@@ -62,7 +62,14 @@ struct MoneyField: View {
             // 들쭉날쭉했던 이유이고, 7초를 더 기다려도 채워지지 않았다
             // (docs/09-family-sharing.md 1b-2). 사람이 탭할 때는 화면이 다
             // 선 뒤에 눌리므로 이 문제가 없다. 그 순서를 흉내 낸다.
-            try? await Task.sleep(for: .milliseconds(400))
+            //
+            // **1.2초인 이유.** 처음에 400ms 로 뒀더니 한 번은 잘 나오고 다음
+            // 실행에는 또 없었다. 자동 저장의 디바운스가 마침 400ms 라 둘이
+            // 같은 순간에 부딪친 것이다 — 저장이 컨텍스트를 흔들면 `@Fetched`
+            // 가 다시 읽고, 그 사이에 툴바가 포커스 변화를 놓친다.
+            // 화면이 완전히 가라앉은 뒤로 넉넉히 물린다. CI 전용 갈고리라
+            // 사람이 쓸 때는 이 길로 오지 않는다.
+            try? await Task.sleep(for: .milliseconds(1200))
             isFocused = true
         }
     }
