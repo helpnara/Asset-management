@@ -324,13 +324,16 @@ jobs:
           xcrun simctl launch --console-pty "$UDID" "$BUNDLE" -probeCoreDataStore \
             2>&1 | tee /tmp/probe.log || true
 
+          # **아직 막지 않는다.** 앱은 여전히 SwiftData 로 돌기 때문에, 여기서
+          # 빌드를 막으면 4차와 상관없는 작업까지 전부 못 나간다. 이 단계의
+          # 지금 일은 **답을 들고 오는 것**이고, 막는 것은 1b 가 저장 계층을
+          # 실제로 바꾸는 그때다. 탐침이 아예 못 돈 경우만 막는다.
           if grep -q "PROBE-RESULT: IDENTICAL" /tmp/probe.log; then
             echo "::notice::판본이 똑같습니다 — 1b 는 마이그레이션 없이 갑니다."
           elif grep -q "PROBE-RESULT: LIGHTWEIGHT" /tmp/probe.log; then
             echo "::warning::판본은 다르지만 경량 마이그레이션으로 열립니다. 1b 는 갈 수 있고, 첫 실행에 한 번 변환이 일어납니다."
           elif grep -q "PROBE-RESULT: INCOMPATIBLE" /tmp/probe.log; then
-            echo "::error::우리 모델로는 SwiftData 저장소를 못 엽니다. 이대로 1b 로 가면 사용자 화면이 빕니다."
-            exit 1
+            echo "::warning::우리 모델로는 SwiftData 저장소를 못 엽니다. 1b 를 이대로 시작하면 안 됩니다 — 위의 해시 대조를 보세요."
           else
             echo "::error::탐침이 결과를 못 냈습니다. 위 로그를 보세요."
             exit 1

@@ -41,9 +41,20 @@ enum CoreDataProbe {
         guard writeWithSwiftData(at: storeURL) else { fail("SwiftData 로 저장소를 못 만들었습니다") }
         guard let model = compiledModel() else { fail("번들에서 SlowRich.momd 를 못 읽었습니다") }
 
+        // **어디가 다른지부터 찍는다.** "안 맞는다" 만으로는 고칠 데를 모른다.
+        // 저장소는 엔티티마다 판본 해시를 적어 두므로, 우리 모델의 해시와
+        // 견주면 **어느 엔티티가 다른지**가 이름으로 나온다.
+        compareVersionHashes(storeURL, model: model)
+
+        // **원본을 그대로 열지 않는다.** 방금 SwiftData 로 연 파일이라 잠겨
+        // 있어서, 마이그레이션 시도가 "attempt to write a readonly database" 로
+        // 죽는다 — 그건 모델이 안 맞아서가 아니라 파일이 안 열려서다.
+        // 사본을 만들어 물어야 답이 깨끗하다.
+        guard let copied = copyStore(storeURL) else { fail("저장소 사본을 못 만들었습니다") }
+
         // **엄격하게 먼저 연다.** 자동 마이그레이션을 켜 두면 모델이 달라도
         // 조용히 옮겨 버려서 "같은가" 라는 질문에 답이 안 나온다.
-        switch open(storeURL, model: model, migrating: false) {
+        switch open(copied, model: model, migrating: false) {
         case .success(let container):
             print("결과: 판본이 **똑같다** — 마이그레이션 없이 열린다")
             report(container)
@@ -55,7 +66,8 @@ enum CoreDataProbe {
 
         // 안 맞으면 경량 마이그레이션으로 넘어갈 수 있는지 본다. 넘어간다면
         // 1b 는 여전히 갈 수 있고, 대신 첫 실행에 한 번 변환이 일어난다.
-        switch open(storeURL, model: model, migrating: true) {
+        guard let second = copyStore(storeURL) else { fail("저장소 사본을 못 만들었습니다") }
+        switch open(second, model: model, migrating: true) {
         case .success(let container):
             print("결과: 판본은 다르지만 **경량 마이그레이션으로 열린다**")
             report(container)
@@ -89,6 +101,61 @@ enum CoreDataProbe {
         } catch {
             print("SwiftData 쓰기 실패: \(error)")
             return false
+        }
+    }
+
+    /// SQLite 저장소는 `-wal` · `-shm` 을 달고 다닌다. 셋 다 옮겨야 온전한 사본이다.
+    private static func copyStore(_ url: URL) -> URL? {
+        let directory = url.deletingLastPathComponent()
+            .appendingPathComponent("copy-\(UUID().uuidString)")
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            for suffix in ["", "-wal", "-shm"] {
+                let from = URL(fileURLWithPath: url.path + suffix)
+                guard FileManager.default.fileExists(atPath: from.path) else { continue }
+                try FileManager.default.copyItem(
+                    at: from,
+                    to: directory.appendingPathComponent(url.lastPathComponent + suffix))
+            }
+            return directory.appendingPathComponent(url.lastPathComponent)
+        } catch {
+            print("사본 실패: \(error)")
+            return nil
+        }
+    }
+
+    /// 저장소에 적힌 엔티티별 판본 해시와 우리 모델의 것을 견준다.
+    ///
+    /// 여기가 이 탐침에서 제일 쓸모 있는 부분이다 — "안 맞는다" 는 이미
+    /// 알았고, **어느 엔티티가 왜 다른지**를 알아야 고칠 수 있다.
+    private static func compareVersionHashes(_ url: URL, model: NSManagedObjectModel) {
+        let metadata = try? NSPersistentStoreCoordinator.metadataForPersistentStore(
+            type: .sqlite, at: url)
+        guard let stored = metadata?[NSStoreModelVersionHashesKey] as? [String: Data] else {
+            print("저장소에서 판본 해시를 못 읽었습니다")
+            return
+        }
+        let ours = model.entityVersionHashesByName
+
+        print("── 엔티티 판본 해시 대조 ──")
+        print("  저장소(SwiftData): \(stored.count)개 · 우리 모델: \(ours.count)개")
+
+        let onlyStore = stored.keys.filter { ours[$0] == nil }.sorted()
+        let onlyModel = ours.keys.filter { stored[$0] == nil }.sorted()
+        if !onlyStore.isEmpty { print("  저장소에만 있는 엔티티: \(onlyStore.joined(separator: ", "))") }
+        if !onlyModel.isEmpty { print("  우리 모델에만 있는 엔티티: \(onlyModel.joined(separator: ", "))") }
+
+        var same = 0
+        var different: [String] = []
+        for (name, hash) in stored.sorted(by: { $0.key < $1.key }) {
+            guard let mine = ours[name] else { continue }
+            if mine == hash { same += 1 } else { different.append(name) }
+        }
+        print("  해시가 같은 엔티티: \(same)개")
+        if different.isEmpty {
+            print("  해시가 다른 엔티티: 없음")
+        } else {
+            print("  **해시가 다른 엔티티 \(different.count)개**: \(different.joined(separator: ", "))")
         }
     }
 
