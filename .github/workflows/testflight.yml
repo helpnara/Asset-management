@@ -292,6 +292,27 @@ jobs:
           echo "── 원문(앞 400바이트) ──"
           head -c 400 "$MANIFEST" | cat -v; echo
 
+      # 올리기 전에 애플 서버로 검증한다. ITMS-9xxxx 오류가 여기서 잡히면 빌드
+      # 번호와 메일을 안 쓰고 고칠 수 있다. (일부 검사는 올린 뒤에만 돈다 —
+      # 여기서 조용하다고 메일이 안 온다는 보장은 아니다.)
+      - name: App Store 검증 (올리지 않음)
+        run: |
+          IPA=$(find build/export -name '*.ipa' | head -1)
+          set +e
+          xcrun altool --validate-app \
+            --type ios \
+            --file "$IPA" \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            --output-format json 2>&1 | tee build/validate.json
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::App Store 검증 실패. 위 JSON 의 product-errors 를 보세요."
+            exit 1
+          fi
+          echo "✅ App Store 검증 통과"
+
       - name: TestFlight 업로드
         if: ${{ inputs.upload != false }}
         run: |
