@@ -97,6 +97,12 @@ extension ManagedBindable {
     /// let bind = plan.bindings          // 예전의 `@Bindable var plan = plan`
     /// MoneyField(title: "매월 적립", minorUnits: bind.monthlyContributionMinor)
     /// ```
+    /// **`@MainActor` 다.** `ObservedObject.projectedValue` 가 그렇기 때문이다.
+    /// 안 적으면 `sending 'self' risks causing data races` 로 막힌다.
+    /// 부르는 곳은 전부 뷰 본문이라 이미 메인 액터다.
+    ///
+    /// (`@preconcurrency` 로 검사를 끄지 않는다 — CLAUDE.md.)
+    @MainActor
     var bindings: ObservedObject<Self>.Wrapper {
         ObservedObject(wrappedValue: self).projectedValue
     }
