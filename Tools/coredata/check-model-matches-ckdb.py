@@ -65,6 +65,19 @@ def cloudkit_rules():
 
     규칙: **속성은 옵셔널이거나 기본값이 있어야 한다.** 이 앱은 기본값 쪽을
     골랐으므로(ADR-0001) 필수 속성에는 반드시 기본값이 붙어야 한다.
+
+    ⚠️ **여기까지가 이 검사기의 한계다.** 파일에 글자가 적혀 있는지만 본다.
+    그런데 Core Data 는 **UUID 속성에서 `defaultValueString` 을 읽지 않는다** —
+    파일에는 있고 런타임에는 없다. 그래서 이 검사와 `momc` 를 둘 다 통과한
+    모델이 기기에서 막혔다 (필수 UUID 16개, 4차 1c):
+
+        CloudKit integration requires that all attributes be optional,
+        or have a default value set.
+
+    그 자리는 `App/Persistence/ModelDefaults.swift` 가 **코드로** 채우고,
+    `Tools/coredata/check-cloudkit-model.swift` 가 컴파일된 모델을 진짜
+    Core Data 로 열어 확인한다 (CI 의 macOS 러너에서만 돈다).
+    여기서 통과했다고 CloudKit 이 받아 준다는 뜻은 아니다.
     """
     problems = []
     for entity in ET.parse(MODEL).getroot().findall("entity"):

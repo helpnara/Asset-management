@@ -46,6 +46,30 @@ enum Persistence {
         return directory.appendingPathComponent("default.store")
     }
 
+    /// **모델은 한 번만 만든다.**
+    ///
+    /// 두 가지 때문이다.
+    ///
+    /// 하나, `NSPersistentContainer(name:)` 은 부를 때마다 모델을 새로 만든다.
+    /// 이 파일은 iCloud 로 한 번, 실패하면 로컬로 한 번 부르므로 한 프로세스에
+    /// 모델이 둘 올라가고, Core Data 가 이렇게 경고한다:
+    ///
+    ///     Multiple NSEntityDescriptions claim the NSManagedObject subclass
+    ///     'Account' so +entity is unreliable
+    ///
+    /// 이 저장소는 **조용히 틀린 값**으로 이미 두 번 데었다. 경고로 두지 않는다.
+    ///
+    /// 둘, CloudKit 이 요구하는 기본값을 여기서 심는다 — `ModelDefaults` 에
+    /// 왜 파일이 아니라 코드로 심는지 적어 두었다.
+    static let managedObjectModel: NSManagedObjectModel = {
+        guard let url = Bundle.main.url(forResource: modelName, withExtension: "momd"),
+              let model = NSManagedObjectModel(contentsOf: url) else {
+            fatalError("\(modelName).momd 를 찾지 못했습니다")
+        }
+        ModelDefaults.fill(model)
+        return model
+    }()
+
     static let shared: Store = open()
 
     static var container: NSPersistentContainer { shared.container }
@@ -63,7 +87,8 @@ enum Persistence {
     static func open() -> Store {
         // CI 스크린샷은 인메모리다. 여기에 iCloud 를 붙이면 안 된다.
         if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
-            let container = NSPersistentContainer(name: modelName)
+            let container = NSPersistentContainer(name: modelName,
+                                                  managedObjectModel: managedObjectModel)
             let description = NSPersistentStoreDescription()
             description.type = NSInMemoryStoreType
             container.persistentStoreDescriptions = [description]
@@ -170,7 +195,8 @@ enum Persistence {
             }
         }
 
-        let container = NSPersistentCloudKitContainer(name: modelName)
+        let container = NSPersistentCloudKitContainer(name: modelName,
+                                                      managedObjectModel: managedObjectModel)
         let description = NSPersistentStoreDescription(url: url)
         description.cloudKitContainerOptions =
             NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerID)
@@ -190,8 +216,10 @@ enum Persistence {
 
     private static func load(cloudKit: Bool) throws -> NSPersistentContainer {
         let container: NSPersistentContainer = cloudKit
-            ? NSPersistentCloudKitContainer(name: modelName)
-            : NSPersistentContainer(name: modelName)
+            ? NSPersistentCloudKitContainer(name: modelName,
+                                            managedObjectModel: managedObjectModel)
+            : NSPersistentContainer(name: modelName,
+                                    managedObjectModel: managedObjectModel)
 
         let description = NSPersistentStoreDescription(url: storeURL)
         if cloudKit {

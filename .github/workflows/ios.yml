@@ -181,6 +181,26 @@ jobs:
           fi
           echo "SlowRich.momd 확인 — 모델이 컴파일됩니다."
 
+      # **여기가 그 심판이다.**
+      #
+      # 파일 검사(check-model-matches-ckdb.py)도 momc 도 통과한 모델이 기기에서
+      # 막힌 적이 있다 — 필수 UUID 열여섯 곳에 `defaultValueString` 이 적혀
+      # 있는데 Core Data 가 UUID 에서는 그 글자를 안 읽어, 런타임의
+      # `defaultValue` 가 nil 이었다. 파일을 들여다봐서는 안 보이는 종류다.
+      #
+      # 그래서 **컴파일된 모델을 진짜 Core Data 로 열어** 물어본다. 리눅스에서는
+      # 못 하는 일이라 여기서만 할 수 있다. 앱이 쓰는 ModelDefaults 를 같이
+      # 컴파일해서 그대로 부르므로, 검사기와 앱이 어긋날 수 없다.
+      - name: 모델이 CloudKit 규칙에 맞는지 (진짜 런타임으로)
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          swiftc -O -parse-as-library \
+            App/Persistence/ModelDefaults.swift \
+            Tools/coredata/check-cloudkit-model.swift \
+            -o /tmp/checkmodel
+          /tmp/checkmodel "$APP/SlowRich.momd"
+
       - name: 시뮬레이터에서 화면별 스크린샷
         run: |
           UDID="${{ steps.sim.outputs.udid }}"
