@@ -127,6 +127,14 @@ Development 가 비어 있어 배포할 것이 없다. 앱은 로컬로 정상 �
 Development 에 밀어 넣고, Production 승격만 웹 콘솔의 Deploy 버튼을 사람이
 누른다. 앱에서 `더보기 → 동기화 → 마지막 내보내기: 성공` 으로 확인했다.
 
+**시스템 레코드 타입도 같은 규칙이다 (2026-09-09).** `CKShare` 는
+`cloudkit.share` 라는 시스템 타입으로 저장되는데, CloudKit 은 그것도
+**Development 에서 앱이 처음 공유를 시도할 때** 자동으로 만든다. 맥 없이
+TestFlight 만 쓰는 이 저장소에서는 그 일이 영영 안 일어나서, 공유가
+`Cannot create new type cloudkit.share in production schema` 로 막혔다.
+그래서 `generate-ckdb.py` 가 `cloudkit.share` 를 함께 뽑는다. 이름에 점이
+있어 **따옴표로 감싸야** 서버 파서가 받는다.
+
 **모델을 고치면 스키마를 다시 올려야 한다.** 안 그러면 새 필드가 iCloud 에
 안 올라가는데 화면에서는 티가 안 난다. CI 가 `.xcdatamodeld` 와
 `Tools/cloudkit/slowrich.ckdb` 를 대조해 어긋나면 빌드를 막는다. 절차는

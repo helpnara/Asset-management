@@ -135,13 +135,20 @@ def main():
     # **따옴표가 필요하다.** 점이 든 이름을 그냥 쓰면 서버 파서가 막는다:
     #     Encountered "." at line 433, column 25. Was expecting "("
     # 로컬 `validate` 는 통과시켰다 — 그쪽이 더 너그럽다. 서버가 판정한다.
+    #
+    # 아래 셋은 **서버가 스스로 채운 것**이다. 시스템 필드만 넣어 apply 했더니
+    # CloudKit 이 공유 타입으로 알아보고 이 셋을 붙여 돌려줬다. 파일은 서버가
+    # 실제로 가진 모양을 적는다 — `cloudkit.title` 이 초대 화면의 제목이다.
     print('    RECORD TYPE "cloudkit.share" (')
-    print('        "___createTime" TIMESTAMP,')
-    print('        "___createdBy"  REFERENCE,')
-    print('        "___etag"       STRING,')
-    print('        "___modTime"    TIMESTAMP,')
-    print('        "___modifiedBy" REFERENCE,')
-    print('        "___recordID"   REFERENCE,')
+    print('        "___createTime"               TIMESTAMP,')
+    print('        "___createdBy"                REFERENCE,')
+    print('        "___etag"                     STRING,')
+    print('        "___modTime"                  TIMESTAMP,')
+    print('        "___modifiedBy"               REFERENCE,')
+    print('        "___recordID"                 REFERENCE,')
+    print('        "cloudkit.thumbnailImageData" BYTES,')
+    print('        "cloudkit.title"              STRING,')
+    print('        "cloudkit.type"               STRING,')
     print('        GRANT WRITE TO "_creator",')
     print('        GRANT READ TO "_world"')
     print("    );")

@@ -922,3 +922,48 @@ private·shared 에서는 접근 권한을 `CKShare` 가 정한다. 확실하지
 
 **판정은 아내분 기기가 한다.** 초대가 붙은 뒤에도 화면이 비어 있으면
 그때 이 권한을 의심한다. 그 순서를 지키는 것이 이 저장소의 방식이다.
+
+## 2b 에서 막힌 것 ② — **`cloudkit.share` 가 Production 에 없었다**
+
+앱이 안 죽게 된 뒤(아래 참고) "공유가 안 된 이유" 가 화면에 떴다:
+
+```
+Cannot create new type cloudkit.share in production schema
+```
+
+`CKShare` 는 `cloudkit.share` 라는 **시스템 레코드 타입**으로 저장된다.
+CloudKit 은 그것을 Development 에서 앱이 처음 공유를 시도할 때 자동으로
+만든다. 그런데 이 앱은 맥이 없어 Development 에서 돌아간 적이 한 번도 없다.
+`CD_*` 타입에서 겪었던 함정(CLAUDE.md)을 시스템 타입에서 다시 겪은 것이다.
+
+**이것이 처음부터 있던 진짜 벽이다.** 앞의 수정들은 각각 실제 버그였지만
+이 벽 뒤에 가려져 있어서, 고쳐도 결과가 안 바뀌었다.
+
+생성기가 `cloudkit.share` 를 함께 뽑아 같은 길(apply → Deploy)로 올린다.
+서버는 시스템 필드만 받고도 `cloudkit.title` · `cloudkit.type` ·
+`cloudkit.thumbnailImageData` 를 스스로 채워 돌려줬다. 이름에 점이 있어
+따옴표가 필요하다 — 로컬 `validate` 는 통과시키고 서버 파서가 막았다.
+
+### 그 앞에 있던 것 — **워치독**
+
+크래시 로그가 알려 줬다:
+
+```
+FRONTBOARD 0x8BADF00D — exhausted real (wall clock) time allowance of 10.00 s
+Thread 0 (main):
+  -[_PFRequestExecutor wait]
+  -[NSPersistentCloudKitContainer shareManagedObjects:toShare:completion:]
+  -[UICloudSharingController __viewControllerWillBePresented:]
+```
+
+`share(_:to:)` 는 완료 블록을 받으면서도 **부른 스레드를 붙잡고 기다린다.**
+`UICloudSharingController` 는 준비 핸들러를 메인에서 부르므로, 옮길
+레코드가 수백 건이면 메인이 10초 넘게 멈추고 iOS 가 앱을 죽인다. 이제
+백그라운드 컨텍스트에서 부르고 `objectID` 만 넘긴다.
+
+### 이 자리에서 배운 것
+
+**앱이 죽으면 API 를 고치기 전에 크래시 로그부터 읽는다.** 그 로그를 세
+바퀴 늦게 요청했고, 그동안 증상만 보고 공유 API 사용법을 바꿔 가며
+추측했다. 그중 둘은 고치면서 새로 심은 버그였다. 크래시 로그 한 장이
+그 바퀴들을 한 번에 끝냈다 — 그리고 벽 뒤의 진짜 벽까지 보이게 했다.
