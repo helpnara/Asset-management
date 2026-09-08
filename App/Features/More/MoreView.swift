@@ -303,7 +303,13 @@ struct SyncStatusSection: View {
             }
             // 계정 상태는 **어느 모드에서나** 본다. 못 붙었을 때야말로
             // 계정이 문제인지 아닌지가 갈림길이다.
-            LabeledContent("iCloud 계정", value: accountLabel)
+            //
+            // 인메모리(미리보기)에서만 뺀다. 거기서는 물어보지 않으므로
+            // **"확인 중" 에서 영영 멈춘다** — 이 앱에서 제일 싫어하는
+            // 종류의 문구다. 안 물어볼 것이면 내놓지도 않는다.
+            if Persistence.mode != .inMemory {
+                LabeledContent("iCloud 계정", value: accountLabel)
+            }
             if case .cloudKit = Persistence.mode {
                 // **여기가 진짜 답이다.** 위의 둘이 초록이어도 밀어 넣기가
                 // 전부 실패하고 있을 수 있다. 마지막 내보내기가 성공했는지를
