@@ -80,9 +80,11 @@ enum Persistence {
 
     private static let modelBox: ModelBox = {
         guard let url = Bundle.main.url(forResource: modelName, withExtension: "momd"),
-              let model = NSManagedObjectModel(contentsOf: url) else {
+              let compiled = NSManagedObjectModel(contentsOf: url) else {
             fatalError("\(modelName).momd 를 찾지 못했습니다")
         }
+        // 파일에서 읽은 것은 못 고친다. 옮겨 담고 나서 심는다.
+        let model = ModelDefaults.editableCopy(of: compiled)
         ModelDefaults.fill(model)
         return ModelBox(model: model)
     }()

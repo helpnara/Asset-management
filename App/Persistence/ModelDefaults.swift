@@ -34,10 +34,29 @@ import Foundation
 /// 기본값은 CloudKit 의 검사를 통과하기 위해서만 있다.
 enum ModelDefaults {
 
+    /// 파일에서 읽은 모델을 **고칠 수 있는 것으로 바꾼다.**
+    ///
+    /// 컴파일된 `.momd` 에서 읽은 모델은 **못 고친다.** 손대면 그 자리에서
+    /// 죽는다 — CI 검사기가 이걸로 한 번 죽어서 알았다:
+    ///
+    ///     NSInternalInconsistencyException: 'Can't modify an immutable model.'
+    ///       -[NSAttributeDescription setDefaultValue:]
+    ///
+    /// **이걸 모르고 배포했으면 앱이 뜨자마자 죽었다.** 저장 계층을 갈아타는
+    /// 동안 세운 심판 중 이게 제일 값했다.
+    ///
+    /// `copy()` 는 안 쓴다 — 변경 불가 객체의 `copy()` 가 자기 자신을 돌려주는
+    /// 것은 Foundation 의 흔한 최적화라, 됐는지 안 됐는지가 실행해 봐야 안다.
+    /// `byMerging:` 은 **엔티티를 옮겨 담아 새 모델을 만든다.** 하나만 넣어도
+    /// 그렇다. 판본 해시는 이름·타입·옵셔널에서 나오므로 그대로다.
+    static func editableCopy(of model: NSManagedObjectModel) -> NSManagedObjectModel {
+        NSManagedObjectModel(byMerging: [model]) ?? model
+    }
+
     /// 필수인데 기본값이 없는 속성에 값을 심고, 심은 곳의 이름을 돌려준다.
     ///
-    /// **모델을 쓰기 전에** 불러야 한다. 저장소 코디네이터가 한 번 가져가면
-    /// 모델은 못 고친다.
+    /// **`editableCopy(of:)` 를 거친 모델에만** 쓴다. 그리고 저장소
+    /// 코디네이터가 가져가기 전에 불러야 한다 — 한 번 쓰이면 또 못 고친다.
     @discardableResult
     static func fill(_ model: NSManagedObjectModel) -> [String] {
         var filled: [String] = []

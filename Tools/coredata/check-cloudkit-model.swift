@@ -34,15 +34,38 @@ struct CheckCloudKitModel {
         }
 
         let url = URL(fileURLWithPath: arguments[1])
-        guard let model = NSManagedObjectModel(contentsOf: url) else {
+        guard let compiled = NSManagedObjectModel(contentsOf: url) else {
             FileHandle.standardError.write(Data("모델을 열지 못했습니다: \(url.path)\n".utf8))
             exit(2)
         }
 
-        // 앱이 하는 것과 **똑같이** 심는다.
+        // 앱이 하는 것과 **똑같이** 옮겨 담고 심는다. 이 두 줄이 앱과 다르면
+        // 검사기는 통과하고 기기에서만 죽는다 — 실제로 여기서 한 번 죽었다.
+        let model = ModelDefaults.editableCopy(of: compiled)
         let filled = ModelDefaults.fill(model)
 
         var problems: [String] = []
+
+        // **옮겨 담은 뒤 판본 해시가 그대로인가.**
+        //
+        // 여기가 어긋나면 사용자의 저장소가 안 열린다 — 앱은 멀쩡히 뜨고
+        // 화면만 빈다. 몇 달치 기록이 사라진 것으로 보이는 그 실패다
+        // (docs/09-family-sharing.md 1단계, 걸린 것 2번).
+        //
+        // 해시는 이름·타입·옵셔널에서 나오고 기본값은 안 들어가므로 그대로여야
+        // 한다. 그래도 **그 믿음에 사용자의 기록을 걸지 않는다.** 직접 센다.
+        let before = compiled.entityVersionHashesByName
+        let after = model.entityVersionHashesByName
+        for (entity, hash) in before where after[entity] != hash {
+            problems.append("\(entity): 옮겨 담으면서 판본 해시가 바뀌었습니다 "
+                            + "— 쓰던 저장소가 안 열립니다")
+        }
+        for entity in after.keys where before[entity] == nil {
+            problems.append("\(entity): 옮겨 담은 모델에만 있는 엔티티입니다")
+        }
+        for entity in before.keys where after[entity] == nil {
+            problems.append("\(entity): 옮겨 담으면서 엔티티가 사라졌습니다")
+        }
 
         for entity in model.entities {
             let name = entity.name ?? "?"
@@ -73,6 +96,7 @@ struct CheckCloudKitModel {
         if problems.isEmpty {
             let attributes = model.entities.reduce(0) { $0 + $1.attributesByName.count }
             print("CloudKit 규칙 통과 — 엔티티 \(model.entities.count)개 · 속성 \(attributes)개")
+            print("판본 해시 \(before.count)개 그대로 — 쓰던 저장소가 그대로 열립니다")
             print("코드로 기본값을 심은 곳 \(filled.count)개: \(filled.sorted().joined(separator: ", "))")
             exit(0)
         }
