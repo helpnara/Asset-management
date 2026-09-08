@@ -237,6 +237,23 @@ TestFlight 의 **외부 그룹**(Connect 앱에서 `외부 그룹 · N명의 테
 
 ---
 
+### 빌드 번호 — 폰에 보이는 번호가 실행 번호와 같다 (37부터)
+
+**36번째 실행까지는 폰에 1~24 로 보였다.** 워크플로는 실행 번호를
+`CURRENT_PROJECT_VERSION` 으로 넘겼지만, XcodeGen 이 Info.plist 에
+`CFBundleVersion` 을 글자 그대로 `1` 로 박아 넣어 그 값이 앱에 닿지 않았다.
+그 위에 Xcode 의 내보내기 기본값(`manageAppVersionAndBuildNumber`)이 번호를
+App Store Connect 의 마지막 + 1 로 다시 매겼다. 그래서 올라간 순서대로 1, 2,
+…, 24 가 됐고, 대화에서 "빌드 36" 이라 부른 것이 폰에는 `1.0 (24)` 로 보였다.
+같은 이유로 버전도 `1.0.0` 이 아니라 `1.0` 으로 올라갔다.
+
+고친 것: Info.plist 가 `$(CURRENT_PROJECT_VERSION)` · `$(MARKETING_VERSION)` 을
+참조하고, 내보내기에서 자동 번호 매김을 끄고, 올리기 전에 IPA 의 번호가
+실행 번호와 같은지 검사한다. **실행 37 = 빌드 37** 부터 그대로 맞는다.
+24 → 37 로 건너뛰는 것은 문제없다 — 올라가기만 하면 된다.
+
+---
+
 ### 10단계 · 아이폰에서 설치
 
 1. App Store에서 **TestFlight** 앱을 받습니다

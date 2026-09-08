@@ -51,10 +51,19 @@ targets:
         # 링크를 눌러도 이 앱을 후보로 안 본다 — 앱은 열리지도 않고, 사용자는
         # "링크가 안 된다" 만 본다.
         CKSharingSupported: true
+        # XcodeGen 은 이 둘을 안 적으면 글자 그대로 "1.0" 과 "1" 을 박아 넣는다.
+        # 그러면 아래 MARKETING_VERSION · CURRENT_PROJECT_VERSION 은 앱에 닿지
+        # 않는다 — 실제로 TestFlight 워크플로가 실행 번호를 넘겨도 무시됐고,
+        # Xcode 가 내보내기에서 번호를 App Store Connect 의 마지막 + 1 로
+        # 다시 매겼다 (빌드 1~24). 변수를 참조해야 빌드 번호가 실행 번호와 같다.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich
-        MARKETING_VERSION: "1.0.0"
+        # App Store Connect 에 이미 "1.0" 트레인이 있다. "1.0.0" 으로 쓰면
+        # 다른 트레인이 하나 더 생긴다.
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
         # 1 = iPhone. iPad 확장 시 "1,2" 로 바꾼다 (로드맵 M7).
