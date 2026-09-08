@@ -17,7 +17,15 @@
 
 ## 지키는 제약 (ADR-0001 — CloudKit 미러링)
 
- · 모든 속성이 optional — CloudKit 은 필수 필드를 못 만든다
+CloudKit 미러링은 속성이 **옵셔널이거나 기본값이 있어야** 한다. 이 앱은
+`@Model` 마다 기본값을 적는 쪽을 골랐다(ADR-0001 표). 그러니 **속성은
+옵셔널이 아니다** — Swift 가 `?` 를 붙인 열넷만 옵셔널이다.
+
+처음에는 145개를 전부 옵셔널로 뽑았다가 엔티티 15개의 판본 해시가 **하나도**
+안 맞았다. 옵셔널 여부는 해시에 들어간다.
+
+ · 옵셔널은 Swift 선언 그대로
+ · 기본값은 리터럴인 것만 적는다 (해시에는 안 들어가지만 CloudKit 이 본다)
  · 유니크 제약 없음
  · 모든 관계가 optional, 역관계가 반드시 있다
  · `usedWithCloudKit="YES"`
@@ -28,8 +36,12 @@ import re
 import sys
 
 MODEL_RE = re.compile(r"@Model\s*\n\s*final class (\w+)\s*\{(.*?)\n\}", re.S)
-# 저장 프로퍼티만. 계산 프로퍼티(`var x: T {`)는 걸러진다.
-FIELD_RE = re.compile(r"^\s{4}var (\w+)\s*:\s*([^\n={]+?)\s*(?:=|$)", re.M)
+# 저장 프로퍼티만. 계산 프로퍼티(`var x: T {`)는 걸러진다 — 그 줄은 `{` 로
+# 끝나서 아래의 `=` 도 줄끝도 만나지 못한다.
+#
+# **기본값까지 잡는다.** `var name: String = ""` 의 `""` 가 세 번째 무리다.
+FIELD_RE = re.compile(
+    r"^\s{4}var (\w+)\s*:\s*([^\n={]+?)\s*(?:=\s*([^\n]+))?$", re.M)
 # `@Relationship(... inverse: \Account.owner)` 바로 다음 줄의 `var accounts: [Account]?`
 RELATION_RE = re.compile(
     r"@Relationship\([^)]*inverse:\s*\\(\w+)\.(\w+)[^)]*\)\s*\n\s*var (\w+)\s*:\s*\[(\w+)\]", re.S
@@ -76,23 +88,54 @@ def relationships(body, entity, class_names):
                      f"대상은 [{target}] 입니다 — 둘이 같아야 합니다")
         out.append((field, target, inverse_name, True))
     # 다대일 쪽 (`var owner: Member?`)
-    for field, raw in FIELD_RE.findall(body):
+    for field, raw, _ in FIELD_RE.findall(body):
         swift = raw.strip().rstrip("?")
         if swift in class_names:
             out.append((field, swift, None, False))
     return out
 
 
+# Swift 기본값 → Core Data `defaultValueString`.
+#
+# **판본 해시에는 안 들어간다.** 그래도 적는 이유는 CloudKit 때문이다 —
+# 미러링은 속성이 옵셔널이거나 기본값이 있어야 한다(ADR-0001). 이 앱은
+# 기본값 쪽을 골랐으므로 그 값이 모델에도 있어야 말이 맞는다.
+#
+# `UUID()` · `Date.now` · 열거형 rawValue 처럼 **리터럴이 아닌 것은 건너뛴다.**
+# Core Data 에 적을 수 있는 꼴이 아니고, 해시에 안 들어가므로 없어도 무방하다.
+def default_string(raw):
+    if raw is None:
+        return None
+    value = raw.strip()
+    if value in ('""', '"" '):
+        return ""
+    if value == "true":
+        return "YES"
+    if value == "false":
+        return "NO"
+    if re.fullmatch(r"-?\d+(_\d+)*", value):
+        return value.replace("_", "")
+    if re.fullmatch(r'"[^"\\]*"', value):
+        return value[1:-1]
+    return None
+
+
 def attributes(body, class_names):
     out = []
-    for field, raw in FIELD_RE.findall(body):
-        swift = raw.strip().rstrip("?")
+    for field, raw, default in FIELD_RE.findall(body):
+        swift = raw.strip()
+        # **옵셔널은 Swift 가 말하는 그대로 적는다.** 전부 옵셔널로 두었더니
+        # 엔티티 15개의 판본 해시가 **하나도** 안 맞았다 — 옵셔널 여부는 해시에
+        # 들어가기 때문이다. ADR-0001 이 요구한 것은 "기본값 **또는** 옵셔널"
+        # 이고 이 앱은 기본값 쪽을 골랐다. 그러니 속성은 옵셔널이 아니다.
+        optional = swift.endswith("?")
+        swift = swift.rstrip("?")
         if swift.startswith("[") or swift in class_names:
             continue                       # 관계는 따로 쓴다
         if swift not in ATTRIBUTE_TYPES:
             sys.exit(f"모르는 타입입니다: {field}: {swift} — ATTRIBUTE_TYPES 에 더하세요")
         kind, scalar = ATTRIBUTE_TYPES[swift]
-        out.append((field, kind, scalar))
+        out.append((field, kind, scalar, optional, default_string(default)))
     return out
 
 
@@ -120,10 +163,15 @@ def contents(all_models):
         # (계산 프로퍼티가 1,700줄이다), Xcode 가 또 만들면 이름이 겹친다.
         lines.append(f'    <entity name="{entity}" representedClassName="{entity}"'
                      f' syncable="YES">')
-        for field, kind, scalar in attributes(body, class_names):
-            # **전부 optional 이다.** CloudKit 미러링은 필수 속성을 못 만든다.
-            lines.append(f'        <attribute name="{field}" optional="YES"'
-                         f' attributeType="{kind}" usesScalarValueType="{scalar}"/>')
+        for field, kind, scalar, optional, default in attributes(body, class_names):
+            parts = [f'name="{field}"']
+            if optional:
+                parts.append('optional="YES"')
+            parts.append(f'attributeType="{kind}"')
+            if default is not None:
+                parts.append(f'defaultValueString="{default}"')
+            parts.append(f'usesScalarValueType="{scalar}"')
+            lines.append("        <attribute " + " ".join(parts) + "/>")
         for field, target, inverse_name, is_many in relationships(body, entity, class_names):
             if is_many:
                 # 일대다. 지우면 딸린 것도 함께 지운다 — SwiftData 의 `.cascade` 다.

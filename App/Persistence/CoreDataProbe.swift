@@ -46,6 +46,12 @@ enum CoreDataProbe {
         // 견주면 **어느 엔티티가 다른지**가 이름으로 나온다.
         compareVersionHashes(storeURL, model: model)
 
+        // **한 번 돌 때 여러 가정을 함께 물어본다.** CI 한 바퀴가 10분이라
+        // 가정 하나씩 고쳐 넣으면 하루가 간다. 옵셔널 여부는 판본 해시에
+        // 들어가므로, 모델을 불러다 그 값만 바꿔 가며 해시를 다시 세면
+        // **어느 규칙이 맞는지**가 한 번에 나온다.
+        tryVariants(storeURL)
+
         // **원본을 그대로 열지 않는다.** 방금 SwiftData 로 연 파일이라 잠겨
         // 있어서, 마이그레이션 시도가 "attempt to write a readonly database" 로
         // 죽는다 — 그건 모델이 안 맞아서가 아니라 파일이 안 열려서다.
@@ -101,6 +107,36 @@ enum CoreDataProbe {
         } catch {
             print("SwiftData 쓰기 실패: \(error)")
             return false
+        }
+    }
+
+    /// 옵셔널 규칙을 바꿔 가며 어느 것이 저장소와 맞는지 센다.
+    ///
+    /// 모델은 쓰기 전까지 고칠 수 있고 판본 해시는 그때 다시 계산되므로,
+    /// 같은 `.momd` 를 여러 번 불러다 값만 바꾸면 된다.
+    private static func tryVariants(_ url: URL) {
+        let metadata = try? NSPersistentStoreCoordinator.metadataForPersistentStore(
+            type: .sqlite, at: url)
+        guard let stored = metadata?[NSStoreModelVersionHashesKey] as? [String: Data] else { return }
+
+        let variants: [(String, (NSAttributeDescription) -> Void)] = [
+            ("있는 그대로 (Swift 선언을 따름)", { _ in }),
+            ("속성을 전부 옵셔널로", { $0.isOptional = true }),
+            ("속성을 전부 필수로", { $0.isOptional = false }),
+        ]
+
+        print("── 옵셔널 규칙별로 몇 개가 맞나 ──")
+        for (label, mutate) in variants {
+            guard let momd = Bundle.main.url(forResource: "SlowRich", withExtension: "momd"),
+                  let model = NSManagedObjectModel(contentsOf: momd) else { continue }
+            for entity in model.entities {
+                for case let attribute as NSAttributeDescription in entity.properties {
+                    mutate(attribute)
+                }
+            }
+            let hashes = model.entityVersionHashesByName
+            let matched = stored.filter { hashes[$0.key] == $0.value }.count
+            print("  \(label): \(matched)/\(stored.count) 맞음")
         }
     }
 
