@@ -103,21 +103,43 @@ def relationships(body, entity, class_names):
 #
 # `UUID()` · `Date.now` · 열거형 rawValue 처럼 **리터럴이 아닌 것은 건너뛴다.**
 # Core Data 에 적을 수 있는 꼴이 아니고, 해시에 안 들어가므로 없어도 무방하다.
-def default_string(raw):
-    if raw is None:
-        return None
-    value = raw.strip()
-    if value in ('""', '"" '):
+def default_string(raw, kind):
+    """Core Data 가 적을 수 있는 기본값. 없으면 그 타입의 빈 값을 준다.
+
+    **비어 있으면 안 된다.** `momc` 가 CloudKit 모델에서 막는다:
+
+        error: Account.id must have a default value [8]
+
+    Swift 쪽 기본값이 리터럴이면 그대로 쓰고, `UUID()` · `Date.now` ·
+    열거형 rawValue 처럼 여기서 계산할 수 없는 것은 **자리만 채운다.**
+    실제 값은 언제나 이니셜라이저가 넣으므로 이 자리 값이 쓰이는 일은 없고,
+    판본 해시에도 안 들어간다.
+    """
+    value = None
+    if raw is not None:
+        # `var roleNote: String = ""   // "본인"` 처럼 뒤에 주석이 붙는다.
+        text = re.sub(r"\s+//.*$", "", raw.strip())
+        if text == "true":
+            value = "YES"
+        elif text == "false":
+            value = "NO"
+        elif re.fullmatch(r"-?\d+(_\d+)*", text):
+            value = text.replace("_", "")
+        elif re.fullmatch(r'"[^"\\]*"', text):
+            value = text[1:-1]
+
+    if value is not None:
+        return value
+    # 자리 채우기.
+    if kind == "String":
         return ""
-    if value == "true":
-        return "YES"
-    if value == "false":
+    if kind == "Boolean":
         return "NO"
-    if re.fullmatch(r"-?\d+(_\d+)*", value):
-        return value.replace("_", "")
-    if re.fullmatch(r'"[^"\\]*"', value):
-        return value[1:-1]
-    return None
+    if kind == "UUID":
+        return "00000000-0000-0000-0000-000000000000"
+    if kind in ("Integer 64", "Double"):
+        return "0"
+    return None                 # Date · Binary 는 아래에서 따로 적는다
 
 
 def attributes(body, class_names):
@@ -135,7 +157,7 @@ def attributes(body, class_names):
         if swift not in ATTRIBUTE_TYPES:
             sys.exit(f"모르는 타입입니다: {field}: {swift} — ATTRIBUTE_TYPES 에 더하세요")
         kind, scalar = ATTRIBUTE_TYPES[swift]
-        out.append((field, kind, scalar, optional, default_string(default)))
+        out.append((field, kind, scalar, optional, default_string(default, kind)))
     return out
 
 
@@ -168,7 +190,14 @@ def contents(all_models):
             if optional:
                 parts.append('optional="YES"')
             parts.append(f'attributeType="{kind}"')
-            if default is not None:
+            if not optional:
+                # 필수 속성에는 반드시 기본값이 있어야 한다 (momc · CloudKit).
+                if kind == "Date":
+                    # 날짜만 다른 칸을 쓴다. 0 은 2001-01-01 이다.
+                    parts.append('defaultDateTimeInterval="0"')
+                elif default is not None:
+                    parts.append(f'defaultValueString="{default}"')
+            elif default is not None:
                 parts.append(f'defaultValueString="{default}"')
             parts.append(f'usesScalarValueType="{scalar}"')
             lines.append("        <attribute " + " ".join(parts) + "/>")

@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23507" systemVersion="25A000" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
     <entity name="Account" representedClassName="Account" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="institution" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="kindRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="isArchived" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="annualContributionMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="annualLimitMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="maturesOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="ownerID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="ownerID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Holding" inverseName="account" inverseEntity="Holding"/>
         <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Member" inverseName="accounts" inverseEntity="Member"/>
     </entity>
     <entity name="CashEvent" representedClassName="CashEvent" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="date" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="label" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="amountMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="isAlreadyReflected" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
@@ -26,70 +26,70 @@
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
     <entity name="ChangeLog" representedClassName="ChangeLog" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="at" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="at" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="actor" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="kindRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="subject" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="summary" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
     </entity>
     <entity name="FamilyTarget" representedClassName="FamilyTarget" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="dimensionRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="dimensionRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="key" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="targetBP" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
     <entity name="Holding" representedClassName="Holding" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="assetClassRaw" attributeType="String" usesScalarValueType="NO"/>
-        <attribute name="instrumentTypeRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="assetClassRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="instrumentTypeRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="listingCountryCode" attributeType="String" defaultValueString="KR" usesScalarValueType="NO"/>
-        <attribute name="statusRaw" attributeType="String" usesScalarValueType="NO"/>
-        <attribute name="cadenceRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="statusRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="cadenceRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="valueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="lastEnteredValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="lastEnteredAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="targetWeightBP" optional="YES" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="targetWeightBP" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="accountID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <attribute name="accountID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="holdings" inverseEntity="Account"/>
     </entity>
     <entity name="IncomeStream" representedClassName="IncomeStream" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="label" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="monthlyAmountMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="startYear" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="endYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="isInflationLinked" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
     <entity name="Member" representedClassName="Member" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="roleNote" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="roleNote" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="birthYear" attributeType="Integer 64" defaultValueString="1990" usesScalarValueType="YES"/>
         <attribute name="birthMonth" attributeType="Integer 64" defaultValueString="1" usesScalarValueType="YES"/>
-        <attribute name="taxResidencyRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="taxResidencyRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="targetRetirementAge" attributeType="Integer 64" defaultValueString="65" usesScalarValueType="YES"/>
         <attribute name="monthlyContributionMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="employerMatchMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="colorIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <relationship name="accounts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Account" inverseName="owner" inverseEntity="Account"/>
     </entity>
     <entity name="Plan" representedClassName="Plan" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="title" attributeType="String" defaultValueString="우리 가족 노후자금 준비" usesScalarValueType="NO"/>
-        <attribute name="startYear" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="startYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="startedOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="asOfNote" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="declaration" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="retirementYear" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="retirementYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="monthlyContributionMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="annualReturnBP" attributeType="Integer 64" defaultValueString="800" usesScalarValueType="YES"/>
         <attribute name="contributionGrowthBP" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
@@ -109,22 +109,22 @@
         <attribute name="disabledDiagnosesRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="contributionOrderRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="usesMemberContributions" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
-        <attribute name="horizonYear" attributeType="Integer 64" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="horizonYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
     <entity name="Principle" representedClassName="Principle" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="order" attributeType="Integer 64" defaultValueString="1" usesScalarValueType="YES"/>
         <attribute name="title" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="detail" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="reviewNote" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
     </entity>
     <entity name="ReviewSession" representedClassName="ReviewSession" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="weekAnchor" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="startedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="weekAnchor" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <attribute name="startedAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="enteredCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="totalCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
@@ -133,49 +133,49 @@
         <attribute name="previousTotalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
     <entity name="Scenario" representedClassName="Scenario" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="name" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="monthlyMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="retirementYear" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="retirementYear" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="returnBP" attributeType="Integer 64" defaultValueString="800" usesScalarValueType="YES"/>
         <attribute name="volatilityBP" attributeType="Integer 64" defaultValueString="1500" usesScalarValueType="YES"/>
         <attribute name="projectedMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
     </entity>
     <entity name="Snapshot" representedClassName="Snapshot" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="weekAnchor" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="weekAnchor" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="netWorthMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="investableMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="liabilitiesMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="lines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SnapshotLine" inverseName="snapshot" inverseEntity="SnapshotLine"/>
     </entity>
     <entity name="SnapshotLine" representedClassName="SnapshotLine" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="memberID" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="memberID" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="memberName" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="valueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="snapshot" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Snapshot" inverseName="lines" inverseEntity="Snapshot"/>
     </entity>
     <entity name="TodoItem" representedClassName="TodoItem" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="title" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="detail" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
-        <attribute name="categoryRaw" attributeType="String" usesScalarValueType="NO"/>
+        <attribute name="categoryRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="dueDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="isDone" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="repeatsYearly" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
     </entity>
     <entity name="UserMilestone" representedClassName="UserMilestone" syncable="YES">
-        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="year" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="year" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="label" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="memberID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memberID" optional="YES" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
     </entity>
 </model>

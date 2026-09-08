@@ -56,9 +56,41 @@ def from_ckdb():
     return out
 
 
+def cloudkit_rules():
+    """CloudKit 미러링이 요구하는 것을 여기서 먼저 잡는다.
+
+    안 그러면 `momc` 가 CI 에서 처음 알려 주는데, 그러면 한 바퀴가 10분이다.
+
+        error: Account.id must have a default value [8]
+
+    규칙: **속성은 옵셔널이거나 기본값이 있어야 한다.** 이 앱은 기본값 쪽을
+    골랐으므로(ADR-0001) 필수 속성에는 반드시 기본값이 붙어야 한다.
+    """
+    problems = []
+    for entity in ET.parse(MODEL).getroot().findall("entity"):
+        for attribute in entity.findall("attribute"):
+            if attribute.get("optional") == "YES":
+                continue
+            has_default = (attribute.get("defaultValueString") is not None
+                           or attribute.get("defaultDateTimeInterval") is not None)
+            if not has_default:
+                problems.append(
+                    f"{entity.get('name')}.{attribute.get('name')}: "
+                    f"필수인데 기본값이 없습니다 (momc 가 막습니다)")
+        for relationship in entity.findall("relationship"):
+            if relationship.get("optional") != "YES":
+                problems.append(
+                    f"{entity.get('name')}.{relationship.get('name')}: "
+                    f"관계는 전부 옵셔널이어야 합니다 (ADR-0001)")
+            if relationship.get("inverseName") is None:
+                problems.append(
+                    f"{entity.get('name')}.{relationship.get('name')}: 역관계가 없습니다")
+    return problems
+
+
 def main():
     model, ckdb = from_model(), from_ckdb()
-    problems = []
+    problems = cloudkit_rules()
 
     only_model = sorted(set(model) - set(ckdb))
     only_ckdb = sorted(set(ckdb) - set(model))
@@ -76,7 +108,7 @@ def main():
             problems.append(f"{entity}: CloudKit 스키마에 없는 칸 — {', '.join(extra)}")
 
     if problems:
-        print("모델 파일과 CloudKit 스키마가 어긋납니다:\n", file=sys.stderr)
+        print("모델 파일에 문제가 있습니다:\n", file=sys.stderr)
         for line in problems:
             print(f"  · {line}", file=sys.stderr)
         print("\n둘 다 다시 뽑으세요:", file=sys.stderr)
@@ -86,7 +118,7 @@ def main():
         sys.exit(1)
 
     fields = sum(len(v) for v in model.values())
-    print(f"맞습니다 — 엔티티 {len(model)}개 · 칸 {fields}개")
+    print(f"맞습니다 — 엔티티 {len(model)}개 · 칸 {fields}개 · CloudKit 규칙도 통과")
 
 
 if __name__ == "__main__":
