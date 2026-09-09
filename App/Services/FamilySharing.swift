@@ -31,8 +31,16 @@ struct FamilyShareState: Sendable {
     var isSaved = false
     var participants = 0
 
+    /// **이 기기의 진짜 역할.** 공유 저장소에 `CKShare` 가 있으면 참가자고,
+    /// 그 공유의 `currentUserParticipant.permission` 이 역할을 정한다
+    /// (docs/09-family-sharing.md 4단계). 없으면 소유자다.
+    var role: FamilyRole = .owner
+
+    var isParticipant: Bool { role != .owner }
+
     /// 사람이 읽을 한 줄.
     var label: String {
+        if isParticipant { return "참가 중 · \(role.label)" }
         if households == 0 { return "아직 없음" }
         if !hasLocalShare { return "공유 안 함" }
         if !isSaved { return "만들다 만 상태" }
@@ -82,7 +90,24 @@ final class FamilySharing {
     /// 화면이 읽는 상태. 백그라운드에서 읽어 여기에 얹는다.
     private(set) var state = FamilyShareState()
 
-    private init() {}
+    /// 마지막으로 판정한 역할. **앱을 켜자마자** 화면이 맞는 역할로 뜨게 한다 —
+    /// 공유 조회는 백그라운드라 한 박자 늦는데, 그 사이 참가자 기기에
+    /// 편집 버튼이 잠깐 보였다 사라지면 고장으로 읽힌다.
+    static let roleKey = "family.resolvedRole"
+
+    private init() {
+        if let raw = UserDefaults.standard.string(forKey: Self.roleKey),
+           let role = FamilyRole(rawValue: raw) {
+            state.role = role
+        }
+    }
+
+    /// `CKShare` 참가자 정보를 앱의 역할로 옮긴다. 백그라운드에서 부른다.
+    nonisolated static func role(of share: CKShare) -> FamilyRole {
+        guard let me = share.currentUserParticipant else { return .viewer }
+        if me.role == .owner { return .owner }
+        return me.permission == .readWrite ? .editor : .viewer
+    }
 
     private var cloudContainer: NSPersistentCloudKitContainer? {
         Persistence.container as? NSPersistentCloudKitContainer
@@ -102,12 +127,31 @@ final class FamilySharing {
             state = FamilyShareState()
             return
         }
-        let carried = UncheckedBox(container)
+        let carried = UncheckedBox((container, Persistence.sharedStore))
+        let sharedStoreURL = Persistence.sharedStoreURL
         DispatchQueue.global(qos: .userInitiated).async {
-            let container = carried.value
+            let (container, sharedStore) = carried.value
             let context = container.newBackgroundContext()
             context.perform {
                 var next = FamilyShareState()
+
+                // **참가자인가.** 공유 저장소에 `CKShare` 가 있으면 그렇다.
+                // 소유자의 공유는 개인 저장소에 있어서 여기 안 잡힌다.
+                if let sharedStore,
+                   let share = (try? container.fetchShares(in: [sharedStore]))?.first {
+                    next.role = Self.role(of: share)
+                }
+                UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
+
+                // 참가자 기기에는 가구가 **하나만** 있어야 한다. 초대를 받기 전에
+                // 앱이 제 가구를 만들어 두므로(첫 화면이 계획을 만든다), 받고
+                // 나면 빈 껍데기가 하나 남는다. 그걸 여기서 치운다.
+                if next.role != .owner {
+                    let pruned = Household.pruneEmptyLocalDuplicates(in: context,
+                                                                     sharedStoreURL: sharedStoreURL)
+                    if pruned > 0 { try? context.save() }
+                }
+
                 let households = (try? context.fetch(Household.fetchRequest())) ?? []
                 next.households = households.count
                 // 가장 오래된 것이 진짜다 — 나중 것은 뒤늦게 내려온 사본이다.

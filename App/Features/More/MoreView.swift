@@ -100,7 +100,10 @@ struct MoreView: View {
 
                 SyncStatusSection()
 
-                rolePreviewSection
+                // 참가자에게는 미리보기가 없다 — 역할은 `CKShare` 가 정한다.
+                if !FamilySharing.shared.state.isParticipant {
+                    rolePreviewSection
+                }
 
                 Section {
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")

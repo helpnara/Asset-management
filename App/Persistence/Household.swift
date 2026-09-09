@@ -31,6 +31,55 @@ extension Household {
         context.all(Household.self).count
     }
 
+    /// **참가자 기기의 가구를 하나로 만든다.** 치운 가구 수를 돌려준다.
+    ///
+    /// 초대를 받아들이는 순서가 문제다. 링크를 누르면 앱이 먼저 뜨고, 첫
+    /// 화면이 계획을 만들고, 저장이 그 계획을 새 가구에 매단다 — 공유 존이
+    /// 서버에서 내려오기 **전에**. 그래서 참가자 기기에는 늘 가구가 둘이
+    /// 된다: 관리자의 것(공유 저장소)과 빈 껍데기(개인 저장소).
+    ///
+    /// 둘인 채로 두면 무엇이 나쁜가. `Plan` 이 둘이라 계획 화면이 어느 것을
+    /// 보여 줄지 정해지지 않고, `current(in:)` 은 가장 오래된 것을 고르지만
+    /// 화면은 `plans.first` 를 읽는다. 빈 계획이 걸리면 아내분 화면의 계획·궤적이
+    /// 비어 보인다 — 합격 기준 3번이 그것이다.
+    ///
+    /// **치우는 조건은 셋 다여야 한다:** 공유 저장소에 가구가 있고(참가자다),
+    /// 이 가구는 개인 저장소에 있고, 계획 말고는 매달린 것이 하나도 없다.
+    /// 관리자 기기에서는 첫 조건이 거짓이라 아무것도 안 한다. 참가자가 그
+    /// 사이에 무언가를 적었다면 세 번째 조건이 막는다 — 기록은 안 지운다.
+    static func pruneEmptyLocalDuplicates(in context: NSManagedObjectContext,
+                                          sharedStoreURL: URL) -> Int {
+        let households = context.all(Household.self,
+                                     sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)])
+        guard households.count > 1 else { return 0 }
+
+        func isShared(_ household: Household) -> Bool {
+            household.objectID.persistentStore?.url == sharedStoreURL
+        }
+        guard households.contains(where: isShared) else { return 0 }
+
+        // 관계 이름을 손으로 적지 않는다. 열다섯 개인데 하나 빠뜨리면 그 종류의
+        // 기록이 든 가구를 빈 것으로 보고 지운다.
+        let childKeys = households[0].entity.relationshipsByName
+            .filter { $0.value.isToMany && $0.key != "plans" }
+            .map(\.key)
+        func isEmptyShell(_ household: Household) -> Bool {
+            childKeys.allSatisfy { key in
+                ((household.value(forKey: key) as? NSSet)?.count ?? 0) == 0
+            }
+        }
+
+        var pruned = 0
+        for household in households where !isShared(household) && isEmptyShell(household) {
+            for plan in (household.plans as? Set<Plan>) ?? [] {
+                context.delete(plan)
+            }
+            context.delete(household)
+            pruned += 1
+        }
+        return pruned
+    }
+
     /// **새로 만든 것을 빠짐없이 뿌리에 매단다.**
     ///
     /// 저장 직전에 한 번 훑는다. 만드는 자리마다 손으로 매다는 방법도 있지만,

@@ -388,8 +388,18 @@ extension Plan {
     }
 
     /// 저장소에 하나뿐인 계획을 꺼내고, 없으면 만든다.
+    ///
+    /// 둘 이상이면 **가장 오래된 가구의 가장 오래된 계획**이다. 정렬 없는
+    /// `.first` 는 순서를 보장하지 않아서, 참가자 기기에 잠깐 가구가 둘일 때
+    /// 부를 때마다 다른 계획을 줄 수 있다.
     static func current(in context: NSManagedObjectContext) -> Plan {
-        if let existing = context.all(Plan.self).first {
+        let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
+        if let household = context.all(Household.self, sortedBy: byAge).first,
+           let plans = household.plans as? Set<Plan>,
+           let existing = plans.min(by: { $0.createdAt < $1.createdAt }) {
+            return existing
+        }
+        if let existing = context.all(Plan.self, sortedBy: byAge).first {
             return existing
         }
         // Core Data 는 만드는 순간 컨텍스트에 들어간다 — `insert` 를 따로 안 부른다.

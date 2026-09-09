@@ -13,7 +13,7 @@ struct FamilyShareSection: View {
         Section {
             // 초대를 받아들인 기기는 참가자다 — 역할 미리보기가 뭐라고 하든.
             // 참가자 쪽에서 "가족 초대" 를 내놓으면 공유가 둘이 된다.
-            if canManageHousehold && !sharing.didAcceptInvitation {
+            if canManageHousehold && !sharing.didAcceptInvitation && !sharing.state.isParticipant {
                 Button {
                     // **공유를 미리 만들지 않고, SwiftUI 시트에도 안 담는다.**
                     // 둘 다 기기에서 막혔다 — 앞은 "링크를 생성할 수 없습니다",
@@ -30,7 +30,8 @@ struct FamilyShareSection: View {
             } else {
                 // 참가자에게는 초대 버튼을 안 내놓는다. `CKShare` 는 소유자만
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
-                LabeledContent("가족 공유", value: "참가 중")
+                LabeledContent("가족 공유", value: sharing.state.isParticipant
+                               ? "참가 중 · \(sharing.state.role.label)" : "참가 중")
             }
 
             // **앱이 믿는 상태를 그대로 내놓는다.**
