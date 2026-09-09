@@ -364,17 +364,32 @@ struct HoldingEditView: View {
                     }
                 }
 
-                Section("분류") {
+                Section {
+                    // **계좌가 자산군을 좁히고, 자산군이 상품 종류를 좁힌다**
+                    // (docs/08-feedback.md 50번). 저장된 값이 목록 밖이면 목록에
+                    // 남긴다 — 없으면 피커가 빈 칸으로 보인다.
                     Picker("자산군", selection: $holding.assetClass) {
-                        ForEach(AssetClass.allCases) { Text($0.label).tag($0) }
+                        ForEach(assetClassChoices) { Text($0.label).tag($0) }
                     }
                     Picker("상품 종류", selection: $holding.instrumentType) {
-                        ForEach(InstrumentType.allCases) { Text($0.label).tag($0) }
+                        ForEach(instrumentChoices) { Text($0.label).tag($0) }
                     }
                     Picker("상장 국가", selection: $holding.listingCountryCode) {
                         Text("한국").tag("KR")
                         Text("미국").tag("US")
                         Text("기타").tag("XX")
+                    }
+                } header: {
+                    Text("분류")
+                } footer: {
+                    if let kind = holding.account?.kind, kind.allowedAssetClasses.count < AssetClass.allCases.count {
+                        Text("\(kind.label) 계좌에 맞는 것만 보입니다.")
+                    }
+                }
+                .onChange(of: holding.assetClass) { _, assetClass in
+                    // 자산군을 바꿨는데 상품 종류가 안 맞으면 그 자산군의 기본으로.
+                    if !assetClass.allowedInstrumentTypes.contains(holding.instrumentType) {
+                        holding.instrumentType = assetClass.defaultInstrumentType
                     }
                 }
 
@@ -442,6 +457,18 @@ struct HoldingEditView: View {
         } else if !before.isEmpty, before != after, !after.isEmpty {
             ChangeLogger.structureChanged(logSubject, "이름을 \(before) 에서 바꿨습니다", in: context)
         }
+    }
+
+    /// 계좌 종류에 맞는 자산군. 저장된 값이 목록 밖이면 앞에 남긴다.
+    private var assetClassChoices: [AssetClass] {
+        let allowed = holding.account?.kind.allowedAssetClasses ?? AssetClass.allCases
+        return allowed.contains(holding.assetClass) ? allowed : [holding.assetClass] + allowed
+    }
+
+    /// 자산군에 맞는 상품 종류. 위와 같은 규칙.
+    private var instrumentChoices: [InstrumentType] {
+        let allowed = holding.assetClass.allowedInstrumentTypes
+        return allowed.contains(holding.instrumentType) ? allowed : [holding.instrumentType] + allowed
     }
 
     private var cadenceFooter: String {
