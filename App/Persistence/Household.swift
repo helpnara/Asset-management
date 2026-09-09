@@ -43,10 +43,17 @@ extension Household {
     /// 화면은 `plans.first` 를 읽는다. 빈 계획이 걸리면 아내분 화면의 계획·궤적이
     /// 비어 보인다 — 합격 기준 3번이 그것이다.
     ///
-    /// **치우는 조건은 셋 다여야 한다:** 공유 저장소에 가구가 있고(참가자다),
-    /// 이 가구는 개인 저장소에 있고, 계획 말고는 매달린 것이 하나도 없다.
-    /// 관리자 기기에서는 첫 조건이 거짓이라 아무것도 안 한다. 참가자가 그
-    /// 사이에 무언가를 적었다면 세 번째 조건이 막는다 — 기록은 안 지운다.
+    /// **치우는 조건은 셋 다여야 한다:** 공유 저장소에 **계획까지 내려온**
+    /// 가구가 있고(참가자다), 이 가구는 개인 저장소에 있고, 계획 말고는 매달린
+    /// 것이 하나도 없다. 관리자 기기에서는 첫 조건이 거짓이라 아무것도 안 한다.
+    /// 참가자가 그 사이에 무언가를 적었다면 세 번째 조건이 막는다 — 기록은 안
+    /// 지운다.
+    ///
+    /// 첫 조건에 "계획까지" 를 붙인 이유. 공유 존은 레코드가 나눠 내려온다 —
+    /// 가구는 왔는데 계획이 아직이면, 빈 껍데기를 치운 직후 화면이
+    /// `Plan.current` 로 계획을 **새로 만들고**, 저장이 그것을 공유 가구에
+    /// 매단다. 보기 전용 참가자의 그 쓰기는 서버가 거부하고, 기기에는 계획이
+    /// 둘 남는다. 관리자의 계획이 내려온 뒤에만 치우면 그 일이 없다.
     static func pruneEmptyLocalDuplicates(in context: NSManagedObjectContext,
                                           sharedStoreURL: URL) -> Int {
         let households = context.all(Household.self,
@@ -56,7 +63,8 @@ extension Household {
         func isShared(_ household: Household) -> Bool {
             household.objectID.persistentStore?.url == sharedStoreURL
         }
-        guard households.contains(where: isShared) else { return 0 }
+        guard households.contains(where: { isShared($0) && ($0.plans?.count ?? 0) > 0 })
+        else { return 0 }
 
         // 관계 이름을 손으로 적지 않는다. 열다섯 개인데 하나 빠뜨리면 그 종류의
         // 기록이 든 가구를 빈 것으로 보고 지운다.
