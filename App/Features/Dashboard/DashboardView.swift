@@ -578,7 +578,9 @@ struct DashboardView: View {
     }
 
     private var trajectorySummary: String? {
-        guard let plan, plan.monthlyContributionMinor > 0,
+        // 적립액은 계획이 실제로 굴리는 값으로 본다 — 구성원별로 나눠 넣는
+        // 집은 계획의 한 덩어리 칸이 0 이라 이 줄이 통째로 사라졌다 (51번).
+        guard let plan, plan.effectiveMonthlyContribution(members: members).minorUnits > 0,
               let end = projection?.point(inYear: plan.retirementYear) ?? projection?.last
         else { return nil }
         // 한 줄에 들어가야 읽힌다. 상세 자릿수는 계획 탭에서 본다.

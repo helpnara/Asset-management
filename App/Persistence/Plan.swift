@@ -187,6 +187,11 @@ extension Plan {
     }
 
     /// 실제로 굴릴 월 적립액. 구성원별로 나눠 넣고 있으면 그 합이다.
+    ///
+    /// **월 적립을 읽는 자리는 전부 여기를 거친다** (docs/08-feedback.md 51번).
+    /// `monthlyContributionMinor` 를 직접 읽으면 구성원별로 나눠 넣는 집에서
+    /// 계획에 남은 옛 값(대개 0)을 보게 된다 — 시뮬레이션 손잡이와 현황판
+    /// 한 줄이 그렇게 어긋나 있었다.
     func effectiveMonthlyContribution(members: [Member]) -> Money {
         guard usesMemberContributions else { return monthlyContribution }
         return Money(minorUnits: members.reduce(0) { $0 + $1.monthlyContributionMinor },
@@ -204,12 +209,7 @@ extension Plan {
         if usesMemberContributions {
             return member.monthlyContributionMinor + member.employerMatchMinor
         }
-        let mine = member.sortedAccounts
-            .filter { !$0.isArchived }
-            .reduce(0) { sum, account in
-                let value = account.sortedHoldings.reduce(0) { $0 + $1.valueMinor }
-                return sum + (account.kind.isLiability ? -value : value)
-            }
+        let mine = member.netTotalMinor
         guard familyTotal.minorUnits > 0, mine > 0 else { return 0 }
         // 정수로만 센다 (ADR-0003 — 금액에 Double 을 쓰지 않는다).
         // 한 번에 곱하면 자릿수가 커져 넘칠 수 있으므로 **비중을 먼저** 낸다.

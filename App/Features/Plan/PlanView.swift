@@ -325,7 +325,11 @@ struct PlanView: View {
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
         let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
-        if let end = result.last {
+        // **은퇴 시점의 값이다, 궤적의 끝이 아니다.** 은퇴 후 생활비를 넣으면
+        // 궤적이 지평선(예: 92세)까지 이어지므로 `last` 는 30년 인출한 뒤의
+        // 잔고다. 현황판·진단·1페이지·시뮬레이션은 전부 은퇴 시점을 읽는데
+        // 이 화면만 끝값을 읽어 "2049년 예상" 이 다른 숫자였다 (51번).
+        if let end = result.point(inYear: plan.retirementYear) ?? result.last {
             LabeledContent {
                 Text(Won.abbreviated(end.nominal, suffix: "원"))
                     .font(.figure(15, weight: .semibold))

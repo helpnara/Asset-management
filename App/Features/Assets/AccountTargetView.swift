@@ -98,13 +98,16 @@ struct AccountTargetView: View {
     /// 구성원별로 나눠 적지 않았으면 (그게 기본값이다) `Member` 쪽이 0이라
     /// 제안이 **영영 안 뜬다.** 그때는 계획의 총 적립을 가족 자산 비중으로
     /// 나눠 이 사람 몫을 어림한다.
+    ///
+    /// **구성원 궤적 · 1페이지와 같은 함수다** (`Plan.memberMonthlyContributionMinor`,
+    /// docs/08-feedback.md 51번). 여기만 따로 셈하던 때는 부채를 빼지 않은
+    /// 자산으로 비중을 내서 두 화면의 "이 사람 몫" 이 달랐다.
     private func ownerMonthlyContribution(_ owner: Member) -> Int {
-        let own = owner.monthlyContributionMinor + owner.employerMatchMinor
-        if own > 0 { return own }
-        guard let plan = plans.first, plan.monthlyContributionMinor > 0 else { return 0 }
-        let familyTotal = members.reduce(0) { $0 + $1.assetTotalMinor }
-        guard familyTotal > 0 else { return 0 }
-        return plan.monthlyContributionMinor * owner.assetTotalMinor / familyTotal
+        guard let plan = plans.first else {
+            return owner.monthlyContributionMinor + owner.employerMatchMinor
+        }
+        let family = Money(minorUnits: members.reduce(0) { $0 + $1.netTotalMinor }, currency: .krw)
+        return plan.memberMonthlyContributionMinor(owner, familyTotal: family)
     }
 
     /// 합계는 늘 보인다. 100%가 아니면 눈에 띄게 적되 막지는 않는다.

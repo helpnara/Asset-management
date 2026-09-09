@@ -122,6 +122,15 @@ extension Member {
             .reduce(0) { $0 + $1.totalMinor }
     }
 
+    /// 이 사람의 순자산 (자산 − 부채). `Rollup.netWorth` 를 사람 단위로 잘라
+    /// 낸 것이다 — 가족 순자산에서 이 사람의 비중을 낼 때 분자와 분모가 같은
+    /// 셈법이어야 한다 (docs/08-feedback.md 51번).
+    var netTotalMinor: Int {
+        sortedAccounts
+            .filter { !$0.isArchived }
+            .reduce(0) { $0 + ($1.kind.isLiability ? -$1.totalMinor : $1.totalMinor) }
+    }
+
     /// **계좌 비중.** 분모는 이 사람의 자산 합계다.
     ///
     /// **목표를 두지 않는다.** 계좌 잔고는 급여와 납입 한도가 정하는 것이라

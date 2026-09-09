@@ -66,12 +66,12 @@ struct SimulationView: View {
     @ViewBuilder
     private func content(_ plan: Plan) -> some View {
         let baseline = plan.projectionInput(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
-        let current = knobs ?? Knobs(plan)
+        let current = knobs ?? Knobs(plan, members: members)
 
         ScrollView {
             VStack(spacing: 14) {
                 headline(plan, current)
-                chartCard(plan, knobs: current, changed: current != Knobs(plan))
+                chartCard(plan, knobs: current, changed: current != Knobs(plan, members: members))
                 knobCard(plan, current)
                 spreadCard
                 scenarioCard(current)
@@ -84,7 +84,7 @@ struct SimulationView: View {
             // 잔고가 바뀌어도(주간 점검 직후) 다시 돈다 — 그래서 baseline 도 키에 넣는다.
             await recalculate(baseline: baseline, knobs: current)
         }
-        .onAppear { if knobs == nil { knobs = Knobs(plan) } }
+        .onAppear { if knobs == nil { knobs = Knobs(plan, members: members) } }
     }
 
     // MARK: - 헤드라인
@@ -249,9 +249,9 @@ struct SimulationView: View {
             slider(
                 title: "매월 적립",
                 value: binding.monthlyMinor,
-                range: 0...max(5_000_000, plan.monthlyContributionMinor * 2),
+                range: 0...max(5_000_000, plannedMonthly(plan) * 2),
                 step: 100_000,
-                baselineValue: plan.monthlyContributionMinor,
+                baselineValue: plannedMonthly(plan),
                 display: { Won.abbreviated(Money(minorUnits: $0, currency: .krw), suffix: "원") }
             )
             slider(
@@ -555,15 +555,23 @@ struct SimulationView: View {
     private var currentBalance: Money {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
     }
+
+    /// 손잡이의 기준점. 궤적이 실제로 쓰는 값과 같아야 한다.
+    private func plannedMonthly(_ plan: Plan) -> Int {
+        plan.effectiveMonthlyContribution(members: members).minorUnits
+    }
 }
 
 extension SimulationView.Knobs {
     /// 주식 위주 포트폴리오의 대략적인 연 변동성. 밴드의 기본 폭이 된다.
     static let defaultVolatilityBP = 1_500
 
-    init(_ plan: Plan) {
+    /// **계획이 실제로 굴리는 값에서 출발한다.** 구성원별로 나눠 넣는 집은
+    /// 계획의 한 덩어리 칸이 옛 값이라, 그걸 읽으면 `계획` 선과 `지금 조건`
+    /// 선이 처음부터 다른 적립액으로 출발한다 (docs/08-feedback.md 51번).
+    init(_ plan: Plan, members: [Member]) {
         self.init(
-            monthlyMinor: plan.monthlyContributionMinor,
+            monthlyMinor: plan.effectiveMonthlyContribution(members: members).minorUnits,
             retirementYear: plan.retirementYear,
             returnBP: plan.annualReturnBP,
             volatilityBP: Self.defaultVolatilityBP
