@@ -138,7 +138,7 @@ final class FamilySharing {
                 // **참가자인가.** 공유 저장소에 `CKShare` 가 있으면 그렇다.
                 // 소유자의 공유는 개인 저장소에 있어서 여기 안 잡힌다.
                 if let sharedStore,
-                   let share = (try? container.fetchShares(in: [sharedStore]))?.first {
+                   let share = (try? container.fetchShares(in: sharedStore))?.first {
                     next.role = Self.role(of: share)
                 }
                 UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
