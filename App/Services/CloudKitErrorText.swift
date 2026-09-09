@@ -42,6 +42,13 @@ enum CloudKitErrorText {
     private static func meaning(of ck: CKError) -> String {
         switch ck.code {
         case .invalidArguments:
+            // 같은 번호(12)가 두 가지로 온다. 스키마에 없는 레코드 타입을 밀어
+            // 넣을 때, 그리고 **소유자가 제 공유 링크를 눌렀을 때**. 뒤의 것을
+            // 스키마 탓으로 적어 헷갈리게 한 적이 있다.
+            if ck.localizedDescription.contains("owner participant") {
+                return "본인이 만든 공유 링크를 본인 폰에서 눌렀습니다. 문제없습니다 — "
+                    + "이 링크는 초대받은 가족의 폰에서 눌러야 합니다."
+            }
             return "Production 스키마에 없는 것을 밀어 넣으려 했습니다. "
                 + "스키마를 배포해야 합니다. (\(ck.localizedDescription))"
         case .permissionFailure:

@@ -271,6 +271,13 @@ final class FamilySharing {
     /// 이것도 백그라운드에서 부른다. 네트워크 작업이고, 메인을 붙잡는
     /// Core Data 호출에 한 번 데었다 (워치독).
     func accept(_ metadata: CKShare.Metadata) {
+        // 소유자가 제 링크를 누르면 서버가 거부한다 (CKError 12, "owner participant
+        // tried to accept share"). 서버까지 가지 않고 여기서 말해 준다.
+        if metadata.participantRole == .owner {
+            lastFailure = "초대 받기: 본인이 만든 공유 링크입니다. 문제없습니다 — "
+                + "이 링크는 초대받은 가족의 폰에서 눌러야 합니다."
+            return
+        }
         guard let container = cloudContainer, let store = Persistence.sharedStore else {
             lastFailure = "초대 받기: iCloud 로 열리지 않아 받을 수 없습니다."
             return
