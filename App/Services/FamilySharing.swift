@@ -36,6 +36,10 @@ struct FamilyShareState: Sendable {
     /// (docs/09-family-sharing.md 4단계). 없으면 소유자다.
     var role: FamilyRole = .owner
 
+    /// 뿌리(가구)에 안 매달린 기록 수. 소유자 기기에서 0 이어야 한다 — 매달리지
+    /// 않은 기록은 공유에 안 실려 상대 기기에 안 보인다.
+    var orphans = 0
+
     var isParticipant: Bool { role != .owner }
 
     /// 사람이 읽을 한 줄.
@@ -47,7 +51,7 @@ struct FamilyShareState: Sendable {
         return "공유 중 · 참가자 \(participants)명"
     }
 
-    var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) }
+    var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) || orphans > 0 }
 }
 
 /// **가족 공유.** 가구 하나 = `CKShare` 한 장 (docs/09-family-sharing.md 2b).
@@ -90,6 +94,9 @@ final class FamilySharing {
     /// 화면이 읽는 상태. 백그라운드에서 읽어 여기에 얹는다.
     private(set) var state = FamilyShareState()
 
+    /// 기존 기록을 뿌리에 매단 결과. 소유자 기기에서 한 번 보이고 만다.
+    var lastAdoption: String?
+
     /// 마지막으로 판정한 역할. **앱을 켜자마자** 화면이 맞는 역할로 뜨게 한다 —
     /// 공유 조회는 백그라운드라 한 박자 늦는데, 그 사이 참가자 기기에
     /// 편집 버튼이 잠깐 보였다 사라지면 고장으로 읽힌다.
@@ -100,6 +107,76 @@ final class FamilySharing {
            let role = FamilyRole(rawValue: raw) {
             state.role = role
         }
+    }
+
+    /// **뿌리에 안 매달린 기록을 전부 매달고, 공유가 있으면 공유 존으로 옮긴다.**
+    /// 남은 고아 수를 돌려준다 (매단 뒤에는 0).
+    ///
+    /// 왜 있나. `Household` 는 4차 2a 에 생겼고, `attachNew` 는 **저장할 때
+    /// 새로 만든 것**만 매단다. 그 전에 만든 31종목·24주치는 `household` 가
+    /// 비어 있었다. 공유는 뿌리와 **관계로 이어진 것**만 옮기므로 아내분 폰에는
+    /// 빈 가구만 갔다 — 합격 기준 3번("계획·궤적이 비어 있지 않다")이 그대로
+    /// 잡아냈다 (docs/09-family-sharing.md "2b 에서 막힌 것 ③").
+    ///
+    /// 관계만 이어 주면 충분한가. 이미 개인 존에 올라간 레코드는 관계를
+    /// 바꿔도 존이 저절로 옮겨지지 않는다. 애플이 문서화한 길은
+    /// `share(_:to:)` 에 **기존 공유**를 넘기는 것이다 — 넘긴 객체를 그 공유의
+    /// 존으로 옮긴다. 그래서 매단 뒤 공유가 있으면 그것까지 한다.
+    ///
+    /// 엔티티 이름을 손으로 적지 않는다. 모델에서 `household` 관계를 가진
+    /// 엔티티를 전부 돈다 — 열다섯 개인데 하나 빠지면 그 종류만 상대 기기에
+    /// 조용히 안 보인다.
+    nonisolated static func adoptOrphans(in context: NSManagedObjectContext,
+                                         container: NSPersistentCloudKitContainer) -> Int {
+        let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
+        guard let household = context.all(Household.self, sortedBy: byAge).first else { return 0 }
+
+        var adopted: [NSManagedObject] = []
+        for entity in container.managedObjectModel.entities
+        where entity.name != "Household" && entity.relationshipsByName["household"] != nil {
+            guard let name = entity.name else { continue }
+            let request = NSFetchRequest<NSManagedObject>(entityName: name)
+            request.predicate = NSPredicate(format: "household == nil")
+            for object in (try? context.fetch(request)) ?? [] {
+                object.setValue(household, forKey: "household")
+                adopted.append(object)
+            }
+        }
+        guard !adopted.isEmpty else { return 0 }
+
+        do {
+            try context.save()
+        } catch {
+            let text = "기록 \(adopted.count)건을 뿌리에 매달지 못했습니다\n" + CloudKitErrorText.describe(error)
+            Task { @MainActor in FamilySharing.shared.lastAdoption = text }
+            return adopted.count
+        }
+
+        let count = adopted.count
+        guard let share = try? container.fetchShares(matching: [household.objectID])[household.objectID]
+        else {
+            Task { @MainActor in
+                FamilySharing.shared.lastAdoption = "기록 \(count)건을 뿌리에 매달았습니다."
+            }
+            return 0
+        }
+
+        // 공유 존으로 옮긴다. 부른 스레드를 붙잡는 호출이라 여기(백그라운드)서만
+        // 부른다. 완료는 나중에 따로 온다 — 기다리지 않는다.
+        container.share(adopted, to: share) { _, _, _, error in
+            let text = error.map { CloudKitErrorText.describe($0) }
+            Task { @MainActor in
+                let sharing = FamilySharing.shared
+                if let text {
+                    sharing.lastAdoption = "기록 \(count)건을 매달았지만 공유 존으로 옮기지 못했습니다\n" + text
+                } else {
+                    sharing.lastAdoption = "기록 \(count)건을 매달아 공유 존으로 옮겼습니다. "
+                        + "상대 기기에 1~2분 뒤 나타납니다."
+                }
+                sharing.refreshState()
+            }
+        }
+        return 0
     }
 
     /// `CKShare` 참가자 정보를 앱의 역할로 옮긴다. 백그라운드에서 부른다.
@@ -150,6 +227,10 @@ final class FamilySharing {
                     let pruned = Household.pruneEmptyLocalDuplicates(in: context,
                                                                      sharedStoreURL: sharedStoreURL)
                     if pruned > 0 { try? context.save() }
+                } else {
+                    // 소유자 기기: 가구가 생기기 전에 만든 기록을 뿌리에 매단다.
+                    // 매달리지 않은 기록은 공유에 안 실린다 (아래 adoptOrphans).
+                    next.orphans = Self.adoptOrphans(in: context, container: container)
                 }
 
                 let households = (try? context.fetch(Household.fetchRequest())) ?? []

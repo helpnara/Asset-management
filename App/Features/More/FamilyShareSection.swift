@@ -50,6 +50,17 @@ struct FamilyShareSection: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Color.loss)
             }
+            if sharing.state.orphans > 0 {
+                Text("뿌리에 안 매달린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.loss)
+            }
+            if let adoption = sharing.lastAdoption {
+                Text(adoption)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.muted)
+                    .textSelection(.enabled)
+            }
 
             // **왜 안 됐는지 그대로 내놓는다.** 시트의 알림은 "링크를 생성할
             // 수 없습니다" 까지만 말하고 CloudKit 오류 코드를 안 보여 준다.
