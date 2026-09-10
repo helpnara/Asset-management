@@ -8,8 +8,6 @@ struct MoreView: View {
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
-    /// 역할 미리보기 (docs/09-family-sharing.md). 공유가 붙으면 이 구역은 사라진다.
-    @AppStorage(RolePreview.key) private var previewedRole = FamilyRole.owner.rawValue
 
     @Fetched private var sessions: [ReviewSession]
     @Fetched private var holdings: [Holding]
@@ -100,11 +98,6 @@ struct MoreView: View {
 
                 SyncStatusSection()
 
-                // 참가자에게는 미리보기가 없다 — 역할은 `CKShare` 가 정한다.
-                if !FamilySharing.shared.state.isParticipant {
-                    rolePreviewSection
-                }
-
                 Section {
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
                         .font(.system(size: 11))
@@ -138,28 +131,6 @@ struct MoreView: View {
                 case .changeLog: ChangeLogView()
                 }
             }
-        }
-    }
-
-    /// **아내분 화면을 지금 열어 보는 자리** (docs/09-family-sharing.md 4단계).
-    ///
-    /// 공유가 아직 없으니 두 번째 기기도 두 번째 계정도 없다. 그렇다고 다
-    /// 만든 뒤에 처음 열어 보면 늦다 — 그때는 고칠 자리가 서른 곳이다.
-    /// 여기서 바꾸면 화면 위에 띠가 뜨고, 그 띠의 `관리자로` 로 돌아온다.
-    ///
-    /// 공유가 붙으면 역할은 `CKShare` 참가자 상태가 정하고 이 구역은 지운다.
-    @ViewBuilder
-    private var rolePreviewSection: some View {
-        Section {
-            Picker("이 기기에서 보이는 화면", selection: $previewedRole) {
-                ForEach(FamilyRole.allCases) { role in
-                    Text(role.label).tag(role.rawValue)
-                }
-            }
-        } header: {
-            Text("화면 미리보기")
-        } footer: {
-            Text("**초대받은 가족이 보게 될 화면을 이 기기에서 그대로 열어 보는 장치**입니다. `보기 전용` 으로 두면 고치는 자리가 전부 사라지고, 화면 맨 위 띠의 `관리자로` 를 눌러 돌아옵니다. 실제 권한은 위 가족 공유가 정합니다.")
         }
     }
 

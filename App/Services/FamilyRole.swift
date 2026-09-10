@@ -82,24 +82,16 @@ extension View {
     }
 }
 
-// MARK: - 미리보기
+// MARK: - CI 용 실행 인자
 
-/// 관리자가 **아내분 화면을 자기 기기에서 그대로 열어 보는** 장치.
+/// CI 가 보기 전용 화면을 찍을 때 역할을 지정한다.
 ///
-/// 공유가 아직 없으니 두 번째 기기도, 두 번째 계정도 없다. 그렇다고 다 만든
-/// 뒤에 처음 열어 보면 늦다 — 그때는 고칠 자리가 서른 곳이다.
+///     xcrun simctl launch <udid> <bundle> -rolePreview viewer
 ///
-/// **첫 실행에 "아빠 버전 / 아내 버전"을 고르게 하지 않는다.** 세 가지 이유다.
-/// 하나, 진짜 역할은 사람이 아는 것이 아니라 `CKShare` 가 아는 것이라 물을
-/// 일이 아니다. 둘, 한 번 고르면 바꾸려고 앱을 지웠다 깔아야 해서 정작 두
-/// 화면을 견주기가 어렵다. 셋, 나중에 지울 때 이미 고른 사람들을 어떻게 할지가
-/// 또 일이 된다. 여기 토글은 켠 채로 3초면 되돌아오고, 지울 때는 이 파일과
-/// 더보기의 구역 하나만 지우면 된다.
+/// 기기에서 역할을 흉내 내던 토글(더보기의 구역 + 화면 위 띠)은 실제 공유로
+/// 참가자 화면이 확인된 2026-09-10 에 지웠다. 이제 역할은 `CKShare` 가 정하고,
+/// 이 인자는 시뮬레이터에서만 뜻이 있다.
 enum RolePreview {
-    static let key = "family.rolePreview"
-
-    /// 실행 인자로도 켠다 — CI 가 보기 전용 화면을 한 장 찍을 수 있도록.
-    /// `xcrun simctl launch <udid> <bundle> -rolePreview viewer`
     static var launchArgument: FamilyRole? {
         let arguments = ProcessInfo.processInfo.arguments
         guard let index = arguments.firstIndex(of: "-rolePreview"),

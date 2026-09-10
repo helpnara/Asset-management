@@ -7,41 +7,30 @@ struct RootView: View {
     @State private var sharing = FamilySharing.shared
     @Environment(\.scenePhase) private var scenePhase
 
-    /// 지금 어느 역할로 보고 있나 (docs/09-family-sharing.md 4단계).
-    /// 공유가 붙기 전까지는 더보기의 토글이 이 값을 바꾼다.
-    @AppStorage(RolePreview.key) private var previewedRole = FamilyRole.owner.rawValue
 
     @Fetched private var holdings: [Holding]
     @Fetched private var sessions: [ReviewSession]
     @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
     @Fetched private var accounts: [Account]
 
-    /// **진짜 역할이 먼저다.** 초대를 받아들인 기기는 `CKShare` 가 정한 역할로
-    /// 보고, 미리보기 토글은 무시한다 — 참가자가 토글로 관리자 화면을 열면
-    /// 눌러도 서버가 거부하는 버튼이 널린 화면이 된다.
-    /// 소유자 기기에서는 전처럼 실행 인자 → 미리보기 순이다.
+    /// **역할은 `CKShare` 가 정한다** (docs/09-family-sharing.md 4단계). 초대를
+    /// 받아들인 기기는 참가자 권한대로, 나머지는 소유자다. 실행 인자는 CI 가
+    /// 보기 전용 화면을 찍을 때만 쓴다 — 기기에서 역할을 흉내 내는 토글은
+    /// 실제 공유가 확인된 뒤 지웠다 (2026-09-10).
     private var role: FamilyRole {
         if sharing.state.isParticipant { return sharing.state.role }
-        return RolePreview.launchArgument ?? FamilyRole(rawValue: previewedRole) ?? .owner
+        return RolePreview.launchArgument ?? .owner
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // **미리보기 중이라는 것을 늘 보이게 둔다.** 이 띠가 없으면 왜
-            // 버튼이 안 눌리는지 몰라 고장으로 읽는다. 진짜 참가자에게는
-            // 안 띄운다 — 그 사람에게는 이것이 미리보기가 아니라 제 화면이다.
-            if role != .owner && !sharing.state.isParticipant {
-                RolePreviewBanner(role: role) { previewedRole = FamilyRole.owner.rawValue }
+        tabs
+            .familyRole(role)
+            // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
+            // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
+            .task { sharing.refreshState() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { sharing.refreshState() }
             }
-            tabs
-        }
-        .familyRole(role)
-        // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
-        // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
-        .task { sharing.refreshState() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { sharing.refreshState() }
-        }
     }
 
     private var tabs: some View {
