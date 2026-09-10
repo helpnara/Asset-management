@@ -19,7 +19,7 @@ struct WeeklyReviewView: View {
 
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched private var sessions: [ReviewSession]
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []

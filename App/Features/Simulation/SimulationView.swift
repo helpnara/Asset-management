@@ -20,7 +20,7 @@ struct SimulationView: View {
     /// 보기 전용이어도 막을 이유가 없다 — 막으면 남는 것이 그림 한 장뿐이다.
     /// 다만 이름 붙여 **저장하는 것**은 가족이 함께 보는 목록에 남으므로 잠근다.
     @Environment(\.canEdit) private var canEdit
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var holdings: [Holding]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]

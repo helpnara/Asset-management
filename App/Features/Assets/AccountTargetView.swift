@@ -13,7 +13,7 @@ import SwiftUI
 struct AccountTargetView: View {
     let account: Account
 
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Environment(\.canEdit) private var canEdit
 

@@ -40,6 +40,9 @@ struct FamilyShareState: Sendable {
     /// 않은 기록은 공유에 안 실려 상대 기기에 안 보인다.
     var orphans = 0
 
+    /// 참가자 기기에서 빈 가구가 안 치워질 때 그 이유 (`"members 2"` 꼴).
+    var pruneBlockers: String?
+
     var isParticipant: Bool { role != .owner }
 
     /// 사람이 읽을 한 줄.
@@ -276,6 +279,7 @@ final class FamilySharing {
                     let pruned = Household.pruneEmptyLocalDuplicates(in: context,
                                                                      sharedStoreURL: sharedStoreURL)
                     if pruned > 0 { try? context.save() }
+                    next.pruneBlockers = Household.pruneBlockers(in: context, sharedStoreURL: sharedStoreURL)
                 } else {
                     // 소유자 기기: 가구가 생기기 전에 만든 기록을 뿌리에 매단다.
                     // 매달리지 않은 기록은 공유에 안 실린다 (아래 adoptOrphans).

@@ -15,7 +15,7 @@ struct MemberTrajectoryView: View {
     let member: Member
 
     @Environment(\.dismiss) private var dismiss
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var holdings: [Holding]
     @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Fetched(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]

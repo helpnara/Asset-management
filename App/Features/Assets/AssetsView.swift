@@ -21,7 +21,7 @@ struct AssetsView: View {
     @Environment(\.canEdit) private var canEdit
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
     @State private var editingMember: Member?
     @State private var editingAccount: Account?

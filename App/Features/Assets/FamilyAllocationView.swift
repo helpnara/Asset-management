@@ -12,7 +12,7 @@ import SwiftUI
 /// 세워도 "우리 집 돈에서 미국이 몇 %인가" 에는 답이 안 나온다. 그래서 따로 둔다.
 struct FamilyAllocationView: View {
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var targets: [FamilyTarget]
     @Environment(\.managedObjectContext) private var context
     // 가족 전체의 목표 비중은 가구 하나에 한 벌이다.

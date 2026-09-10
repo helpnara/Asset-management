@@ -7,7 +7,7 @@ import SwiftUI
 /// 화면에는 언제 세웠고 언제 갱신했는지만 있으면 된다. 이 셋은 자주 안
 /// 건드리는 값이고 계산에도 안 쓰이므로 인쇄물 쪽에 두는 편이 맞다.
 struct OnePagerSettingsView: View {
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     // 1페이지는 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
     @Environment(\.canManageHousehold) private var canManageHousehold
 

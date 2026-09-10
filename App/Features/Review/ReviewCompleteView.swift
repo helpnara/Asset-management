@@ -8,7 +8,7 @@ import SwiftUI
 /// 연속 기록을 즉시 보여준다 (ADR-0005).
 struct ReviewCompleteView: View {
     @Fetched(sort: \Member.sortIndex) private var driftMembers: [Member]
-    @Fetched private var driftPlans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var driftPlans: [Plan]
 
     /// 목표에서 벗어난 종목 수. 가족 전체를 센다.
     private var driftCount: Int {

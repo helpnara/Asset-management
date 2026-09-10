@@ -66,26 +66,47 @@ extension Household {
         guard households.contains(where: { isShared($0) && ($0.plans?.count ?? 0) > 0 })
         else { return 0 }
 
-        // 관계 이름을 손으로 적지 않는다. 열다섯 개인데 하나 빠뜨리면 그 종류의
-        // 기록이 든 가구를 빈 것으로 보고 지운다.
-        let childKeys = households[0].entity.relationshipsByName
-            .filter { $0.value.isToMany && $0.key != "plans" }
-            .map(\.key)
-        func isEmptyShell(_ household: Household) -> Bool {
-            childKeys.allSatisfy { key in
-                ((household.value(forKey: key) as? NSSet)?.count ?? 0) == 0
-            }
-        }
-
         var pruned = 0
-        for household in households where !isShared(household) && isEmptyShell(household) {
+        for household in households where !isShared(household) && blockers(of: household).isEmpty {
             for plan in (household.plans as? Set<Plan>) ?? [] {
                 context.delete(plan)
+            }
+            for log in (household.changeLogs as? Set<ChangeLog>) ?? [] {
+                context.delete(log)
             }
             context.delete(household)
             pruned += 1
         }
         return pruned
+    }
+
+    /// 앱이 스스로 만드는 것. 이것만 매달려 있으면 빈 껍데기다.
+    /// 계획은 첫 화면이 만들고, 변경 기록은 그 계획을 만들면서 남는다.
+    static let selfMadeKinds: Set<String> = ["plans", "changeLogs"]
+
+    /// 이 가구를 빈 껍데기로 볼 수 없게 하는 것들 — `"members 2"` 꼴.
+    ///
+    /// 관계 이름을 손으로 적지 않는다. 열다섯 개인데 하나 빠뜨리면 그 종류의
+    /// 기록이 든 가구를 빈 것으로 보고 지운다. 참가자 기기에서 빈 가구가 안
+    /// 치워질 때 **무엇이 막는지** 화면에 적으려고 목록으로 돌려준다.
+    static func blockers(of household: Household) -> [String] {
+        household.entity.relationshipsByName
+            .filter { $0.value.isToMany && !selfMadeKinds.contains($0.key) }
+            .compactMap { key, _ in
+                let count = (household.value(forKey: key) as? NSSet)?.count ?? 0
+                return count > 0 ? "\(key) \(count)" : nil
+            }
+            .sorted()
+    }
+
+    /// 개인 저장소에 남은 가구가 왜 안 치워지는지. 없으면 `nil`.
+    static func pruneBlockers(in context: NSManagedObjectContext, sharedStoreURL: URL) -> String? {
+        let households = context.all(Household.self,
+                                     sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)])
+        guard households.count > 1 else { return nil }
+        let local = households.filter { $0.objectID.persistentStore?.url != sharedStoreURL }
+        let reasons = local.flatMap(blockers(of:))
+        return reasons.isEmpty ? nil : reasons.joined(separator: ", ")
     }
 
     /// **새로 만든 것을 빠짐없이 뿌리에 매단다.**

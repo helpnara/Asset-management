@@ -14,7 +14,7 @@ import SwiftUI
 struct OnePagerPreviewView: View {
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched private var holdings: [Holding]
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Fetched(sort: \Principle.order) private var principles: [Principle]

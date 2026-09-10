@@ -5,7 +5,7 @@ import SwiftUI
 struct FamilyShareSection: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
 
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
     @State private var sharing = FamilySharing.shared
     @State private var isConfirmingMove = false
@@ -47,9 +47,11 @@ struct FamilyShareSection: View {
                                      : (sharing.state.isSaved ? Color.gain : Color.muted))
             }
             if sharing.state.households > 1 {
-                Text("가구가 \(sharing.state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다.")
+                Text("가구가 \(sharing.state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다."
+                     + (sharing.state.pruneBlockers.map { " 못 치우는 이유: \($0)" } ?? ""))
                     .font(.system(size: 11))
                     .foregroundStyle(Color.loss)
+                    .textSelection(.enabled)
             }
             if sharing.state.orphans > 0 {
                 Text("공유에 안 실린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다.")

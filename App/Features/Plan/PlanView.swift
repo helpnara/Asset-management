@@ -11,7 +11,7 @@ struct PlanView: View {
     // 계획의 가정은 **가구 전체**에 걸린다. 한 사람이 기대수익률을 바꾸면
     // 모두의 궤적이 바뀌므로 관리자만 고친다 (docs/09-family-sharing.md).
     @Environment(\.canManageHousehold) private var canManageHousehold
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var holdings: [Holding]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]

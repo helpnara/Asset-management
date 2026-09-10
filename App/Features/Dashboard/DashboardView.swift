@@ -13,7 +13,7 @@ struct DashboardView: View {
     @Fetched private var holdings: [Holding]
     @Fetched private var sessions: [ReviewSession]
     @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Fetched private var accounts: [Account]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]

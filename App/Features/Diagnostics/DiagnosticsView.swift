@@ -15,7 +15,7 @@ struct DiagnosticsView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     @Environment(\.managedObjectContext) private var context
-    @Fetched private var plans: [Plan]
+    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var holdings: [Holding]
     @Fetched private var accounts: [Account]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
