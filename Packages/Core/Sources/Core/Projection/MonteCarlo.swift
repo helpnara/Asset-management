@@ -84,8 +84,10 @@ public enum MonteCarlo {
             let annual = NSDecimalNumber(decimal: bucket.annualReturn.fraction).doubleValue
             return pow(1 + annual, 1.0 / 12.0) - 1
         }
-        let volatileIndex = base.buckets.firstIndex { $0.profile == .investment }
-        let inflowIndex = volatileIndex ?? 0
+        // 적립이 들어가는 덩어리와 같은 곳을 흔든다 (Projection 과 같은 규칙, 63번).
+        let inflowIndex = base.inflowIndex
+        let volatileIndex: Int? = base.buckets.indices.contains(inflowIndex)
+            && base.buckets[inflowIndex].profile == .investment ? inflowIndex : nil
         let drawdownOrder = base.buckets.indices.sorted {
             base.buckets[$0].profile.drawdownOrder < base.buckets[$1].profile.drawdownOrder
         }

@@ -494,6 +494,36 @@ struct ReturnProfileTests {
         #expect(result.last?.nominal == Money(12_513_886, currency: .krw))
     }
 
+    @Test("적립은 계좌에 따로 적은 낮은 수익률 덩어리가 아니라 계획 수익률 덩어리로 간다")
+    func contributionsFollowThePlanRateBucket() {
+        // **실제로 났던 버그다** (docs/08-feedback.md 63번). 계좌 하나에 2% 를
+        // 따로 적으면 그 덩어리가 앞에 오고(오름차순), 적립 전액이 2% 로 굴렀다.
+        // 그래서 시뮬레이션의 `계획대로 · 연 8%` 가 `이 설정 · 연 8%` 보다 훨씬
+        // 작았다 — 같은 8% 인데 22억과 34억.
+        //
+        // 파이썬 대조 (Tools/verify/projection_model.py 의 run 을 덩어리마다):
+        //   따로 적은 2% 계좌 1억, 12개월, 적립 없음      → 102,000,001
+        //   계획 8% 덩어리 0원, 월 100만 열두 번           →  12,513,886
+        //   합                                             → 114,513,887
+        //   버그(적립까지 2% 덩어리로)                      → 114,129,607
+        let custom = BalanceBucket(profile: .investment, amount: Money(100_000_000, currency: .krw),
+                                   annualReturn: Ratio(basisPoints: 200), followsPlanRate: false)
+        let planRate = BalanceBucket(profile: .investment, amount: .zero(.krw),
+                                     annualReturn: Ratio(basisPoints: 800))
+        let both = input(years: 1, buckets: [custom, planRate], monthly: 1_000_000)
+        #expect(both.inflowIndex == 1)
+        #expect(Projection.run(both, calendar: calendar).last?.nominal
+                == Money(114_513_887, currency: .krw))
+
+        // 손잡이·시나리오가 수익률을 갈아 끼워도 따로 적은 덩어리는 그대로다.
+        // 그래서 손잡이를 계획 값(8%)에 두면 입력이 그대로다 — 계획대로 == 이 설정.
+        let same = both.settingInvestmentReturn(Ratio(basisPoints: 800))
+        #expect(same == both)
+        let rosy = both.settingInvestmentReturn(Ratio(basisPoints: 2_000))
+        #expect(rosy.buckets[0].annualReturn == Ratio(basisPoints: 200))
+        #expect(rosy.buckets[1].annualReturn == Ratio(basisPoints: 2_000))
+    }
+
     @Test("인출은 투자자산부터 꺼내고, 마르면 다음 덩어리로 넘어간다")
     func drawdownStartsWithInvestment() {
         let start = date("2026-01-01")

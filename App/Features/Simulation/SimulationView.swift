@@ -527,16 +527,12 @@ struct SimulationView: View {
     /// "5년 더 벌고 5년 덜 쓴다"가 되어 손잡이가 두 가지 일을 하게 된다.
     static func adjust(_ input: ProjectionInput, with knobs: Knobs,
                        calendar: Calendar = .current) -> ProjectionInput {
-        var adjusted = input
+        // **수익률 손잡이는 계획 수익률을 따르는 투자자산에만 걸린다.** 네
+        // 시나리오와 같은 한 길(`settingInvestmentReturn`)을 쓴다 — 예전에는
+        // 여기서 따로 모든 투자 덩어리를 덮어써서, 계좌에 따로 적은 수익률이
+        // 있는 집에서 `계획대로` 와 `이 설정` 이 같은 8% 인데도 달랐다 (63번).
+        var adjusted = input.settingInvestmentReturn(Ratio(basisPoints: knobs.returnBP))
         adjusted.monthlyContribution = Money(minorUnits: knobs.monthlyMinor, currency: .krw)
-        adjusted.annualReturn = Ratio(basisPoints: knobs.returnBP)
-        // **수익률 손잡이는 투자자산에만 걸린다.** 덩어리마다 자기 수익률을
-        // 들고 다니므로 여기서 같이 갈아 끼우지 않으면 손잡이를 돌려도
-        // 궤적이 안 움직인다. 전월세보증금까지 함께 올리면 안 되므로
-        // 투자자산 덩어리만 바꾼다 (docs/08-feedback.md 11번).
-        for index in adjusted.buckets.indices where adjusted.buckets[index].profile == .investment {
-            adjusted.buckets[index].annualReturn = adjusted.annualReturn
-        }
         adjusted.retirementDate = Plan.endDate(retirementYear: knobs.retirementYear,
                                                notBefore: input.startDate, calendar: calendar)
 

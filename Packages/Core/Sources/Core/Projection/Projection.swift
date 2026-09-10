@@ -63,11 +63,18 @@ public struct BalanceBucket: Sendable, Hashable {
     public var profile: ReturnProfile
     public var amount: Money
     public var annualReturn: Ratio
+    /// **계획의 수익률을 따르는 덩어리인가.** 계좌에 "이 계좌만 따로 정하기" 로
+    /// 수익률을 적으면 `false` 다 — 그 덩어리는 시뮬레이션 손잡이와 네 시나리오가
+    /// 수익률을 갈아 끼울 때 **건드리지 않고**, 적립도 그리로 가지 않는다
+    /// (docs/08-feedback.md 63번).
+    public var followsPlanRate: Bool
 
-    public init(profile: ReturnProfile, amount: Money, annualReturn: Ratio) {
+    public init(profile: ReturnProfile, amount: Money, annualReturn: Ratio,
+                followsPlanRate: Bool = true) {
         self.profile = profile
         self.amount = amount
         self.annualReturn = annualReturn
+        self.followsPlanRate = followsPlanRate
     }
 }
 
@@ -112,15 +119,28 @@ public struct ProjectionInput: Sendable, Hashable {
     /// 이걸 모르고 `annualReturn` 만 바꾼 코드가 실제로 있었고, 시뮬레이션의
     /// 세 시나리오가 **전부 같은 금액**으로 나왔다 (docs/08-feedback.md 34번).
     ///
-    /// 바꾸는 것은 **투자자산 덩어리뿐**이다. 전월세보증금·받을 돈은 자라지
-    /// 않는 돈이고, 예적금·부동산은 자기 속도가 따로 있다 (11번).
+    /// 바꾸는 것은 **계획 수익률을 따르는 투자자산 덩어리뿐**이다. 전월세보증금·
+    /// 받을 돈은 자라지 않는 돈이고, 예적금·부동산은 자기 속도가 따로 있다 (11번).
+    /// 계좌에 따로 적은 수익률(`followsPlanRate == false`)도 그대로 둔다 — 그래야
+    /// 손잡이를 계획 값에 두면 `계획대로` 와 `이 설정` 이 같은 금액이 된다 (63번).
     public func settingInvestmentReturn(_ rate: Ratio) -> ProjectionInput {
         var copy = self
         copy.annualReturn = rate
-        for index in copy.buckets.indices where copy.buckets[index].profile == .investment {
+        for index in copy.buckets.indices
+        where copy.buckets[index].profile == .investment && copy.buckets[index].followsPlanRate {
             copy.buckets[index].annualReturn = rate
         }
         return copy
+    }
+
+    /// **적립과 목돈이 들어가는 덩어리.** 계획 수익률을 따르는 투자자산이 먼저다.
+    /// 예전에는 "첫 투자자산" 이었는데, 덩어리가 수익률 오름차순이라 계좌에
+    /// 따로 적은 **낮은** 수익률의 덩어리가 앞에 오면 적립 전액이 그 속도로
+    /// 굴렀다 — `계획대로 22억 · 이 설정 34억` 이 그렇게 났다 (63번).
+    public var inflowIndex: Int {
+        buckets.firstIndex { $0.profile == .investment && $0.followsPlanRate }
+            ?? buckets.firstIndex { $0.profile == .investment }
+            ?? 0
     }
 
     /// 덩어리를 나누지 않는 경우. **전액을 투자자산으로 본다** — 예전 동작 그대로다.
@@ -313,7 +333,7 @@ public enum Projection {
         let order = input.buckets.indices.sorted {
             input.buckets[$0].profile.drawdownOrder < input.buckets[$1].profile.drawdownOrder
         }
-        let inflowIndex = input.buckets.firstIndex { $0.profile == .investment } ?? 0
+        let inflowIndex = input.inflowIndex
         let inflation = monthlyFactor(annual: input.inflation)
         let contributionStep = Decimal(1) + input.annualContributionGrowth.fraction
 

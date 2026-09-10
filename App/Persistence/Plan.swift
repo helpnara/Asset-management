@@ -271,7 +271,10 @@ extension Plan {
     /// 수익률이 같은 계좌끼리 한 덩어리로 묶는다. 계좌마다 금리를 따로 적으면
     /// 그만큼 덩어리가 늘어나는데, 예금 몇 개 수준이라 문제되지 않는다.
     func buckets(of members: [Member], total: Money) -> [BalanceBucket] {
-        struct Key: Hashable { let profile: ReturnProfile; let bp: Int }
+        // `custom` — 계좌에 "이 계좌만 따로 정하기" 로 적은 수익률인가. 따로 적은
+        // 덩어리는 계획의 수익률을 따르지 않으므로(`followsPlanRate == false`)
+        // 시뮬레이션 손잡이가 건드리지 않고 적립도 그리로 안 간다 (63번).
+        struct Key: Hashable { let profile: ReturnProfile; let bp: Int; let custom: Bool }
         var sums: [Key: Int] = [:]
 
         for member in members {
@@ -280,7 +283,8 @@ extension Plan {
                 guard value != 0 else { continue }
                 let profile = account.kind.returnProfile
                 let key = Key(profile: profile,
-                              bp: account.expectedReturnBP ?? defaultReturnBP(for: profile))
+                              bp: account.expectedReturnBP ?? defaultReturnBP(for: profile),
+                              custom: account.expectedReturnBP != nil)
                 // 부채는 음수로 담는다. 그래야 덩어리의 합이 순자산과 맞는다.
                 sums[key, default: 0] += account.kind.isLiability ? -value : value
             }
@@ -289,25 +293,28 @@ extension Plan {
         var buckets = sums
             .map { BalanceBucket(profile: $0.key.profile,
                                  amount: Money(minorUnits: $0.value, currency: .krw),
-                                 annualReturn: Ratio(basisPoints: $0.key.bp)) }
+                                 annualReturn: Ratio(basisPoints: $0.key.bp),
+                                 followsPlanRate: !$0.key.custom) }
             .sorted {
                 ($0.profile.drawdownOrder, $0.annualReturn.basisPoints)
                     < ($1.profile.drawdownOrder, $1.annualReturn.basisPoints)
             }
 
-        // 적립과 목돈이 들어갈 자리가 반드시 있어야 한다. 투자자산이 하나도
-        // 없으면(전월세보증금만 있는 초기 상태 등) 빈 덩어리를 만들어 둔다.
-        if !buckets.contains(where: { $0.profile == .investment }) {
+        // 적립과 목돈이 들어갈 자리 — **계획 수익률을 따르는 투자자산** — 가
+        // 반드시 있어야 한다. 없으면(전월세보증금만 있는 초기 상태, 또는 투자
+        // 계좌마다 수익률을 따로 적은 집) 빈 덩어리를 만들어 둔다.
+        if !buckets.contains(where: { $0.profile == .investment && $0.followsPlanRate }) {
             buckets.insert(BalanceBucket(profile: .investment, amount: .zero(.krw),
                                          annualReturn: annualReturn), at: 0)
         }
 
         // 덩어리의 합이 화면의 순자산과 어긋나면 **화면이 거짓말을 한다.**
         // 소유자가 없는 계좌처럼 합계에 안 잡히는 경우가 있으므로 차액을
-        // 투자자산에 맞춰 넣는다.
+        // 계획 수익률 투자자산에 맞춰 넣는다.
         let sum = buckets.dropFirst().reduce(buckets[0].amount) { $0 + $1.amount }
         let gap = total - sum
-        if !gap.isZero, let index = buckets.firstIndex(where: { $0.profile == .investment }) {
+        if !gap.isZero,
+           let index = buckets.firstIndex(where: { $0.profile == .investment && $0.followsPlanRate }) {
             buckets[index].amount += gap
         }
         return buckets
