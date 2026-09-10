@@ -401,7 +401,7 @@ final class FamilySharing {
     ///
     /// 실제 이름은 `CKContainer.fetchUserRecordID` 가 준다. 한 번 받으면
     /// `UserDefaults` 에 둔다 — 컨테이너 안에서 바뀌지 않는 값이다.
-    static let userRecordKey = "family.userRecordName"
+    nonisolated static let userRecordKey = "family.userRecordName"
 
     nonisolated static func realUserRecordName(_ raw: String?) -> String? {
         if let raw, !raw.isEmpty, raw != CKCurrentUserDefaultName { return raw }
