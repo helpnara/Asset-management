@@ -44,6 +44,17 @@ public extension AccountKind {
 }
 
 public extension AssetClass {
+    /// **나눠 담을 것이 없는 자산군** (docs/08-feedback.md 64번). 현금·예적금·
+    /// 전월세보증금·받을 돈·보험은 "무엇에 굴리나" 의 물음이 없어 목표 비중을
+    /// 세우지 않는다. 계좌의 종목이 전부 이것(또는 상품 종류가 현금성)이면
+    /// 그 계좌는 비중을 재지 않는다.
+    var isCashLike: Bool {
+        switch self {
+        case .cash, .deposit, .leaseDeposit, .receivable, .insurance: return true
+        default: return false
+        }
+    }
+
 
     /// 이 자산군의 상품 종류. 앞이 기본값.
     var allowedInstrumentTypes: [InstrumentType] {

@@ -306,30 +306,34 @@ struct AssetsView: View {
                 move(offsets, to: destination, in: account)
             } : nil)
 
-            HStack(spacing: 14) {
-                if mayEdit(account.owner) {
-                    Button {
-                        addHolding(to: account)
-                    } label: {
-                        Label("종목 추가", systemImage: "plus")
-                            .font(.system(size: 12))
+            // 버튼이 하나도 없으면 줄 자체를 안 만든다 — 빈 HStack 도 목록의
+            // 한 줄이라 종목 아래에 빈 칸이 남는다 (65번, 보기 전용·현금성 계좌).
+            if mayEdit(account.owner) || account.canSetTargets {
+                HStack(spacing: 14) {
+                    if mayEdit(account.owner) {
+                        Button {
+                            addHolding(to: account)
+                        } label: {
+                            Label("종목 추가", systemImage: "plus")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.dad)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.dad)
-                }
 
-                if account.canSetTargets {
-                    Button {
-                        targetingAccount = account
-                    } label: {
-                        Label("목표 비중", systemImage: "chart.pie")
-                            .font(.system(size: 12))
+                    if account.canSetTargets {
+                        Button {
+                            targetingAccount = account
+                        } label: {
+                            Label("목표 비중", systemImage: "chart.pie")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.dad)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.dad)
                 }
+                .padding(.leading, 12)
             }
-            .padding(.leading, 12)
         }
     }
 

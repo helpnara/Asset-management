@@ -96,7 +96,7 @@ extension Account {
         guard kind != .receivable, !kind.isLiability, kind.returnProfile != .fixed else { return false }
         let weighted = weightedHoldings
         guard !weighted.isEmpty else { return true }
-        return !weighted.allSatisfy { $0.assetClass == .cash }
+        return !weighted.allSatisfy { $0.assetClass.isCashLike || $0.instrumentType == .cash }
     }
 
     /// 목표 비중 화면을 열 수 있나. 종목이 하나면 100% 라 세울 것이 없다 (64번).
