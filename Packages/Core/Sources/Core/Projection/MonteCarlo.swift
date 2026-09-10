@@ -150,9 +150,12 @@ public enum MonteCarlo {
         var atRetirement: [Double] = []
         atRetirement.reserveCapacity(input.paths)
 
-        var generator = SeededGenerator(seed: input.seed)
-
-        for _ in 0..<input.paths {
+        for path in 0..<input.paths {
+            // **경로마다 시드를 따로 준다.** 생성기 하나를 이어 쓰면 경로 하나가
+            // 몇 달을 굴렸는지에 따라 다음 경로의 난수가 밀린다 — 인출 구간을
+            // 붙이기만 해도 은퇴 시점 확률이 달라졌다 (68번). 경로 번호를 황금비
+            // 상수로 섞어 시드에 더하면 경로 길이와 무관하게 같은 난수를 뽑는다.
+            var generator = SeededGenerator(seed: input.seed &+ UInt64(path) &* 0x9E37_79B9_7F4A_7C15)
             var balances = startBalances
             var contribution = baseContribution
             var sampleIndex = 0
@@ -181,6 +184,9 @@ public enum MonteCarlo {
                 for index in balances.indices {
                     let logReturn = drifts[index] + (index == volatileIndex ? monthlySigma * shock : 0)
                     balances[index] *= exp(logReturn)
+                    // 음수 목돈(큰 지출)이 잔고보다 크면 마이너스가 된다. 빚으로
+                    // 굴러가지는 않는다 — 예상선도 같은 규칙이다.
+                    if balances[index] < 0 { balances[index] = 0 }
                 }
                 if month % 12 == 0 { contribution *= contributionStep }
 

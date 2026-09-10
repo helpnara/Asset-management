@@ -157,7 +157,7 @@ struct MonteCarloTests {
         )
         withDrawdown.postRetirementReturn = Ratio(basisPoints: 500)
 
-        // 같은 시드는 은퇴 달까지 같은 난수를 뽑으므로 확률이 정확히 같다.
+        // 경로마다 시드가 따로라 은퇴 달까지 같은 난수를 뽑는다 — 확률이 정확히 같다.
         let a = try #require(run(accumulateOnly, volatilityBP: 1_500).successProbability)
         let b = try #require(run(withDrawdown, volatilityBP: 1_500).successProbability)
         #expect(a == b)
