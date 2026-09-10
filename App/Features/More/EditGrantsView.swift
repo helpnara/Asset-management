@@ -40,7 +40,7 @@ struct EditGrantsView: View {
                 } footer: {
                     // ID 꼬리는 참가자 기기의 "내 참가자 ID" 와 견주는 용도다.
                     Text((person.accepted
-                          ? (person.canWrite ? "변경 가능 · 체크한 구성원의 계좌·종목을 고칩니다."
+                          ? (person.canWrite ? "변경 가능 · 체크한 구성원의 계좌·종목을 고칩니다. 체크를 끄기 전에 상대 기기의 동기화(더보기 → 동기화 → 마지막 내보내기: 성공)가 끝났는지 보세요 — 밀린 기록은 권한이 없어지면 못 올라옵니다."
                                              : "보기 전용 · 구성원을 체크하면 변경 가능으로 바뀝니다.")
                           : "아직 초대를 받아들이지 않았습니다.")
                          + " · ID \(FamilyShareSection.tail(person.id))")
