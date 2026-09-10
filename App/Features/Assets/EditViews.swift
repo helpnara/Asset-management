@@ -62,6 +62,15 @@ struct MemberEditView: View {
                 }
 
                 Section {
+                    MoneyField(title: "월급 (세후)", minorUnits: $member.monthlySalaryMinor)
+                    MoneyField(title: "기타 수입", minorUnits: $member.otherIncomeMinor)
+                } header: {
+                    Text("월 소득")
+                } footer: {
+                    Text("가족 전체의 합계가 **소득 대비 투자 비중** 진단에 쓰입니다 (권장 10% 이상). 한 사람이라도 적으면 진단 기준의 '세후 월 소득' 한 칸 대신 이 합계를 씁니다. 다른 화면에는 나오지 않습니다.")
+                }
+
+                Section {
                     TextField("이 사람에게만 해당하는 메모", text: $member.note, axis: .vertical)
                         .lineLimit(1...4)
                 } header: {
@@ -155,6 +164,19 @@ struct AccountEditView: View {
                         Text("연간 한도")
                     } footer: {
                         Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. **이 앱은 세법을 따라가지 않습니다** — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 납입액을 0으로 되돌립니다.")
+                    }
+                }
+
+                // **세 든 집** — 전월세보증금 계좌에만. 월세 적정성 진단의 입력이다
+                // (docs/05-roadmap.md 마지막 묶음 2).
+                if account.kind == .leaseDeposit {
+                    Section {
+                        MoneyField(title: "집 매매가", minorUnits: $account.purchasePriceMinor)
+                        MoneyField(title: "월세 (전세면 0)", minorUnits: $account.monthlyRentMinor)
+                    } header: {
+                        Text("세 든 집")
+                    } footer: {
+                        Text("연 월세가 매매가의 **5% 이내면 적정**으로 봅니다. 자산 진단의 '월세 적정성' 이 이 두 값으로 판단합니다. 매매가는 비슷한 집의 최근 실거래가를 적으면 됩니다.")
                     }
                 }
 

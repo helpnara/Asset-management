@@ -46,6 +46,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
     case doublingTime        // 5) 72의 법칙
     case savingsRate         // 6) 선저축 비율
     case targetWeights       // 7) 목표 비중 유지
+    case rentRatio           // 8) 월세 적정성 — 세 든 집의 연 월세 ÷ 매매가
 
     public var id: String { rawValue }
 
@@ -58,6 +59,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
         case .doublingTime: return "자산이 두 배 되는 시점"
         case .savingsRate: return "선저축 비율"
         case .targetWeights: return "목표 비중"
+        case .rentRatio: return "월세 적정성"
         }
     }
 
@@ -78,6 +80,8 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
             return "쓰고 남은 돈을 모으면 남지 않습니다. 노후 준비는 수익률보다 저축률이 먼저 결정합니다."
         case .targetWeights:
             return "주식·ETF 투자는 **비중을 유지하면서 규모를 키우는 것**입니다. 오르내리다 보면 저절로 한쪽으로 기울고, 그걸 놓치면 어느새 다른 포트폴리오가 됩니다."
+        case .rentRatio:
+            return "세 든 집의 연 월세가 매매가의 5%를 넘으면 그 돈으로 집을 사는 쪽이 낫습니다. 5% 안이면 세 들어 살며 차액을 굴리는 것이 손해가 아닙니다."
         }
     }
 }
@@ -167,6 +171,14 @@ public struct DiagnosticsInput: Sendable {
     // MARK: 계좌
     public var limitAccounts: [LimitAccountInput]
 
+    // MARK: 세 든 집 (docs/05-roadmap.md 마지막 묶음 2)
+    /// 세 든 집의 매매가. 0이면 월세 적정성을 판단하지 않는다.
+    public var homePrice: Money
+    /// 그 집의 **연** 월세 (월세 × 12). 전세면 0.
+    public var annualRent: Money
+    /// 적정 상한. 기본 5% = 500bp.
+    public var rentCap: Ratio
+
     /// 켜 둔 규칙 (docs/08-feedback.md 47번). 비어 있으면 **전부** 본다.
     ///
     /// 규칙은 사용자의 것이어야 한다. 쓰지 않는 규칙이 늘 `조치` 로 떠 있으면
@@ -202,8 +214,14 @@ public struct DiagnosticsInput: Sendable {
         currentYear: Int,
         limitAccounts: [LimitAccountInput] = [],
         enabledKinds: Set<DiagnosisKind> = Set(DiagnosisKind.allCases),
-        contributionOrder: [AccountKind] = Diagnostics.defaultContributionOrder
+        contributionOrder: [AccountKind] = Diagnostics.defaultContributionOrder,
+        homePrice: Money = .zero(.krw),
+        annualRent: Money = .zero(.krw),
+        rentCap: Ratio = Diagnostics.defaultRentCap
     ) {
+        self.homePrice = homePrice
+        self.annualRent = annualRent
+        self.rentCap = rentCap
         self.netWorth = netWorth
         self.investable = investable
         self.illiquid = illiquid
@@ -267,7 +285,8 @@ public enum Diagnostics {
             .taxAdvantagedOrder: taxAdvantagedOrder,
             .doublingTime: doublingTime,
             .savingsRate: savingsRate,
-            .targetWeights: targetWeights
+            .targetWeights: targetWeights,
+            .rentRatio: rentRatio
         ]
         // 순서는 `allCases` 가 정한다 — 켠 것만 걸러도 늘 같은 차례로 선다.
         let diagnoses = DiagnosisKind.allCases
@@ -275,6 +294,9 @@ public enum Diagnostics {
             .compactMap { kind in all[kind].map { $0(input) } }
         return DiagnosticsResult(diagnoses: diagnoses)
     }
+
+    /// 월세 적정성의 기본 상한. 연 월세가 매매가의 5% 이내면 적정.
+    public static let defaultRentCap = Ratio(basisPoints: 500)
 
     /// 은퇴 시점에 필요한 자산. 연 생활비 ÷ 인출률.
     /// 4%면 25배, 3.5%면 약 28.6배가 된다 — 25를 상수로 박지 않는 이유다.
@@ -574,7 +596,9 @@ public enum Diagnostics {
         return Diagnosis(
             kind: .savingsRate,
             status: status,
-            headline: "월 소득의 \(percent(rate)) 저축 (기준 \(floorText)% 이상)",
+            headline: "월 소득 \(KoreanAmountFormatter.abbreviated(input.monthlyIncome, suffix: "원")) 중 "
+                + "\(KoreanAmountFormatter.abbreviated(input.monthlyContribution, suffix: "원")) 투자 · "
+                + "\(percent(rate)) (기준 \(floorText)% 이상)",
             action: action,
             progress: floor > 0 ? min(rate / floor, 1.5) : nil
         )
@@ -588,6 +612,51 @@ public enum Diagnostics {
     }
 
     // MARK: - 보조
+
+    // MARK: - 8) 월세 적정성
+
+    /// 연 월세 ÷ 매매가. 상한 안이면 통과, 상한의 1.2배 안이면 주의, 넘으면 조치.
+    /// 전세(월세 0)는 판단할 것이 없으니 통과로 본다 — "월세를 안 내는 집" 이
+    /// 규칙이 말하는 가장 좋은 상태다.
+    private static func rentRatio(_ input: DiagnosticsInput) -> Diagnosis {
+        guard input.homePrice.minorUnits > 0 else {
+            return Diagnosis(kind: .rentRatio, status: .unknown,
+                             headline: "세 든 집의 매매가를 넣어야 계산할 수 있습니다",
+                             action: "자산 탭 → 전월세보증금 계좌 → 세 든 집에 매매가와 월세를 넣으세요. 전세면 월세는 0입니다.",
+                             progress: nil)
+        }
+        let capText = PercentFormatter.integer(input.rentCap.fraction)
+        guard input.annualRent.minorUnits > 0 else {
+            return Diagnosis(kind: .rentRatio, status: .pass,
+                             headline: "월세 없음 (전세) · 기준 \(capText)% 이내",
+                             action: "월세를 안 내는 집입니다. 보증금이 자라지 않는 돈이라는 점만 궤적이 이미 반영합니다.",
+                             progress: 0)
+        }
+
+        let rate = ratio(input.annualRent, of: input.homePrice)
+        let cap = decimalToDouble(input.rentCap.fraction)
+        let rateText = PercentFormatter.oneDecimal(Decimals.fromDouble(rate))
+
+        let status: DiagnosisStatus
+        let action: String
+        if rate <= cap {
+            status = .pass
+            action = "매매가 대비 월세가 기준 안입니다. 세 들어 살며 차액을 굴리는 것이 손해가 아닙니다."
+        } else if rate <= cap * 1.2 {
+            status = .watch
+            action = "기준을 조금 넘습니다. 재계약 때 월세를 낮추거나 보증금을 올려 월세를 줄이는 쪽을 봅니다."
+        } else {
+            status = .act
+            action = "기준을 크게 넘습니다. 이 월세면 같은 집을 사는 쪽이 유리할 수 있습니다 — 매수를 계산해 보거나 더 싼 집을 봅니다."
+        }
+        return Diagnosis(
+            kind: .rentRatio,
+            status: status,
+            headline: "연 월세가 매매가의 \(rateText)% (기준 \(capText)% 이내)",
+            action: action,
+            progress: cap > 0 ? min(rate / cap, 1.5) : nil
+        )
+    }
 
     private static func ratio(_ value: Money, of base: Money) -> Double {
         guard base.minorUnits != 0 else { return 0 }

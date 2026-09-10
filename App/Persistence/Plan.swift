@@ -354,6 +354,18 @@ extension Plan {
         let illiquid = rollup.assets - rollup.investable
         let year = calendar.component(.year, from: .now)
 
+        // **소득은 구성원 합이 먼저다** (docs/05-roadmap.md 마지막 묶음 3).
+        // 사람마다 월급·기타 수입을 적었으면 그 합이 가족 월 소득이고, 아무도 안
+        // 적었으면 예전처럼 계획의 한 칸을 쓴다.
+        let memberIncome = members.reduce(0) { $0 + $1.monthlySalaryMinor + $1.otherIncomeMinor }
+        let familyIncome = Money(minorUnits: memberIncome > 0 ? memberIncome : monthlyIncomeMinor,
+                                 currency: .krw)
+
+        // **세 든 집** — 전월세보증금 계좌의 매매가·월세. 둘 이상이면 합으로 본다.
+        let homes = accounts.filter { $0.kind == .leaseDeposit && !$0.isArchived }
+        let homePrice = Money(minorUnits: homes.reduce(0) { $0 + $1.purchasePriceMinor }, currency: .krw)
+        let annualRent = Money(minorUnits: homes.reduce(0) { $0 + $1.monthlyRentMinor } * 12, currency: .krw)
+
         return DiagnosticsInput(
             netWorth: rollup.netWorth,
             investable: rollup.investable,
@@ -361,7 +373,7 @@ extension Plan {
             byCountry: rollup.byCountry,
             monthlySpending: monthlySpending,
             withdrawalRate: withdrawalRate,
-            monthlyIncome: monthlyIncome,
+            monthlyIncome: familyIncome,
             driftingHoldings: members.reduce(0) { $0 + $1.driftingHoldingCount(tolerance: driftTolerance) },
             untargetedHoldings: members.reduce(0) { $0 + $1.untargetedHoldingCount },
             totalHoldings: members.reduce(0) { $0 + $1.investableHoldingCount },
@@ -388,7 +400,9 @@ extension Plan {
             // 켜 둔 규칙과 채우는 순서는 계획에 저장된 사용자의 것이다 (47번).
             // **선언 순서와 같아야 한다** — 스위프트는 인자 순서를 지킨다.
             enabledKinds: enabledDiagnoses,
-            contributionOrder: contributionOrder
+            contributionOrder: contributionOrder,
+            homePrice: homePrice,
+            annualRent: annualRent
         )
     }
 

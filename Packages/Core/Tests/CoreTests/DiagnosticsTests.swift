@@ -30,7 +30,9 @@ struct DiagnosticsTests {
         accounts: [LimitAccountInput] = [],
         drifting: Int = 0,
         untargeted: Int = 0,
-        totalHoldings: Int = 0
+        totalHoldings: Int = 0,
+        homePrice: Int = 0,
+        annualRent: Int = 0
     ) -> DiagnosticsInput {
         DiagnosticsInput(
             netWorth: won(netWorth),
@@ -53,8 +55,38 @@ struct DiagnosticsTests {
             projectedAtRetirement: projected.map(won),
             doublingYear: doublingYear,
             currentYear: 2026,
-            limitAccounts: accounts
+            limitAccounts: accounts,
+            homePrice: won(homePrice),
+            annualRent: won(annualRent)
         )
+    }
+
+    // MARK: - 8) 월세 적정성
+
+    @Test("연 월세 ÷ 매매가 — 5% 안이면 통과, 6% 까지 주의, 그 위는 조치")
+    func rentRatioBoundaries() {
+        // 매매가 10억. 월 400만 = 연 4,800만 = 4.8% → 통과.
+        // 월 500만 = 연 6,000만 = 6.0% → 상한의 1.2배 경계, 주의.
+        // 월 600만 = 연 7,200만 = 7.2% → 조치. (파이썬으로 나눗셈 대조)
+        #expect(Diagnostics.run(input(homePrice: 1_000_000_000, annualRent: 48_000_000))
+            .diagnosis(.rentRatio)?.status == .pass)
+        #expect(Diagnostics.run(input(homePrice: 1_000_000_000, annualRent: 60_000_000))
+            .diagnosis(.rentRatio)?.status == .watch)
+        #expect(Diagnostics.run(input(homePrice: 1_000_000_000, annualRent: 72_000_000))
+            .diagnosis(.rentRatio)?.status == .act)
+    }
+
+    @Test("매매가가 없으면 모름, 전세(월세 0)면 통과")
+    func rentRatioEdges() {
+        #expect(Diagnostics.run(input()).diagnosis(.rentRatio)?.status == .unknown)
+        #expect(Diagnostics.run(input(homePrice: 1_000_000_000)).diagnosis(.rentRatio)?.status == .pass)
+    }
+
+    @Test("월세 적정성 한 줄에 비율이 소수 첫째 자리까지 적힌다")
+    func rentRatioHeadline() {
+        let headline = Diagnostics.run(input(homePrice: 1_000_000_000, annualRent: 48_000_000))
+            .diagnosis(.rentRatio)?.headline ?? ""
+        #expect(headline.contains("4.8%"))
     }
 
     // MARK: - 1) 4% 규칙
