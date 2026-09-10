@@ -46,6 +46,11 @@ struct FamilyShareSection: View {
                     LabeledContent("받은 구성원", value: granted.isEmpty ? "없음" : granted.joined(separator: ", "))
                     LabeledContent("내 참가자 ID", value: Self.tail(sharing.state.participantID))
                         .font(.figure(12))
+                    if sharing.state.strays > 0 {
+                        Text("개인 저장소에 남은 가족 기록이 \(sharing.state.strays)건 있습니다. 이 기록은 상대 기기에 안 갑니다 — 지우고 다시 만드세요 (빌드 58 부터는 새 기록이 공유 저장소로 갑니다).")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.loss)
+                    }
                 }
             }
 

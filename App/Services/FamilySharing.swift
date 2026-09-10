@@ -51,6 +51,10 @@ struct FamilyShareState: Sendable {
     /// 소유자 기기가 보는 참가자들 (소유자 본인 제외). 편집 권한 화면의 재료.
     var people: [SharePerson] = []
 
+    /// **참가자 기기의 개인 저장소에 남은 가족 기록** (docs/09 ④). 0 이어야 한다.
+    /// 있으면 그 기록은 상대 기기에 안 간다 — 지우고 다시 만들어야 한다.
+    var strays = 0
+
     var isParticipant: Bool { role != .owner }
 
     /// 사람이 읽을 한 줄.
@@ -177,6 +181,22 @@ final class FamilySharing {
         else { return 0 }
         _ = share
         return unshared(in: context, container: container).count
+    }
+
+    /// 참가자 기기의 **개인 저장소**에 있는 가족 기록 수. 가구 자체는 세지
+    /// 않는다 (빈 껍데기는 따로 치운다). 0 이 정상이다 (docs/09 ④).
+    nonisolated static func strays(in context: NSManagedObjectContext,
+                                   container: NSPersistentCloudKitContainer,
+                                   sharedStoreURL: URL) -> Int {
+        guard let privateStore = container.persistentStoreCoordinator.persistentStores
+                .first(where: { $0.url != sharedStoreURL }) else { return 0 }
+        var count = 0
+        for entity in householdEntities(of: container) {
+            let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+            request.affectedStores = [privateStore]
+            count += (try? context.count(for: request)) ?? 0
+        }
+        return count
     }
 
     /// 모델에서 `household` 관계를 가진 엔티티 이름.
@@ -363,6 +383,7 @@ final class FamilySharing {
                                                                      sharedStoreURL: sharedStoreURL)
                     if pruned > 0 { try? context.save() }
                     next.pruneBlockers = Household.pruneBlockers(in: context, sharedStoreURL: sharedStoreURL)
+                    next.strays = Self.strays(in: context, container: container, sharedStoreURL: sharedStoreURL)
                 } else {
                     // 소유자 기기: 가구가 생기기 전에 만든 기록을 뿌리에 매단다.
                     // 매달리지 않은 기록은 공유에 안 실린다 (아래 adoptOrphans).

@@ -121,16 +121,25 @@ extension Household {
         // `household` 관계가 없는 엔티티(목실감 일기)는 **일부러** 안 매단다 —
         // 개인 저장소에만 남아 공유 존으로 안 가게. `value(forKey:)` 로 없는 키를
         // 읽으면 죽으므로 관계 유무를 먼저 본다.
-        let orphans = context.insertedObjects.filter { object in
-            guard !(object is Household),
-                  object.entity.relationshipsByName["household"] != nil else { return false }
-            return object.value(forKey: "household") == nil
+        let familyObjects = context.insertedObjects.filter { object in
+            !(object is Household) && object.entity.relationshipsByName["household"] != nil
         }
-        guard !orphans.isEmpty else { return }
+        guard !familyObjects.isEmpty else { return }
 
         let household = current(in: context)
-        for object in orphans {
+        for object in familyObjects where object.value(forKey: "household") == nil {
             object.setValue(household, forKey: "household")
+        }
+
+        // **가구가 사는 저장소에 넣는다** (docs/09-family-sharing.md ④). 참가자
+        // 기기에는 저장소가 둘(개인·공유)인데, 배정하지 않으면 Core Data 가
+        // 첫 번째(개인)에 넣는다. 그러면 관계는 공유 저장소의 가구를 가리키는데
+        // 기록은 개인 iCloud 로 올라가 "동기화 성공" 인 채 상대에게 영영 안 간다 —
+        // 아내분이 만든 계좌가 그렇게 아빠 폰에 안 왔다.
+        if let store = household.objectID.persistentStore {
+            for object in familyObjects where object.objectID.isTemporaryID {
+                context.assign(object, to: store)
+            }
         }
     }
 }
