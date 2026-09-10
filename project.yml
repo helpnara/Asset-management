@@ -37,6 +37,14 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # iPad 는 네 방향 전부 (로드맵 M7 1단계, docs/08-feedback.md 70번).
+        # 다 지원해야 iPad 멀티태스킹(화면 나누기)에 들어갈 수 있고, 아니면
+        # UIRequiresFullScreen 을 켜야 App Store 검증을 통과한다.
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         # CloudKit 이 변경을 알리는 무음 푸시를 받으려면 필요하다.
         UIBackgroundModes:
           - remote-notification
@@ -66,8 +74,10 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
-        # 1 = iPhone. iPad 확장 시 "1,2" 로 바꾼다 (로드맵 M7).
-        TARGETED_DEVICE_FAMILY: "1"
+        # 1 = iPhone, 2 = iPad. 2026-09-10 부터 둘 다 (로드맵 M7 1단계) —
+        # 같은 빌드가 iPad 에 정식 설치되고, CI 가 iPad 스크린샷도 찍는다.
+        # iPad 전용 배치(두 열·분할)는 안정화 뒤 M7 본 단계에서.
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
       configs:
