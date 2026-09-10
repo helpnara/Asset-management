@@ -43,7 +43,7 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
         // 일기 알림을 누르면 현황판 — 카드가 맨 위에 있다. 여기서 가르지 않으면
         // 기본 탭 동작이 주간 점검을 열어 버린다.
         if category == DiaryNotifications.Identifier.category {
-            AppRoute.shared.selectedTab = .dashboard
+            AppRoute.shared.selectedTab = RootView.Tab.dashboard
             return
         }
         switch action {

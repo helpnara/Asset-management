@@ -49,7 +49,7 @@ enum FamilyRole: String, CaseIterable, Sendable, Identifiable {
     static let selfMemberKey = "family.selfMemberID"
 
     static var selfMemberID: UUID? {
-        get { UserDefaults.standard.string(forKey: selfMemberKey).flatMap(UUID.init) }
+        get { UserDefaults.standard.string(forKey: selfMemberKey).flatMap { UUID(uuidString: $0) } }
         set { UserDefaults.standard.set(newValue?.uuidString, forKey: selfMemberKey) }
     }
 
