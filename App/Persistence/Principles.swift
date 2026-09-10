@@ -82,6 +82,8 @@ enum ChangeKind: String, Codable, Sendable, CaseIterable {
     case weeklyEntry    // 주간 점검 입력
     case structure      // 계좌 · 종목 추가와 삭제
     case planValue      // 계획 값 변경
+    /// 선을 넘긴 주 — 억 단위 · 두 배 · 목표 · 연속 기록 (88번).
+    case milestone
     case other
 
     var label: String {
@@ -89,6 +91,7 @@ enum ChangeKind: String, Codable, Sendable, CaseIterable {
         case .weeklyEntry: return "주간 점검"
         case .structure: return "구성 변경"
         case .planValue: return "계획 변경"
+        case .milestone: return "축하"
         case .other: return "기타"
         }
     }

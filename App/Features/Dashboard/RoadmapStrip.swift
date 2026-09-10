@@ -37,6 +37,10 @@ struct RoadmapStrip: View {
     }
 
     let stops: [Stop]
+    /// 정거장을 누르면 분해 시트를 여는 곳 (docs/08-feedback.md 85번, C3).
+    /// 없으면(1페이지 등) 예전처럼 한 줄만 펼친다. `지금` 과 오지 않는 칸은
+    /// 시트로 갈 것이 없어 한 줄로 남는다.
+    var onSelect: ((Stop) -> Void)? = nil
 
     @State private var selected: Stop.ID?
 
@@ -90,6 +94,10 @@ struct RoadmapStrip: View {
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture {
+                    if let onSelect, stop.year != nil, !stop.isNow, stop.state != .never {
+                        onSelect(stop)
+                        return
+                    }
                     withAnimation(.easeOut(duration: 0.15)) {
                         selected = selected == stop.id ? nil : stop.id
                     }

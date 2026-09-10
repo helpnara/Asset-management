@@ -146,6 +146,9 @@ struct RootView: View {
             // 일기 알림도 같은 이유로 여기서 다시 건다. "오늘 이미 적었나" 가
             // 트리거 모양을 정하므로 앞으로 올 때마다도 본다.
             await DiaryNotifications.refresh(todayWritten: DiaryNotifications.todayWritten(diary))
+
+            // 매달 1일 회고 알림 (86번).
+            await RetrospectiveNotifications.refresh()
         }
         .fullScreenCover(isPresented: Binding(
             // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.

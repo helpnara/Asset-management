@@ -26,6 +26,8 @@ struct ReviewCompleteView: View {
     @Fetched private var sessions: [ReviewSession]
     @Fetched private var snapshots: [Snapshot]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    /// 이 주의 축하 (88번).
+    @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     /// 화면의 모든 숫자를 이 스냅샷 하나에서 읽는다.
@@ -51,6 +53,7 @@ struct ReviewCompleteView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     headline
                     Rectangle().fill(Color.rule).frame(height: 1)
+                    celebrations
                     streakSection
                     memberSection
                     footer
@@ -122,6 +125,36 @@ struct ReviewCompleteView: View {
                                               cashEvents: cashEvents, incomes: incomes,
                                               members: driftMembers)
         return PlanTrack.gap(projection, actual: total, at: session.weekAnchor)
+    }
+
+    /// 이 점검 주에 넘긴 선들. 지난 점검을 열어 봐도 그 주의 것이 나온다.
+    @ViewBuilder
+    private var celebrations: some View {
+        let weekEnd = Calendar.current.date(byAdding: .day, value: 7, to: session.weekAnchor) ?? session.weekAnchor
+        let items = logs.filter { $0.kind == .milestone && $0.at >= session.weekAnchor && $0.at < weekEnd }
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(items) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("🎉")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.subject)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Color.ink)
+                            Text(item.summary)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.muted)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.gainSoft)
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+        }
     }
 
     private var streakSection: some View {

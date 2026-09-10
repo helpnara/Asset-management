@@ -713,7 +713,8 @@ enum FamilyShareSheet {
     }
 
     /// 지금 화면 맨 위. 시트 위에 시트를 띄우면 아무것도 안 보인다.
-    private static func topViewController() -> UIViewController? {
+    /// 회고의 공유 시트도 이걸 쓴다 (86번).
+    static func topViewController() -> UIViewController? {
         let scene = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive }

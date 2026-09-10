@@ -202,21 +202,7 @@ struct MemberTrajectoryView: View {
 
     /// 이 사람 몫만 굴린다. 수익률·물가 가정은 가구 공통이다.
     private var projection: ProjectionResult? {
-        guard let plan else { return nil }
-        let calendar = Calendar.current
-        let now = calendar.startOfDay(for: .now)
-        return Projection.run(
-            ProjectionInput(
-                startDate: now,
-                endDate: Plan.endDate(retirementYear: retirementYear, notBefore: now,
-                                      calendar: calendar),
-                buckets: plan.buckets(of: [member], total: currentBalance),
-                monthlyContribution: Money(minorUnits: effectiveMonthly, currency: .krw),
-                annualReturn: plan.annualReturn,
-                annualContributionGrowth: plan.contributionGrowth,
-                inflation: plan.inflation
-            ),
-            calendar: calendar
-        )
+        // 로드맵 분해 시트와 같은 계산이다 (85번).
+        plan?.memberProjection(member, balance: currentBalance, monthlyMinor: effectiveMonthly)
     }
 }

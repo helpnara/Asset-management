@@ -46,6 +46,12 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
             AppRoute.shared.selectedTab = RootView.Tab.dashboard
             return
         }
+        // 월간 회고 알림 → 더보기의 회고 화면 (86번).
+        if category == RetrospectiveNotifications.category {
+            AppRoute.shared.wantsRetrospective = true
+            AppRoute.shared.selectedTab = RootView.Tab.more
+            return
+        }
         switch action {
         case ReviewNotifications.Action.quickTotal:
             if let text { recordTotalOnly(text, container: container) }

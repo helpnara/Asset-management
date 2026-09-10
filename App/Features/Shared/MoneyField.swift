@@ -24,28 +24,18 @@ struct MoneyField: View {
     private static let maxDigits = 15
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text(title)
-                .foregroundStyle(Color.bodyText)
-            Spacer(minLength: 12)
-            TextField(placeholder, text: text)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
-                .font(.figure(17))
-                .foregroundStyle(Color.ink)
-                .focused($isFocused)
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        if isFocused {
-                            Spacer()
-                            Button("완료") { isFocused = false }
-                                .font(.system(size: 15, weight: .semibold))
-                        }
-                    }
-                }
-            Text("원")
-                .font(.system(size: 13))
-                .foregroundStyle(Color.muted)
+        VStack(alignment: .trailing, spacing: 3) {
+            field
+            // **읽는 값** (docs/08-feedback.md 80번, B1). 원 단위 열다섯 자리를
+            // 치다 0 하나 더 붙는 오타를 치는 순간 알아챈다. 입력 중에만 —
+            // 목록마다 한 줄씩 늘어나면 화면이 무거워진다. 입력 칸이므로
+            // 금액 가리기를 거치지 않는다 (`Won` 이 아니라 `KoreanAmountFormatter`).
+            if isFocused && minorUnits >= 10_000 {
+                Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: minorUnits, currency: .krw), suffix: "원"))
+                    .font(.figure(11, weight: .medium))
+                    .foregroundStyle(Color.dad)
+                    .transition(.opacity)
+            }
         }
         // 라벨 아무 데나 눌러도 입력이 시작되게 한다. 오른쪽 끝 숫자만 겨우
         // 겨냥하는 것보다 손이 편하다.
@@ -71,6 +61,32 @@ struct MoneyField: View {
             // 사람이 쓸 때는 이 길로 오지 않는다.
             try? await Task.sleep(for: .milliseconds(1200))
             isFocused = true
+        }
+    }
+
+    private var field: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .foregroundStyle(Color.bodyText)
+            Spacer(minLength: 12)
+            TextField(placeholder, text: text)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .font(.figure(17))
+                .foregroundStyle(Color.ink)
+                .focused($isFocused)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        if isFocused {
+                            Spacer()
+                            Button("완료") { isFocused = false }
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                    }
+                }
+            Text("원")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.muted)
         }
     }
 

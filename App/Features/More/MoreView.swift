@@ -32,6 +32,8 @@ struct MoreView: View {
         case onePagerSettings
         case onePagerPreview
         case changeLog
+        case dashboardCards
+        case retrospective
     }
 
     /// CI 가 스크롤 아래 구역을 찍을 수 있게 하는 갈고리.
@@ -65,6 +67,9 @@ struct MoreView: View {
                 }
 
                 Section("기록") {
+                    NavigationLink(value: Destination.retrospective) {
+                        Label("월간 · 연간 회고", systemImage: "calendar.badge.checkmark")
+                    }
                     NavigationLink(value: Destination.history) {
                         Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
                     }
@@ -82,6 +87,9 @@ struct MoreView: View {
                     }
                     NavigationLink(value: Destination.milestones) {
                         Label("내 마일스톤", systemImage: "flag")
+                    }
+                    NavigationLink(value: Destination.dashboardCards) {
+                        Label("현황판 카드 순서", systemImage: "rectangle.stack")
                     }
                     NavigationLink(value: Destination.onePagerSettings) {
                         Label("1페이지 문서", systemImage: "text.document")
@@ -123,6 +131,11 @@ struct MoreView: View {
                 route.wantsDiagnostics = false
                 if path.last != .diagnostics { path.append(.diagnostics) }
             }
+            .onChange(of: route.wantsRetrospective, initial: true) { _, wants in
+                guard wants else { return }
+                route.wantsRetrospective = false
+                if path.last != .retrospective { path.append(.retrospective) }
+            }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .history: PastRecordsView()
@@ -138,6 +151,8 @@ struct MoreView: View {
                 case .onePagerSettings: OnePagerSettingsView()
                 case .onePagerPreview: OnePagerPreviewView()
                 case .changeLog: ChangeLogView()
+                case .dashboardCards: DashboardCardsView()
+                case .retrospective: RetrospectiveView()
                 }
             }
         }
@@ -153,6 +168,7 @@ struct MoreView: View {
         if arguments.contains("-startOnePager") { return [.export, .onePagerPreview] }
         if arguments.contains("-startExport") { return [.export] }
         if arguments.contains("-startChangeLog") { return [.changeLog] }
+        if arguments.contains("-startRetrospective") { return [.retrospective] }
         return []
     }
 
@@ -169,6 +185,7 @@ struct NotificationSettingsView: View {
     @AppStorage(ReviewSettings.hourKey) private var hour = ReviewSettings.defaultHour
     @AppStorage(ReviewSettings.minuteKey) private var minute = ReviewSettings.defaultMinute
     @AppStorage(ReviewSettings.followUpKey) private var followUpEnabled = true
+    @AppStorage(RetrospectiveNotifications.enabledKey) private var monthlyReminder = true
 
     @Fetched private var holdings: [Holding]
     @Fetched private var sessions: [ReviewSession]
@@ -228,6 +245,12 @@ struct NotificationSettingsView: View {
             }
 
             Section {
+                Toggle("매달 1일 회고 알림", isOn: $monthlyReminder)
+            } footer: {
+                Text("매달 1일 오전 9시에 지난달 회고를 열어 보라고 부릅니다 — 얼마를 넣어서 얼마가 자랐는지, 몇 주를 적었는지.")
+            }
+
+            Section {
                 Text("알림에 금액을 보여줄지는 [잠금 · 가리기]에서 정합니다. 알림은 잠긴 화면에도 뜹니다.")
                     .font(.system(size: 12))
                     .foregroundStyle(Color.muted)
@@ -240,6 +263,7 @@ struct NotificationSettingsView: View {
         .onChange(of: hour) { _, _ in Task { await reschedule() } }
         .onChange(of: minute) { _, _ in Task { await reschedule() } }
         .onChange(of: followUpEnabled) { _, _ in Task { await reschedule() } }
+        .onChange(of: monthlyReminder) { _, _ in Task { await RetrospectiveNotifications.refresh() } }
     }
 
     private func refresh() async {

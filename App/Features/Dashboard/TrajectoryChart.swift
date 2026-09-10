@@ -117,6 +117,9 @@ struct TrajectoryChart: View {
     /// 저장된 값이 있으면 그것을 따른다.
     @AppStorage(TrajectoryChart.spanKey) private var span: Span = .retirement
     @AppStorage(TrajectoryChart.realKey) private var showsReal = false
+    /// **누른 시점** (docs/08-feedback.md 84번, C2). 차트가 예쁘지만 숫자를
+    /// 읽을 수 없었다 — 누르거나 끌면 그 시점의 실제·예측·계획선 값을 적는다.
+    @State private var scrubDate: Date?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -141,8 +144,47 @@ struct TrajectoryChart: View {
                 placeholder
             } else {
                 chart
+                readoutLine
             }
         }
+    }
+
+    /// 차트 아래 한 줄. 누르기 전에는 누르라고 알려 준다.
+    @ViewBuilder
+    private var readoutLine: some View {
+        if let scrubDate, let readout = readout(at: scrubDate) {
+            Text(readout)
+                .font(.figure(10.5, weight: .medium))
+                .foregroundStyle(Color.dad)
+                .lineLimit(2)
+        } else {
+            Text("차트를 누르거나 끌면 그 시점의 값이 보입니다")
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.faint)
+        }
+    }
+
+    /// 누른 날짜에 가장 가까운 점을 계열마다 하나씩 찾아 한 줄로 적는다.
+    /// 실제 기록은 주마다 있으니 60일 안, 예측·계획선은 분기 점이라 200일 안에서만.
+    private func readout(at date: Date) -> String? {
+        let calendar = Calendar.current
+        var parts: [String] = []
+        var shownDate: Date?
+        for series in [Point.Series.actual, .projected, .plan] {
+            let candidates = visiblePoints.filter { $0.series == series }
+            guard let nearest = candidates.min(by: {
+                abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+            }) else { continue }
+            let days = abs(calendar.dateComponents([.day], from: nearest.date, to: date).day ?? 0)
+            guard days <= (series == .actual ? 60 : 200) else { continue }
+            if shownDate == nil { shownDate = nearest.date }
+            let money = Money(minorUnits: Int(nearest.value(real: showsReal)), currency: .krw)
+            parts.append("\(series.rawValue) \(Won.compact(money))")
+        }
+        guard let shownDate, !parts.isEmpty else { return nil }
+        let year = calendar.component(.year, from: shownDate)
+        let month = calendar.component(.month, from: shownDate)
+        return "\(year).\(String(format: "%02d", month)) · " + parts.joined(separator: " · ")
     }
 
     private var chart: some View {
@@ -195,7 +237,15 @@ struct TrajectoryChart: View {
             RuleMark(x: .value("오늘", today))
                 .foregroundStyle(Color.ink)
                 .lineStyle(StrokeStyle(lineWidth: 1))
+
+            // 누른 자리 (84번).
+            if let scrubDate {
+                RuleMark(x: .value("선택", scrubDate))
+                    .foregroundStyle(Color.dad.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
         }
+        .chartXSelection(value: $scrubDate)
         .chartYScale(domain: domain)
         // 궤적을 벗어난 선이 아래 카드 위에 그려지지 않게 한다.
         .chartPlotStyle { plot in plot.clipped() }

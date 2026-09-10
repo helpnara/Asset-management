@@ -21,13 +21,25 @@ struct DashboardView: View {
     @Fetched private var accounts: [Account]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Fetched(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
+    @Fetched(sort: \DiaryEntry.day, order: .reverse) private var diary: [DiaryEntry]
+    @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
     @State private var completedToShow: ReviewSession?
+    /// 로드맵 정거장을 누르면 그 시점의 분해 시트 (85번).
+    @State private var selectedStop: RoadmapStrip.Stop?
     /// 기간은 궤적 차트가 들고 있다 — 구성원 궤적과 같은 값을 나눠 쓴다
     /// (docs/08-feedback.md 31번). 여기서는 범례를 그릴지 판단하려고 읽는다.
     @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .retirement
+    /// 카드 순서와 숨김 (83번, C6). 여기서 읽어야 설정을 바꾼 순간 다시 그려진다.
+    @AppStorage(DashboardCard.orderKey) private var cardOrderRaw = ""
+    @AppStorage(DashboardCard.hiddenKey) private var hiddenCardsRaw = ""
+
+    private var visibleCards: [DashboardCard] {
+        let hidden = DashboardCard.hidden(from: hiddenCardsRaw)
+        return DashboardCard.order(from: cardOrderRaw).filter { !hidden.contains($0) }
+    }
 
     private var rollup: Rollup {
         Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
@@ -40,11 +52,9 @@ struct DashboardView: View {
                     header
                     Rectangle().fill(Color.ink).frame(height: 2)
 
-                    // **오늘의 목·실·감** — 자산보다 위다. 매일 여는 첫 화면에서
-                    // 처음 만나는 것이 오늘 한 줄이어야 매일 쓴다 (마지막 묶음 1).
-                    DiaryCard()
-
                     if members.isEmpty {
+                        // 오늘 한 줄은 자산이 없어도 쓴다 (마지막 묶음 1).
+                        DiaryCard()
                         // "아직 없는 것" 과 "아직 안 온 것" 은 다른 화면이다 (53번).
                         if SyncLoadingHint.shouldShow {
                             SyncLoadingHint()
@@ -52,23 +62,23 @@ struct DashboardView: View {
                             emptyState
                         }
                     } else {
-                        hero
-                        Rectangle().fill(Color.rule).frame(height: 1)
-                            .padding(.horizontal, 20)
-                        weeklyBar
-                        planReviewNudge
-                        roadmap
-                        lifeEvents
-                        trajectory
-                        diagnosticsStrip
-                        alerts
-                        memberBreakdown
-                        totals
+                        // **순서는 사용자가 정한다** (83번). 기본은 목·실·감이 맨 위 —
+                        // 매일 여는 첫 화면에서 처음 만나는 것이 오늘 한 줄이어야
+                        // 매일 쓴다 (마지막 묶음 1).
+                        ForEach(visibleCards) { card in
+                            cardView(card)
+                        }
                     }
                 }
             }
             .fullScreenCover(item: $completedToShow) { session in
                 ReviewCompleteView(session: session)
+            }
+            .sheet(item: $selectedStop) { stop in
+                if let plan, let projection {
+                    RoadmapStopSheet(stop: stop, plan: plan, projection: projection,
+                                     members: members, rollup: rollup)
+                }
             }
             // 앱의 한 가지 바탕 (35번). 예전에는 여기만 `canvas` 라
             // 다른 탭과 검정이 달랐다.
@@ -87,6 +97,38 @@ struct DashboardView: View {
                         .max { $0.weekAnchor < $1.weekAnchor }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func cardView(_ card: DashboardCard) -> some View {
+        switch card {
+        case .diary:
+            DiaryCard()
+        case .hero:
+            hero
+            Rectangle().fill(Color.rule).frame(height: 1)
+                .padding(.horizontal, 20)
+        case .weekly:
+            weeklyBar
+            planReviewNudge
+        case .attribution:
+            attribution
+        case .monthly:
+            monthlyCard
+        case .roadmap:
+            roadmap
+        case .lifeEvents:
+            lifeEvents
+        case .trajectory:
+            trajectory
+        case .diagnostics:
+            diagnosticsStrip
+            alerts
+        case .members:
+            memberBreakdown
+        case .totals:
+            totals
         }
     }
 
@@ -239,6 +281,160 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - 얼마 넣어서 얼마 자랐나 (docs/08-feedback.md 82번, C1)
+
+    private struct AttributionRow: Identifiable {
+        let id: String
+        let label: String
+        let split: ChangeAttribution?
+    }
+
+    /// **기록끼리 견준다.** 끝은 마지막 점검의 스냅샷, 시작은 그 창 앞의 마지막
+    /// 스냅샷이다. 지금 값(종목 현재값)을 끝으로 쓰면 아직 안 적은 주에 "적립은
+    /// 깔렸는데 증감은 0" 이 되어 수익이 가짜로 음수가 된다.
+    private var attributionRows: [AttributionRow] {
+        guard let plan, let latest = snapshots.last else { return [] }
+        let calendar = Calendar.current
+        let monthly = plan.effectiveMonthlyContribution(members: members)
+        let end = Money(minorUnits: latest.netWorthMinor, currency: .krw)
+
+        func row(_ label: String, before boundary: Date) -> AttributionRow {
+            guard latest.weekAnchor >= boundary,
+                  let base = snapshots.filter({ $0.weekAnchor < boundary }).max(by: { $0.weekAnchor < $1.weekAnchor })
+            else { return AttributionRow(id: label, label: label, split: nil) }
+            let days = calendar.dateComponents([.day], from: base.weekAnchor, to: latest.weekAnchor).day ?? 0
+            let lumps = cashEvents
+                .filter { $0.date > base.weekAnchor && $0.date <= latest.weekAnchor }
+                .reduce(Money.zero(.krw)) { $0 + $1.amount }
+            let split = ChangeAttribution.estimate(
+                from: Money(minorUnits: base.netWorthMinor, currency: .krw), to: end,
+                monthlyContribution: monthly, days: days, lumpSums: lumps)
+            return AttributionRow(id: label, label: label, split: split)
+        }
+
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: latest.weekAnchor)) ?? latest.weekAnchor
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: latest.weekAnchor)) ?? latest.weekAnchor
+        return [
+            row("지난 점검", before: latest.weekAnchor),
+            row("이번 달", before: monthStart),
+            row("올해", before: yearStart),
+        ]
+    }
+
+    @ViewBuilder
+    private var attribution: some View {
+        let rows = attributionRows
+        if rows.contains(where: { $0.split != nil }), let latest = snapshots.last {
+            VStack(alignment: .leading, spacing: 0) {
+                sectionHeader("얼마 넣어서 얼마 자랐나",
+                              trailing: "마지막 점검 \(Self.shortDate.string(from: latest.weekAnchor)) 기준")
+                Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 0) {
+                    GridRow {
+                        Text("").gridColumnAlignment(.leading)
+                        Text("증감")
+                        Text("넣은 돈")
+                        Text("자란 돈")
+                    }
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Color.faint)
+                    .padding(.bottom, 6)
+                    Rectangle().fill(Color.rule).frame(height: 1)
+                        .gridCellColumns(4).gridCellUnsizedAxes(.horizontal)
+                    ForEach(rows) { row in
+                        GridRow {
+                            Text(row.label)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.ink)
+                                .gridColumnAlignment(.leading)
+                            if let split = row.split {
+                                figure(split.change, tone: true)
+                                figure(split.contributed, tone: false)
+                                figure(split.gained, tone: true)
+                            } else {
+                                Text("기록 없음")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(Color.faint)
+                                    .gridCellColumns(3)
+                            }
+                        }
+                        .padding(.vertical, 9)
+                        Rectangle().fill(Color.rule).frame(height: 1)
+                            .gridCellColumns(4).gridCellUnsizedAxes(.horizontal)
+                    }
+                }
+                .padding(.horizontal, 20)
+                Text("넣은 돈은 계획의 월 적립을 날수로 나눠 어림한 값이고, 목돈 이벤트는 날짜대로 더했습니다. 자란 돈은 증감에서 그것을 뺀 나머지입니다.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.faint)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+            }
+        }
+    }
+
+    private func figure(_ money: Money, tone: Bool) -> some View {
+        Text(Won.compact(money, sign: .always))
+            .font(.figure(12, weight: .medium))
+            .foregroundStyle(tone ? (money.isNegative ? Color.loss : Color.gain) : Color.ink)
+    }
+
+    private static let shortDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM.dd"
+        return formatter
+    }()
+
+    // MARK: - 지난달 회고 (docs/08-feedback.md 86번, C4)
+
+    /// 지난달 요약 한 줄. 누르면 더보기의 회고 화면으로. 지난달 기록이 없으면 안 그린다.
+    @ViewBuilder
+    private var monthlyCard: some View {
+        let period = Retrospective.Period.containing(.now, scope: .month, offset: -1)
+        let summary = Retrospective.summarize(period: period, snapshots: snapshots, sessions: sessions,
+                                              members: members, plan: plan, cashEvents: cashEvents,
+                                              incomes: incomes, diary: diary, logs: logs)
+        if summary.hasRecords {
+            Button {
+                AppRoute.shared.wantsRetrospective = true
+                AppRoute.shared.selectedTab = RootView.Tab.more
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(period.title) 회고")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.ink)
+                        Text(monthlyLine(summary))
+                            .font(.figure(10.5))
+                            .foregroundStyle(Color.muted)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.faint)
+                }
+                .padding(13)
+                .background(Color.raised)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func monthlyLine(_ summary: Retrospective.Summary) -> String {
+        var parts: [String] = []
+        if let split = summary.attribution {
+            parts.append("증감 \(Won.compact(split.change, sign: .always))")
+            parts.append("넣은 \(Won.compact(split.contributed))")
+            parts.append("자란 \(Won.compact(split.gained, sign: .always))")
+        }
+        parts.append("점검 \(summary.reviewedWeeks)/\(summary.weeksInPeriod)주")
+        if summary.diaryDays > 0 { parts.append("일기 \(summary.diaryDays)일") }
+        return parts.joined(separator: " · ")
+    }
+
     // MARK: - 로드맵
 
     /// **뼈대 여섯 칸으로 고정한다.** 지금 · 자산 2배 · 수익 > 적립금 ·
@@ -332,8 +528,12 @@ struct DashboardView: View {
                         .foregroundStyle(Color.loss)
                         .padding(.bottom, 6)
                 }
-                RoadmapStrip(stops: roadmapStops)
+                RoadmapStrip(stops: roadmapStops) { selectedStop = $0 }
                     .padding(.bottom, 4)
+                Text("정거장을 누르면 그때까지의 적립 · 수익과 구성원별 예상이 보입니다")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Color.faint)
+                    .padding(.horizontal, 20)
             }
         }
     }

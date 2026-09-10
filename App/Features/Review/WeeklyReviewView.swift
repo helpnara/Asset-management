@@ -31,6 +31,8 @@ struct WeeklyReviewView: View {
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []
     @State private var completed: ReviewSession?
+    /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
+    @State private var isConfirmingLargeChanges = false
 
     /// `고정` 은 값이 잘 안 바뀌므로 큐에서 아예 뺀다. 매주 물어볼 항목을 줄이는 장치.
     private func queue(for member: Member) -> [Holding] {
@@ -89,6 +91,54 @@ struct WeeklyReviewView: View {
             }
             .onAppear { focusedID = queue.first?.id }
             .fullScreenCover(item: $completed) { ReviewCompleteView(session: $0) }
+            // **오타를 한 번 되묻는다** (docs/08-feedback.md 81번, B2). 지난주보다
+            // 30% 넘게 움직인 항목이 있으면 저장 전에 이름을 들어 보여 준다.
+            // 막지는 않는다 — 진짜로 그렇게 움직였을 수 있다.
+            .confirmationDialog(largeChangeTitle, isPresented: $isConfirmingLargeChanges,
+                                titleVisibility: .visible) {
+                Button("그대로 저장") { finish() }
+                Button("다시 보기", role: .cancel) {
+                    focusedID = suspiciousHoldings.first?.id
+                }
+            } message: {
+                Text(largeChangeMessage)
+            }
+        }
+    }
+
+    // MARK: - 크게 바뀐 항목 (B2)
+
+    /// 지난주 대비 30% 넘게, 그리고 10만원 넘게 움직인 것. 작은 종목의 자연스러운
+    /// 출렁임까지 붙잡지 않으려고 금액 바닥을 둔다.
+    private func isLargeChange(_ holding: Holding) -> Bool {
+        let last = holding.lastEnteredValueMinor
+        guard last != 0 else { return false }
+        let delta = abs(holding.valueMinor - last)
+        return delta >= 100_000 && Decimal(delta) / Decimal(abs(last)) >= Decimal(string: "0.3")!
+    }
+
+    private var suspiciousHoldings: [Holding] { queue.filter(isLargeChange) }
+
+    private var largeChangeTitle: String {
+        "크게 바뀐 항목 \(suspiciousHoldings.count)건 — 맞나요?"
+    }
+
+    private var largeChangeMessage: String {
+        let names = suspiciousHoldings.prefix(3).map { holding -> String in
+            let name = holding.name.isEmpty ? "이름 없음" : holding.name
+            return "\(name) \(deltaText(holding))"
+        }
+        let more = suspiciousHoldings.count > 3 ? " 외 \(suspiciousHoldings.count - 3)건" : ""
+        return names.joined(separator: "\n") + more + "\n지난주보다 30% 넘게 움직였습니다. 0 을 하나 더 쳤는지 한 번만 보세요."
+    }
+
+    /// 완료 버튼이 부르는 곳. 크게 바뀐 것이 있으면 되묻고, 없으면 바로 끝낸다.
+    private func requestFinish() {
+        if suspiciousHoldings.isEmpty {
+            finish()
+        } else {
+            focusedID = nil
+            isConfirmingLargeChanges = true
         }
     }
 
@@ -194,9 +244,21 @@ struct WeeklyReviewView: View {
                     .font(.figure(isActive ? 19 : 16, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(Color.ink)
                     .frame(width: 155)
-                Text(deltaText(holding))
-                    .font(.system(size: 10))
-                    .foregroundStyle(deltaColor(holding))
+                // **읽는 값** (80번, B1). 활성 행에서만 — 열다섯 자리 중 0 하나가
+                // 더 붙었는지 치는 순간 보인다. 입력 칸이라 가리기를 안 거친다.
+                if isActive && holding.valueMinor >= 10_000 {
+                    Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: holding.valueMinor, currency: .krw), suffix: "원"))
+                        .font(.figure(10.5, weight: .medium))
+                        .foregroundStyle(Color.dad)
+                }
+                HStack(spacing: 4) {
+                    if isLargeChange(holding) {
+                        StatusBadge(text: "30%↑", foreground: .loss, background: Color.lossSoft)
+                    }
+                    Text(deltaText(holding))
+                        .font(.system(size: 10))
+                        .foregroundStyle(deltaColor(holding))
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -219,7 +281,7 @@ struct WeeklyReviewView: View {
                 .lineSpacing(4)
 
             Button {
-                finish()
+                requestFinish()
             } label: {
                 Text("점검 완료")
                     .font(.system(size: 14, weight: .medium))
@@ -250,7 +312,7 @@ struct WeeklyReviewView: View {
             Button("변동 없음") { move(1) }
                 .font(.system(size: 13))
             Button(currentIndex >= queue.count - 1 ? "완료" : "다음") {
-                if currentIndex >= queue.count - 1 { finish() } else { move(1) }
+                if currentIndex >= queue.count - 1 { requestFinish() } else { move(1) }
             }
             .font(.system(size: 13, weight: .semibold))
         }
@@ -375,6 +437,15 @@ struct WeeklyReviewView: View {
         ChangeLogger.record(.weeklyEntry,
                             subject: "주간 점검 · 종목 \(queue.count)건" + (existing == nil ? "" : " (이어서)"),
                             summary: summary, in: context)
+
+        // **선을 넘겼나** (88번). 지난 점검과 이번 점검 사이를 본다.
+        let streakAfter = ReviewWeek.streak(
+            completedAnchors: sessions.filter(\.isComplete).map(\.weekAnchor) + [anchor], asOf: .now)
+        Celebrations.check(previousTotal: session.previousTotalValueMinor,
+                           newTotal: rollup.netWorth.minorUnits,
+                           firstTotal: snapshots.first.map(\.netWorthMinor),
+                           targetMinor: plans.first?.targetAmountMinor ?? 0,
+                           streak: streakAfter, in: context)
 
         focusedID = nil
         completed = session

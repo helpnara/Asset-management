@@ -219,6 +219,27 @@ extension Plan {
         return monthlyContributionMinor * shareBP / 10_000
     }
 
+    /// **한 사람 몫의 궤적.** 구성원 궤적 화면과 로드맵 분해 시트가 같은 계산을
+    /// 쓴다 (85번). 은퇴 해를 넘겨 그려야 할 때(정거장이 그 사람 은퇴 뒤면)
+    /// `through` 로 끝 해를 늘린다.
+    func memberProjection(_ member: Member, balance: Money, monthlyMinor: Int,
+                          through year: Int? = nil, calendar: Calendar = .current) -> ProjectionResult {
+        let now = calendar.startOfDay(for: .now)
+        let endYear = max(member.retirementYear, year ?? member.retirementYear)
+        return Projection.run(
+            ProjectionInput(
+                startDate: now,
+                endDate: Plan.endDate(retirementYear: endYear, notBefore: now, calendar: calendar),
+                buckets: buckets(of: [member], total: balance),
+                monthlyContribution: Money(minorUnits: monthlyMinor, currency: .krw),
+                annualReturn: annualReturn,
+                annualContributionGrowth: contributionGrowth,
+                inflation: inflation
+            ),
+            calendar: calendar
+        )
+    }
+
     /// 계산 직전의 입력. 시뮬레이션은 이걸 받아 손잡이만 바꿔 끼운다.
     ///
     /// `@Model` 은 `Sendable` 이 아니지만 `ProjectionInput` 은 값 타입이라
