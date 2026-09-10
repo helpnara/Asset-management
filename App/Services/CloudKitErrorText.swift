@@ -26,8 +26,13 @@ enum CloudKitErrorText {
             guard !items.isEmpty else {
                 return "부분 실패인데 레코드별 이유가 비어 있습니다 (CKError 2)."
             }
-            // 수백 건이 같은 이유일 때가 많다. 겹치는 것은 한 번만 적는다.
-            let reasons = Set(items.values.map { describe($0, depth: depth + 1) })
+            // 수백 건이 같은 이유일 때가 많다. 겹치는 것은 한 번만 적는다 —
+            // 레코드 ID 를 지워야 겹친다. 안 지웠더니 "Atomic failure" 99줄이
+            // 화면을 채웠다.
+            let reasons = Set(items.values.map { describe($0, depth: depth + 1) }
+                .map { $0.replacingOccurrences(of: "<CKRecordID: [^>]*>",
+                                               with: "<레코드>",
+                                               options: .regularExpression) })
             return "부분 실패 \(items.count)건:\n" + reasons.sorted().joined(separator: "\n")
         }
 

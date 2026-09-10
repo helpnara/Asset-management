@@ -101,6 +101,13 @@ def main():
         print('        "___recordID"   REFERENCE QUERYABLE,')
         # 엔티티 상속을 위해 Core Data 가 진짜 엔티티 이름을 따로 든다.
         print("        CD_entityName   STRING,")
+        # **레코드를 존 사이로 옮길 때** Core Data 가 붙이는 영수증. 공유
+        # (`share(_:to:)`)가 기존 레코드를 공유 존으로 옮기면서 이 칸을 쓰는데,
+        # 없으면 Production 이 통째로 거부한다 — 기기에서 이렇게 막혔다 (4차 2b ③):
+        #     Cannot create or modify field 'CD_moveReceipt' in record 'CD_ChangeLog'
+        # 가변 길이라 `_ckAsset` 딸림 필드도 함께 간다.
+        print("        CD_moveReceipt  BYTES,")
+        print("        CD_moveReceipt_ckAsset ASSET,")
         for field, kind, asset in fields_of(entity):
             print(f"        CD_{field} {kind},")
             if asset:

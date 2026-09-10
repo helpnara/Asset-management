@@ -26,7 +26,7 @@ MODEL = "App/SlowRich.xcdatamodeld/SlowRich.xcdatamodel/contents"
 CKDB = "Tools/cloudkit/slowrich.ckdb"
 
 # CloudKit 이 스스로 붙이는 것들. 우리 모델에는 없어야 정상이다.
-SYSTEM_FIELDS = {"entityName"}
+SYSTEM_FIELDS = {"entityName", "moveReceipt"}
 
 
 def from_model():

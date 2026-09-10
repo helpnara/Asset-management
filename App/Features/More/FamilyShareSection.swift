@@ -51,7 +51,7 @@ struct FamilyShareSection: View {
                     .foregroundStyle(Color.loss)
             }
             if sharing.state.orphans > 0 {
-                Text("뿌리에 안 매달린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다.")
+                Text("공유에 안 실린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다. 앞으로 돌아올 때마다 다시 옮깁니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.loss)
             }

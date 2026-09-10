@@ -1051,3 +1051,24 @@ Thread 0 (main):
 **뿌리를 새로 만들 때는 "앞으로 만들 것" 과 "이미 있는 것" 을 따로 센다.**
 `attachNew` 는 앞의 것만 맡았고, 뒤의 것은 아무도 안 맡았다. 두 기기가
 있어야 보이는 실패라, 합격 기준을 먼저 적어 둔 것이 유일한 그물이었다.
+
+### ③-2 — **옮기기는 `CD_moveReceipt` 에 막혔다**
+
+44 로 매달기까지는 됐는데(98건), 공유 존으로 옮기는 단계가 통째로 거부됐다:
+
+    Cannot create or modify field 'CD_moveReceipt' in record 'CD_ChangeLog'
+    in production schema
+
+레코드를 존 사이로 옮길 때 Core Data 가 붙이는 **이동 영수증** 필드다.
+우리 스키마 파일은 모델에서 뽑아 내므로 이 시스템 필드가 없었고, Production
+은 새 칸을 못 만든다. `cloudkit.share` 때와 같은 종류의 벽이다 — Development
+에서 한 번이라도 옮겨 봤으면 자동으로 생겼을 칸.
+
+고친 것: 생성기가 모든 `CD_` 타입에 `CD_moveReceipt BYTES` 와
+`CD_moveReceipt_ckAsset ASSET` 을 넣는다. 검사기는 그것을 시스템 필드로
+본다. 그리고 `adoptOrphans` 는 "매달렸는가" 가 아니라 **"공유 존에
+있는가"** (`fetchShares(matching:)`) 를 보고 밖에 남은 것을 다시 옮긴다 —
+매달림만 보면 첫 실패 뒤 영영 다시 안 옮긴다. 3분에 한 번만 시도한다.
+
+같은 관리자 계정의 iPad 에서도 이 작업이 돈다. 두 기기 중 먼저 켠 쪽이 하고,
+나머지는 옮겨진 것을 보고 아무것도 안 한다.
