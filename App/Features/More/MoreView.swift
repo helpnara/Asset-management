@@ -15,6 +15,7 @@ struct MoreView: View {
     @State private var route = AppRoute.shared
 
     /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
+    @State private var refreshNote: String?
     @State private var path: [Destination] = MoreView.initialPath
 
     enum Destination: Hashable {
@@ -114,6 +115,7 @@ struct MoreView: View {
                 proxy.scrollTo(target, anchor: .top)
             }
             }
+            .syncRefreshable(note: $refreshNote)
             .navigationTitle("더보기")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: route.wantsDiagnostics, initial: true) { _, wants in

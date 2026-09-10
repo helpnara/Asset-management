@@ -9,6 +9,8 @@ struct DashboardView: View {
     // 주간 점검은 **숫자를 적어 넣는** 화면이라 보기 전용이면 열 이유가 없다.
     @Environment(\.canEdit) private var canEdit
     @Environment(\.self) private var environment
+    /// 당겨서 새로고침의 결과 한 줄 (73번).
+    @State private var refreshNote: String?
 
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched private var holdings: [Holding]
@@ -71,6 +73,7 @@ struct DashboardView: View {
             // 앱의 한 가지 바탕 (35번). 예전에는 여기만 `canvas` 라
             // 다른 탭과 검정이 달랐다.
             .background(Color.ground)
+            .syncRefreshable(note: $refreshNote)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()

@@ -34,6 +34,7 @@ struct AssetsView: View {
     @Fetched private var holdings: [Holding]
     @Fetched private var accounts: [Account]
 
+    @State private var refreshNote: String?
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
     @State private var editingHolding: Holding?
@@ -65,7 +66,7 @@ struct AssetsView: View {
                         emptyState
                     }
                 } else {
-                    list
+                    list.syncRefreshable(note: $refreshNote)
                 }
             }
             .navigationTitle("자산")
