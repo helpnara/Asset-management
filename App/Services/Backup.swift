@@ -643,6 +643,8 @@ extension BackupDocument {
             entry.createdAt = data.createdAt
         }
 
+        // Autosave 를 거치지 않는 저장이라 매달기·저장소 배정을 직접 부른다 (④).
+        Household.attachNew(in: context)
         try? context.save()
 
         // 되돌린 것 자체를 이력에 남긴다. 다음에 "왜 이 값이지?" 를 볼 때
@@ -650,6 +652,7 @@ extension BackupDocument {
         ChangeLogger.record(.other, subject: "백업 되돌리기",
                             summary: "\(document.suggestedFileName) 으로 되돌렸습니다",
                             in: context)
+        Household.attachNew(in: context)
         try? context.save()
     }
 

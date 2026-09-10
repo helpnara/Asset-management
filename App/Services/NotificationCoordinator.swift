@@ -89,6 +89,10 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
             liabilitiesMinor: 0
         )
 
+        // Autosave 를 거치지 않는 저장이라 매달기·저장소 배정을 직접 부른다 (④).
+        // 참가자 폰에서 알림으로 총액만 적으면 그 주 기록이 개인 저장소로 가서
+        // 가족에게 안 갔을 것이다.
+        Household.attachNew(in: context)
         try? context.save()
 
         ReviewNotifications.cancelFollowUp()
