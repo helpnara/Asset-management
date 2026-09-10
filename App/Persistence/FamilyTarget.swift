@@ -86,10 +86,21 @@ extension Account {
     /// `받을 돈` 계좌는 종목 자리에 **빌려준 사람들**이 늘어선다. 그 안에서
     /// "누가 몇 %" 를 따지는 것은 뜻이 없고, 목표를 세울 것도 없다 —
     /// 받을 돈은 나눠 담는 것이 아니라 받아 내는 것이다.
-    var weighsHoldings: Bool { kind != .receivable && !kind.isLiability }
+    ///
+    /// **현금성 계좌도 아니다** (64번). 전월세보증금·주택청약·연금저축보험처럼
+    /// 종목 자리에 "납입금"·"보증금" 한 줄만 있는 계좌, 또는 담긴 것이 전부
+    /// 현금성인 계좌에는 나눠 담을 것이 없다. 목표를 물으면 `100/100%` 와
+    /// `목표 비중` 버튼이 뜻 없이 붙는다. 예금 계좌에 예금 여러 건이 있어도
+    /// 마찬가지다 — 비중은 "얼마씩 굴리나" 가 아니라 "무엇에 굴리나" 의 물음이다.
+    var weighsHoldings: Bool {
+        guard kind != .receivable, !kind.isLiability, kind.returnProfile != .fixed else { return false }
+        let weighted = weightedHoldings
+        guard !weighted.isEmpty else { return true }
+        return !weighted.allSatisfy { $0.assetClass == .cash }
+    }
 
-    /// 목표 비중 화면을 열 수 있나.
-    var canSetTargets: Bool { !weightedHoldings.isEmpty && weighsHoldings }
+    /// 목표 비중 화면을 열 수 있나. 종목이 하나면 100% 라 세울 것이 없다 (64번).
+    var canSetTargets: Bool { weightedHoldings.count > 1 && weighsHoldings }
 
     /// 목표를 **세워야 하나.**
     ///
