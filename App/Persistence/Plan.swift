@@ -342,8 +342,13 @@ extension Plan {
     ) -> DiagnosticsInput {
         // 진단의 "은퇴 시점 예상"은 궤적의 끝이 아니라 **은퇴 시점**이어야 한다.
         // 인출 구간까지 그리기 시작하면서 끝값이 은퇴 후 30년 뒤 잔고가 됐다.
-        let atRetirement = projection?.point(inYear: retirementYear, calendar: calendar)?.nominal
-            ?? projection?.last?.nominal
+        //
+        // 그리고 **오늘 돈으로** 견준다 (docs/08-feedback.md 52번). 4% 규칙의
+        // 필요액은 오늘 돈 기준 생활비 × 25 인데 예상액은 은퇴 해의 액면가였다.
+        // 23년 · 물가 2% 면 액면가가 실질의 1.58배라, 진단이 실제보다 58%
+        // 넉넉하다고 말했다. 같은 돈끼리 견줘야 한다.
+        let atRetirement = projection?.point(inYear: retirementYear, calendar: calendar)?.real
+            ?? projection?.last?.real
         // 부동산 · 전월세보증금 = 자산 − 투자자산.
         // countsAsInvestable 이 false 인 것들이 정확히 이 몫이다.
         let illiquid = rollup.assets - rollup.investable

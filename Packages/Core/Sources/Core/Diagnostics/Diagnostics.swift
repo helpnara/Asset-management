@@ -156,7 +156,9 @@ public struct DiagnosticsInput: Sendable {
 
     // MARK: 시점
     public var yearsToRetirement: Int
-    /// 결정론적 궤적이 말하는 은퇴 시점 예상 자산. nil이면 비교를 생략한다.
+    /// 결정론적 궤적이 말하는 은퇴 시점 예상 자산, **오늘 돈 기준**. nil이면
+    /// 비교를 생략한다. 필요액(생활비 × 25)이 오늘 돈이므로 여기도 오늘 돈이어야
+    /// 한다 — 액면가를 넣으면 진단이 물가만큼 넉넉하다고 거짓말한다 (52번).
     public var projectedAtRetirement: Money?
     /// 적립까지 감안한 실제 배가 연도. `Projection` 의 마일스톤에서 가져온다.
     public var doublingYear: Int?
@@ -338,7 +340,7 @@ public enum Diagnostics {
         return Diagnosis(
             kind: .retirementTarget,
             status: status,
-            headline: "필요 \(requiredText) (연 생활비의 \(multipleText(input.withdrawalRate))배) · 은퇴 시점 예상 \(projectedText)",
+            headline: "필요 \(requiredText) (연 생활비의 \(multipleText(input.withdrawalRate))배) · 은퇴 시점 예상 \(projectedText) (오늘 돈으로)",
             action: action + " 인출률 \(multiple)% 기준입니다.",
             progress: share
         )
