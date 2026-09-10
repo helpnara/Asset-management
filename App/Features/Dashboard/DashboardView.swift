@@ -38,7 +38,12 @@ struct DashboardView: View {
                     Rectangle().fill(Color.ink).frame(height: 2)
 
                     if members.isEmpty {
-                        emptyState
+                        // "아직 없는 것" 과 "아직 안 온 것" 은 다른 화면이다 (53번).
+                        if SyncLoadingHint.shouldShow {
+                            SyncLoadingHint()
+                        } else {
+                            emptyState
+                        }
                     } else {
                         hero
                         Rectangle().fill(Color.rule).frame(height: 1)

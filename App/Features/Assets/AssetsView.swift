@@ -46,7 +46,11 @@ struct AssetsView: View {
         NavigationStack {
             Group {
                 if members.isEmpty {
-                    emptyState
+                    if SyncLoadingHint.shouldShow {
+                        SyncLoadingHint()
+                    } else {
+                        emptyState
+                    }
                 } else {
                     list
                 }

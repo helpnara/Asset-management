@@ -44,6 +44,15 @@ final class CloudKitSyncMonitor {
     private(set) var lastImport: Attempt?
     private(set) var lastExport: Attempt?
     private(set) var lastSetup: Attempt?
+
+    /// 지금 돌고 있는 가져오기 수. 저장소마다 따로 도니 둘일 수 있다.
+    /// 빈 화면이 "아직 없는 것" 인지 "아직 안 온 것" 인지 가르는 근거다
+    /// (docs/08-feedback.md 53번).
+    private(set) var importsInFlight = 0
+    /// 이번 실행에서 가져오기가 한 번이라도 끝났는가. 끝나기 전의 빈 화면은
+    /// "받아오는 중" 으로 본다.
+    private(set) var hasFinishedImport = false
+
     private var observer: NSObjectProtocol?
 
     private init() {}
@@ -61,15 +70,20 @@ final class CloudKitSyncMonitor {
             guard let event = note.userInfo?[
                 NSPersistentCloudKitContainer.eventNotificationUserInfoKey
             ] as? NSPersistentCloudKitContainer.Event else { return }
-            // 끝나지 않은 이벤트는 아직 결과가 없다.
-            guard let endedAt = event.endDate else { return }
-
             let kind: Attempt.Kind
             switch event.type {
             case .setup: kind = .setup
             case .import: kind = .importing
             case .export: kind = .exporting
             @unknown default: return
+            }
+
+            // 끝나지 않은 이벤트는 아직 결과가 없다 — 대신 "시작됐다" 는 것을 센다.
+            guard let endedAt = event.endDate else {
+                if kind == .importing {
+                    MainActor.assumeIsolated { self?.importsInFlight += 1 }
+                }
+                return
             }
 
             let attempt = Attempt(
@@ -85,7 +99,10 @@ final class CloudKitSyncMonitor {
     private func record(_ attempt: Attempt) {
         switch attempt.kind {
         case .setup: lastSetup = attempt
-        case .importing: lastImport = attempt
+        case .importing:
+            lastImport = attempt
+            importsInFlight = max(importsInFlight - 1, 0)
+            hasFinishedImport = true
         case .exporting: lastExport = attempt
         }
     }
