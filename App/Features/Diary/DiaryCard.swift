@@ -12,6 +12,10 @@ import SwiftUI
 ///
 /// 오늘 항목은 **첫 글자를 적을 때** 만든다. 열 때마다 만들면 아무것도 안 적은
 /// 날이 빈 줄로 쌓인다.
+///
+/// **보기 모드 ↔ 편집 모드.** 기본은 보기다. `쓰기`/`편집` 이나 칸을 누르면
+/// 입력칸이 되고 첫 빈 칸에 키보드가 올라온다. `완료` 로 닫는다. 키보드는
+/// `RootView` 의 `scrollDismissesKeyboard(.interactively)` 로 끌어내려도 된다.
 struct DiaryCard: View {
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var entries: [DiaryEntry]
@@ -20,6 +24,14 @@ struct DiaryCard: View {
     @State private var result = ""
     @State private var gratitude = ""
     @State private var loadedDay: Date?
+
+    /// **보기 모드가 기본이다.** 칸이 항상 입력칸이면 현황판을 열 때마다 키보드가
+    /// 올라와 자산을 보기 불편하다 (2026-09-10 사용자). `편집` 으로 열고 `완료` 로
+    /// 닫는다 — 닫을 때 포커스를 지워 키보드가 내려간다.
+    @State private var isEditing = false
+    @FocusState private var focus: Field?
+
+    private enum Field: Hashable { case goal, result, gratitude }
 
     private var today: Date { Calendar.current.startOfDay(for: .now) }
     private var todayEntry: DiaryEntry? { entries.first { $0.day == today } }
@@ -38,12 +50,32 @@ struct DiaryCard: View {
                 NavigationLink(value: DiaryDestination.list) {
                     Text(pastCount > 0 ? "지난 일기 \(pastCount)" : "지난 일기")
                         .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.muted)
+                }
+                if isEditing {
+                    Button("완료") { finishEditing() }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                } else {
+                    Button(hasAnyText ? "편집" : "쓰기") { beginEditing() }
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color.ink)
                 }
             }
-            line("목표", $goal)
-            line("실적", $result)
-            line("감사", $gratitude)
+            if isEditing {
+                line("목표", $goal, .goal)
+                line("실적", $result, .result)
+                line("감사", $gratitude, .gratitude)
+            } else {
+                // 보기 모드. 어디를 눌러도 편집으로 들어간다.
+                VStack(alignment: .leading, spacing: 8) {
+                    shown("목표", goal)
+                    shown("실적", result)
+                    shown("감사", gratitude)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { beginEditing() }
+            }
         }
         .padding(13)
         .background(Color.raised)
@@ -61,7 +93,7 @@ struct DiaryCard: View {
     /// **위 끝 정렬.** `.firstTextBaseline` 로 두면 세로 축 텍스트필드가 라벨보다
     /// 한 줄 가까이 내려앉는다 (CI 스크린샷에서 확인). 위 끝을 맞추고 글자
     /// 크기 차이(11.5 · 13)만 라벨 쪽에서 한 점 내려 준다.
-    private func line(_ label: String, _ text: Binding<String>) -> some View {
+    private func line(_ label: String, _ text: Binding<String>, _ field: Field) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(label)
                 .font(.system(size: 11.5, weight: .medium))
@@ -72,7 +104,40 @@ struct DiaryCard: View {
                 .font(.system(size: 13))
                 .foregroundStyle(Color.ink)
                 .lineLimit(1...3)
+                .focused($focus, equals: field)
         }
+    }
+
+    /// 보기 모드의 한 줄. 비었으면 흐린 글씨로 자리를 알린다.
+    private func shown(_ label: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(Color.muted)
+                .frame(width: 28, alignment: .leading)
+                .padding(.top, 1)
+            Text(text.isEmpty ? "아직 안 적음" : text)
+                .font(.system(size: 13))
+                .foregroundStyle(text.isEmpty ? Color.muted.opacity(0.6) : Color.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var hasAnyText: Bool {
+        !goal.isEmpty || !result.isEmpty || !gratitude.isEmpty
+    }
+
+    /// 편집으로 들어가며 **첫 빈 칸**에 커서를 둔다. 셋 다 찼으면 목표부터.
+    private func beginEditing() {
+        isEditing = true
+        let first: Field = goal.isEmpty ? .goal : result.isEmpty ? .result : gratitude.isEmpty ? .gratitude : .goal
+        // 입력칸이 화면에 놓인 다음 턴에 포커스해야 키보드가 올라온다.
+        Task { @MainActor in focus = first }
+    }
+
+    private func finishEditing() {
+        focus = nil
+        isEditing = false
     }
 
     private func load() {

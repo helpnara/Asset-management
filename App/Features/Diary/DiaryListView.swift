@@ -62,12 +62,21 @@ struct DiaryListView: View {
 struct DiaryEditView: View {
     @ObservedObject var entry: DiaryEntry
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
+    @State private var dayTaken = false
+    /// 되돌리는 중이라는 표시. 되돌리는 대입도 `onChange` 를 다시 울리므로,
+    /// 그 한 번은 검사하지 않아야 안내 문구가 남는다.
+    @State private var reverting = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     DatePicker("날짜", selection: $entry.day, displayedComponents: .date)
+                } footer: {
+                    if dayTaken {
+                        Text("그날은 이미 일기가 있어 옮기지 않았습니다.")
+                    }
                 }
                 Section("목표") {
                     TextField("오늘의 목표", text: $entry.goal, axis: .vertical).lineLimit(1...4)
@@ -87,10 +96,17 @@ struct DiaryEditView: View {
                 }
             }
             // 날짜 피커는 시각까지 들고 오므로 자정으로 맞춘다 — 하루에 하나라는
-            // 약속(`day` 비교)이 그래야 지켜진다.
-            .onChange(of: entry.day) { _, value in
+            // 약속(`day` 비교)이 그래야 지켜진다. **이미 일기가 있는 날로는 못
+            // 옮긴다** — 둘이 되면 현황판이 어느 쪽을 오늘로 보일지 정할 수 없다.
+            .onChange(of: entry.day) { old, value in
                 let start = Calendar.current.startOfDay(for: value)
-                if start != value { entry.day = start }
+                if start != value { entry.day = start; return }
+                if reverting { reverting = false; return }
+                let taken = !context.all(DiaryEntry.self,
+                                         predicate: NSPredicate(format: "day == %@ AND SELF != %@",
+                                                                start as NSDate, entry)).isEmpty
+                dayTaken = taken
+                if taken { reverting = true; entry.day = old }
             }
         }
     }
