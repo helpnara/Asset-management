@@ -530,7 +530,7 @@ struct SimulationView: View {
                     scenarioRow(scenario, current: knobs)
                 }
                 // **나란히 견주기** (102번, D2). 둘 이상이면 표로 — 지금 설정도 한 줄.
-                if scenarios.count >= 2 {
+                if scenarios.count >= 2, let plan = plans.first {
                     compareTable(plan, current: knobs)
                 }
             }
