@@ -8,9 +8,9 @@ import SwiftUI
 /// 사용자 마일스톤까지 섞이면서 길이가 제한 없이 늘어났다
 /// (docs/08-feedback.md 5번).
 ///
-/// 금액을 여섯 개 다 보여주지 않는 이유는, 정거장이 뼈대로 고정되고 나면
-/// **"언제 무엇이 오는가"** 가 요점이기 때문이다. 금액은 `지금` 과 `은퇴` 만
-/// 적고 나머지는 눌러서 본다.
+/// 금액은 정거장마다 적는다 (66번). 처음엔 `지금` 과 `은퇴` 만 적고 나머지는
+/// 눌러서 보게 했는데, 사용자는 "각 연도 아래 금액이 누락" 으로 읽었다 —
+/// 눌러야 보이는 숫자는 없는 숫자다. 양 끝은 굵게, 사이는 작게.
 struct RoadmapStrip: View {
 
     /// 이 정거장이 지나갔는가, 앞에 있는가, 오지 않는가.
@@ -77,11 +77,14 @@ struct RoadmapStrip: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    // 금액은 두 곳만. 여섯 개를 동시에 읽을 일은 드물다.
-                    if stop.isNow || stop.isGoal, let amount = stop.amount {
+                    // 정거장마다 금액. 양 끝은 굵게, 사이는 작게 (66번).
+                    if let amount = stop.amount {
+                        let emphasized = stop.isNow || stop.isGoal
                         Text(Won.compact(amount))
-                            .font(.figure(11, weight: .bold))
-                            .foregroundStyle(stop.isNow ? Color.dad : Color.ink)
+                            .font(.figure(emphasized ? 11 : 9.5, weight: emphasized ? .bold : .medium))
+                            .foregroundStyle(stop.isNow ? Color.dad : (emphasized ? Color.ink : Color.muted))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
                 .frame(maxWidth: .infinity)

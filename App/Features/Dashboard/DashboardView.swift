@@ -248,6 +248,11 @@ struct DashboardView: View {
     /// **오지 않는 칸도 지우지 않는다.** 목표를 못 넘기면 `목표 달성` 이 없고
     /// `자산 2배` 는 이미 지났을 수 있는데, 그때마다 칸이 사라지면 뼈대가
     /// 흔들려서 매번 다른 그림이 된다. 자리를 지키고 상태만 적는다.
+    ///
+    /// **순서는 연도다** (66번). 처음엔 의미의 순서(자산 2배 → 수익 > 적립금 →
+    /// …)로 고정했는데, 타임라인에서 2034 다음에 2028 이 오면 틀린 그림으로
+    /// 읽힌다. `지금` 이 맨 앞, 오는 것은 연도순, 은퇴 뒤에 오는 것은 은퇴 뒤에,
+    /// 오지 않는 것은 맨 뒤에 `—` 로.
     private var roadmapStops: [RoadmapStrip.Stop] {
         guard let plan, let projection else { return [] }
         let thisYear = Calendar.current.component(.year, from: .now)
@@ -256,26 +261,37 @@ struct DashboardView: View {
             .init(year: thisYear, amount: rollup.netWorth, label: "지금", isNow: true, isGoal: false)
         ]
 
-        // 뼈대의 순서는 **의미의 순서**다. 연도로 정렬하지 않는다 — 그러면
-        // 달성 여부에 따라 칸이 앞뒤로 튀어 매번 다른 그림이 된다.
+        var coming: [RoadmapStrip.Stop] = []
+        var never: [RoadmapStrip.Stop] = []
         for kind in [MilestoneKind.doubled, .returnsExceedContribution,
                      .returnsExceedSalary, .targetReached] {
             if let hit = projection.milestone(kind) {
-                stops.append(.init(year: hit.year, amount: hit.balance,
-                                   label: kind.label, isNow: false, isGoal: false,
-                                   state: hit.year <= thisYear ? .passed : .ahead))
+                coming.append(.init(year: hit.year, amount: hit.balance,
+                                    label: kind.label, isNow: false, isGoal: false,
+                                    state: hit.year <= thisYear ? .passed : .ahead))
             } else {
-                stops.append(.init(year: nil, amount: nil, label: kind.label,
+                never.append(.init(year: nil, amount: nil, label: kind.label,
                                    isNow: false, isGoal: false, state: .never))
             }
         }
 
-        // 마지막 정거장은 **은퇴 시점**이다. 인출 구간까지 그리기 시작하면서
+        // 은퇴 정거장은 **은퇴 시점**이다. 인출 구간까지 그리기 시작하면서
         // years.last 가 은퇴 후 30년 뒤가 됐다 — 거기에 "은퇴" 라벨을 붙이면 틀린다.
         if let atRetirement = projection.years.last(where: { $0.year <= plan.retirementYear }) {
-            stops.append(.init(year: atRetirement.year, amount: atRetirement.endBalance,
-                               label: "은퇴", isNow: false, isGoal: true))
+            coming.append(.init(year: atRetirement.year, amount: atRetirement.endBalance,
+                                label: "은퇴", isNow: false, isGoal: true))
         }
+
+        // 같은 해면 은퇴가 뒤 — 그 해 안에서 이룬 것을 은퇴 앞에 둔다.
+        let ordered = coming.enumerated().sorted { lhs, rhs in
+            let l = lhs.element, r = rhs.element
+            if l.year != r.year { return (l.year ?? .max) < (r.year ?? .max) }
+            if l.isGoal != r.isGoal { return !l.isGoal }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+
+        stops += ordered
+        stops += never
         return stops
     }
 
