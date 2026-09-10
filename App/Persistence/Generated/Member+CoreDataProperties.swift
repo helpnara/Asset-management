@@ -55,6 +55,12 @@ extension Member {
     /// 그 사람에게만 걸리는 한도·재검토 시점. 1페이지 구성원 카드의 `※` 줄.
     @NSManaged var note: String
 
+    /// **이 구성원의 것을 고칠 수 있는 참가자들** — `CKShare` 참가자의 사용자
+    /// 레코드 이름을 쉼표로 이었다. 관리자가 더보기 → 가족 → 편집 권한에서
+    /// 참가자마다 체크한다 (docs/09-family-sharing.md 4단계). 구성원에 붙어
+    /// 있으니 가구와 함께 모든 기기에 퍼진다. 빈 문자열이면 관리자만 고친다.
+    @NSManaged var editorIDs: String
+
     @NSManaged var colorIndex: Int
 
     @NSManaged var sortIndex: Int

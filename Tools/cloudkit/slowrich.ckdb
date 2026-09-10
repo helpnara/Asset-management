@@ -250,6 +250,8 @@ DEFINE SCHEMA
         CD_otherIncomeMinor INT64,
         CD_note STRING,
         CD_note_ckAsset ASSET,
+        CD_editorIDs STRING,
+        CD_editorIDs_ckAsset ASSET,
         CD_colorIndex INT64,
         CD_sortIndex INT64,
         CD_createdAt TIMESTAMP,

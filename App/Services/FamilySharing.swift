@@ -43,6 +43,14 @@ struct FamilyShareState: Sendable {
     /// 참가자 기기에서 빈 가구가 안 치워질 때 그 이유 (`"members 2"` 꼴).
     var pruneBlockers: String?
 
+    /// **이 기기의 참가자 ID** — `CKShare` 가 주는 사용자 레코드 이름. 관리자가
+    /// `Member.editorIDs` 에 적어 둔 것과 이것을 견줘 편집 범위를 정한다.
+    /// 소유자 기기에서는 `nil`.
+    var participantID: String?
+
+    /// 소유자 기기가 보는 참가자들 (소유자 본인 제외). 편집 권한 화면의 재료.
+    var people: [SharePerson] = []
+
     var isParticipant: Bool { role != .owner }
 
     /// 사람이 읽을 한 줄.
@@ -55,6 +63,16 @@ struct FamilyShareState: Sendable {
     }
 
     var isTrouble: Bool { households > 1 || (hasLocalShare && !isSaved) || orphans > 0 }
+}
+
+/// `CKShare` 참가자 한 사람. 화면에 건네는 값이라 `Sendable` 구조체다.
+struct SharePerson: Sendable, Identifiable, Hashable {
+    /// 사용자 레코드 이름. 같은 사람은 어느 기기에서 봐도 같다.
+    let id: String
+    let name: String
+    /// `CKShare` 의 권한이 변경 가능인가. 편집 권한 화면이 구성원 체크와 함께 맞춘다.
+    let canWrite: Bool
+    let accepted: Bool
 }
 
 /// **가족 공유.** 가구 하나 = `CKShare` 한 장 (docs/09-family-sharing.md 2b).
@@ -238,6 +256,69 @@ final class FamilySharing {
         return me.permission == .readWrite ? .editor : .viewer
     }
 
+    /// 소유자 본인을 뺀 참가자들. 아직 수락 전이면 사용자 레코드가 없을 수
+    /// 있어 그런 사람은 뺀다 — 편집 권한은 수락한 뒤에 준다.
+    nonisolated static func people(of share: CKShare) -> [SharePerson] {
+        share.participants.compactMap { participant in
+            guard participant.role != .owner,
+                  let id = participant.userIdentity.userRecordID?.recordName else { return nil }
+            let identity = participant.userIdentity
+            let name = identity.nameComponents.map { PersonNameComponentsFormatter().string(from: $0) }
+                .flatMap { $0.isEmpty ? nil : $0 }
+                ?? identity.lookupInfo?.emailAddress
+                ?? identity.lookupInfo?.phoneNumber
+                ?? "참가자"
+            return SharePerson(id: id, name: name,
+                               canWrite: participant.permission == .readWrite,
+                               accepted: participant.acceptanceStatus == .accepted)
+        }
+    }
+
+    /// 편집 권한 화면이 마지막으로 한 일의 결과.
+    var lastPermissionResult: String?
+
+    /// **참가자의 `CKShare` 권한을 바꾼다.** 구성원 체크가 하나라도 켜지면
+    /// 변경 가능, 전부 꺼지면 보기 전용으로 맞춘다 — 서버 권한이 보기 전용이면
+    /// 앱이 아무리 열어 줘도 저장이 튕긴다. 공유 저장은 백그라운드다.
+    func setPermission(canWrite: Bool, for personID: String) {
+        guard let container = cloudContainer, let store = Persistence.privateStore else {
+            lastPermissionResult = "iCloud 로 열리지 않아 권한을 바꿀 수 없습니다."
+            return
+        }
+        let carried = UncheckedBox((container, store))
+        DispatchQueue.global(qos: .userInitiated).async {
+            let (container, store) = carried.value
+            let context = container.newBackgroundContext()
+            context.perform {
+                let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
+                guard let household = context.all(Household.self, sortedBy: byAge).first,
+                      let share = try? container.fetchShares(matching: [household.objectID])[household.objectID],
+                      let participant = share.participants.first(where: {
+                          $0.userIdentity.userRecordID?.recordName == personID })
+                else {
+                    Task { @MainActor in FamilySharing.shared.lastPermissionResult = "공유에서 그 참가자를 찾지 못했습니다." }
+                    return
+                }
+                let wanted: CKShare.ParticipantPermission = canWrite ? .readWrite : .readOnly
+                guard participant.permission != wanted else {
+                    Task { @MainActor in FamilySharing.shared.refreshState() }
+                    return
+                }
+                participant.permission = wanted
+                container.persistUpdatedShare(share, in: store) { _, error in
+                    let text = error.map { CloudKitErrorText.describe($0) }
+                    Task { @MainActor in
+                        let sharing = FamilySharing.shared
+                        sharing.lastPermissionResult = text.map { "권한을 바꾸지 못했습니다\n" + $0 }
+                            ?? (canWrite ? "변경 가능으로 바꿨습니다. 상대 기기는 앱을 앞으로 가져오면 반영됩니다."
+                                         : "보기 전용으로 바꿨습니다.")
+                        sharing.refreshState()
+                    }
+                }
+            }
+        }
+    }
+
     private var cloudContainer: NSPersistentCloudKitContainer? {
         Persistence.container as? NSPersistentCloudKitContainer
     }
@@ -269,6 +350,7 @@ final class FamilySharing {
                 if let sharedStore,
                    let share = (try? container.fetchShares(in: sharedStore))?.first {
                     next.role = Self.role(of: share)
+                    next.participantID = share.currentUserParticipant?.userIdentity.userRecordID?.recordName
                 }
                 UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
 
@@ -296,6 +378,7 @@ final class FamilySharing {
                     // **`url` 이 있어야 서버에 있는 것이다.** 만들다 만 것과 가른다.
                     next.isSaved = share.url != nil
                     next.participants = share.participants.count
+                    next.people = Self.people(of: share)
                 }
                 let result = next
                 Task { @MainActor in FamilySharing.shared.state = result }

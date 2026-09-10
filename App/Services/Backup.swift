@@ -102,6 +102,8 @@ struct BackupDocument: Codable, Sendable {
         var monthlySalaryMinor: Int?
         var otherIncomeMinor: Int?
         var note: String
+        /// 참가자별 편집 권한 (58번). 옛 백업에는 없다.
+        var editorIDs: String?
         var colorIndex: Int
         var sortIndex: Int
         var createdAt: Date
@@ -271,6 +273,7 @@ extension BackupDocument {
                     monthlySalaryMinor: member.monthlySalaryMinor,
                     otherIncomeMinor: member.otherIncomeMinor,
                     note: member.note,
+                    editorIDs: member.editorIDs,
                     colorIndex: member.colorIndex, sortIndex: member.sortIndex,
                     createdAt: member.createdAt,
                     accounts: member.sortedAccounts.map { account in
@@ -494,6 +497,7 @@ extension BackupDocument {
             member.monthlySalaryMinor = memberData.monthlySalaryMinor ?? 0
             member.otherIncomeMinor = memberData.otherIncomeMinor ?? 0
             member.note = memberData.note
+            member.editorIDs = memberData.editorIDs ?? ""
             member.createdAt = memberData.createdAt
 
             for accountData in memberData.accounts {

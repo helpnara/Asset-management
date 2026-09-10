@@ -6,9 +6,6 @@ struct RootView: View {
     @State private var route = AppRoute.shared
     @State private var sharing = FamilySharing.shared
     @Environment(\.scenePhase) private var scenePhase
-    /// 참가자 기기가 고른 "이 기기의 구성원". 바뀌면 화면이 다시 그려져야
-    /// 하므로 `@AppStorage` 로 붙잡는다.
-    @AppStorage(FamilyRole.selfMemberKey) private var selfMemberRaw = ""
 
 
     @Fetched private var holdings: [Holding]
@@ -28,7 +25,7 @@ struct RootView: View {
 
     var body: some View {
         tabs
-            .familyRole(role, selfMemberID: UUID(uuidString: selfMemberRaw))
+            .familyRole(role, participantID: sharing.state.participantID)
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
             // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
             .task { sharing.refreshState() }

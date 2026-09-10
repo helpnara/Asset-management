@@ -21,7 +21,6 @@ struct AssetsView: View {
     @Environment(\.canEdit) private var canEdit
     @Environment(\.self) private var environment
     @Environment(\.familyRole) private var role
-    @Environment(\.selfMemberID) private var selfMemberID
 
     /// 이 구성원의 것을 고칠 수 있나 — 관리자는 전부, `editor` 는 본인 것만.
     private func mayEdit(_ member: Member?) -> Bool { environment.mayEdit(member) }
@@ -153,9 +152,9 @@ struct AssetsView: View {
                 }
             }
 
-            if role == .editor && selfMemberID == nil {
+            if role == .editor && !members.contains(where: { mayEdit($0) }) {
                 Section {
-                    ReadOnlyNote(text: "변경 권한은 있지만 이 기기가 누구 것인지 아직 안 골랐습니다. 더보기 → 가족에서 본인을 고르세요.")
+                    ReadOnlyNote(text: "변경 권한은 있지만 고칠 수 있는 구성원이 아직 없습니다. 관리자가 더보기 → 가족 → 편집 권한에서 정합니다.")
                 }
             }
 

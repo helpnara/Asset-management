@@ -22,6 +22,7 @@ struct MoreView: View {
         case principles
         case notifications
         case diaryReminder
+        case editGrants
         case diagnostics
         case todos
         case milestones
@@ -125,6 +126,7 @@ struct MoreView: View {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
                 case .diaryReminder: DiaryReminderSettingsView()
+                case .editGrants: EditGrantsView()
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
                 case .milestones: MilestoneListView()

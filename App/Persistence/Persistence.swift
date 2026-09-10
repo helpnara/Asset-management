@@ -102,6 +102,13 @@ enum Persistence {
         shared.container.persistentStoreCoordinator.persistentStores
             .first { $0.url == sharedStoreURL }
     }
+
+    /// 개인 저장소. 소유자의 `CKShare` 가 사는 곳 — 참가자 권한을 고쳐
+    /// 되쓸 때(`persistUpdatedShare`) 가리킨다.
+    static var privateStore: NSPersistentStore? {
+        shared.container.persistentStoreCoordinator.persistentStores
+            .first { $0.url != sharedStoreURL }
+    }
     static var mode: Mode { shared.mode }
 
     /// iCloud → 기기 로컬 순으로 시도한다.

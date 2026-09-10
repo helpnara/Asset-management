@@ -10,7 +10,8 @@ import SwiftUI
 enum FamilyRole: String, CaseIterable, Sendable, Identifiable {
     /// 관리자. 전부 고친다. 공유를 만든 사람(아빠)이 여기다.
     case owner
-    /// 참가자 중 **본인 것을** 고칠 수 있게 넓혀 준 사람.
+    /// 참가자 중 관리자가 **일부 구성원의 것**을 고칠 수 있게 넓혀 준 사람.
+    /// 어느 구성원인지는 `Member.editorIDs` 가 정한다.
     case editor
     /// 참가자 기본값 — 보기만 한다.
     case viewer
@@ -20,37 +21,29 @@ enum FamilyRole: String, CaseIterable, Sendable, Identifiable {
     var label: String {
         switch self {
         case .owner: return "관리자"
-        case .editor: return "본인 것 수정"
+        case .editor: return "편집 권한 받음"
         case .viewer: return "보기 전용"
         }
     }
 
     /// 자기 구성원에 딸린 것(계좌·종목)을 고칠 수 있나 — 역할 수준의 답.
-    /// 어느 구성원인지까지 따지려면 `mayEdit(memberID:selfMemberID:)`.
+    /// 어느 구성원인지까지 따지려면 `mayEdit(editorIDs:participantID:)`.
     var canEdit: Bool { self != .viewer }
 
-    /// **본인 것만** (docs/09-family-sharing.md 4단계 · 합격 기준 7번).
-    ///
-    /// `CKShare` 의 권한은 존 전체에 걸린다 — "변경 가능" 이면 남의 계좌도
-    /// 서버는 받아 준다. 그래서 구성원 단위 잠금은 앱이 한다. 참가자는
-    /// 더보기 → 가족에서 **이 기기의 구성원**을 고르고, `editor` 는 그
-    /// 구성원의 것만 고친다. 안 골랐으면 아무것도 못 고친다 — 남의 것을
-    /// 열어 두느니 잠가 두는 쪽이 싸다.
-    func mayEdit(memberID: UUID?, selfMemberID: UUID?) -> Bool {
+    /// **참가자마다 고칠 수 있는 구성원을 관리자가 정한다** (docs/09 4단계 ·
+    /// 합격 기준 7번). `CKShare` 의 권한은 존 전체에 걸린다 — "변경 가능" 이면
+    /// 남의 계좌도 서버는 받아 준다. 그래서 구성원 단위는 앱이 잠근다:
+    /// 관리자가 더보기 → 가족 → 편집 권한에서 참가자마다 구성원을 체크하면
+    /// `Member.editorIDs` 에 그 참가자의 ID 가 적히고, 참가자 기기는 제 ID 가
+    /// 적힌 구성원만 고친다. 엄마는 엄마·아들 것, 아들은 아들 것 — 그런 식으로.
+    func mayEdit(editorIDs: String, participantID: String?) -> Bool {
         switch self {
         case .owner: return true
-        case .editor: return memberID != nil && memberID == selfMemberID
+        case .editor:
+            guard let participantID, !participantID.isEmpty else { return false }
+            return Member.editorIDSet(editorIDs).contains(participantID)
         case .viewer: return false
         }
-    }
-
-    /// 이 기기를 쓰는 구성원의 `Member.id`. 기기마다 다르므로 UserDefaults 다 —
-    /// iCloud 로 퍼지면 안 된다.
-    static let selfMemberKey = "family.selfMemberID"
-
-    static var selfMemberID: UUID? {
-        get { UserDefaults.standard.string(forKey: selfMemberKey).flatMap { UUID(uuidString: $0) } }
-        set { UserDefaults.standard.set(newValue?.uuidString, forKey: selfMemberKey) }
     }
 
     /// 가구 전체에 걸리는 것 — 계획 가정, 구성원 추가·삭제, 백업 되돌리기,
@@ -81,9 +74,9 @@ private struct FamilyRoleKey: EnvironmentKey {
     static let defaultValue = FamilyRole.owner
 }
 
-/// 이 기기를 쓰는 구성원. 관리자 기기에서는 안 쓴다.
-private struct SelfMemberIDKey: EnvironmentKey {
-    static let defaultValue: UUID? = nil
+/// 이 기기의 `CKShare` 참가자 ID. 관리자 기기에서는 `nil`.
+private struct ParticipantIDKey: EnvironmentKey {
+    static let defaultValue: String? = nil
 }
 
 extension EnvironmentValues {
@@ -102,25 +95,25 @@ extension EnvironmentValues {
         set { self[FamilyRoleKey.self] = newValue }
     }
 
-    var selfMemberID: UUID? {
-        get { self[SelfMemberIDKey.self] }
-        set { self[SelfMemberIDKey.self] = newValue }
+    var participantID: String? {
+        get { self[ParticipantIDKey.self] }
+        set { self[ParticipantIDKey.self] = newValue }
     }
 
-    /// 화면이 구성원 하나를 두고 묻는 한 줄. `role.mayEdit(memberID:selfMemberID:)`
-    /// 를 환경 둘로 묶은 것이다.
+    /// 화면이 구성원 하나를 두고 묻는 한 줄. `role.mayEdit(editorIDs:participantID:)`
+    /// 를 환경 둘로 묶은 것이다. 구성원이 없으면(주인 없는 계좌) 관리자만.
     func mayEdit(_ member: Member?) -> Bool {
-        familyRole.mayEdit(memberID: member?.id, selfMemberID: selfMemberID)
+        familyRole.mayEdit(editorIDs: member?.editorIDs ?? "", participantID: participantID)
     }
 }
 
 extension View {
     /// 이 아래 화면 전부에 역할을 건다.
-    func familyRole(_ role: FamilyRole, selfMemberID: UUID? = nil) -> some View {
+    func familyRole(_ role: FamilyRole, participantID: String? = nil) -> some View {
         environment(\.familyRole, role)
             .environment(\.canEdit, role.canEdit)
             .environment(\.canManageHousehold, role.canManageHousehold)
-            .environment(\.selfMemberID, selfMemberID)
+            .environment(\.participantID, participantID)
     }
 }
 
@@ -139,5 +132,26 @@ enum RolePreview {
         guard let index = arguments.firstIndex(of: "-rolePreview"),
               arguments.indices.contains(index + 1) else { return nil }
         return FamilyRole(rawValue: arguments[index + 1])
+    }
+}
+
+// MARK: - 구성원의 편집 권한 목록
+
+extension Member {
+    /// `editorIDs` 는 쉼표로 이은 문자열이다 — CloudKit 에 배열 칸을 더하지
+    /// 않으려고. 읽고 쓰는 길은 이 둘뿐이다.
+    static func editorIDSet(_ raw: String) -> Set<String> {
+        Set(raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+    }
+
+    func grants(_ participantID: String) -> Bool {
+        Self.editorIDSet(editorIDs).contains(participantID)
+    }
+
+    func setGrant(_ participantID: String, _ on: Bool) {
+        var ids = Self.editorIDSet(editorIDs)
+        if on { ids.insert(participantID) } else { ids.remove(participantID) }
+        let next = ids.sorted().joined(separator: ",")
+        if next != editorIDs { editorIDs = next }
     }
 }
