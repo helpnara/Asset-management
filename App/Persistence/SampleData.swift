@@ -181,6 +181,11 @@ enum SampleData {
             session.completedAt = anchor
             session.totalValueMinor = running
             session.previousTotalValueMinor = previous
+            // 구성원별 연속 기록(C8)이 화면에 보이게. 두 번째 사람은 지난주를
+            // 걸러서 "끊긴" 모양도 함께 찍힌다.
+            session.setEnteredMembers(Set(members.enumerated()
+                .filter { !($0.offset == 1 && weeksAgo == 1) }
+                .map { $0.element.id }))
 
             let snapshot = Snapshot(context: context, weekAnchor: anchor,
                                     netWorthMinor: running,

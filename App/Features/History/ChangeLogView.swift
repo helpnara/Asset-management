@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 변경 이력 — 무엇이 언제 바뀌었나 (docs/08-feedback.md 29번).
 ///
-/// 가족 공유(4차)가 붙으면 `누가` 가 참가자 이름이 되지만, **공유가 없어도
+/// `누가` 는 기기마다 정한 이름이다 (`ActorName`, 74번). **공유가 없어도
 /// 쓸모가 있다** — 지난주에 내가 무엇을 고쳤는지 돌아볼 수 있다.
 ///
 /// **1페이지에는 넣지 않는다.** 종이는 남에게 건네는 문서인데 이력에는
@@ -55,6 +55,14 @@ struct ChangeLogView: View {
                 Text(log.summary)
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.bodyText)
+            }
+            Spacer(minLength: 6)
+            // **누가** (74번). 가족 넷이 쓰면 이것 없이는 이력이 반쪽이다.
+            if !log.actor.isEmpty {
+                Text(log.actor)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.faint)
+                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)

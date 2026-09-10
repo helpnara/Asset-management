@@ -55,6 +55,19 @@ struct FamilyShareState: Sendable {
     /// 있으면 그 기록은 상대 기기에 안 간다 — 지우고 다시 만들어야 한다.
     var strays = 0
 
+    /// 공유가 아는 **내 이름** (참가자 신원의 이름 구성 요소). 본인 기기에서는
+    /// 비어 있을 때가 많아 `ActorName` 이 대신한다 (77번).
+    var myName: String?
+
+    /// **공유를 한 번이라도 실제로 읽었나** (76번). 앱을 켠 직후 이 값이
+    /// 거짓인 동안은 역할을 모르는 것이지 소유자인 것이 아니다.
+    var isResolved = false
+
+    /// **참가자였는데 공유가 없어졌다** (79번). 관리자가 참가자를 빼거나 공유를
+    /// 중단하면 이 기기의 공유 저장소에서 `CKShare` 가 사라진다. 마지막 역할은
+    /// 지키되(71번) 그 사실은 알려야 한다 — 안 그러면 영영 "참가 중" 이다.
+    var shareLost = false
+
     var isParticipant: Bool { role != .owner }
 
     /// 사람이 읽을 한 줄.
@@ -283,11 +296,13 @@ final class FamilySharing {
             guard participant.role != .owner,
                   let id = participant.userIdentity.userRecordID?.recordName else { return nil }
             let identity = participant.userIdentity
+            // 이름을 모르면 ID 꼬리라도 붙인다 — "참가자" 둘이 나란히 서면
+            // 누가 누군지 가를 수 없다 (77번).
             let name = identity.nameComponents.map { PersonNameComponentsFormatter().string(from: $0) }
                 .flatMap { $0.isEmpty ? nil : $0 }
                 ?? identity.lookupInfo?.emailAddress
                 ?? identity.lookupInfo?.phoneNumber
-                ?? "참가자"
+                ?? "참가자 " + ActorName.idTail(id)
             return SharePerson(id: id, name: name,
                                canWrite: participant.permission == .readWrite,
                                accepted: participant.acceptanceStatus == .accepted)
@@ -383,8 +398,17 @@ final class FamilySharing {
                     next.role = Self.role(of: share)
                     next.participantID = Self.realUserRecordName(
                         share.currentUserParticipant?.userIdentity.userRecordID?.recordName)
+                    next.myName = share.currentUserParticipant?.userIdentity.nameComponents
+                        .map { PersonNameComponentsFormatter().string(from: $0) }
+                        .flatMap { $0.isEmpty ? nil : $0 }
                     UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
+                } else if lastRole != .owner {
+                    // 참가자로 기억하는데 공유가 없다. 아직 안 내려온 것일 수도
+                    // 있어 역할은 그대로 두고, 판단은 화면이 가져오기 완료와
+                    // 함께 한다 (79번).
+                    next.shareLost = true
                 }
+                next.isResolved = true
 
                 // 참가자 기기에는 가구가 **하나만** 있어야 한다. 초대를 받기 전에
                 // 앱이 제 가구를 만들어 두므로(첫 화면이 계획을 만든다), 받고
@@ -416,6 +440,14 @@ final class FamilySharing {
                 let result = next
                 Task { @MainActor in
                     FamilySharing.shared.state = result
+                    // **소유자도 한 번은 적어 둔다** (76번). 가져오기가 끝났는데도
+                    // 공유가 없으면 이 기기는 소유자다 — 다음 실행부터는 확인을
+                    // 기다리지 않는다. 참가자는 위에서 공유를 읽을 때 적힌다.
+                    if !result.isParticipant, !result.shareLost,
+                       CloudKitSyncMonitor.shared.hasFinishedImport,
+                       UserDefaults.standard.string(forKey: Self.roleKey) == nil {
+                        UserDefaults.standard.set(FamilyRole.owner.rawValue, forKey: Self.roleKey)
+                    }
                     // 참가자인데 제 이름을 아직 모르면 서버에 묻는다 (아래 참고).
                     if result.isParticipant && result.participantID == nil {
                         FamilySharing.shared.fetchUserRecordNameIfNeeded()
@@ -590,6 +622,18 @@ final class FamilySharing {
 
     /// 이 기기에서 초대를 받아들인 적이 있나. 참가자 화면의 근거다.
     var didAcceptInvitation = false
+
+    /// **참가자 상태를 지운다** (79번). 관리자가 공유를 끊은 뒤 이 기기가
+    /// 영영 "참가 중" 으로 남지 않게 — 기억한 역할과 받아 둔 참가자 ID 를
+    /// 비우고 다시 읽는다. 공유 저장소는 이미 비어 있으므로 지울 기록은 없다.
+    func forgetParticipation() {
+        UserDefaults.standard.removeObject(forKey: Self.roleKey)
+        UserDefaults.standard.removeObject(forKey: Self.userRecordKey)
+        didAcceptInvitation = false
+        state.role = .owner
+        state.shareLost = false
+        refreshState()
+    }
 
     /// **이 기기가 이 객체를 고칠 수 있나.**
     ///

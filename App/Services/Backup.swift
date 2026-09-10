@@ -214,6 +214,8 @@ struct BackupDocument: Codable, Sendable {
         var isTotalOnly: Bool
         var totalValueMinor: Int
         var previousTotalValueMinor: Int
+        /// 빌드 61 부터 (C8). 옛 백업에는 없어 옵셔널이다.
+        var enteredMemberIDs: String?
     }
 
     struct SnapshotData: Codable, Sendable {
@@ -385,7 +387,8 @@ extension BackupDocument {
                                   enteredCount: $0.enteredCount, totalCount: $0.totalCount,
                                   isTotalOnly: $0.isTotalOnly,
                                   totalValueMinor: $0.totalValueMinor,
-                                  previousTotalValueMinor: $0.previousTotalValueMinor)
+                                  previousTotalValueMinor: $0.previousTotalValueMinor,
+                                  enteredMemberIDs: $0.enteredMemberIDs)
             },
             snapshots: context.all(Snapshot.self).sorted { $0.weekAnchor < $1.weekAnchor }.map { snapshot in
                 SnapshotData(id: snapshot.id, weekAnchor: snapshot.weekAnchor,
@@ -595,6 +598,7 @@ extension BackupDocument {
             session.isTotalOnly = data.isTotalOnly
             session.totalValueMinor = data.totalValueMinor
             session.previousTotalValueMinor = data.previousTotalValueMinor
+            session.enteredMemberIDs = data.enteredMemberIDs ?? ""
         }
 
         for data in document.snapshots {

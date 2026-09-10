@@ -359,6 +359,8 @@ DEFINE SCHEMA
         CD_isTotalOnly INT64,
         CD_totalValueMinor INT64,
         CD_previousTotalValueMinor INT64,
+        CD_enteredMemberIDs STRING,
+        CD_enteredMemberIDs_ckAsset ASSET,
         CD_household STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",

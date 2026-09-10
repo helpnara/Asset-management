@@ -182,9 +182,15 @@ struct ReviewCompleteView: View {
 
                 ForEach(lines) { line in
                     HStack {
-                        Text(line.memberName.isEmpty ? "이름 없음" : line.memberName)
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(Color.ink)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(line.memberName.isEmpty ? "이름 없음" : line.memberName)
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(Color.ink)
+                            // 이 주에 그 사람 몫이 적혔나, 몇 주째인가 (C8).
+                            Text(memberLine(line.memberID))
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(Color.faint)
+                        }
                         Spacer()
                         Text(Won.abbreviated(Money(minorUnits: line.valueMinor, currency: .krw)))
                             .font(.figure(12.5, weight: .medium))
@@ -196,6 +202,14 @@ struct ReviewCompleteView: View {
                 }
             }
         }
+    }
+
+    /// 이 점검 시점 기준이다 — 지난 점검을 열어 봐도 그때의 연속 주가 나온다.
+    private func memberLine(_ memberID: UUID) -> String {
+        let entered = session.enteredMemberIDSet.contains(memberID)
+        let streak = ReviewSession.memberStreak(memberID, sessions: sessions, asOf: session.weekAnchor)
+        if !entered { return streak > 0 ? "이번 주 안 적음 · 지난 \(streak)주 연속" : "이번 주 안 적음" }
+        return streak > 1 ? "\(streak)주 연속" : "이번 주 적음"
     }
 
     private var footer: some View {

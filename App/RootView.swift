@@ -5,7 +5,11 @@ import SwiftUI
 struct RootView: View {
     @State private var route = AppRoute.shared
     @State private var sharing = FamilySharing.shared
+    @State private var monitor = CloudKitSyncMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
+    /// 역할 확인을 이만큼은 기다린다. 그 뒤에는 아는 대로 연다 — 오프라인
+    /// 첫 실행에서 영영 잠긴 채 서 있으면 안 된다 (76번).
+    @State private var roleWaitExpired = false
 
 
     @Fetched private var holdings: [Holding]
@@ -19,16 +23,44 @@ struct RootView: View {
     /// 보기 전용 화면을 찍을 때만 쓴다 — 기기에서 역할을 흉내 내는 토글은
     /// 실제 공유가 확인된 뒤 지웠다 (2026-09-10).
     private var role: FamilyRole {
+        if let preview = RolePreview.launchArgument { return preview }
+        // **아직 모르는 동안은 잠근다** (76번). 이 기기가 한 번도 역할을 판정한
+        // 적이 없고 가져오기도 안 끝났으면, 참가자 폰의 첫 실행일 수 있다 —
+        // 그때 소유자로 열어 두면 남의 것을 고치다 나중에 잠긴다.
+        if isRolePending { return .viewer }
         if sharing.state.isParticipant { return sharing.state.role }
-        return RolePreview.launchArgument ?? .owner
+        return .owner
+    }
+
+    /// 첫 실행에서 역할 판정이 끝나기를 기다리는 중인가. iCloud 모드에서만,
+    /// 기억한 역할이 없을 때만, 그리고 20초까지만.
+    private var isRolePending: Bool {
+        guard Persistence.mode == .cloudKit, !roleWaitExpired,
+              UserDefaults.standard.string(forKey: FamilySharing.roleKey) == nil else { return false }
+        return !sharing.state.isResolved || !monitor.hasFinishedImport
+    }
+
+    /// 참가자였는데 공유가 사라졌다 — 가져오기가 끝난 뒤에도 그렇다면 진짜다 (79번).
+    private var isShareLost: Bool {
+        sharing.state.shareLost && monitor.hasFinishedImport
     }
 
     var body: some View {
         tabs
             .familyRole(role, participantID: sharing.state.participantID)
+            .safeAreaInset(edge: .top, spacing: 0) { notices }
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
             // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
             .task { sharing.refreshState() }
+            .task {
+                try? await Task.sleep(for: .seconds(20))
+                roleWaitExpired = true
+            }
+            // 가져오기가 끝나면 한 번 더 읽는다 — 첫 실행의 참가자 폰은 이때
+            // 비로소 공유가 손에 들어온다 (76번).
+            .onChange(of: monitor.hasFinishedImport) { _, finished in
+                if finished { sharing.refreshState() }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     sharing.refreshState()
@@ -36,6 +68,39 @@ struct RootView: View {
                     Task { await DiaryNotifications.refresh(todayWritten: written) }
                 }
             }
+    }
+
+    /// 화면 위의 한 줄 알림. 없으면 자리도 없다.
+    @ViewBuilder
+    private var notices: some View {
+        if isRolePending {
+            noticeBar(icon: "icloud", text: "iCloud 에서 역할을 확인하는 중 — 잠시 뒤 편집이 열립니다",
+                      spinning: true)
+        } else if isShareLost {
+            noticeBar(icon: "person.2.slash",
+                      text: "가족 공유가 끊긴 것 같습니다 · 더보기 → 가족에서 확인하세요",
+                      spinning: false)
+        }
+    }
+
+    private func noticeBar(icon: String, text: String, spinning: Bool) -> some View {
+        HStack(spacing: 8) {
+            if spinning {
+                ProgressView().controlSize(.mini)
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .medium))
+            }
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(2)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(Color.ink)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.alertSoft)
     }
 
     private var tabs: some View {

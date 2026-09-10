@@ -1,6 +1,5 @@
 import Foundation
 import CoreData
-import UIKit
 
 /// 무엇이 언제 바뀌었는지 남긴다 (docs/08-feedback.md 29번).
 ///
@@ -19,11 +18,9 @@ enum ChangeLogger {
     /// 넘치면 오래된 것부터 지운다 — 이력이 저장 공간을 갉아먹으면 안 된다.
     private static let limit = 500
 
-    /// 누가 고쳤나. 공유 전에는 이 기기다.
-    ///
-    /// 기기 이름에는 사람 이름이 들어가는 일이 많다. **기기 안과 개인 iCloud 에만**
-    /// 남고 저장소에는 절대 커밋되지 않는다 (CLAUDE.md).
-    static var actor: String { UIDevice.current.name }
+    /// 누가 고쳤나 — 이 기기에서 정한 이름 (`ActorName`, 74번). 예전의
+    /// `UIDevice.current.name` 은 iOS 16 부터 그냥 "iPhone" 이라 쓸모가 없었다.
+    static var actor: String { ActorName.current }
 
     static func record(_ kind: ChangeKind, subject: String, summary: String,
                        in context: NSManagedObjectContext) {

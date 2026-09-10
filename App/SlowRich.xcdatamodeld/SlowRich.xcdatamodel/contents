@@ -174,6 +174,7 @@
         <attribute name="isTotalOnly" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="totalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="previousTotalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="enteredMemberIDs" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="reviewSessions" inverseEntity="Household"/>
     </entity>
     <entity name="Scenario" representedClassName="Scenario" syncable="YES">

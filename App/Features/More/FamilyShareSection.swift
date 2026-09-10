@@ -10,9 +10,42 @@ struct FamilyShareSection: View {
     @Environment(\.self) private var environment
 
     @State private var sharing = FamilySharing.shared
+    @State private var monitor = CloudKitSyncMonitor.shared
     @State private var isConfirmingMove = false
+    @State private var isConfirmingForget = false
+    /// 이력에 남을 이름 (74번). 이 기기에만 저장된다.
+    @AppStorage(ActorName.key) private var actorName = ""
 
     var body: some View {
+        familySection
+        // **만일에 대비** (78번). 관리자 폰을 잃어버리면 어떻게 되나 — 물어보기
+        // 전에 적어 둔다. 공유 소유권은 옮길 수 없다는 것이 핵심이다.
+        if canManageHousehold && !sharing.state.isParticipant && sharing.state.isSaved {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    contingencyLine("폰을 잃어버리면", "기록은 관리자의 Apple 계정 iCloud 에 있습니다. 새 폰에 같은 계정으로 로그인해 앱을 설치하면 기록과 가족 공유가 그대로 돌아옵니다.")
+                    contingencyLine("Apple 계정을 못 쓰게 되면", "공유도 함께 사라집니다. 전체 백업 파일로 되돌리고 가족을 다시 초대합니다 — 백업은 달에 한 번 받아 두세요.")
+                    contingencyLine("관리자를 바꾸려면", "공유 소유권은 옮길 수 없습니다. 새 관리자 폰에서 백업을 되돌리고 새로 초대합니다. 옛 관리자는 공유를 중단합니다.")
+                }
+            } header: {
+                Text("만일에 대비")
+            }
+        }
+    }
+
+    private func contingencyLine(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.ink)
+            Text(body)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.muted)
+                .lineSpacing(2)
+        }
+    }
+
+    private var familySection: some View {
         Section {
             // 초대를 받아들인 기기는 참가자다 — 역할 미리보기가 뭐라고 하든.
             // 참가자 쪽에서 "가족 초대" 를 내놓으면 공유가 둘이 된다.
@@ -44,8 +77,17 @@ struct FamilyShareSection: View {
                 if sharing.state.isParticipant {
                     let granted = members.filter { environment.mayEdit($0) }.map(\.name)
                     LabeledContent("받은 구성원", value: granted.isEmpty ? "없음" : granted.joined(separator: ", "))
-                    LabeledContent("내 참가자 ID", value: Self.tail(sharing.state.participantID))
-                        .font(.figure(12))
+                    // 이름을 앞에, ID 꼬리는 그 뒤에 작게 (77번). 꼬리는 관리자
+                    // 화면의 편집 권한과 견주는 용도로만 남긴다.
+                    LabeledContent("나") {
+                        HStack(spacing: 6) {
+                            Text(ActorName.current)
+                                .font(.system(size: 13, weight: .medium))
+                            Text(Self.tail(sharing.state.participantID))
+                                .font(.figure(11))
+                                .foregroundStyle(Color.faint)
+                        }
+                    }
                     if sharing.state.strays > 0 {
                         Text("개인 저장소에 남은 가족 기록이 \(sharing.state.strays)건 있습니다. 이 기록은 상대 기기에 안 갑니다 — 지우고 다시 만드세요 (빌드 58 부터는 새 기록이 공유 저장소로 갑니다).")
                             .font(.system(size: 11))
@@ -64,6 +106,41 @@ struct FamilyShareSection: View {
                         Text(sharing.state.people.isEmpty ? "참가자 없음" : "참가자 \(sharing.state.people.count)명")
                             .foregroundStyle(Color.muted)
                     }
+                }
+            }
+
+            // **이력에 남을 이름** (74번). `ChangeLog.actor` 가 이 값을 받는다.
+            // 기기 이름은 iOS 16 부터 "iPhone" 이라 쓸모가 없었다.
+            HStack {
+                Text("이력에 남을 이름")
+                Spacer(minLength: 12)
+                TextField(ActorName.current, text: $actorName)
+                    .multilineTextAlignment(.trailing)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+            }
+
+            // **공유가 끊겼다** (79번). 참가자로 기억하는데 공유 저장소에
+            // `CKShare` 가 없고, 가져오기도 끝났다. 관리자가 뺀 것이다.
+            if sharing.state.shareLost && monitor.hasFinishedImport {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("가족 공유가 끊긴 것 같습니다")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.loss)
+                    Text("관리자가 이 기기를 참가자에서 빼거나 공유를 중단하면 이렇게 됩니다. 다시 함께 쓰려면 관리자에게 초대 링크를 새로 받으세요. 이 기기에서 혼자 새로 시작하려면 아래를 누르세요 — 관리자의 기록은 그대로입니다.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.muted)
+                    Button("참가자 상태 지우고 새로 시작") { isConfirmingForget = true }
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(Color.loss)
+                        .confirmationDialog("참가자 상태를 지울까요?", isPresented: $isConfirmingForget,
+                                            titleVisibility: .visible) {
+                            Button("지우기", role: .destructive) { sharing.forgetParticipation() }
+                            Button("취소", role: .cancel) {}
+                        } message: {
+                            Text("이 기기는 관리자 없이 제 기록을 새로 시작합니다. 관리자에게 다시 초대받으면 그때 다시 참가자가 됩니다.")
+                        }
                 }
             }
 
@@ -141,10 +218,7 @@ struct FamilyShareSection: View {
     }
 
     /// ID 는 길다 — 견주는 데는 꼬리 여섯 자면 된다.
-    static func tail(_ id: String?) -> String {
-        guard let id, !id.isEmpty else { return "없음" }
-        return "…" + String(id.suffix(6))
-    }
+    static func tail(_ id: String?) -> String { ActorName.idTail(id) }
 
     /// 상대가 초대 화면에서 볼 이름. 계획 제목이 곧 이 가족의 이름이다.
     private var title: String {

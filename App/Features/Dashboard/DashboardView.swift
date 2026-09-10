@@ -663,6 +663,11 @@ struct DashboardView: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(Color.faint)
                         }
+                        // **사람마다 연속 주** (C8). 안정화 기준 2 "넷이 각자
+                        // 4주 연속" 을 앱이 직접 센다.
+                        Text(memberStreakText(member))
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(Color.faint)
                     }
                     Spacer(minLength: 0)
                     Text(Won.abbreviated(rollup.byMember[member.id] ?? .zero(.krw)))
@@ -674,6 +679,15 @@ struct DashboardView: View {
                 Rectangle().fill(Color.rule).frame(height: 1)
             }
         }
+    }
+
+    /// "3주 연속 · 이번 주 적음" 같은 한 줄. 아직 한 번도 안 적은 사람은
+    /// 재촉하지 않는다 — 빈 줄 대신 "기록 없음".
+    private func memberStreakText(_ member: Member) -> String {
+        let streak = ReviewSession.memberStreak(member.id, sessions: sessions)
+        let thisWeek = ReviewSession.enteredThisWeek(member.id, sessions: sessions)
+        if streak == 0 { return thisWeek ? "이번 주 적음" : "기록 없음" }
+        return "\(streak)주 연속" + (thisWeek ? " · 이번 주 적음" : "")
     }
 
     /// 진단 요약. 숫자 셋만 보여 주고 자세한 것은 진단 화면으로 넘긴다.

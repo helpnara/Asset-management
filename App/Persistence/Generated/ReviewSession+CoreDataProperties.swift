@@ -39,6 +39,12 @@ extension ReviewSession {
     @NSManaged var totalValueMinor: Int
 
     @NSManaged var previousTotalValueMinor: Int
+
+    /// **이번 주에 제 몫을 적은 구성원** — 쉼표로 이은 구성원 `id` (C8).
+    /// 구성원별 "N주 연속" 은 이 칸을 주마다 거슬러 세는 것이다. `lastEnteredAt`
+    /// 은 마지막 한 번만 남아 지난주까지밖에 못 보므로 여기 남긴다.
+    /// 배열 칸을 CloudKit 에 더하지 않으려고 `Member.editorIDs` 와 같은 꼴이다.
+    @NSManaged var enteredMemberIDs: String
     /// 공유의 뿌리 (docs/09-family-sharing.md 2단계). `CKShare` 는 **관계로
     /// 이어진 것**만 공유 존으로 옮기므로, 이 한 줄이 없으면 나중에 만든 것이
     /// 상대 화면에 조용히 안 보인다. 옵셔널인 것은 CloudKit 제약이다.

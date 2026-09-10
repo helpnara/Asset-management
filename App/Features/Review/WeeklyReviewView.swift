@@ -321,6 +321,16 @@ struct WeeklyReviewView: View {
         }
         let askedEveryWeek = allHoldings.filter { $0.cadence != .fixed }
         let enteredThisWeek = askedEveryWeek.filter { ($0.lastEnteredAt ?? .distantPast) >= anchor }.count
+        // **누구 몫이 적혔나** (C8). 그 구성원의 매주 묻는 종목이 이번 주 안에
+        // 전부 적혔으면 적은 것으로 센다. 묻는 종목이 하나도 없는 구성원은
+        // 적을 것이 없으므로 센다 — 그 사람 때문에 연속이 끊기면 안 된다.
+        var enteredMembers: Set<UUID> = []
+        for member in members {
+            let asked = queue(for: member)
+            if asked.allSatisfy({ ($0.lastEnteredAt ?? .distantPast) >= anchor }) {
+                enteredMembers.insert(member.id)
+            }
+        }
 
         let existing = sessions.first { $0.weekAnchor == anchor }
         let session = existing ?? ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
@@ -332,6 +342,8 @@ struct WeeklyReviewView: View {
         if existing == nil {
             session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
         }
+        // 이어서 끝낸 사람의 몫을 **더한다** — 앞사람이 적은 것을 지우지 않는다.
+        session.setEnteredMembers(session.enteredMemberIDSet.union(enteredMembers))
 
         let snapshot = snapshots.first { $0.weekAnchor == anchor }
             ?? Snapshot(context: context, weekAnchor: anchor, netWorthMinor: 0,
