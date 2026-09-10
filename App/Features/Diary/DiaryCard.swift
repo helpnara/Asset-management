@@ -58,12 +58,16 @@ struct DiaryCard: View {
         .onChange(of: gratitude) { _, value in write(\.gratitude, value) }
     }
 
+    /// **위 끝 정렬.** `.firstTextBaseline` 로 두면 세로 축 텍스트필드가 라벨보다
+    /// 한 줄 가까이 내려앉는다 (CI 스크린샷에서 확인). 위 끝을 맞추고 글자
+    /// 크기 차이(11.5 · 13)만 라벨 쪽에서 한 점 내려 준다.
     private func line(_ label: String, _ text: Binding<String>) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Text(label)
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(Color.muted)
                 .frame(width: 28, alignment: .leading)
+                .padding(.top, 1)
             TextField("한 줄", text: text, axis: .vertical)
                 .font(.system(size: 13))
                 .foregroundStyle(Color.ink)
