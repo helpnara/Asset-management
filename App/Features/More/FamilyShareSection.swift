@@ -6,6 +6,8 @@ struct FamilyShareSection: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
 
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.self) private var environment
 
     @State private var sharing = FamilySharing.shared
     @State private var isConfirmingMove = false
@@ -33,6 +35,18 @@ struct FamilyShareSection: View {
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
                 LabeledContent("가족 공유", value: sharing.state.isParticipant
                                ? "참가 중 · \(sharing.state.role.label)" : "참가 중")
+
+                // **권한이 왜 안 열리는지 그 자리에서 판별한다.** 관리자가 체크했는데
+                // 참가자 화면이 안 열리면 셋 중 하나다 — 구성원 칸이 아직 안
+                // 내려왔거나(동기화·스키마), 참가자 ID 가 다르거나, 서버 권한이
+                // 보기 전용이거나. ID 꼬리와 받은 구성원을 적어 두면 어느 쪽인지
+                // 두 화면을 견줘 알 수 있다.
+                if sharing.state.isParticipant {
+                    let granted = members.filter { environment.mayEdit($0) }.map(\.name)
+                    LabeledContent("받은 구성원", value: granted.isEmpty ? "없음" : granted.joined(separator: ", "))
+                    LabeledContent("내 참가자 ID", value: Self.tail(sharing.state.participantID))
+                        .font(.figure(12))
+                }
             }
 
             // 참가자마다 고칠 수 있는 구성원을 정하는 곳. 수락한 참가자가 있어야
@@ -119,6 +133,12 @@ struct FamilyShareSection: View {
             // 쓰는데, 그것이 메인을 붙잡으면 워치독이 앱을 죽인다.
             sharing.refreshState()
         }
+    }
+
+    /// ID 는 길다 — 견주는 데는 꼬리 여섯 자면 된다.
+    static func tail(_ id: String?) -> String {
+        guard let id, !id.isEmpty else { return "없음" }
+        return "…" + String(id.suffix(6))
     }
 
     /// 상대가 초대 화면에서 볼 이름. 계획 제목이 곧 이 가족의 이름이다.
