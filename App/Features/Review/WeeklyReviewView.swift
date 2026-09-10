@@ -25,6 +25,7 @@ struct WeeklyReviewView: View {
     /// 값은 못 고쳐도 가족 총액에는 들어가야 한다.
     private var editableMembers: [Member] { members.filter { environment.mayEdit($0) } }
     @Fetched private var sessions: [ReviewSession]
+    @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
     @FocusState private var focusedID: UUID?
@@ -295,6 +296,13 @@ struct WeeklyReviewView: View {
         return isGood ? .gain : .loss
     }
 
+    /// **주마다 기록은 하나다 — 뒤에 끝낸 사람이 갱신한다** (docs/09 4단계 정책).
+    ///
+    /// 넷이 각자 제 몫을 적는다. 첫 사람이 끝내면 그 주의 세션·스냅샷이 생기고,
+    /// 다음 사람이 끝내면 **같은 것을 갱신**한다 — 새로 만들면 궤적에 한 주에
+    /// 점이 둘 생겨 선이 꺾인다. 안 적은 구성원의 종목은 마지막 값 그대로다
+    /// (종목이 현재값을 들고 있으니 따로 할 일이 없다). `totalCount` 는 가족
+    /// 전체의 종목 수, `enteredCount` 는 이번 주에 누군가 적은 수다.
     private func finish() {
         let anchor = ReviewWeek.anchor(for: .now)
         let allHoldings = members
@@ -306,21 +314,36 @@ struct WeeklyReviewView: View {
             .filter { $0.isComplete && $0.weekAnchor < anchor }
             .max { $0.weekAnchor < $1.weekAnchor }
 
-        let session = ReviewSession(context: context, weekAnchor: anchor, totalCount: queue.count)
-        session.enteredCount = queue.count
-        session.completedAt = .now
-        session.totalValueMinor = rollup.netWorth.minorUnits
-        session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
+        // 다음 주 증감 표시의 기준이 된다. 세션 집계보다 먼저 — 아래에서 센다.
+        for holding in queue {
+            holding.lastEnteredValueMinor = holding.valueMinor
+            holding.lastEnteredAt = .now
+        }
+        let askedEveryWeek = allHoldings.filter { $0.cadence != .fixed }
+        let enteredThisWeek = askedEveryWeek.filter { ($0.lastEnteredAt ?? .distantPast) >= anchor }.count
 
-        let snapshot = Snapshot(context: context,
-            weekAnchor: anchor,
-            netWorthMinor: rollup.netWorth.minorUnits,
-            investableMinor: rollup.investable.minorUnits,
-            liabilitiesMinor: rollup.liabilities.minorUnits
-        )
+        let existing = sessions.first { $0.weekAnchor == anchor }
+        let session = existing ?? ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
+        session.totalCount = askedEveryWeek.count
+        session.enteredCount = enteredThisWeek
+        session.isTotalOnly = false
+        session.completedAt = session.completedAt ?? .now
+        session.totalValueMinor = rollup.netWorth.minorUnits
+        if existing == nil {
+            session.previousTotalValueMinor = previous?.totalValueMinor ?? 0
+        }
+
+        let snapshot = snapshots.first { $0.weekAnchor == anchor }
+            ?? Snapshot(context: context, weekAnchor: anchor, netWorthMinor: 0,
+                        investableMinor: 0, liabilitiesMinor: 0)
+        snapshot.netWorthMinor = rollup.netWorth.minorUnits
+        snapshot.investableMinor = rollup.investable.minorUnits
+        snapshot.liabilitiesMinor = rollup.liabilities.minorUnits
 
         // 구성원별 분해를 함께 남긴다. 이게 없으면 나중에 이 점검을 다시 열었을 때
-        // 총액은 그때 값인데 구성원별은 현재 값이라 합이 안 맞는다.
+        // 총액은 그때 값인데 구성원별은 현재 값이라 합이 안 맞는다. 갱신이면
+        // 옛 줄을 지우고 새로 적는다.
+        for line in snapshot.sortedLines { context.delete(line) }
         for (position, member) in members.enumerated() {
             let line = SnapshotLine(context: context,
                 memberID: member.id,
@@ -331,12 +354,6 @@ struct WeeklyReviewView: View {
             line.snapshot = snapshot
         }
 
-        // 다음 주 증감 표시의 기준이 된다.
-        for holding in queue {
-            holding.lastEnteredValueMinor = holding.valueMinor
-            holding.lastEnteredAt = .now
-        }
-
         // **무엇이 언제 바뀌었나** 를 남긴다 (docs/08-feedback.md 29번).
         // 주간 점검은 이 앱에서 가장 자주 일어나는 변경이라 첫 줄에 온다.
         let previousTotal = Money(minorUnits: session.previousTotalValueMinor, currency: .krw)
@@ -344,7 +361,7 @@ struct WeeklyReviewView: View {
             ? "\(Won.compact(previousTotal)) → \(Won.compact(rollup.netWorth))"
             : "\(Won.compact(rollup.netWorth))"
         ChangeLogger.record(.weeklyEntry,
-                            subject: "주간 점검 · 종목 \(queue.count)건",
+                            subject: "주간 점검 · 종목 \(queue.count)건" + (existing == nil ? "" : " (이어서)"),
                             summary: summary, in: context)
 
         focusedID = nil

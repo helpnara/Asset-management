@@ -8,6 +8,7 @@ struct DashboardView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
     // 주간 점검은 **숫자를 적어 넣는** 화면이라 보기 전용이면 열 이유가 없다.
     @Environment(\.canEdit) private var canEdit
+    @Environment(\.self) private var environment
 
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched private var holdings: [Holding]
@@ -94,8 +95,24 @@ struct DashboardView: View {
         ReviewWeek.streak(completedAnchors: completedAnchors, asOf: .now)
     }
 
-    private var didReviewThisWeek: Bool {
+    private var familyDidReviewThisWeek: Bool {
         completedAnchors.contains(ReviewWeek.anchor(for: .now))
+    }
+
+    /// **내가 적을 수 있는데 이번 주 아직 안 적힌 종목** (docs/09 4단계 정책).
+    /// 넷이 각자 제 몫을 적으므로, 가족 기록이 있어도 내 몫이 남았으면 카드는
+    /// 아직 "완료" 가 아니다. 남이 적어 준 것은 남은 것으로 세지 않는다.
+    private var myPendingCount: Int {
+        let anchor = ReviewWeek.anchor(for: .now)
+        return holdings.filter {
+            $0.cadence != .fixed
+                && environment.mayEdit($0.account?.owner)
+                && ($0.lastEnteredAt ?? .distantPast) < anchor
+        }.count
+    }
+
+    private var didReviewThisWeek: Bool {
+        familyDidReviewThisWeek && (!canEdit || myPendingCount == 0)
     }
 
     private var header: some View {
@@ -179,6 +196,7 @@ struct DashboardView: View {
 
     private var weeklyTitle: String {
         if didReviewThisWeek { return "이번 주 점검 완료" }
+        if familyDidReviewThisWeek { return "이번 주 점검 · 내 몫 \(myPendingCount)건 남음" }
         // 적을 수 없는 사람에게 D-3 을 들이밀지 않는다. 재촉으로만 읽힌다.
         if !canEdit { return "이번 주 기록 대기 중" }
         let days = ReviewWeek.daysUntilReview(from: .now)
