@@ -365,6 +365,17 @@ final class FamilySharing {
             context.perform {
                 var next = FamilyShareState()
 
+                // **못 읽었으면 마지막 판정을 지킨다** (docs/08-feedback.md 71번).
+                // 예전에는 기본값이 소유자라, 앱을 켠 직후 공유 조회가 한 번
+                // 실패하면 참가자 폰의 모든 편집이 잠깐 풀렸다가 다음 조회에서
+                // 다시 잠겼다 — 게다가 그 "소유자" 를 저장까지 해서 다음 실행도
+                // 풀린 채 시작했다. 역할은 **공유를 실제로 읽었을 때만** 바꾸고
+                // 저장한다. 참가자 ID 도 받아 둔 것으로 먼저 채운다.
+                let lastRole = UserDefaults.standard.string(forKey: Self.roleKey)
+                    .flatMap(FamilyRole.init(rawValue:)) ?? .owner
+                next.role = lastRole
+                next.participantID = Self.realUserRecordName(nil)
+
                 // **참가자인가.** 공유 저장소에 `CKShare` 가 있으면 그렇다.
                 // 소유자의 공유는 개인 저장소에 있어서 여기 안 잡힌다.
                 if let sharedStore,
@@ -372,8 +383,8 @@ final class FamilySharing {
                     next.role = Self.role(of: share)
                     next.participantID = Self.realUserRecordName(
                         share.currentUserParticipant?.userIdentity.userRecordID?.recordName)
+                    UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
                 }
-                UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
 
                 // 참가자 기기에는 가구가 **하나만** 있어야 한다. 초대를 받기 전에
                 // 앱이 제 가구를 만들어 두므로(첫 화면이 계획을 만든다), 받고
