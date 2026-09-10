@@ -330,7 +330,10 @@ struct DashboardView: View {
                               trailing: "마지막 점검 \(Self.shortDate.string(from: latest.weekAnchor)) 기준")
                 Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 0) {
                     GridRow {
-                        Text("").gridColumnAlignment(.leading)
+                        // 라벨 칸이 남는 폭을 다 가져야 표가 화면 폭에 맞게 펴진다.
+                        Text("")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .gridColumnAlignment(.leading)
                         Text("증감")
                         Text("넣은 돈")
                         Text("자란 돈")
@@ -345,6 +348,7 @@ struct DashboardView: View {
                             Text(row.label)
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.ink)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .gridColumnAlignment(.leading)
                             if let split = row.split {
                                 figure(split.change, tone: true)

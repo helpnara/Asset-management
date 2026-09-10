@@ -155,6 +155,10 @@ struct RetrospectiveCard: View {
     private var gain: Color { forPrint ? Color(hex: 0x2A7A66) : .gain }
     private var loss: Color { forPrint ? Color(hex: 0x8E4650) : .loss }
 
+    private func longMoney(_ value: Money) -> String {
+        forPrint ? KoreanAmountFormatter.abbreviated(value) : Won.abbreviated(value)
+    }
+
     private func money(_ value: Money, sign: KoreanAmountFormatter.SignStyle = .negativeOnly) -> String {
         forPrint ? KoreanAmountFormatter.compact(value, sign: sign) : Won.compact(value, sign: sign)
     }
@@ -172,7 +176,8 @@ struct RetrospectiveCard: View {
                     .foregroundStyle(ink)
             }
             if let base = summary.baseTotal, let end = summary.endTotal {
-                Text("\(money(base)) → \(money(end))")
+                // 한 달 사이는 억 단위 한 자리로는 같아 보인다 — 만 단위까지 적는다.
+                Text("\(longMoney(base)) → \(longMoney(end))")
                     .font(.figure(12))
                     .foregroundStyle(muted)
             } else if summary.endTotal != nil {
