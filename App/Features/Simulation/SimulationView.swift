@@ -448,9 +448,13 @@ struct SimulationView: View {
     private func scenarioRow(_ scenario: Scenario, current: Knobs) -> some View {
         HStack(spacing: 10) {
             Button {
+                // 저장된 시나리오는 넷만 들고 있다. 은퇴 후 수익률·물가는
+                // 지금 손잡이 위치를 그대로 둔다 (67번).
                 self.knobs = Knobs(monthlyMinor: scenario.monthlyMinor,
                                    retirementYear: scenario.retirementYear,
                                    returnBP: scenario.returnBP,
+                                   postReturnBP: current.postReturnBP,
+                                   inflationBP: current.inflationBP,
                                    volatilityBP: scenario.volatilityBP)
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
