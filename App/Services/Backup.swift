@@ -34,6 +34,18 @@ struct BackupDocument: Codable, Sendable {
     var changeLog: [ChangeLogData]
     /// 가족 전체의 지역·자산군 목표 (docs/08-feedback.md 15번).
     var familyTargets: [FamilyTargetData]
+    /// 목실감 일기. 이 기기 사용자의 개인 기록이라 백업에는 넣고 공유에는 안
+    /// 넣는다. 옛 백업에는 없으므로 옵셔널이다.
+    var diary: [DiaryData]?
+
+    struct DiaryData: Codable, Sendable {
+        var id: UUID
+        var day: Date
+        var goal: String
+        var result: String
+        var gratitude: String
+        var createdAt: Date
+    }
 
     struct FamilyTargetData: Codable, Sendable {
         var id: UUID
@@ -86,6 +98,9 @@ struct BackupDocument: Codable, Sendable {
         var targetRetirementAge: Int
         var monthlyContributionMinor: Int
         var employerMatchMinor: Int
+        /// 옛 백업에는 없다 — 옵셔널로 두고 되돌릴 때 0 으로 본다.
+        var monthlySalaryMinor: Int?
+        var otherIncomeMinor: Int?
         var note: String
         var colorIndex: Int
         var sortIndex: Int
@@ -104,6 +119,9 @@ struct BackupDocument: Codable, Sendable {
         var expectedReturnBP: Int?
         var maturesOn: Date?
         var ownerID: UUID?
+        /// 옛 백업에는 없다 — 옵셔널로 두고 되돌릴 때 0 으로 본다.
+        var purchasePriceMinor: Int?
+        var monthlyRentMinor: Int?
         var sortIndex: Int
         var createdAt: Date
         var holdings: [HoldingData]
@@ -250,6 +268,8 @@ extension BackupDocument {
                     targetRetirementAge: member.targetRetirementAge,
                     monthlyContributionMinor: member.monthlyContributionMinor,
                     employerMatchMinor: member.employerMatchMinor,
+                    monthlySalaryMinor: member.monthlySalaryMinor,
+                    otherIncomeMinor: member.otherIncomeMinor,
                     note: member.note,
                     colorIndex: member.colorIndex, sortIndex: member.sortIndex,
                     createdAt: member.createdAt,
@@ -263,6 +283,8 @@ extension BackupDocument {
                             expectedReturnBP: account.expectedReturnBP,
                             maturesOn: account.maturesOn,
                             ownerID: account.ownerID ?? member.id,
+                            purchasePriceMinor: account.purchasePriceMinor,
+                            monthlyRentMinor: account.monthlyRentMinor,
                             sortIndex: account.sortIndex, createdAt: account.createdAt,
                             holdings: account.sortedHoldings.map { holding in
                                 HoldingData(
@@ -385,7 +407,11 @@ extension BackupDocument {
                 .map {
                     FamilyTargetData(id: $0.id, dimension: $0.dimensionRaw,
                                      key: $0.key, targetBP: $0.targetBP)
-                }
+                },
+            diary: context.all(DiaryEntry.self).sorted { $0.day < $1.day }.map {
+                DiaryData(id: $0.id, day: $0.day, goal: $0.goal, result: $0.result,
+                          gratitude: $0.gratitude, createdAt: $0.createdAt)
+            }
         )
     }
 
@@ -447,6 +473,9 @@ extension BackupDocument {
         deleteAll(Principle.self, in: context)
         deleteAll(ChangeLog.self, in: context)
         deleteAll(FamilyTarget.self, in: context)
+        // 일기는 백업에 있을 때만 갈아 끼운다. 옛 백업(일기 칸이 없던 때)으로
+        // 되돌린다고 오늘까지 쓴 일기가 지워지면 안 된다.
+        if document.diary != nil { deleteAll(DiaryEntry.self, in: context) }
 
         // 2) 채운다.
         if let data = document.plan { insert(plan: data, into: context) }
@@ -462,6 +491,8 @@ extension BackupDocument {
             member.id = memberData.id
             member.monthlyContributionMinor = memberData.monthlyContributionMinor
             member.employerMatchMinor = memberData.employerMatchMinor
+            member.monthlySalaryMinor = memberData.monthlySalaryMinor ?? 0
+            member.otherIncomeMinor = memberData.otherIncomeMinor ?? 0
             member.note = memberData.note
             member.createdAt = memberData.createdAt
 
@@ -476,6 +507,8 @@ extension BackupDocument {
                 account.annualLimitMinor = accountData.annualLimitMinor
                 account.expectedReturnBP = accountData.expectedReturnBP
                 account.maturesOn = accountData.maturesOn
+                account.purchasePriceMinor = accountData.purchasePriceMinor ?? 0
+                account.monthlyRentMinor = accountData.monthlyRentMinor ?? 0
                 account.createdAt = accountData.createdAt
 
                 for holdingData in accountData.holdings {
@@ -591,6 +624,16 @@ extension BackupDocument {
             let target = FamilyTarget(context: context, dimension: FamilyTarget.Dimension(rawValue: data.dimension) ?? .region,
                                       key: data.key, targetBP: data.targetBP)
             target.id = data.id
+        }
+
+        for data in document.diary ?? [] {
+            let entry = DiaryEntry(context: context)
+            entry.id = data.id
+            entry.day = data.day
+            entry.goal = data.goal
+            entry.result = data.result
+            entry.gratitude = data.gratitude
+            entry.createdAt = data.createdAt
         }
 
         try? context.save()

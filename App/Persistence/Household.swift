@@ -118,8 +118,13 @@ extension Household {
     /// 그래서 "만들 때" 가 아니라 **"저장할 때"** 를 잡는다. 저장을 거치지 않고
     /// 디스크에 남는 길은 없으므로, 여기가 유일하게 새는 곳이 없는 자리다.
     static func attachNew(in context: NSManagedObjectContext) {
+        // `household` 관계가 없는 엔티티(목실감 일기)는 **일부러** 안 매단다 —
+        // 개인 저장소에만 남아 공유 존으로 안 가게. `value(forKey:)` 로 없는 키를
+        // 읽으면 죽으므로 관계 유무를 먼저 본다.
         let orphans = context.insertedObjects.filter { object in
-            object is Household ? false : object.value(forKey: "household") == nil
+            guard !(object is Household),
+                  object.entity.relationshipsByName["household"] != nil else { return false }
+            return object.value(forKey: "household") == nil
         }
         guard !orphans.isEmpty else { return }
 

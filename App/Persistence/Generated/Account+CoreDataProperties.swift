@@ -67,6 +67,13 @@ extension Account {
     /// 적어 두고도 안 돼 있었다 (docs/08-feedback.md 13번).
     @NSManaged var ownerID: UUID?
 
+    /// **세 들어 사는 집의 매매가.** 전월세보증금 계좌에만 뜻이 있다. 월세 적정성
+    /// 진단(연 월세 ÷ 매매가 ≤ 5%)의 분모다 (docs/05-roadmap.md 마지막 묶음 2).
+    @NSManaged var purchasePriceMinor: Int
+
+    /// 그 집에 다달이 내는 월세. 전세면 0.
+    @NSManaged var monthlyRentMinor: Int
+
     /// 일대다는 `NSSet?` 이다 — `[Holding]?` 가 아니다.
     /// 정렬해 쓰는 곳에서 풀어 쓴다.
     @NSManaged var holdings: NSSet?

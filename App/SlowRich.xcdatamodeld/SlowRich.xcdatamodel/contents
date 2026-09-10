@@ -13,6 +13,8 @@
         <attribute name="expectedReturnBP" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
         <attribute name="maturesOn" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="ownerID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="purchasePriceMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="monthlyRentMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Holding" inverseName="account" inverseEntity="Holding"/>
         <relationship name="owner" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Member" inverseName="accounts" inverseEntity="Member"/>
         <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="accounts" inverseEntity="Household"/>
@@ -35,6 +37,14 @@
         <attribute name="subject" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="summary" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="changeLogs" inverseEntity="Household"/>
+    </entity>
+    <entity name="DiaryEntry" representedClassName="DiaryEntry" syncable="YES">
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="day" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <attribute name="goal" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="result" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="gratitude" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="createdAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
     </entity>
     <entity name="FamilyTarget" representedClassName="FamilyTarget" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
@@ -102,6 +112,8 @@
         <attribute name="targetRetirementAge" attributeType="Integer 64" defaultValueString="65" usesScalarValueType="YES"/>
         <attribute name="monthlyContributionMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="employerMatchMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="monthlySalaryMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="otherIncomeMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="note" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <attribute name="colorIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="sortIndex" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>

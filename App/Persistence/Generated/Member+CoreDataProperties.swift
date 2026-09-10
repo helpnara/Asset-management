@@ -45,6 +45,13 @@ extension Member {
     /// (docs/08-feedback.md 10번).
     @NSManaged var employerMatchMinor: Int
 
+    /// 이 사람의 세후 월급. 가족 월 총소득의 한 조각이다 — 소득 대비 투자 비중
+    /// 진단이 구성원 합으로 본다 (docs/05-roadmap.md 마지막 묶음 3).
+    @NSManaged var monthlySalaryMinor: Int
+
+    /// 월급 말고 다달이 들어오는 것 — 부수입·임대·이자. 없으면 0.
+    @NSManaged var otherIncomeMinor: Int
+
     /// 그 사람에게만 걸리는 한도·재검토 시점. 1페이지 구성원 카드의 `※` 줄.
     @NSManaged var note: String
 
