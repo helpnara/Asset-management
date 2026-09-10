@@ -37,6 +37,10 @@ struct DashboardView: View {
                     header
                     Rectangle().fill(Color.ink).frame(height: 2)
 
+                    // **오늘의 목·실·감** — 자산보다 위다. 매일 여는 첫 화면에서
+                    // 처음 만나는 것이 오늘 한 줄이어야 매일 쓴다 (마지막 묶음 1).
+                    DiaryCard()
+
                     if members.isEmpty {
                         // "아직 없는 것" 과 "아직 안 온 것" 은 다른 화면이다 (53번).
                         if SyncLoadingHint.shouldShow {
