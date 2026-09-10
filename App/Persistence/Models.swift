@@ -121,6 +121,44 @@ extension Holding {
         set { cadenceRaw = newValue.rawValue }
     }
 
+    /// **이번 주 점검에서 물어볼 종목인가** (docs/08-feedback.md 92번, B7).
+    /// 매주는 늘, 고정은 안, 월 1회는 **그 달에 아직 안 적었으면**. 예전에는
+    /// 고정만 건너뛰고 월 1회를 매주 세어 "내 몫 N건" 이 실제보다 컸다.
+    func isDue(asOf now: Date = .now, calendar: Calendar = .current) -> Bool {
+        switch cadence {
+        case .weekly: return true
+        case .fixed: return false
+        case .monthly:
+            guard let last = lastEnteredAt else { return true }
+            return !calendar.isDate(last, equalTo: now, toGranularity: .month)
+        }
+    }
+
+    /// 이번 주에 (누군가) 적었나.
+    func wasEntered(thisWeekOf now: Date = .now, calendar: Calendar = .current) -> Bool {
+        (lastEnteredAt ?? .distantPast) >= ReviewWeek.anchor(for: now, calendar: calendar)
+    }
+
+    /// **기준값은 이번 주에 처음 손대기 직전의 값이다** (90 · 91번).
+    ///
+    /// 예전에는 점검을 끝낼 때 기준값을 새 값으로 덮어써서, 같은 주에 다시 열면
+    /// 전부 "변동 없음" 이었고 자산 탭도 증감을 보일 수 없었다. 이제 값이 이번 주
+    /// 처음 바뀌는 순간 그 직전 값을 기준값으로 옮기고, 그 주 안에서는 다시
+    /// 안 옮긴다. 점검을 끝낼 때는 시각만 찍는다. 스키마는 그대로다.
+    func rollBaselineIfNewWeek(asOf now: Date = .now) {
+        if !wasEntered(thisWeekOf: now) {
+            lastEnteredValueMinor = valueMinor
+            lastEnteredAt = now
+        }
+    }
+
+    /// 자산 탭 행에 보이는 이번 주 증감. 이번 주에 적힌 것만 — 안 적혔으면 nil.
+    var deltaThisWeekMinor: Int? {
+        guard wasEntered(thisWeekOf: .now), lastEnteredValueMinor != 0 else { return nil }
+        let delta = valueMinor - lastEnteredValueMinor
+        return delta == 0 ? nil : delta
+    }
+
     /// 사용자가 적어 넣은 그대로. **언제나 원화다** — 해외 종목도 원화로 환산해서
     /// 적는다. 환율을 앱이 다루지 않는 이유는 ADR-0005 에 적혀 있다.
     var value: Money { Money(minorUnits: valueMinor, currency: .krw) }

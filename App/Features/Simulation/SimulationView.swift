@@ -30,6 +30,44 @@ struct SimulationView: View {
     @State private var knobs: Knobs?
     @State private var isNamingScenario = false
     @State private var scenarioName = ""
+
+    /// **손잡이 값을 눌러 숫자로 넣는다** (101번, D1). 손잡이로 410만원을 딱
+    /// 맞추기 어렵다. 값 글자를 누르면 입력창이 뜬다.
+    private struct NumericPrompt: Identifiable {
+        enum Kind { case manWon, year, percent }
+        let id = UUID()
+        let title: String
+        let kind: Kind
+        let range: ClosedRange<Int>
+        let step: Int
+        let apply: (Int) -> Void
+
+        var placeholder: String {
+            switch kind {
+            case .manWon: return "만원 단위 (410)"
+            case .year: return "연도 (2049)"
+            case .percent: return "% (8.0)"
+            }
+        }
+
+        /// 입력 글자를 손잡이 단위로. 범위와 눈금에 맞춘다.
+        func value(from text: String) -> Int? {
+            let cleaned = text.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)
+            guard let decimal = Decimal(string: cleaned) else { return nil }
+            let raw: Decimal
+            switch kind {
+            case .manWon: raw = decimal * 10_000
+            case .year: raw = decimal
+            case .percent: raw = decimal * 100
+            }
+            let number = (raw as NSDecimalNumber).doubleValue
+            let snapped = Int((number / Double(step)).rounded()) * step
+            return min(max(snapped, range.lowerBound), range.upperBound)
+        }
+    }
+
+    @State private var prompt: NumericPrompt?
+    @State private var promptText = ""
     @State private var outcome: SimulationOutcome?
     @State private var isCalculating = false
 
@@ -288,6 +326,7 @@ struct SimulationView: View {
                 range: 0...max(5_000_000, plannedMonthly(plan) * 2),
                 step: 100_000,
                 baselineValue: plannedMonthly(plan),
+                kind: .manWon,
                 display: { Won.abbreviated(Money(minorUnits: $0, currency: .krw), suffix: "원") }
             )
             slider(
@@ -296,6 +335,7 @@ struct SimulationView: View {
                 range: (currentYear + 1)...(currentYear + 50),
                 step: 1,
                 baselineValue: plan.retirementYear,
+                kind: .year,
                 display: { "\($0)년" }
             )
             slider(
@@ -333,6 +373,18 @@ struct SimulationView: View {
         }
         .padding(14)
         .background(cardBackground)
+        .alert(prompt?.title ?? "", isPresented: Binding(get: { prompt != nil },
+                                                        set: { if !$0 { prompt = nil } })) {
+            TextField(prompt?.placeholder ?? "", text: $promptText)
+                .keyboardType(.decimalPad)
+            Button("적용") {
+                if let prompt, let value = prompt.value(from: promptText) { prompt.apply(value) }
+                prompt = nil
+            }
+            Button("취소", role: .cancel) { prompt = nil }
+        } message: {
+            Text("범위를 벗어나면 가장 가까운 값으로 맞춥니다.")
+        }
     }
 
     private func slider(
@@ -341,6 +393,7 @@ struct SimulationView: View {
         range: ClosedRange<Int>,
         step: Int,
         baselineValue: Int,
+        kind: NumericPrompt.Kind = .percent,
         display: @escaping (Int) -> String
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -349,9 +402,21 @@ struct SimulationView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Color.muted)
                 Spacer()
-                Text(display(value.wrappedValue))
-                    .font(.figure(14, weight: .semibold))
-                    .foregroundStyle(value.wrappedValue == baselineValue ? Color.ink : Color.dad)
+                // 값을 누르면 숫자로 넣는다 (101번).
+                Button {
+                    promptText = ""
+                    prompt = NumericPrompt(title: title, kind: kind, range: range, step: step) { value.wrappedValue = $0 }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(display(value.wrappedValue))
+                            .font(.figure(14, weight: .semibold))
+                            .foregroundStyle(value.wrappedValue == baselineValue ? Color.ink : Color.dad)
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 9))
+                            .foregroundStyle(Color.faint)
+                    }
+                }
+                .buttonStyle(.plain)
             }
             Slider(
                 value: Binding(
@@ -464,6 +529,10 @@ struct SimulationView: View {
                 ForEach(scenarios) { scenario in
                     scenarioRow(scenario, current: knobs)
                 }
+                // **나란히 견주기** (102번, D2). 둘 이상이면 표로 — 지금 설정도 한 줄.
+                if scenarios.count >= 2 {
+                    compareTable(plan, current: knobs)
+                }
             }
         }
         .padding(14)
@@ -475,6 +544,83 @@ struct SimulationView: View {
         } message: {
             Text("지금 손잡이 위치를 그대로 저장합니다. 계획은 바뀌지 않습니다.")
         }
+    }
+
+    private struct CompareRow: Identifiable {
+        let id: String
+        let name: String
+        let monthlyMinor: Int
+        let retirementYear: Int
+        let returnBP: Int
+        let projected: Money
+        let isCurrent: Bool
+    }
+
+    private func compareTable(_ plan: Plan, current: Knobs) -> some View {
+        var rows = scenarios.map {
+            CompareRow(id: $0.id.uuidString, name: $0.name.isEmpty ? "이름 없음" : $0.name,
+                       monthlyMinor: $0.monthlyMinor, retirementYear: $0.retirementYear,
+                       returnBP: $0.returnBP, projected: $0.projected, isCurrent: false)
+        }
+        if let outcome {
+            rows.append(CompareRow(id: "current", name: "지금 설정", monthlyMinor: current.monthlyMinor,
+                                   retirementYear: current.retirementYear, returnBP: current.returnBP,
+                                   projected: outcome.expected, isCurrent: true))
+        }
+        let column: CGFloat = 62
+        return VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Text("나란히").font(.system(size: 9.5)).foregroundStyle(Color.faint)
+                Spacer(minLength: 0)
+                ForEach(["월 적립", "은퇴", "수익률", "은퇴 때"], id: \.self) { title in
+                    Text(title).font(.system(size: 9.5)).foregroundStyle(Color.faint)
+                        .frame(width: column, alignment: .trailing)
+                }
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 5)
+            Rectangle().fill(Color.rule).frame(height: 1)
+            ForEach(rows) { row in
+                HStack(spacing: 6) {
+                    Text(row.name)
+                        .font(.system(size: 11.5, weight: row.isCurrent ? .semibold : .regular))
+                        .foregroundStyle(row.isCurrent ? Color.dad : Color.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    cell(Won.compact(Money(minorUnits: row.monthlyMinor, currency: .krw)), column)
+                    cell("\(row.retirementYear)", column)
+                    cell("\(PercentFormatter.oneDecimal(Decimal(row.returnBP) / 10000))%", column)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(Won.compact(row.projected))
+                            .font(.figure(11.5, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                        if plan.targetAmountMinor > 0 {
+                            let ratio = Decimal(row.projected.minorUnits) / Decimal(plan.targetAmountMinor)
+                            Text("목표의 \(PercentFormatter.integer(ratio))%")
+                                .font(.figure(8.5))
+                                .foregroundStyle(Color.faint)
+                        }
+                    }
+                    .frame(width: column, alignment: .trailing)
+                }
+                .padding(.vertical, 6)
+                Rectangle().fill(Color.rule).frame(height: 1)
+            }
+            Text("은퇴 때 금액은 저장할 당시의 계산값입니다. 계획을 고친 뒤에는 다시 불러 저장하세요.")
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.faint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 6)
+        }
+    }
+
+    private func cell(_ text: String, _ width: CGFloat) -> some View {
+        Text(text)
+            .font(.figure(11))
+            .foregroundStyle(Color.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(width: width, alignment: .trailing)
     }
 
     private func scenarioRow(_ scenario: Scenario, current: Knobs) -> some View {

@@ -113,6 +113,16 @@ struct ExportView: View {
                 } footer: {
                     Text("백업 파일을 골라 **이 기기의 기록을 통째로 갈아 끼웁니다.** 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 **먼저 지금 상태로 백업을 하나 만들어 두세요** — 위의 `전체 백업 만들기` 입니다.")
                 }
+            } else {
+                // 참가자 기기에는 되돌리기가 없다 (98번, A7). 있으면 관리자의
+                // 기록까지 갈아 끼운다 — iCloud 는 삭제도 퍼뜨린다 (40번).
+                Section {
+                    Text("되돌리기는 관리자 기기에서만 할 수 있습니다. 참가자 기기에서 되돌리면 관리자의 기록까지 바뀌기 때문입니다. 필요하면 백업 파일을 관리자에게 보내세요.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.muted)
+                } header: {
+                    Text("되돌리기")
+                }
             }
         }
         .fileImporter(isPresented: $isPickingBackup,

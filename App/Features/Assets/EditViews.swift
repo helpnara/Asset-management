@@ -130,6 +130,8 @@ struct AccountEditView: View {
     @ObservedObject var account: Account
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    @Environment(\.self) private var environment
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?
@@ -151,6 +153,22 @@ struct AccountEditView: View {
                             .foregroundStyle(Color.loss)
                     } else {
                         Text(accountFooter)
+                    }
+                }
+
+                // **다른 구성원에게 옮기기** (94번, B5). 지우고 다시 만들면 이력이
+                // 끊긴다. 내가 고칠 수 있는 구성원 사이에서만.
+                if members.filter({ environment.mayEdit($0) }).count > 1 {
+                    Section {
+                        Picker("소유자", selection: ownerBinding) {
+                            ForEach(members.filter { environment.mayEdit($0) }) { member in
+                                Text(member.name.isEmpty ? "이름 없음" : member.name).tag(member.id)
+                            }
+                        }
+                    } header: {
+                        Text("소속")
+                    } footer: {
+                        Text("계좌와 그 안의 종목이 통째로 옮겨집니다. 적어 온 값은 그대로입니다.")
                     }
                 }
 
@@ -271,6 +289,22 @@ struct AccountEditView: View {
         return "이 계좌에 담긴 종목 \(count)개와 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다."
     }
 
+    private var ownerBinding: Binding<UUID> {
+        Binding(
+            get: { account.owner?.id ?? account.ownerID ?? UUID() },
+            set: { id in
+                guard let member = members.first(where: { $0.id == id }), member != account.owner else { return }
+                let before = account.owner?.name ?? ""
+                account.owner = member
+                account.ownerID = member.id
+                account.sortIndex = member.sortedAccounts.count
+                ChangeLogger.structureChanged(
+                    [member.name, account.weightLabel].filter { !$0.isEmpty }.joined(separator: " · "),
+                    "계좌를 \(before.isEmpty ? "이름 없음" : before) 에서 옮겼습니다", in: context)
+            }
+        )
+    }
+
     private var accountFooter: String {
         if account.kind.isLiability {
             return "부채 계좌입니다. 총자산에서 뺍니다."
@@ -346,6 +380,8 @@ struct HoldingEditView: View {
     @ObservedObject var holding: Holding
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    @Environment(\.self) private var environment
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?
@@ -372,7 +408,11 @@ struct HoldingEditView: View {
 
                 Section {
                     TextField("종목 이름 (VOO · 삼성전자 …)", text: $holding.name)
-                    MoneyField(title: "평가액", minorUnits: $holding.valueMinor)
+                    // 자산 탭에서 고쳐도 이번 주 처음이면 직전 값이 기준값으로 (91번).
+                    MoneyField(title: "평가액", minorUnits: Binding(
+                        get: { holding.valueMinor },
+                        set: { holding.rollBaselineIfNewWeek(); holding.valueMinor = $0 }
+                    ))
                 } footer: {
                     // 해외 종목을 달러로 적어 넣으면 합계가 조용히 1,400배 틀린다.
                     // 다중 통화(환율 직접 입력)는 M5 이고, 그전까지는 여기서 못을 박는다.
@@ -412,6 +452,22 @@ struct HoldingEditView: View {
                     // 자산군을 바꿨는데 상품 종류가 안 맞으면 그 자산군의 기본으로.
                     if !assetClass.allowedInstrumentTypes.contains(holding.instrumentType) {
                         holding.instrumentType = assetClass.defaultInstrumentType
+                    }
+                }
+
+                // **다른 계좌로 옮기기** (94번, B5). 내가 고칠 수 있는 구성원의
+                // 계좌 사이에서만. 옮기면 자산군 제한도 그 계좌 기준이 된다.
+                if movableAccounts.count > 1 {
+                    Section {
+                        Picker("계좌", selection: accountBinding) {
+                            ForEach(movableAccounts, id: \.id) { account in
+                                Text("\(account.owner?.name ?? "") · \(account.weightLabel)").tag(account.id)
+                            }
+                        }
+                    } header: {
+                        Text("소속")
+                    } footer: {
+                        Text("적어 온 값은 그대로 따라갑니다. 지우고 다시 만들면 이력이 끊기니 여기서 옮기세요.")
                     }
                 }
 
@@ -491,6 +547,27 @@ struct HoldingEditView: View {
     private var instrumentChoices: [InstrumentType] {
         let allowed = holding.assetClass.allowedInstrumentTypes
         return allowed.contains(holding.instrumentType) ? allowed : [holding.instrumentType] + allowed
+    }
+
+    private var movableAccounts: [Account] {
+        members.filter { environment.mayEdit($0) }.flatMap { $0.sortedAccounts.filter { !$0.isArchived } }
+    }
+
+    private var accountBinding: Binding<UUID> {
+        Binding(
+            get: { holding.account?.id ?? holding.accountID ?? UUID() },
+            set: { id in
+                guard let account = movableAccounts.first(where: { $0.id == id }), account != holding.account else { return }
+                let before = holding.account?.weightLabel ?? ""
+                holding.account = account
+                holding.accountID = account.id
+                holding.sortIndex = account.sortedHoldings.count
+                if !account.kind.allowedAssetClasses.contains(holding.assetClass) {
+                    holding.assetClass = account.kind.defaultAssetClass
+                }
+                ChangeLogger.structureChanged(logSubject, "종목을 \(before.isEmpty ? "이름 없음" : before) 에서 옮겼습니다", in: context)
+            }
+        )
     }
 
     private var cadenceFooter: String {

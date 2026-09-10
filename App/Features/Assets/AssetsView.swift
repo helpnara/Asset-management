@@ -54,6 +54,63 @@ struct AssetsView: View {
     @AppStorage("assets.expandedAccounts") private var expandedAccountsRaw = ""
     @AppStorage("assets.collapsedMembers") private var collapsedMembersRaw = ""
 
+    /// **검색 · 정렬 · 필터** (95번, B4 · 설계 2.3.1). 검색어나 필터가 있으면
+    /// 접힘을 무시하고 맞는 종목이 있는 계좌만 펼쳐 보인다.
+    @State private var query = ""
+    @AppStorage("assets.sort") private var sortRaw = HoldingSort.manual.rawValue
+    @AppStorage("assets.filter") private var filterRaw = HoldingFilter.all.rawValue
+
+    enum HoldingSort: String, CaseIterable, Identifiable {
+        case manual, amount, name
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .manual: return "내 순서"
+            case .amount: return "금액순"
+            case .name: return "이름순"
+            }
+        }
+    }
+
+    enum HoldingFilter: String, CaseIterable, Identifiable {
+        case all, pendingThisWeek, drifting
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .all: return "전부"
+            case .pendingThisWeek: return "이번 주 미입력"
+            case .drifting: return "비중 어긋남"
+            }
+        }
+    }
+
+    private var sort: HoldingSort { HoldingSort(rawValue: sortRaw) ?? .manual }
+    private var filter: HoldingFilter { HoldingFilter(rawValue: filterRaw) ?? .all }
+    private var isNarrowing: Bool { !query.isEmpty || filter != .all }
+
+    /// 이 계좌에서 보일 종목. 검색어는 종목 이름과 계좌 이름·기관에 맞춘다.
+    private func visibleHoldings(_ account: Account) -> [Holding] {
+        var items = account.sortedHoldings
+        if !query.isEmpty {
+            let accountMatches = account.name.localizedCaseInsensitiveContains(query)
+                || account.institution.localizedCaseInsensitiveContains(query)
+            if !accountMatches {
+                items = items.filter { $0.name.localizedCaseInsensitiveContains(query) }
+            }
+        }
+        switch filter {
+        case .all: break
+        case .pendingThisWeek: items = items.filter { $0.isDue() && !$0.wasEntered(thisWeekOf: .now) }
+        case .drifting: items = items.filter { driftSlice($0) != nil }
+        }
+        switch sort {
+        case .manual: break
+        case .amount: items.sort { $0.valueMinor > $1.valueMinor }
+        case .name: items.sort { $0.name.localizedCompare($1.name) == .orderedAscending }
+        }
+        return items
+    }
+
     var body: some View {
         // 감시 대상을 몸체가 읽는다 — 값은 안 쓰지만 이 줄이 다시 그리기를 잇는다.
         let _ = (holdings.count, accounts.count)
@@ -67,6 +124,7 @@ struct AssetsView: View {
                     }
                 } else {
                     list.syncRefreshable(note: $refreshNote)
+                        .searchable(text: $query, prompt: "종목 · 계좌 · 기관")
                 }
             }
             .navigationTitle("자산")
@@ -75,6 +133,22 @@ struct AssetsView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     if !members.isEmpty && canEdit {
                         EditButton()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !members.isEmpty {
+                        Menu {
+                            Picker("정렬", selection: $sortRaw) {
+                                ForEach(HoldingSort.allCases) { Text($0.label).tag($0.rawValue) }
+                            }
+                            Picker("보기", selection: $filterRaw) {
+                                ForEach(HoldingFilter.allCases) { Text($0.label).tag($0.rawValue) }
+                            }
+                        } label: {
+                            Image(systemName: isNarrowing || sort != .manual
+                                  ? "line.3.horizontal.decrease.circle.fill"
+                                  : "line.3.horizontal.decrease.circle")
+                        }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -169,11 +243,11 @@ struct AssetsView: View {
 
             ForEach(members) { member in
                 Section {
-                    if isExpanded(member) {
-                        ForEach(member.sortedAccounts) { account in
+                    if isExpanded(member) || isNarrowing {
+                        ForEach(member.sortedAccounts.filter { !isNarrowing || !visibleHoldings($0).isEmpty }) { account in
                             accountRows(account)
                         }
-                        if mayEdit(member) {
+                        if mayEdit(member) && !isNarrowing {
                             Button {
                                 addAccount(to: member)
                             } label: {
@@ -293,8 +367,8 @@ struct AssetsView: View {
             }
         }
 
-        if isExpanded(account) {
-            ForEach(account.sortedHoldings) { holding in
+        if isExpanded(account) || isNarrowing {
+            ForEach(visibleHoldings(account)) { holding in
                 if mayEdit(account.owner) {
                     Button {
                         editingHolding = holding
@@ -308,16 +382,18 @@ struct AssetsView: View {
             }
             // 삼항 안의 클로저에는 타입을 적는다. `$0` 로 두면 `nil` 쪽 때문에
             // 추론할 근거가 없어 컴파일러가 막는다.
-            .onDelete(perform: mayEdit(account.owner) ? { (offsets: IndexSet) in
+            // 좁혀 보거나 정렬을 바꾼 상태에서는 위치가 원래 순서와 달라 밀어
+            // 지우기·끌기를 잠근다 — 엉뚱한 종목이 지워진다.
+            .onDelete(perform: mayEdit(account.owner) && !isNarrowing && sort == .manual ? { (offsets: IndexSet) in
                 pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: offsets)
             } : nil)
-            .onMove(perform: mayEdit(account.owner) ? { (offsets: IndexSet, destination: Int) in
+            .onMove(perform: mayEdit(account.owner) && !isNarrowing && sort == .manual ? { (offsets: IndexSet, destination: Int) in
                 move(offsets, to: destination, in: account)
             } : nil)
 
             // 버튼이 하나도 없으면 줄 자체를 안 만든다 — 빈 HStack 도 목록의
             // 한 줄이라 종목 아래에 빈 칸이 남는다 (65번, 보기 전용·현금성 계좌).
-            if mayEdit(account.owner) || account.canSetTargets {
+            if (mayEdit(account.owner) || account.canSetTargets) && !isNarrowing {
                 HStack(spacing: 14) {
                     if mayEdit(account.owner) {
                         Button {
@@ -444,9 +520,20 @@ struct AssetsView: View {
                     .foregroundStyle(Color.faint)
             }
             Spacer(minLength: 8)
-            Text(signedAmount(holding.valueMinor, holding.account?.kind.isLiability ?? false))
-                .font(.figure(12.5))
-                .foregroundStyle((holding.account?.kind.isLiability ?? false) ? Color.loss : Color.ink)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(signedAmount(holding.valueMinor, holding.account?.kind.isLiability ?? false))
+                    .font(.figure(12.5))
+                    .foregroundStyle((holding.account?.kind.isLiability ?? false) ? Color.loss : Color.ink)
+                // **이번 주 증감** (91번, B6). 이번 주에 적힌 것만 — 지난주 값은
+                // 이번 주 처음 손댈 때 기준값으로 옮겨진다.
+                if let delta = holding.deltaThisWeekMinor {
+                    let isLiability = holding.account?.kind.isLiability ?? false
+                    let isGood = isLiability ? delta < 0 : delta > 0
+                    Text(Won.compact(Money(minorUnits: delta, currency: .krw), sign: .always))
+                        .font(.figure(9.5))
+                        .foregroundStyle(isGood ? Color.gain : Color.loss)
+                }
+            }
         }
         .padding(.leading, 12)
     }

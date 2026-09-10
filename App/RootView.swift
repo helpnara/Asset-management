@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var sharing = FamilySharing.shared
     @State private var monitor = CloudKitSyncMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.managedObjectContext) private var context
     /// 역할 확인을 이만큼은 기다린다. 그 뒤에는 아는 대로 연다 — 오프라인
     /// 첫 실행에서 영영 잠긴 채 서 있으면 안 된다 (76번).
     @State private var roleWaitExpired = false
@@ -59,7 +60,11 @@ struct RootView: View {
             // 가져오기가 끝나면 한 번 더 읽는다 — 첫 실행의 참가자 폰은 이때
             // 비로소 공유가 손에 들어온다 (76번).
             .onChange(of: monitor.hasFinishedImport) { _, finished in
-                if finished { sharing.refreshState() }
+                if finished {
+                    sharing.refreshState()
+                    // 같은 주 기록이 둘이면 하나로 (96번). 가져온 뒤라야 둘 다 보인다.
+                    WeekDedup.run(in: context)
+                }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {

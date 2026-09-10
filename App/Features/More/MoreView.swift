@@ -13,6 +13,8 @@ struct MoreView: View {
     @Fetched private var holdings: [Holding]
 
     @State private var route = AppRoute.shared
+    /// 알림 권한이 꺼져 있나 (99번, F3). 꺼져 있으면 토요일 알림이 조용히 안 온다.
+    @State private var notificationsDenied = false
 
     /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
     @State private var refreshNote: String?
@@ -53,6 +55,19 @@ struct MoreView: View {
             ScrollViewReader { proxy in
             List {
                 Section("점검") {
+                    if notificationsDenied {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("알림이 꺼져 있습니다", systemImage: "bell.slash")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Color.loss)
+                            Text("토요일 점검·목실감·회고 알림이 오지 않습니다.")
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(Color.muted)
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                Link("설정 앱에서 켜기", destination: url).font(.system(size: 12.5))
+                            }
+                        }
+                    }
                     NavigationLink(value: Destination.notifications) {
                         Label("주간 점검 알림", systemImage: "bell")
                     }
@@ -116,11 +131,18 @@ struct MoreView: View {
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
                         .font(.system(size: 11))
                         .foregroundStyle(Color.faint)
+                    // 피드백 때 "몇 번 빌드인지" (100번, A8).
+                    LabeledContent("버전", value: Self.versionText)
+                        .font(.figure(12))
+                        .foregroundStyle(Color.faint)
                 }
             }
             .onAppear {
                 guard let target = MoreView.scrollTarget else { return }
                 proxy.scrollTo(target, anchor: .top)
+            }
+            .task {
+                notificationsDenied = await ReviewNotifications.authorizationStatus() == .denied
             }
             }
             .syncRefreshable(note: $refreshNote)
@@ -177,6 +199,13 @@ struct MoreView: View {
             completedAnchors: sessions.filter(\.isComplete).map(\.weekAnchor),
             asOf: .now
         )
+    }
+
+    static var versionText: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
     }
 }
 

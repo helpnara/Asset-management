@@ -34,10 +34,10 @@ struct WeeklyReviewView: View {
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
 
-    /// `고정` 은 값이 잘 안 바뀌므로 큐에서 아예 뺀다. 매주 물어볼 항목을 줄이는 장치.
+    /// `고정` 은 큐에서 빼고, `월 1회` 는 그 달에 이미 적었으면 뺀다 (92번).
     private func queue(for member: Member) -> [Holding] {
         member.sortedAccounts.flatMap { account in
-            account.sortedHoldings.filter { $0.cadence != .fixed }
+            account.sortedHoldings.filter { $0.isDue() }
         }
     }
 
@@ -55,7 +55,7 @@ struct WeeklyReviewView: View {
                                     // 계좌마다 소제목을 단다. 증권사 앱을 옮겨가며 적으므로
                                     // 지금 어느 계좌를 보고 있는지가 보여야 한다.
                                     ForEach(member.sortedAccounts) { account in
-                                        let items = account.sortedHoldings.filter { $0.cadence != .fixed }
+                                        let items = account.sortedHoldings.filter { $0.isDue() }
                                         if !items.isEmpty {
                                             accountLabel(account)
                                             ForEach(items) { holding in
@@ -276,7 +276,7 @@ struct WeeklyReviewView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
-            Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정으로 표시된 항목은 목록에서 빠집니다.")
+            Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 한 번만 묻습니다.")
                 .font(.system(size: 10.5))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
@@ -302,6 +302,11 @@ struct WeeklyReviewView: View {
                 .disabled(currentIndex == 0)
             Button { move(1) } label: { Image(systemName: "chevron.down") }
                 .disabled(currentIndex >= queue.count - 1)
+
+            Button("만") { multiplyFocused(by: 10_000) }
+                .font(.system(size: 13))
+            Button("억") { multiplyFocused(by: 100_000_000) }
+                .font(.system(size: 13))
 
             Spacer()
 
@@ -336,13 +341,25 @@ struct WeeklyReviewView: View {
     private func valueText(_ holding: Holding) -> Binding<String> {
         Binding(
             get: { holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor) },
-            set: { holding.valueMinor = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0 }
+            set: {
+                // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번).
+                holding.rollBaselineIfNewWeek()
+                holding.valueMinor = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0
+            }
         )
     }
 
-    private func baselineLabel(_ holding: Holding) -> String {
-        (holding.lastEnteredAt ?? .distantPast) >= ReviewWeek.anchor(for: .now) ? "먼저 적은 값" : "지난주"
+    /// 키보드 위 `만` · `억` (93번, B3). 12 → 만 → 120,000.
+    private func multiplyFocused(by factor: Int) {
+        guard let focusedID, let holding = queue.first(where: { $0.id == focusedID }) else { return }
+        let next = holding.valueMinor * factor
+        guard holding.valueMinor > 0, next < 1_000_000_000_000_000 else { return }
+        holding.rollBaselineIfNewWeek()
+        holding.valueMinor = next
     }
+
+    /// 기준값은 이번 주 처음 손대기 직전의 값이라 늘 "지난주" 다 (91번).
+    private func baselineLabel(_ holding: Holding) -> String { "지난주" }
 
     private func deltaText(_ holding: Holding) -> String {
         let delta = holding.valueMinor - holding.lastEnteredValueMinor
@@ -382,13 +399,14 @@ struct WeeklyReviewView: View {
             .filter { $0.isComplete && $0.weekAnchor < anchor }
             .max { $0.weekAnchor < $1.weekAnchor }
 
-        // 다음 주 증감 표시의 기준이 된다. 세션 집계보다 먼저 — 아래에서 센다.
+        // 적었다는 시각만 찍는다. 기준값은 이번 주 처음 손댄 순간 이미 옮겨졌고
+        // (91번), 안 건드린 종목은 기준값 == 현재값이라 "변동 없음" 이 맞다.
         for holding in queue {
-            holding.lastEnteredValueMinor = holding.valueMinor
+            holding.rollBaselineIfNewWeek()
             holding.lastEnteredAt = .now
         }
-        let askedEveryWeek = allHoldings.filter { $0.cadence != .fixed }
-        let enteredThisWeek = askedEveryWeek.filter { ($0.lastEnteredAt ?? .distantPast) >= anchor }.count
+        let askedEveryWeek = allHoldings.filter { $0.isDue() || $0.wasEntered(thisWeekOf: .now) }
+        let enteredThisWeek = askedEveryWeek.filter { $0.wasEntered(thisWeekOf: .now) }.count
         // **누구 몫이 적혔나** (C8). 그 구성원의 매주 묻는 종목이 이번 주 안에
         // 전부 적혔으면 적은 것으로 센다. 묻는 종목이 하나도 없는 구성원은
         // 적을 것이 없으므로 센다 — 그 사람 때문에 연속이 끊기면 안 된다.

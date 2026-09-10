@@ -113,6 +113,24 @@ struct PastRecordsView: View {
                 return new
             }()
 
+        // **구성원별 줄을 비례로 맞춘다** (97번, A6). 총액만 고치면 줄의 합이
+        // 총액과 어긋나 점검 완료 화면과 구성원 궤적이 다른 말을 한다.
+        let lines = snapshot.sortedLines
+        let oldTotal = snapshot.netWorthMinor
+        if !lines.isEmpty, oldTotal != 0, oldTotal != draft.netWorthMinor {
+            var assigned = 0
+            for (index, line) in lines.enumerated() {
+                let isLast = index == lines.count - 1
+                // 정수로만 센다 (ADR-0003). 한 번에 곱하면 넘칠 수 있어 비중을 먼저.
+                let shareBP = line.valueMinor * 10_000 / oldTotal
+                let scaled = isLast
+                    ? draft.netWorthMinor - assigned
+                    : draft.netWorthMinor * shareBP / 10_000
+                line.valueMinor = scaled
+                assigned += scaled
+            }
+        }
+
         snapshot.netWorthMinor = draft.netWorthMinor
         snapshot.investableMinor = draft.investableMinor
         snapshot.liabilitiesMinor = draft.liabilitiesMinor

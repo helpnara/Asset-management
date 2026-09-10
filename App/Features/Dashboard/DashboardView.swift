@@ -155,7 +155,7 @@ struct DashboardView: View {
     private var myPendingCount: Int {
         let anchor = ReviewWeek.anchor(for: .now)
         return holdings.filter {
-            $0.cadence != .fixed
+            $0.isDue()
                 && environment.mayEdit($0.account?.owner)
                 && ($0.lastEnteredAt ?? .distantPast) < anchor
         }.count

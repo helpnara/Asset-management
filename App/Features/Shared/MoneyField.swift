@@ -78,6 +78,11 @@ struct MoneyField: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .keyboard) {
                         if isFocused {
+                            // `만` · `억` (93번, B3). 12 → 만 → 120,000.
+                            Button("만") { multiply(10_000) }
+                                .font(.system(size: 14))
+                            Button("억") { multiply(100_000_000) }
+                                .font(.system(size: 14))
                             Spacer()
                             Button("완료") { isFocused = false }
                                 .font(.system(size: 15, weight: .semibold))
@@ -97,6 +102,12 @@ struct MoneyField: View {
               !didAutoFocus else { return false }
         didAutoFocus = true
         return true
+    }
+
+    private func multiply(_ factor: Int) {
+        let next = minorUnits * factor
+        guard minorUnits > 0, next < 1_000_000_000_000_000 else { return }
+        minorUnits = next
     }
 
     private var text: Binding<String> {

@@ -48,7 +48,7 @@ enum ReviewScheduling {
 
         @MainActor
         init(holdings: [Holding], sessions: [ReviewSession]) {
-            self.itemCount = holdings.filter { $0.cadence != .fixed }.count
+            self.itemCount = holdings.filter { $0.isDue() }.count
             let completed = sessions.filter(\.isComplete)
             self.completedAnchors = completed.map(\.weekAnchor)
             self.lastTotalMinor = completed
