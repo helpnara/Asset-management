@@ -328,28 +328,26 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("얼마 넣어서 얼마 자랐나",
                               trailing: "마지막 점검 \(Self.shortDate.string(from: latest.weekAnchor)) 기준")
-                Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 0) {
-                    GridRow {
-                        // 라벨 칸이 남는 폭을 다 가져야 표가 화면 폭에 맞게 펴진다.
-                        Text("")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .gridColumnAlignment(.leading)
-                        Text("증감")
-                        Text("넣은 돈")
-                        Text("자란 돈")
+                // 세 숫자 칸은 폭을 고정하고 라벨이 나머지를 다 가진다 — `Grid` 는
+                // 내용에 맞춰 줄어들어 화면 폭의 절반에서 끝났다.
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        ForEach(["증감", "넣은 돈", "자란 돈"], id: \.self) { title in
+                            Text(title)
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(Color.faint)
+                                .frame(width: Self.attributionColumn, alignment: .trailing)
+                        }
                     }
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(Color.faint)
                     .padding(.bottom, 6)
                     Rectangle().fill(Color.rule).frame(height: 1)
-                        .gridCellColumns(4).gridCellUnsizedAxes(.horizontal)
                     ForEach(rows) { row in
-                        GridRow {
+                        HStack(spacing: 8) {
                             Text(row.label)
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.ink)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .gridColumnAlignment(.leading)
+                            Spacer(minLength: 0)
                             if let split = row.split {
                                 figure(split.change, tone: true)
                                 figure(split.contributed, tone: false)
@@ -358,12 +356,10 @@ struct DashboardView: View {
                                 Text("기록 없음")
                                     .font(.system(size: 10.5))
                                     .foregroundStyle(Color.faint)
-                                    .gridCellColumns(3)
                             }
                         }
                         .padding(.vertical, 9)
                         Rectangle().fill(Color.rule).frame(height: 1)
-                            .gridCellColumns(4).gridCellUnsizedAxes(.horizontal)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -377,10 +373,15 @@ struct DashboardView: View {
         }
     }
 
+    private static let attributionColumn: CGFloat = 78
+
     private func figure(_ money: Money, tone: Bool) -> some View {
         Text(Won.compact(money, sign: .always))
             .font(.figure(12, weight: .medium))
             .foregroundStyle(tone ? (money.isNegative ? Color.loss : Color.gain) : Color.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(width: Self.attributionColumn, alignment: .trailing)
     }
 
     private static let shortDate: DateFormatter = {
