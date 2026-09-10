@@ -86,6 +86,11 @@ public struct ProjectionInput: Sendable, Hashable {
     public var buckets: [BalanceBucket]
     public var monthlyContribution: Money
     public var annualReturn: Ratio
+    /// **은퇴 뒤의 기대수익률** (docs/08-feedback.md 67번). 은퇴하면 안전자산
+    /// 비중을 높여 수익률이 내려간다 — 8% 로 계속 굴리면 인출해도 자산이
+    /// 늘기만 하는 그림이 된다. 계획 수익률을 따르는 투자 덩어리만 은퇴 뒤
+    /// 이 값으로 바뀐다. `nil` 이면 은퇴 전과 같다.
+    public var postRetirementReturn: Ratio?
     /// 적립액의 연 증가율 (연봉 상승률).
     public var annualContributionGrowth: Ratio
     public var inflation: Ratio
@@ -133,6 +138,14 @@ public struct ProjectionInput: Sendable, Hashable {
         return copy
     }
 
+    /// 이 덩어리가 은퇴 뒤에 굴 속도. 계획 수익률을 따르는 투자 덩어리만
+    /// `postRetirementReturn` 으로 바뀌고, 나머지는 제 속도 그대로다.
+    public func postRetirementRate(for bucket: BalanceBucket) -> Ratio {
+        guard let post = postRetirementReturn,
+              bucket.profile == .investment, bucket.followsPlanRate else { return bucket.annualReturn }
+        return post
+    }
+
     /// **적립과 목돈이 들어가는 덩어리.** 계획 수익률을 따르는 투자자산이 먼저다.
     /// 예전에는 "첫 투자자산" 이었는데, 덩어리가 수익률 오름차순이라 계좌에
     /// 따로 적은 **낮은** 수익률의 덩어리가 앞에 오면 적립 전액이 그 속도로
@@ -157,7 +170,8 @@ public struct ProjectionInput: Sendable, Hashable {
         annualIncome: Money? = nil,
         retirementDate: Date? = nil,
         monthlyRetirementSpending: Money? = nil,
-        incomes: [IncomeStreamInput] = []
+        incomes: [IncomeStreamInput] = [],
+        postRetirementReturn: Ratio? = nil
     ) {
         self.init(
             startDate: startDate,
@@ -174,7 +188,8 @@ public struct ProjectionInput: Sendable, Hashable {
             annualIncome: annualIncome,
             retirementDate: retirementDate,
             monthlyRetirementSpending: monthlyRetirementSpending,
-            incomes: incomes
+            incomes: incomes,
+            postRetirementReturn: postRetirementReturn
         )
     }
 
@@ -191,8 +206,10 @@ public struct ProjectionInput: Sendable, Hashable {
         annualIncome: Money? = nil,
         retirementDate: Date? = nil,
         monthlyRetirementSpending: Money? = nil,
-        incomes: [IncomeStreamInput] = []
+        incomes: [IncomeStreamInput] = [],
+        postRetirementReturn: Ratio? = nil
     ) {
+        self.postRetirementReturn = postRetirementReturn
         // **적립과 목돈이 들어갈 자리는 투자자산이다.** 하나도 없으면(전월세보증금만
         // 있는 초기 상태 등) 빈 덩어리를 만들어 둔다. 이게 없으면 적립이 고정
         // 덩어리로 들어가 0% 로 굴러간다.
@@ -330,6 +347,10 @@ public enum Projection {
         // 덩어리마다 자기 속도로 굴린다. 적립·목돈이 들어가고 인출이 먼저
         // 빠져나가는 곳은 투자자산이다.
         let growths = input.buckets.map { monthlyFactor(annual: $0.annualReturn) }
+        // 은퇴 뒤에는 계획 수익률을 따르는 투자 덩어리만 은퇴 후 수익률로 (67번).
+        let postGrowths = input.buckets.map { bucket in
+            monthlyFactor(annual: input.postRetirementRate(for: bucket))
+        }
         let order = input.buckets.indices.sorted {
             input.buckets[$0].profile.drawdownOrder < input.buckets[$1].profile.drawdownOrder
         }
@@ -397,8 +418,9 @@ public enum Projection {
                 if remaining.minorUnits > 0, depletion == nil { depletion = date }
             }
 
+            let factors = date <= input.retirementDate ? growths : postGrowths
             for index in balances.indices {
-                balances[index] = balances[index].scaled(by: growths[index])
+                balances[index] = balances[index].scaled(by: factors[index])
             }
             balance = balances.dropFirst().reduce(balances[0], +)
 

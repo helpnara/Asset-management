@@ -82,7 +82,7 @@ extension Plan {
     /// 를 붙이면 스무 개가 되고, 하나 빠뜨려도 티가 안 난다.
     var editFingerprint: String {
         [startYear, retirementYear, horizonYear, monthlyContributionMinor,
-         contributionGrowthBP, annualReturnBP, inflationBP, lowYieldReturnBP,
+         contributionGrowthBP, annualReturnBP, inflationBP, postRetirementReturnBP, lowYieldReturnBP,
          realEstateReturnBP, targetAmountMinor, monthlySpendingMinor,
          withdrawalRateBP, monthlyIncomeMinor, savingsFloorBP, illiquidCapBP,
          usTargetBP, mixToleranceBP, driftToleranceBP,
@@ -159,6 +159,7 @@ extension Plan {
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }
     var inflation: Ratio { Ratio(basisPoints: inflationBP) }
+    var postRetirementReturn: Ratio { Ratio(basisPoints: postRetirementReturnBP) }
     var lowYieldReturn: Ratio { Ratio(basisPoints: lowYieldReturnBP) }
     var realEstateReturn: Ratio { Ratio(basisPoints: realEstateReturnBP) }
     var monthlyContribution: Money { Money(minorUnits: monthlyContributionMinor, currency: .krw) }
@@ -258,7 +259,8 @@ extension Plan {
             annualIncome: Money(minorUnits: monthlyIncomeMinor * 12, currency: .krw),
             retirementDate: retirement,
             monthlyRetirementSpending: monthlySpending,
-            incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input)
+            incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input),
+            postRetirementReturn: postRetirementReturn
         )
     }
 

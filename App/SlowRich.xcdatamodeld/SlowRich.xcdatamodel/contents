@@ -134,6 +134,7 @@
         <attribute name="annualReturnBP" attributeType="Integer 64" defaultValueString="800" usesScalarValueType="YES"/>
         <attribute name="contributionGrowthBP" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="inflationBP" attributeType="Integer 64" defaultValueString="200" usesScalarValueType="YES"/>
+        <attribute name="postRetirementReturnBP" attributeType="Integer 64" defaultValueString="500" usesScalarValueType="YES"/>
         <attribute name="lowYieldReturnBP" attributeType="Integer 64" defaultValueString="200" usesScalarValueType="YES"/>
         <attribute name="realEstateReturnBP" attributeType="Integer 64" defaultValueString="200" usesScalarValueType="YES"/>
         <attribute name="targetAmountMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>

@@ -51,6 +51,12 @@ extension Plan {
 
     @NSManaged var inflationBP: Int
 
+    /// **은퇴 후 기대수익률** (basis point). 기본 500 = 5% — 은퇴하면 안전자산
+    /// 비중을 높이므로 보수적으로 잡는다 (사용자 결정, docs/08-feedback.md 67번).
+    /// 은퇴 뒤 계획 수익률을 따르는 투자 덩어리가 이 속도로 굴며, 현황판·
+    /// 계획·시뮬레이션이 같이 읽는다.
+    @NSManaged var postRetirementReturnBP: Int
+
     /// 저수익 자산의 기대수익률. 예적금·연금보험이 여기 붙는다.
     /// 계좌마다 따로 적으면 그 값이 이긴다 (`Account.expectedReturnBP`).
     @NSManaged var lowYieldReturnBP: Int

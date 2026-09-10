@@ -67,6 +67,8 @@ struct BackupDocument: Codable, Sendable {
         var contributionGrowthBP: Int
         var annualReturnBP: Int
         var inflationBP: Int
+        /// 옛 백업에는 없다 — 되돌릴 때 기본 5% (67번).
+        var postRetirementReturnBP: Int?
         var lowYieldReturnBP: Int
         var realEstateReturnBP: Int
         var targetAmountMinor: Int
@@ -320,6 +322,7 @@ extension BackupDocument {
                 monthlyContributionMinor: plan.monthlyContributionMinor,
                 contributionGrowthBP: plan.contributionGrowthBP,
                 annualReturnBP: plan.annualReturnBP, inflationBP: plan.inflationBP,
+                postRetirementReturnBP: plan.postRetirementReturnBP,
                 lowYieldReturnBP: plan.lowYieldReturnBP,
                 realEstateReturnBP: plan.realEstateReturnBP,
                 targetAmountMinor: plan.targetAmountMinor,
@@ -670,6 +673,7 @@ extension BackupDocument {
         plan.contributionGrowthBP = data.contributionGrowthBP
         plan.annualReturnBP = data.annualReturnBP
         plan.inflationBP = data.inflationBP
+        plan.postRetirementReturnBP = data.postRetirementReturnBP ?? 500
         plan.lowYieldReturnBP = data.lowYieldReturnBP
         plan.realEstateReturnBP = data.realEstateReturnBP
         plan.targetAmountMinor = data.targetAmountMinor

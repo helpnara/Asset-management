@@ -121,9 +121,10 @@ struct PlanView: View {
 
             Section {
                 percentRow("연 기대수익률", bind.annualReturnBP, range: 0...1500, step: 25)
+                percentRow("은퇴 후 기대수익률", bind.postRetirementReturnBP, range: 0...1500, step: 25)
                 percentRow("물가상승률", bind.inflationBP, range: 0...800, step: 25)
             } footer: {
-                Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
+                Text("은퇴 뒤에는 안전자산 비중이 커져 수익률이 내려갑니다. 은퇴 후 기대수익률은 보수적으로 5%가 기본입니다. 입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다.")
             }
 
             Section {

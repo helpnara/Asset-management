@@ -80,10 +80,12 @@ public enum MonteCarlo {
         // 전월세보증금이 ±15% 로 흔들리면 밴드가 거짓말을 한다
         // (docs/08-feedback.md 3번 (d) · 11번).
         let startBalances = base.buckets.map { Double($0.amount.minorUnits) }
-        let bucketMeans = base.buckets.map { bucket -> Double in
-            let annual = NSDecimalNumber(decimal: bucket.annualReturn.fraction).doubleValue
-            return pow(1 + annual, 1.0 / 12.0) - 1
+        func monthlyMean(_ annual: Ratio) -> Double {
+            pow(1 + NSDecimalNumber(decimal: annual.fraction).doubleValue, 1.0 / 12.0) - 1
         }
+        let bucketMeans = base.buckets.map { monthlyMean($0.annualReturn) }
+        // 은퇴 뒤 평균은 예상선과 같은 규칙으로 바뀐다 (67번).
+        let postMeans = base.buckets.map { monthlyMean(base.postRetirementRate(for: $0)) }
         // 적립이 들어가는 덩어리와 같은 곳을 흔든다 (Projection 과 같은 규칙, 63번).
         let inflowIndex = base.inflowIndex
         let volatileIndex: Int? = base.buckets.indices.contains(inflowIndex)
@@ -157,8 +159,9 @@ public enum MonteCarlo {
                     }
                 }
 
+                let means = isAccumulating[month] ? bucketMeans : postMeans
                 for index in balances.indices {
-                    var factor = 1 + bucketMeans[index]
+                    var factor = 1 + means[index]
                     if index == volatileIndex { factor += monthlySigma * shock }
                     balances[index] *= factor
                     if balances[index] < 0 { balances[index] = 0 }   // 빚으로 굴러가지는 않는다

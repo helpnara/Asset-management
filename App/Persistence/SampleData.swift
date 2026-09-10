@@ -88,6 +88,7 @@ enum SampleData {
         plan.annualReturnBP = 800
         plan.contributionGrowthBP = 300
         plan.inflationBP = 200
+        plan.postRetirementReturnBP = 500
         plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
         plan.targetAmountMinor = 5_900_000_000
 

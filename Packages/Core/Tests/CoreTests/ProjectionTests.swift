@@ -289,6 +289,54 @@ struct RetirementDrawdownTests {
         #expect(result.last?.nominal == Money(7_039_988_676, currency: .krw))
     }
 
+    @Test("은퇴 뒤에는 은퇴 후 수익률로 굴린다 — 낮추면 더 일찍 바닥난다")
+    func postRetirementReturnApplies() {
+        // 파이썬 대조 (Tools/verify/projection_model.py 와 같은 공식, 인출 포함):
+        //   10억 · 월 500만(오늘 돈) · 물가 2% · 은퇴 = 시작
+        //   은퇴 후 5% (annualReturn 과 같음) → 2048-10 바닥 (기존 테스트와 동일)
+        //   은퇴 후 2%                          → 2042-09 바닥
+        //   은퇴 후 8%                          → 안 바닥남, 40년 뒤 1,155,046,903
+        var slower = drawdown(spending: 5_000_000)
+        slower.postRetirementReturn = Ratio(basisPoints: 200)
+        #expect(Projection.run(slower, calendar: calendar).depletion == date("2042-09-01"))
+
+        var faster = drawdown(spending: 5_000_000)
+        faster.postRetirementReturn = Ratio(basisPoints: 800)
+        let fast = Projection.run(faster, calendar: calendar)
+        #expect(fast.depletion == nil)
+        #expect(fast.last?.nominal == Money(1_155_046_903, currency: .krw))
+
+        // nil 이면 은퇴 전과 같다 — 예전 결과 그대로.
+        var same = drawdown(spending: 5_000_000)
+        same.postRetirementReturn = Ratio(basisPoints: 500)
+        #expect(Projection.run(same, calendar: calendar).depletion
+                == Projection.run(drawdown(spending: 5_000_000), calendar: calendar).depletion)
+    }
+
+    @Test("은퇴 전에는 은퇴 후 수익률이 안 걸린다 — 은퇴 시점에서 속도가 바뀐다")
+    func postRetirementReturnStartsAtRetirement() {
+        // 1억 · 적립 없음 · 10년 · 은퇴는 5년째. 앞 60개월 8%, 뒤 60개월 2%.
+        // 파이썬 대조: 162,225,690 (10년 내내 8% 면 215,892,496)
+        let begin = date("2026-01-01")
+        let input = ProjectionInput(
+            startDate: begin,
+            endDate: calendar.date(byAdding: .year, value: 10, to: begin)!,
+            startingBalance: Money(100_000_000, currency: .krw),
+            monthlyContribution: .zero(.krw),
+            annualReturn: Ratio(basisPoints: 800),
+            retirementDate: calendar.date(byAdding: .year, value: 5, to: begin)!,
+            postRetirementReturn: Ratio(basisPoints: 200)
+        )
+        #expect(Projection.run(input, calendar: calendar).last?.nominal
+                == Money(162_225_690, currency: .krw))
+
+        // 계좌에 따로 적은 덩어리는 은퇴 뒤에도 제 속도다.
+        let custom = BalanceBucket(profile: .investment, amount: Money(1, currency: .krw),
+                                   annualReturn: Ratio(basisPoints: 300), followsPlanRate: false)
+        #expect(input.postRetirementRate(for: custom) == Ratio(basisPoints: 300))
+        #expect(input.postRetirementRate(for: input.buckets[0]) == Ratio(basisPoints: 200))
+    }
+
     @Test("꺼내 쓰면 언젠가 바닥난다")
     func depletes() {
         // 10억에서 월 500만(오늘 돈)을 꺼내면 273개월 뒤 바닥난다.

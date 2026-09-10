@@ -44,6 +44,10 @@ struct SimulationView: View {
         var monthlyMinor: Int
         var retirementYear: Int
         var returnBP: Int
+        /// 은퇴 후 기대수익률. 계획의 값에서 출발한다 (67번).
+        var postReturnBP: Int
+        /// 물가 상승률. 계획과 같은 변수다 — 생활비·연금·실질가치가 전부 여기 걸린다.
+        var inflationBP: Int
         /// 연 변동성. 0이면 밴드가 한 줄로 붙는다.
         var volatilityBP: Int
     }
@@ -268,6 +272,22 @@ struct SimulationView: View {
                 range: 0...1500,
                 step: 25,
                 baselineValue: plan.annualReturnBP,
+                display: { "\(PercentFormatter.oneDecimal(Decimal($0) / 10000))%" }
+            )
+            slider(
+                title: "은퇴 후 수익률",
+                value: binding.postReturnBP,
+                range: 0...1500,
+                step: 25,
+                baselineValue: plan.postRetirementReturnBP,
+                display: { "\(PercentFormatter.oneDecimal(Decimal($0) / 10000))%" }
+            )
+            slider(
+                title: "물가 상승률",
+                value: binding.inflationBP,
+                range: 0...800,
+                step: 25,
+                baselineValue: plan.inflationBP,
                 display: { "\(PercentFormatter.oneDecimal(Decimal($0) / 10000))%" }
             )
             slider(
@@ -533,6 +553,8 @@ struct SimulationView: View {
         // 있는 집에서 `계획대로` 와 `이 설정` 이 같은 8% 인데도 달랐다 (63번).
         var adjusted = input.settingInvestmentReturn(Ratio(basisPoints: knobs.returnBP))
         adjusted.monthlyContribution = Money(minorUnits: knobs.monthlyMinor, currency: .krw)
+        adjusted.postRetirementReturn = Ratio(basisPoints: knobs.postReturnBP)
+        adjusted.inflation = Ratio(basisPoints: knobs.inflationBP)
         adjusted.retirementDate = Plan.endDate(retirementYear: knobs.retirementYear,
                                                notBefore: input.startDate, calendar: calendar)
 
@@ -570,6 +592,8 @@ extension SimulationView.Knobs {
             monthlyMinor: plan.effectiveMonthlyContribution(members: members).minorUnits,
             retirementYear: plan.retirementYear,
             returnBP: plan.annualReturnBP,
+            postReturnBP: plan.postRetirementReturnBP,
+            inflationBP: plan.inflationBP,
             volatilityBP: Self.defaultVolatilityBP
         )
     }
@@ -616,8 +640,12 @@ struct SimulationOutcome: Sendable {
         // **`settingInvestmentReturn` 을 써야 한다.** `annualReturn` 만 바꾸면
         // 굴리는 쪽은 덩어리의 수익률을 읽으므로 아무것도 안 바뀌고, 실제로
         // 그래서 세 줄이 전부 같은 금액으로 나왔다 (34번).
+        // 보수적은 은퇴 전후 모두 물가만큼만 — 실질 0%. 장미빛은 적립 구간만
+        // 20% 이고 은퇴 뒤는 손잡이 값 그대로다 (67번).
+        var conservative = adjusted.settingInvestmentReturn(adjusted.inflation)
+        conservative.postRetirementReturn = adjusted.inflation
         let inputs: [SimulationChart.ScenarioKind: ProjectionInput] = [
-            .conservative: adjusted.settingInvestmentReturn(adjusted.inflation),
+            .conservative: conservative,
             .plan: input,
             .current: adjusted,
             .optimistic: adjusted.settingInvestmentReturn(Ratio(basisPoints: 2_000))

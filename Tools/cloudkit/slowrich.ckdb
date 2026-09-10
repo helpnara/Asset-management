@@ -286,6 +286,7 @@ DEFINE SCHEMA
         CD_annualReturnBP INT64,
         CD_contributionGrowthBP INT64,
         CD_inflationBP INT64,
+        CD_postRetirementReturnBP INT64,
         CD_lowYieldReturnBP INT64,
         CD_realEstateReturnBP INT64,
         CD_targetAmountMinor INT64,

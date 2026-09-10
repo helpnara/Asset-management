@@ -642,7 +642,7 @@ struct DashboardView: View {
 
     private var assumptionLine: String {
         guard let plan else { return "" }
-        return "연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))% 가정 · 입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다"
+        return "연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 은퇴 후 \(PercentFormatter.oneDecimal(plan.postRetirementReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))% 가정 · 입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다"
     }
 
     private var memberBreakdown: some View {
