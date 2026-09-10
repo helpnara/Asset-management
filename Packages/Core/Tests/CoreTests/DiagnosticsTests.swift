@@ -26,7 +26,6 @@ struct DiagnosticsTests {
         toleranceBP: Int = 500,
         yearsToRetirement: Int = 23,
         projected: Int? = nil,
-        doublingYear: Int? = nil,
         accounts: [LimitAccountInput] = [],
         drifting: Int = 0,
         untargeted: Int = 0,
@@ -53,7 +52,6 @@ struct DiagnosticsTests {
             mixTolerance: Ratio(basisPoints: toleranceBP),
             yearsToRetirement: yearsToRetirement,
             projectedAtRetirement: projected.map(won),
-            doublingYear: doublingYear,
             currentYear: 2026,
             limitAccounts: accounts,
             homePrice: won(homePrice),
@@ -256,37 +254,6 @@ struct DiagnosticsTests {
         #expect(result.diagnosis(.taxAdvantagedOrder)?.status == .pass)
     }
 
-    // MARK: - 5) 72의 법칙
-
-    @Test("72를 수익률로 나눈다")
-    func doubling() {
-        let eight = Diagnostics.run(input(returnBP: 800)).diagnosis(.doublingTime)
-        #expect(eight?.headline.contains("9년마다") == true)
-
-        // 72÷7 = 10.285… → 소수 첫째 자리에서 10.3
-        let seven = Diagnostics.run(input(returnBP: 700)).diagnosis(.doublingTime)
-        #expect(seven?.headline.contains("10.3년마다") == true)
-    }
-
-    @Test("적립까지 세면 훨씬 빠르다는 것을 함께 말한다")
-    func doublingWithContribution() {
-        // 72의 법칙은 적립을 세지 않는다. 두 숫자를 나란히 두지 않으면
-        // "9년이나 걸린다"는 잘못된 인상만 남는다.
-        let alone = Diagnostics.run(input(returnBP: 800)).diagnosis(.doublingTime)
-        #expect(alone?.headline.contains("적립까지") == false)
-
-        let withPlan = Diagnostics.run(input(returnBP: 800, doublingYear: 2032))
-            .diagnosis(.doublingTime)
-        #expect(withPlan?.headline.contains("적립까지 세면 6년") == true)
-    }
-
-    @Test("좋고 나쁨을 판정하지 않는다 — 눈금이다")
-    func doublingIsNotAJudgement() {
-        #expect(Diagnostics.run(input(returnBP: 300)).diagnosis(.doublingTime)?.status == .pass)
-        #expect(Diagnostics.run(input(returnBP: 1_200)).diagnosis(.doublingTime)?.status == .pass)
-        #expect(Diagnostics.run(input(returnBP: 0)).diagnosis(.doublingTime)?.status == .unknown)
-    }
-
     // MARK: - 6) 선저축
 
     @Test("저축률은 기준의 80%를 경계로 주의와 조치를 가른다")
@@ -319,7 +286,7 @@ struct DiagnosticsTests {
 
     // MARK: - 목록
 
-    @Test("일곱 가지를 모두 돌려주고, 할 일이 위로 온다")
+    @Test("규칙 전부를 돌려주고, 할 일이 위로 온다")
     func ordering() {
         let result = Diagnostics.run(input(
             illiquid: 400_000_000,              // act

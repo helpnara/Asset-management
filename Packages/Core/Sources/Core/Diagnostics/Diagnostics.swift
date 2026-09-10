@@ -43,7 +43,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
     case realEstateShare     // 2) 부동산 비중 상한
     case countryMix          // 3) 미국·한국 주식 비율
     case taxAdvantagedOrder  // 4) 세제혜택 계좌 채우는 순서
-    case doublingTime        // 5) 72의 법칙
+    // 5) 72의 법칙은 뺐다 (docs/08-feedback.md 69번) — 판정이 아니라 눈금이었다.
     case savingsRate         // 6) 선저축 비율
     case targetWeights       // 7) 목표 비중 유지
     case rentRatio           // 8) 월세 적정성 — 세 든 집의 연 월세 ÷ 매매가
@@ -56,7 +56,6 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
         case .realEstateShare: return "부동산 비중"
         case .countryMix: return "국가 배분"
         case .taxAdvantagedOrder: return "세제혜택 계좌"
-        case .doublingTime: return "자산이 두 배 되는 시점"
         case .savingsRate: return "선저축 비율"
         case .targetWeights: return "목표 비중"
         case .rentRatio: return "월세 적정성"
@@ -74,12 +73,10 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
             return "한 나라에 몰리면 그 나라의 20년이 곧 내 노후가 됩니다. 목표 비중을 정해 두고 그 근처에서 유지합니다."
         case .taxAdvantagedOrder:
             return "같은 돈을 넣어도 세액공제만큼 수익률이 먼저 붙습니다. 한도는 해가 바뀌면 사라지고 되돌릴 수 없습니다."
-        case .doublingTime:
-            return "복리가 얼마나 느리고 확실한지 보는 눈금입니다. 이 숫자가 은퇴까지 몇 번 도는지가 실제 준비의 크기입니다."
         case .savingsRate:
             return "쓰고 남은 돈을 모으면 남지 않습니다. 노후 준비는 수익률보다 저축률이 먼저 결정합니다."
         case .targetWeights:
-            return "주식·ETF 투자는 **비중을 유지하면서 규모를 키우는 것**입니다. 오르내리다 보면 저절로 한쪽으로 기울고, 그걸 놓치면 어느새 다른 포트폴리오가 됩니다."
+            return "주식·ETF 투자는 비중을 유지하면서 규모를 키우는 것입니다. 오르내리다 보면 저절로 한쪽으로 기울고, 그걸 놓치면 어느새 다른 포트폴리오가 됩니다."
         case .rentRatio:
             return "세 든 집의 연 월세가 매매가의 5%를 넘으면 그 돈으로 집을 사는 쪽이 낫습니다. 5% 안이면 세 들어 살며 차액을 굴리는 것이 손해가 아닙니다."
         }
@@ -167,8 +164,6 @@ public struct DiagnosticsInput: Sendable {
     /// 비교를 생략한다. 필요액(생활비 × 25)이 오늘 돈이므로 여기도 오늘 돈이어야
     /// 한다 — 액면가를 넣으면 진단이 물가만큼 넉넉하다고 거짓말한다 (52번).
     public var projectedAtRetirement: Money?
-    /// 적립까지 감안한 실제 배가 연도. `Projection` 의 마일스톤에서 가져온다.
-    public var doublingYear: Int?
     public var currentYear: Int
 
     // MARK: 계좌
@@ -213,7 +208,6 @@ public struct DiagnosticsInput: Sendable {
         mixTolerance: Ratio,
         yearsToRetirement: Int,
         projectedAtRetirement: Money? = nil,
-        doublingYear: Int? = nil,
         currentYear: Int,
         limitAccounts: [LimitAccountInput] = [],
         enabledKinds: Set<DiagnosisKind> = Set(DiagnosisKind.allCases),
@@ -243,7 +237,6 @@ public struct DiagnosticsInput: Sendable {
         self.mixTolerance = mixTolerance
         self.yearsToRetirement = yearsToRetirement
         self.projectedAtRetirement = projectedAtRetirement
-        self.doublingYear = doublingYear
         self.currentYear = currentYear
         self.limitAccounts = limitAccounts
         // 빈 집합은 "고른 것이 없다" 가 아니라 "아직 안 정했다" 로 본다.
@@ -286,7 +279,6 @@ public enum Diagnostics {
             .realEstateShare: realEstateShare,
             .countryMix: countryMix,
             .taxAdvantagedOrder: taxAdvantagedOrder,
-            .doublingTime: doublingTime,
             .savingsRate: savingsRate,
             .targetWeights: targetWeights,
             .rentRatio: rentRatio
@@ -528,45 +520,6 @@ public enum Diagnostics {
         Calendar.current.component(.month, from: .now)
     }
 
-    // MARK: - 5) 72의 법칙
-
-    private static func doublingTime(_ input: DiagnosticsInput) -> Diagnosis {
-        let percentReturn = decimalToDouble(input.annualReturn.percent)
-        guard percentReturn > 0 else {
-            return Diagnosis(kind: .doublingTime, status: .unknown,
-                             headline: "기대수익률이 0입니다",
-                             action: "계획 탭에서 연 기대수익률을 넣으세요.",
-                             progress: nil)
-        }
-
-        let years = 72 / percentReturn
-        let rounded = (years * 10).rounded() / 10
-
-        // 72의 법칙은 **적립을 세지 않는다**. 매달 넣는 돈이 있으면 실제로는
-        // 훨씬 빨리 두 배가 된다. 두 숫자를 나란히 두지 않으면 규칙이 거짓말이 된다.
-        var headline = "연 \(PercentFormatter.oneDecimal(input.annualReturn.fraction))%면 \(format(rounded))년마다 두 배"
-        var action = "72를 수익률로 나눈 값입니다. 적립을 세지 않은, 굴리기만 할 때의 속도입니다."
-
-        if let doublingYear = input.doublingYear {
-            let actual = doublingYear - input.currentYear
-            headline += " · 적립까지 세면 \(actual)년"
-            action = "72÷\(PercentFormatter.oneDecimal(input.annualReturn.fraction))=\(format(rounded))년은 굴리기만 할 때입니다. 매달 넣는 돈까지 세면 \(doublingYear)년에 두 배가 됩니다. 이 차이가 적립의 값입니다."
-        }
-
-        let turns = years > 0 ? Double(input.yearsToRetirement) / years : 0
-        if input.yearsToRetirement > 0 {
-            action += " 은퇴까지 \(input.yearsToRetirement)년이면 이 바퀴를 \(format((turns * 10).rounded() / 10))번 돕니다."
-        }
-
-        return Diagnosis(
-            kind: .doublingTime,
-            status: .pass,   // 좋고 나쁨을 판정하는 규칙이 아니다. 눈금이다.
-            headline: headline,
-            action: action,
-            progress: nil
-        )
-    }
-
     // MARK: - 6) 선저축 비율
 
     private static func savingsRate(_ input: DiagnosticsInput) -> Diagnosis {
@@ -741,7 +694,7 @@ public enum Diagnostics {
             kind: .targetWeights,
             status: input.driftingHoldings * 2 >= input.totalHoldings ? .act : .watch,
             headline: "목표에서 벗어난 종목이 \(input.driftingHoldings)개 있습니다",
-            action: "파는 대신 **다음 적립을 모자란 쪽에 넣어** 맞춰 가세요. 목표 비중 화면이 얼마씩 넣을지 계산해 줍니다.",
+            action: "파는 대신 다음 적립을 모자란 쪽에 넣어 맞춰 가세요. 목표 비중 화면이 얼마씩 넣을지 계산해 줍니다.",
             progress: Double(onTrack) / Double(input.totalHoldings)
         )
     }

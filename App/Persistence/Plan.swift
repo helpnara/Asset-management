@@ -394,7 +394,6 @@ extension Plan {
             mixTolerance: mixTolerance,
             yearsToRetirement: yearsToRetirement,
             projectedAtRetirement: atRetirement,
-            doublingYear: projection?.milestone(.doubled)?.year,
             currentYear: year,
             limitAccounts: accounts
                 .filter { $0.kind.hasContributionLimit }
