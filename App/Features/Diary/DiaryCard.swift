@@ -18,6 +18,10 @@ import SwiftUI
 /// 입력칸이 되고 첫 빈 칸에 키보드가 올라온다. `완료` 로 닫는다. 키보드는
 /// `RootView` 의 `scrollDismissesKeyboard(.interactively)` 로 끌어내려도 된다.
 struct DiaryCard: View {
+    /// 제목 줄을 카드 안에 넣나. 현황판은 다른 카드와 같은 소제목을 밖에 세우므로
+    /// 끈다 (89번). 빈 상태 화면처럼 소제목 없이 홀로 설 때는 켠다.
+    var embedsTitle = true
+
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var entries: [DiaryEntry]
 
@@ -49,12 +53,14 @@ struct DiaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("오늘의 목 · 실 · 감")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                Text(Self.dayText(today))
-                    .font(.figure(11))
-                    .foregroundStyle(Color.muted)
+                if embedsTitle {
+                    Text("오늘의 목 · 실 · 감")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                    Text(Self.dayText(today))
+                        .font(.figure(11))
+                        .foregroundStyle(Color.muted)
+                }
                 if streak > 1 {
                     Text("\(streak)일 연속")
                         .font(.figure(11, weight: .medium))
@@ -94,7 +100,7 @@ struct DiaryCard: View {
         .padding(13)
         .background(Color.raised)
         .padding(.horizontal, 20)
-        .padding(.top, 12)
+        .padding(.top, embedsTitle ? 12 : 0)
         .navigationDestination(for: DiaryDestination.self) { _ in DiaryListView() }
         .onAppear(perform: load)
         // 날이 바뀐 채 앱이 떠 있었으면(자정을 넘김) 오늘 칸을 새로 읽는다.

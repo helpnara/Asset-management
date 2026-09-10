@@ -229,7 +229,9 @@ struct WeeklyReviewView: View {
                         WeightLabel(slice: slice)
                     }
                 }
-                Text("지난주 \(Won.grouped(holding.lastEnteredValueMinor))")
+                // 같은 주에 다시 열었으면 기준은 지난주가 아니라 **이번 주에 먼저
+                // 적은 값**이다 (90번). 끝낼 때 기준값이 그 값으로 바뀌어 있다.
+                Text("\(baselineLabel(holding)) \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.system(size: 9.5))
                     .foregroundStyle(Color.faint)
             }
@@ -336,6 +338,10 @@ struct WeeklyReviewView: View {
             get: { holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor) },
             set: { holding.valueMinor = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0 }
         )
+    }
+
+    private func baselineLabel(_ holding: Holding) -> String {
+        (holding.lastEnteredAt ?? .distantPast) >= ReviewWeek.anchor(for: .now) ? "먼저 적은 값" : "지난주"
     }
 
     private func deltaText(_ holding: Holding) -> String {

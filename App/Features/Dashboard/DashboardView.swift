@@ -102,14 +102,19 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func cardView(_ card: DashboardCard) -> some View {
+        // **소제목은 하나의 꼴이다** (89번). 카드마다 제목 글꼴이 달랐다 —
+        // 목·실·감은 카드 안에, 총자산은 자간 넓힌 작은 글자로. 전부
+        // `sectionHeader` 로 세운다.
         switch card {
         case .diary:
-            DiaryCard()
+            sectionHeader("오늘의 목 · 실 · 감", trailing: DiaryCard.dayText(Calendar.current.startOfDay(for: .now)))
+            DiaryCard(embedsTitle: false)
         case .hero:
             hero
             Rectangle().fill(Color.rule).frame(height: 1)
                 .padding(.horizontal, 20)
         case .weekly:
+            sectionHeader("이번 주 점검", trailing: weeklySubtitle)
             weeklyBar
             planReviewNudge
         case .attribution:
@@ -175,15 +180,17 @@ struct DashboardView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("가 족 총 자 산").eyebrowStyle().padding(.bottom, 7)
+            sectionHeader("가족 총자산")
             Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                 .font(.figure(38, weight: .semibold))
                 .foregroundStyle(Color.ink)
+                .padding(.horizontal, 20)
             if !rollup.liabilities.isZero {
                 Text("자산 \(Won.abbreviated(rollup.assets)) · 부채 \(Won.abbreviated(rollup.liabilities))")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
+                    .padding(.horizontal, 20)
             }
             // **계획선 위인가 아래인가** (docs/08-feedback.md 37번).
             // 총액만 보면 하락장에 앱을 열 이유가 없다. `계획보다 위` 라는
@@ -194,11 +201,11 @@ struct DashboardView: View {
                     .font(.figure(12.5, weight: .medium))
                     .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
                     .padding(.top, 7)
+                    .padding(.horizontal, 20)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
+        .padding(.bottom, 20)
     }
 
     /// 루틴으로 되돌리는 자리. 헤더 바로 아래, 궤적보다 위 (설계 2.2.0).
@@ -218,16 +225,18 @@ struct DashboardView: View {
             }
             Spacer(minLength: 0)
 
-            if !didReviewThisWeek && canEdit {
+            // 끝낸 주에도 **다시 열 수 있다** (90번). 정책은 "뒤에 끝낸 사람이
+            // 갱신" 이라 저장 쪽은 처음부터 재입력을 받았는데, 입구만 없었다.
+            if canEdit {
                 Button {
                     isReviewing = true
                 } label: {
-                    Text("지금 입력")
+                    Text(didReviewThisWeek ? "다시 열기" : "지금 입력")
                         .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Color.ink)
+                        .foregroundStyle(didReviewThisWeek ? Color.muted : Color.ink)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
-                        .overlay(Rectangle().stroke(Color.ink, lineWidth: 1))
+                        .overlay(Rectangle().stroke(didReviewThisWeek ? Color.ruleStrong : Color.ink, lineWidth: 1))
                 }
             }
         }
@@ -236,16 +245,16 @@ struct DashboardView: View {
         // 그러지 않으면 카드가 바탕에 묻혀 사라진다 (35번).
         .background(Color.raised)
         .padding(.horizontal, 20)
-        .padding(.top, 16)
     }
 
+    /// 소제목이 "이번 주 점검" 을 이미 말하므로 카드 안에는 상태만 (89번).
     private var weeklyTitle: String {
-        if didReviewThisWeek { return "이번 주 점검 완료" }
-        if familyDidReviewThisWeek { return "이번 주 점검 · 내 몫 \(myPendingCount)건 남음" }
+        if didReviewThisWeek { return "점검 완료" }
+        if familyDidReviewThisWeek { return "내 몫 \(myPendingCount)건 남음" }
         // 적을 수 없는 사람에게 D-3 을 들이밀지 않는다. 재촉으로만 읽힌다.
-        if !canEdit { return "이번 주 기록 대기 중" }
+        if !canEdit { return "기록 대기 중" }
         let days = ReviewWeek.daysUntilReview(from: .now)
-        return days == 0 ? "오늘이 점검일입니다" : "이번 주 점검 · 토요일까지 D-\(days)"
+        return days == 0 ? "오늘이 점검일입니다" : "토요일까지 D-\(days)"
     }
 
     private var weeklySubtitle: String {
@@ -400,20 +409,17 @@ struct DashboardView: View {
                                               members: members, plan: plan, cashEvents: cashEvents,
                                               incomes: incomes, diary: diary, logs: logs)
         if summary.hasRecords {
+            sectionHeader("지난달 회고", trailing: period.title)
             Button {
                 AppRoute.shared.wantsRetrospective = true
                 AppRoute.shared.selectedTab = RootView.Tab.more
             } label: {
                 HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("\(period.title) 회고")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.ink)
-                        Text(monthlyLine(summary))
-                            .font(.figure(10.5))
-                            .foregroundStyle(Color.muted)
-                            .lineLimit(2)
-                    }
+                    Text(monthlyLine(summary))
+                        .font(.figure(11.5))
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .semibold))
@@ -422,7 +428,6 @@ struct DashboardView: View {
                 .padding(13)
                 .background(Color.raised)
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
             }
             .buttonStyle(.plain)
         }
