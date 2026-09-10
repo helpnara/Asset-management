@@ -127,6 +127,40 @@ struct MonteCarloTests {
         #expect(run(base(target: 1_000), volatilityBP: 1_500).successProbability == 1)
     }
 
+    @Test("목표 도달 확률은 은퇴 시점에서 잰다 — 인출 구간을 붙여도 같다")
+    func successIsMeasuredAtRetirement() throws {
+        // **실제로 났던 일이다** (docs/08-feedback.md 68번). 지평선 끝에서 재니
+        // 30년 인출 뒤 잔고를 목표와 비교해 75% 가 24% 로 떨어졌다.
+        let retire = calendar.date(byAdding: .year, value: 10, to: date("2026-01-01"))!
+        let accumulateOnly = base(years: 10, target: 300_000_000)
+        var withDrawdown = ProjectionInput(
+            startDate: date("2026-01-01"),
+            endDate: calendar.date(byAdding: .year, value: 40, to: date("2026-01-01"))!,
+            startingBalance: Money(100_000_000, currency: .krw),
+            monthlyContribution: Money(1_000_000, currency: .krw),
+            annualReturn: Ratio(basisPoints: 800),
+            targetAmount: Money(300_000_000, currency: .krw),
+            retirementDate: retire,
+            monthlyRetirementSpending: Money(3_000_000, currency: .krw)
+        )
+        withDrawdown.postRetirementReturn = Ratio(basisPoints: 500)
+
+        // 같은 시드는 은퇴 달까지 같은 난수를 뽑으므로 확률이 정확히 같다.
+        let a = try #require(run(accumulateOnly, volatilityBP: 1_500).successProbability)
+        let b = try #require(run(withDrawdown, volatilityBP: 1_500).successProbability)
+        #expect(a == b)
+
+        // 안 바닥날 확률은 인출 구간이 있을 때만 있고, 0 과 1 사이다.
+        #expect(run(accumulateOnly, volatilityBP: 1_500).survivalProbability == nil)
+        let survival = try #require(run(withDrawdown, volatilityBP: 1_500).survivalProbability)
+        #expect((0...1).contains(survival))
+
+        // 생활비가 터무니없으면 전부 바닥난다.
+        var ruinous = withDrawdown
+        ruinous.monthlyRetirementSpending = Money(100_000_000, currency: .krw)
+        #expect(run(ruinous, volatilityBP: 1_500).survivalProbability == 0)
+    }
+
     @Test("목표를 낮출수록 성공 확률은 올라간다")
     func probabilityIsMonotonic() {
         let high = run(base(target: 500_000_000), volatilityBP: 1_500).successProbability!

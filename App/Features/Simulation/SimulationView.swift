@@ -209,7 +209,7 @@ struct SimulationView: View {
             let percent = Int((probability * 100).rounded())
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("목표 도달 확률")
+                    Text("은퇴 시점 목표 도달 확률")
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(Color.bodyText)
                     Spacer()
@@ -235,6 +235,23 @@ struct SimulationView: View {
                 Text(hitCountText(probability, of: outcome.paths))
                     .font(.figure(10.5))
                     .foregroundStyle(Color.faint)
+
+                // 은퇴 뒤 30년을 그릴 때만. "목표는 넘겼는데 바닥나는가" 는
+                // 다른 물음이라 따로 적는다 (68번).
+                if let survival = outcome.survivalProbability {
+                    let survivalPercent = Int((survival * 100).rounded())
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("끝까지 안 바닥날 확률")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.muted)
+                        Spacer()
+                        Text(verbatim: "\(survivalPercent)%")
+                            .font(.figure(14, weight: .semibold))
+                            .foregroundStyle(survivalPercent >= 90 ? Color.gain
+                                             : (survivalPercent >= 60 ? Color.ink : Color.loss))
+                    }
+                    .padding(.top, 2)
+                }
             }
         }
     }
@@ -242,7 +259,7 @@ struct SimulationView: View {
     private func hitCountText(_ probability: Double, of paths: Int) -> String {
         let hits = Int((probability * Double(paths)).rounded())
         return Won.grouped(paths) + "번 굴려 "
-            + Won.grouped(hits) + "번 목표를 넘겼습니다"
+            + Won.grouped(hits) + "번 은퇴 시점에 목표(액면)를 넘겼습니다"
     }
 
     // MARK: - 손잡이
@@ -618,6 +635,8 @@ struct SimulationOutcome: Sendable {
     /// 계획 그대로일 때와의 차이. 이 숫자 하나가 What-if 의 답이다.
     var delta: Money
     var successProbability: Double?
+    /// 지평선까지 안 바닥날 확률. 인출 구간이 없으면 nil (68번).
+    var survivalProbability: Double?
     /// 몇 번 굴렸는지. 화면의 "n번 중 m번" 문구가 이걸 읽는다.
     var paths: Int
     /// 잔고가 0이 되는 해. nil 이면 지평선까지 버틴다. 인출을 가정하지 않으면
@@ -706,6 +725,7 @@ struct SimulationOutcome: Sendable {
                 ?? current?.last?.real ?? .zero(.krw),
             delta: (ends[.current] ?? .zero(.krw)) - (ends[.plan] ?? .zero(.krw)),
             successProbability: monteCarlo.successProbability,
+            survivalProbability: monteCarlo.survivalProbability,
             paths: monteCarlo.paths,
             depletionYear: current?.depletion.map { calendar.component(.year, from: $0) },
             depletionDate: current?.depletion,

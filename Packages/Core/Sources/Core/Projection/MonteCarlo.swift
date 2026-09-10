@@ -52,8 +52,11 @@ public struct MonteCarloBand: Sendable, Hashable {
 
 public struct MonteCarloResult: Sendable, Hashable {
     public let bands: [MonteCarloBand]
-    /// 목표 금액을 넘길 확률. 목표가 없으면 nil.
+    /// **은퇴 시점**의 잔고(액면)가 목표 금액을 넘길 확률. 목표가 없으면 nil.
+    /// 계획 탭의 "목표의 132%" 와 같은 시점·같은 돈이다 (docs/08-feedback.md 68번).
     public let successProbability: Double?
+    /// 지평선까지 **안 바닥날** 확률. 인출 구간이 없으면 nil.
+    public let survivalProbability: Double?
     public let paths: Int
 }
 
@@ -70,7 +73,7 @@ public enum MonteCarlo {
         let currency = base.startingBalance.currency
         let months = calendar.dateComponents([.month], from: base.startDate, to: base.endDate).month ?? 0
         guard months > 0, input.paths > 0 else {
-            return MonteCarloResult(bands: [], successProbability: nil, paths: 0)
+            return MonteCarloResult(bands: [], successProbability: nil, survivalProbability: nil, paths: 0)
         }
 
         // 연 수익률·변동성을 월 단위로 바꾼다. 변동성은 시간의 제곱근에 비례한다.
@@ -131,6 +134,12 @@ public enum MonteCarlo {
 
         var finals: [Double] = []
         finals.reserveCapacity(input.paths)
+        // **은퇴 시점의 잔고.** 마지막 적립 달이 은퇴 달이다. 은퇴가 시작과
+        // 같으면(적립 달이 없으면) 시작 잔고다. 목표 도달 확률은 여기서 잰다 —
+        // 지평선 끝(30년 인출 뒤)에서 재면 확률이 뜻 없이 낮아진다 (68번).
+        let retirementMonth = (1...months).last { isAccumulating[$0] } ?? 0
+        var atRetirement: [Double] = []
+        atRetirement.reserveCapacity(input.paths)
 
         var generator = SeededGenerator(seed: input.seed)
 
@@ -168,11 +177,15 @@ public enum MonteCarlo {
                 }
                 if month % 12 == 0 { contribution *= contributionStep }
 
+                if month == retirementMonth {
+                    atRetirement.append(balances.reduce(0, +))
+                }
                 if sampleIndex < sampleMonths.count, sampleMonths[sampleIndex] == month {
                     samples[sampleIndex].append(balances.reduce(0, +))
                     sampleIndex += 1
                 }
             }
+            if retirementMonth == 0 { atRetirement.append(startBalances.reduce(0, +)) }
             finals.append(balances.reduce(0, +))
         }
 
@@ -190,10 +203,16 @@ public enum MonteCarlo {
         var success: Double?
         if let target = base.targetAmount, !target.isZero {
             let threshold = Double(target.minorUnits)
-            success = Double(finals.filter { $0 >= threshold }.count) / Double(finals.count)
+            success = Double(atRetirement.filter { $0 >= threshold }.count) / Double(atRetirement.count)
+        }
+        // 인출 구간이 있을 때만 뜻이 있다. 적립만 하면 바닥날 일이 없다.
+        var survival: Double?
+        if retirementMonth < months {
+            survival = Double(finals.filter { $0 > 0 }.count) / Double(finals.count)
         }
 
-        return MonteCarloResult(bands: bands, successProbability: success, paths: input.paths)
+        return MonteCarloResult(bands: bands, successProbability: success,
+                                survivalProbability: survival, paths: input.paths)
     }
 
     private static func isYearEnd(month: Int, from start: Date, calendar: Calendar) -> Bool {
