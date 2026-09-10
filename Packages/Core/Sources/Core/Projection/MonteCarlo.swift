@@ -83,12 +83,21 @@ public enum MonteCarlo {
         // 전월세보증금이 ±15% 로 흔들리면 밴드가 거짓말을 한다
         // (docs/08-feedback.md 3번 (d) · 11번).
         let startBalances = base.buckets.map { Double($0.amount.minorUnits) }
-        func monthlyMean(_ annual: Ratio) -> Double {
-            pow(1 + NSDecimalNumber(decimal: annual.fraction).doubleValue, 1.0 / 12.0) - 1
+        // **로그정규 수익률 — 중앙값이 결정론 궤적과 같다** (docs/08-feedback.md 68번).
+        //
+        // 한 달 배수 = exp(드리프트 + σ·Z). 드리프트를 ln(1+연수익률)/12 로 두면
+        // 흔들림이 0 일 때 배수가 (1+연수익률)^(1/12) 이고, 흔들려도 **중앙값
+        // 경로가 예상선 그대로**다 — 그래서 `이 설정` 선이 밴드의 p50 이고,
+        // 절반은 그보다 낫고 절반은 못하다고 읽을 수 있다. 예전에는 산술
+        // 평균(1+μ+σZ)으로 굴려서 σ²/2 만큼(변동성 15% 면 연 1.1%p) 중앙값이
+        // 예상선 아래로 처졌다. 사용자가 적는 기대수익률은 연평균 복리(중앙값)다.
+        // exp 는 늘 양수라 잔고가 음수로 갈 일도 없다.
+        func monthlyDrift(_ annual: Ratio) -> Double {
+            log(1 + NSDecimalNumber(decimal: annual.fraction).doubleValue) / 12.0
         }
-        let bucketMeans = base.buckets.map { monthlyMean($0.annualReturn) }
-        // 은퇴 뒤 평균은 예상선과 같은 규칙으로 바뀐다 (67번).
-        let postMeans = base.buckets.map { monthlyMean(base.postRetirementRate(for: $0)) }
+        let bucketDrifts = base.buckets.map { monthlyDrift($0.annualReturn) }
+        // 은퇴 뒤 드리프트는 예상선과 같은 규칙으로 바뀐다 (67번).
+        let postDrifts = base.buckets.map { monthlyDrift(base.postRetirementRate(for: $0)) }
         // 적립이 들어가는 덩어리와 같은 곳을 흔든다 (Projection 과 같은 규칙, 63번).
         let inflowIndex = base.inflowIndex
         let volatileIndex: Int? = base.buckets.indices.contains(inflowIndex)
@@ -168,12 +177,10 @@ public enum MonteCarlo {
                     }
                 }
 
-                let means = isAccumulating[month] ? bucketMeans : postMeans
+                let drifts = isAccumulating[month] ? bucketDrifts : postDrifts
                 for index in balances.indices {
-                    var factor = 1 + means[index]
-                    if index == volatileIndex { factor += monthlySigma * shock }
-                    balances[index] *= factor
-                    if balances[index] < 0 { balances[index] = 0 }   // 빚으로 굴러가지는 않는다
+                    let logReturn = drifts[index] + (index == volatileIndex ? monthlySigma * shock : 0)
+                    balances[index] *= exp(logReturn)
                 }
                 if month % 12 == 0 { contribution *= contributionStep }
 

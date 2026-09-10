@@ -209,7 +209,7 @@ struct SimulationView: View {
             let percent = Int((probability * 100).rounded())
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("은퇴 시점 목표 도달 확률")
+                    Text("은퇴 때 목표를 넘길 확률")
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(Color.bodyText)
                     Spacer()
@@ -236,6 +236,14 @@ struct SimulationView: View {
                     .font(.figure(10.5))
                     .foregroundStyle(Color.faint)
 
+                // 무엇을 어떻게 센 숫자인지 한 문단. "70%면 괜찮은 건가" 에
+                // 답하려면 셈법이 보여야 한다 (68번).
+                Text(probabilityExplanation)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.muted)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 // 은퇴 뒤 30년을 그릴 때만. "목표는 넘겼는데 바닥나는가" 는
                 // 다른 물음이라 따로 적는다 (68번).
                 if let survival = outcome.survivalProbability {
@@ -254,6 +262,13 @@ struct SimulationView: View {
                 }
             }
         }
+    }
+
+    private var probabilityExplanation: String {
+        "이 설정의 수익률을 가운데 값으로 두고 연 변동성만큼 해마다 흔들어 여러 번 굴린 결과입니다. "
+        + "굴린 경로 중 은퇴 시점의 잔고(액면가)가 계획의 목표 금액을 넘긴 비율이며, "
+        + "목표와 잔고 모두 물가를 빼지 않은 값이라 계획 탭의 \"목표의 N%\" 와 같은 기준입니다. "
+        + "절반쯤은 이 설정 선보다 낫고 절반쯤은 못한 셈이라, 50%는 \"이 설정 그대로면 딱 목표\" 라는 뜻입니다."
     }
 
     private func hitCountText(_ probability: Double, of paths: Int) -> String {

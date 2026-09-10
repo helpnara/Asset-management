@@ -98,6 +98,18 @@ struct MonteCarloTests {
         #expect(gap < deterministic.minorUnits / 10_000)
     }
 
+    @Test("흔들려도 중앙값은 결정론 궤적 근처다 — 기대수익률은 중앙값이다")
+    func medianTracksProjection() {
+        // 로그정규로 굴리면 중앙값 경로가 예상선 그대로다 (68번). 표본 400 개의
+        // 중앙값이라 오차가 있다 — 10년·변동성 15% 면 표본 중앙값의 표준오차가
+        // 3% 안팎이므로 10% 안이면 맞다고 본다. 예전 산술 평균 모형은 여기서
+        // 연 1.1%p 씩 10년 처져 12% 아래로 떨어졌다.
+        let input = base()
+        let deterministic = Double(Projection.run(input, calendar: calendar).last!.nominal.minorUnits)
+        let p50 = Double(run(input, volatilityBP: 1_500).bands.last!.p50.minorUnits)
+        #expect(abs(p50 - deterministic) / deterministic < 0.10)
+    }
+
     @Test("변동성이 커지면 밴드도 넓어진다")
     func widerVolatilityWidensBand() {
         let calm = run(base(years: 20), volatilityBP: 500)
