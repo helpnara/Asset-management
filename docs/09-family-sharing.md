@@ -1153,7 +1153,9 @@ Thread 0 (main):
 (`persistUpdatedShare`). 공유 관리 시트를 따로 열 필요가 없다.
 
 **참가자 기기.** `FamilySharing.refreshState()` 가 `currentUserParticipant` 의
-사용자 레코드 이름을 `participantID` 로 내리고, 화면은
+사용자 레코드 이름을 `participantID` 로 내리고 — 단, 본인 기기에서는 그것이
+자리표시 `__defaultOwner__` 라 `CKContainer.fetchUserRecordID` 로 받은 실제
+이름으로 바꾼다 (62번) — 화면은
 `FamilyRole.mayEdit(editorIDs:participantID:)` 로 묻는다 — 관리자는 전부,
 `editor` 는 제 ID 가 적힌 구성원만, `viewer` 는 없음. 받은 구성원이 하나도
 없으면 자산 탭 맨 위에 그 이유를 적는다.

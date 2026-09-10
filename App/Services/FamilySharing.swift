@@ -350,7 +350,8 @@ final class FamilySharing {
                 if let sharedStore,
                    let share = (try? container.fetchShares(in: sharedStore))?.first {
                     next.role = Self.role(of: share)
-                    next.participantID = share.currentUserParticipant?.userIdentity.userRecordID?.recordName
+                    next.participantID = Self.realUserRecordName(
+                        share.currentUserParticipant?.userIdentity.userRecordID?.recordName)
                 }
                 UserDefaults.standard.set(next.role.rawValue, forKey: Self.roleKey)
 
@@ -381,8 +382,44 @@ final class FamilySharing {
                     next.people = Self.people(of: share)
                 }
                 let result = next
-                Task { @MainActor in FamilySharing.shared.state = result }
+                Task { @MainActor in
+                    FamilySharing.shared.state = result
+                    // 참가자인데 제 이름을 아직 모르면 서버에 묻는다 (아래 참고).
+                    if result.isParticipant && result.participantID == nil {
+                        FamilySharing.shared.fetchUserRecordNameIfNeeded()
+                    }
+                }
             }
+        }
+    }
+
+    /// **`__defaultOwner__` 는 이름이 아니다.** CloudKit 은 본인 기기에서 본인을
+    /// 가리킬 때 실제 사용자 레코드 이름 대신 이 자리표시(`CKCurrentUserDefaultName`)
+    /// 를 준다. 참가자 폰이 공유의 `currentUserParticipant` 에서 읽은 것이 그것이라,
+    /// 관리자 폰이 `Member.editorIDs` 에 적은 실제 이름(`_…`)과 영영 안 맞았다
+    /// (docs/08-feedback.md 62번 — 두 폰의 ID 꼬리가 완전히 달랐다).
+    ///
+    /// 실제 이름은 `CKContainer.fetchUserRecordID` 가 준다. 한 번 받으면
+    /// `UserDefaults` 에 둔다 — 컨테이너 안에서 바뀌지 않는 값이다.
+    static let userRecordKey = "family.userRecordName"
+
+    nonisolated static func realUserRecordName(_ raw: String?) -> String? {
+        if let raw, !raw.isEmpty, raw != CKCurrentUserDefaultName { return raw }
+        return UserDefaults.standard.string(forKey: userRecordKey)
+    }
+
+    func fetchUserRecordNameIfNeeded() {
+        guard UserDefaults.standard.string(forKey: Self.userRecordKey) == nil else { return }
+        CKContainer(identifier: Persistence.cloudKitContainerID).fetchUserRecordID { id, error in
+            guard let name = id?.recordName, name != CKCurrentUserDefaultName else {
+                if let error {
+                    let text = "참가자 ID 를 받지 못했습니다\n" + CloudKitErrorText.describe(error)
+                    Task { @MainActor in FamilySharing.shared.lastFailure = text }
+                }
+                return
+            }
+            UserDefaults.standard.set(name, forKey: Self.userRecordKey)
+            Task { @MainActor in FamilySharing.shared.refreshState() }
         }
     }
 
