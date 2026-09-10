@@ -14,6 +14,8 @@ struct FamilyAllocationView: View {
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched private var targets: [FamilyTarget]
+    /// 비중은 종목 값에서 나온다 — 종목을 직접 감시해야 고친 값이 바로 보인다 (72번).
+    @Fetched private var holdings: [Holding]
     @Environment(\.managedObjectContext) private var context
     // 가족 전체의 목표 비중은 가구 하나에 한 벌이다.
     @Environment(\.canManageHousehold) private var canManageHousehold
@@ -23,6 +25,7 @@ struct FamilyAllocationView: View {
     }
 
     var body: some View {
+        let _ = holdings.count
         List {
             Section {
                 ForEach(FamilyAllocation.memberSlices(members)) { slice in

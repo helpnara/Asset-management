@@ -27,6 +27,12 @@ struct AssetsView: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
+    // **종목·계좌를 직접 감시한다** (docs/08-feedback.md 72번). 화면은 구성원에서
+    // 관계를 따라 계좌·종목을 읽는데, 종목 값이 바뀌어도 구성원 자체는 안 바뀌어
+    // 다시 그릴 이유가 없었다 — 접었다 펴거나 탭을 오가야 새 값이 보였다.
+    // 이 둘이 바뀌면 화면이 다시 그려진다. 몸체가 한 번 읽어 줘야 확실하다.
+    @Fetched private var holdings: [Holding]
+    @Fetched private var accounts: [Account]
 
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
@@ -48,6 +54,8 @@ struct AssetsView: View {
     @AppStorage("assets.collapsedMembers") private var collapsedMembersRaw = ""
 
     var body: some View {
+        // 감시 대상을 몸체가 읽는다 — 값은 안 쓰지만 이 줄이 다시 그리기를 잇는다.
+        let _ = (holdings.count, accounts.count)
         NavigationStack {
             Group {
                 if members.isEmpty {

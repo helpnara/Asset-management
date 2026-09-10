@@ -15,6 +15,8 @@ struct AccountTargetView: View {
 
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    /// 종목 목표를 스테퍼로 바꾸면 그 줄과 `목표 합` 이 바로 바뀌어야 한다 (72번).
+    @Fetched private var holdings: [Holding]
     @Environment(\.self) private var environment
     /// 관리자는 전부, `editor` 는 권한 받은 구성원의 계좌만 (FamilyRole.mayEdit(editorIDs:participantID:)).
     private var canEdit: Bool { environment.mayEdit(account.owner) }
@@ -28,6 +30,7 @@ struct AccountTargetView: View {
     }
 
     var body: some View {
+        let _ = holdings.count
         List {
             Section {
                 ForEach(account.weightedHoldings) { holding in
