@@ -134,6 +134,14 @@ struct DiagnosticsView: View {
                 .foregroundStyle(Color.bodyText)
                 .fixedSize(horizontal: false, vertical: true)
 
+            // 결론에서 파생되는 숫자 하나 — 선저축이면 투자를 뺀 생활비.
+            if let detail = diagnosis.detail {
+                Text(detail)
+                    .font(.figure(11.5))
+                    .foregroundStyle(Color.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let progress = diagnosis.progress {
                 gauge(progress, color: color(diagnosis.status))
             }

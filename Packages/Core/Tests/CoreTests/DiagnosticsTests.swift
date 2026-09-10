@@ -305,6 +305,18 @@ struct DiagnosticsTests {
         #expect(Diagnostics.run(input(monthlyIncome: 0)).diagnosis(.savingsRate)?.status == .unknown)
     }
 
+    @Test("생활비는 소득에서 투자를 뺀 것 — 800만 소득에 200만 투자면 600만 (75%)")
+    func livingCost() {
+        // 파이썬 대조: 8_000_000 - 2_000_000 = 6_000_000, 6/8 = 75%
+        let detail = Diagnostics.run(input()).diagnosis(.savingsRate)?.detail
+        #expect(detail == "투자를 뺀 생활비: 월 600만원 (소득의 75%)")
+        // 투자가 소득보다 크면 숫자를 지어내지 않고 입력을 의심한다
+        let over = Diagnostics.run(input(monthlyContribution: 9_000_000)).diagnosis(.savingsRate)?.detail
+        #expect(over?.contains("확인하세요") == true)
+        // 다른 규칙에는 없다
+        #expect(Diagnostics.run(input()).diagnosis(.rentRatio)?.detail == nil)
+    }
+
     // MARK: - 목록
 
     @Test("일곱 가지를 모두 돌려주고, 할 일이 위로 온다")

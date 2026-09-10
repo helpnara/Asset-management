@@ -6,6 +6,9 @@ struct FamilyShareSection: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
 
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    /// "이 기기의 구성원". `RootView` 가 같은 키를 읽어 환경으로 내린다.
+    @AppStorage(FamilyRole.selfMemberKey) private var selfMemberRaw = ""
 
     @State private var sharing = FamilySharing.shared
     @State private var isConfirmingMove = false
@@ -33,6 +36,21 @@ struct FamilyShareSection: View {
                 // 참가자를 더할 수 있어서, 눌러도 안 되는 버튼이 된다.
                 LabeledContent("가족 공유", value: sharing.state.isParticipant
                                ? "참가 중 · \(sharing.state.role.label)" : "참가 중")
+
+                // **이 기기는 누구의 것인가.** `CKShare` 권한은 존 전체에 걸려서
+                // "변경 가능" 이면 남의 계좌도 서버가 받아 준다. 본인 것만으로
+                // 좁히는 것은 앱이고, 그 기준이 이 선택이다 (docs/09 4단계).
+                Picker("이 기기의 구성원", selection: $selfMemberRaw) {
+                    Text("선택 안 함").tag("")
+                    ForEach(members) { member in
+                        Text(member.name.isEmpty ? "이름 없음" : member.name).tag(member.id.uuidString)
+                    }
+                }
+                if sharing.state.role == .editor && selfMemberRaw.isEmpty {
+                    Text("관리자가 변경 권한을 주었습니다. 위에서 본인을 고르면 본인 계좌·종목을 고칠 수 있습니다.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.muted)
+                }
             }
 
             // **앱이 믿는 상태를 그대로 내놓는다.**
@@ -98,8 +116,8 @@ struct FamilyShareSection: View {
             Text("가족")
         } footer: {
             Text(canManageHousehold
-                 ? "초대하면 기록 전체가 상대 기기에도 보입니다. 기본은 **보기 전용**이고, 이 화면에서 사람마다 넓힐 수 있습니다."
-                 : "관리자가 공유한 기록을 보고 있습니다.")
+                 ? "초대하면 기록 전체가 상대 기기에도 보입니다. 기본은 **보기 전용**이고, 공유 관리에서 사람을 눌러 '변경 가능' 으로 넓힐 수 있습니다. 넓혀도 상대는 **본인 계좌·종목만** 고칩니다."
+                 : "관리자가 공유한 기록을 보고 있습니다. 변경 권한을 받으면 본인 것만 고칠 수 있습니다.")
         }
         .task {
             // **메인에서 읽지 않는다.** 공유 조회는 Core Data 의 같은 실행기를

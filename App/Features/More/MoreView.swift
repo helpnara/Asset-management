@@ -21,6 +21,7 @@ struct MoreView: View {
         case history
         case principles
         case notifications
+        case diaryReminder
         case diagnostics
         case todos
         case milestones
@@ -50,6 +51,9 @@ struct MoreView: View {
                 Section("점검") {
                     NavigationLink(value: Destination.notifications) {
                         Label("주간 점검 알림", systemImage: "bell")
+                    }
+                    NavigationLink(value: Destination.diaryReminder) {
+                        Label("목 · 실 · 감 알림", systemImage: "sun.max")
                     }
                     NavigationLink(value: Destination.security) {
                         Label("잠금 · 가리기", systemImage: "lock")
@@ -120,6 +124,7 @@ struct MoreView: View {
                 switch destination {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
+                case .diaryReminder: DiaryReminderSettingsView()
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
                 case .milestones: MilestoneListView()

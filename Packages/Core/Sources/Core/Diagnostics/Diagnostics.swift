@@ -95,6 +95,9 @@ public struct Diagnosis: Sendable, Hashable, Identifiable {
     public let action: String
     /// 게이지에 그릴 현재 위치 (0...1로 자름). nil이면 게이지를 그리지 않는다.
     public let progress: Double?
+    /// 결론 아래 한 줄 더. 결론에서 파생되는 숫자 하나를 적는다 — 선저축이면
+    /// 투자를 뺀 생활비. 대부분의 규칙은 없다.
+    public var detail: String? = nil
 
     public var id: String { kind.rawValue }
     public var title: String { kind.title }
@@ -600,8 +603,22 @@ public enum Diagnostics {
                 + "\(KoreanAmountFormatter.abbreviated(input.monthlyContribution, suffix: "원")) 투자 · "
                 + "\(percent(rate)) (기준 \(floorText)% 이상)",
             action: action,
-            progress: floor > 0 ? min(rate / floor, 1.5) : nil
+            progress: floor > 0 ? min(rate / floor, 1.5) : nil,
+            detail: livingCost(input)
         )
+    }
+
+    /// **소득 − 투자 = 생활비.** "매월 얼마나 투자하는지 알고 비용을 산출"
+    /// (docs/05-roadmap.md 마지막 묶음 3). 투자를 먼저 떼고 남는 돈이 한 달
+    /// 살림의 상한이다. 투자가 소득과 같거나 크면 소득 칸이 빠진 것이다.
+    private static func livingCost(_ input: DiagnosticsInput) -> String {
+        let left = input.monthlyIncome.minorUnits - input.monthlyContribution.minorUnits
+        guard left > 0 else {
+            return "투자가 소득과 같거나 큽니다 — 구성원의 월급·기타 수입 칸을 확인하세요."
+        }
+        let living = Money(minorUnits: left, currency: input.monthlyIncome.currency)
+        let share = ratio(living, of: input.monthlyIncome)
+        return "투자를 뺀 생활비: 월 \(KoreanAmountFormatter.abbreviated(living, suffix: "원")) (소득의 \(percent(share)))"
     }
 
     private static func neededContribution(_ input: DiagnosticsInput) -> Money {

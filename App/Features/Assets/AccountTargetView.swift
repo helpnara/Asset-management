@@ -15,7 +15,9 @@ struct AccountTargetView: View {
 
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
-    @Environment(\.canEdit) private var canEdit
+    @Environment(\.self) private var environment
+    /// 관리자는 전부, `editor` 는 본인 계좌만 (FamilyRole.mayEdit(memberID:selfMemberID:)).
+    private var canEdit: Bool { environment.mayEdit(account.owner) }
 
     private var tolerance: Allocation.Tolerance {
         plans.first?.driftTolerance ?? Allocation.Tolerance()

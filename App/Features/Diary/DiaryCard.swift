@@ -1,3 +1,4 @@
+import Core
 import CoreData
 import SwiftUI
 
@@ -37,6 +38,14 @@ struct DiaryCard: View {
     private var todayEntry: DiaryEntry? { entries.first { $0.day == today } }
     private var pastCount: Int { entries.filter { $0.day != today }.count }
 
+    /// 오늘(또는 어제)까지 이어진 날 수. 빈 항목(만들었다가 다 지운 날)은 안 센다.
+    private var streak: Int {
+        let written = entries
+            .filter { !($0.goal.isEmpty && $0.result.isEmpty && $0.gratitude.isEmpty) }
+            .map(\.day)
+        return DiaryStreak.count(days: written, asOf: .now)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
@@ -46,6 +55,11 @@ struct DiaryCard: View {
                 Text(Self.dayText(today))
                     .font(.figure(11))
                     .foregroundStyle(Color.muted)
+                if streak > 1 {
+                    Text("\(streak)일 연속")
+                        .font(.figure(11, weight: .medium))
+                        .foregroundStyle(Color.gain)
+                }
                 Spacer(minLength: 0)
                 NavigationLink(value: DiaryDestination.list) {
                     Text(pastCount > 0 ? "지난 일기 \(pastCount)" : "지난 일기")
@@ -138,6 +152,9 @@ struct DiaryCard: View {
     private func finishEditing() {
         focus = nil
         isEditing = false
+        // 오늘 것을 적었으면 오늘 알림은 필요 없다 — 트리거를 내일로 옮긴다.
+        let written = hasAnyText
+        Task { await DiaryNotifications.refresh(todayWritten: written) }
     }
 
     private func load() {

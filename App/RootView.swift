@@ -6,12 +6,16 @@ struct RootView: View {
     @State private var route = AppRoute.shared
     @State private var sharing = FamilySharing.shared
     @Environment(\.scenePhase) private var scenePhase
+    /// 참가자 기기가 고른 "이 기기의 구성원". 바뀌면 화면이 다시 그려져야
+    /// 하므로 `@AppStorage` 로 붙잡는다.
+    @AppStorage(FamilyRole.selfMemberKey) private var selfMemberRaw = ""
 
 
     @Fetched private var holdings: [Holding]
     @Fetched private var sessions: [ReviewSession]
     @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
     @Fetched private var accounts: [Account]
+    @Fetched(sort: \DiaryEntry.day, order: .reverse) private var diary: [DiaryEntry]
 
     /// **역할은 `CKShare` 가 정한다** (docs/09-family-sharing.md 4단계). 초대를
     /// 받아들인 기기는 참가자 권한대로, 나머지는 소유자다. 실행 인자는 CI 가
@@ -24,12 +28,16 @@ struct RootView: View {
 
     var body: some View {
         tabs
-            .familyRole(role)
+            .familyRole(role, selfMemberID: UUID(uuidString: selfMemberRaw))
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
             // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
             .task { sharing.refreshState() }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { sharing.refreshState() }
+                if phase == .active {
+                    sharing.refreshState()
+                    let written = DiaryNotifications.todayWritten(diary)
+                    Task { await DiaryNotifications.refresh(todayWritten: written) }
+                }
             }
     }
 
@@ -72,6 +80,10 @@ struct RootView: View {
             // 여기서도 통째로 다시 건다.
             let todoInput = TodoNotifications.Input(items: todos, accounts: accounts)
             await TodoNotifications.refresh(todoInput)
+
+            // 일기 알림도 같은 이유로 여기서 다시 건다. "오늘 이미 적었나" 가
+            // 트리거 모양을 정하므로 앞으로 올 때마다도 본다.
+            await DiaryNotifications.refresh(todayWritten: DiaryNotifications.todayWritten(diary))
         }
         .fullScreenCover(isPresented: Binding(
             // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.

@@ -19,6 +19,12 @@ struct AssetsView: View {
     @Environment(\.managedObjectContext) private var context
     // 보기 전용으로 열었을 때 고칠 자리를 감춘다 (docs/09-family-sharing.md).
     @Environment(\.canEdit) private var canEdit
+    @Environment(\.self) private var environment
+    @Environment(\.familyRole) private var role
+    @Environment(\.selfMemberID) private var selfMemberID
+
+    /// 이 구성원의 것을 고칠 수 있나 — 관리자는 전부, `editor` 는 본인 것만.
+    private func mayEdit(_ member: Member?) -> Bool { environment.mayEdit(member) }
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
@@ -147,13 +153,19 @@ struct AssetsView: View {
                 }
             }
 
+            if role == .editor && selfMemberID == nil {
+                Section {
+                    ReadOnlyNote(text: "변경 권한은 있지만 이 기기가 누구 것인지 아직 안 골랐습니다. 더보기 → 가족에서 본인을 고르세요.")
+                }
+            }
+
             ForEach(members) { member in
                 Section {
                     if isExpanded(member) {
                         ForEach(member.sortedAccounts) { account in
                             accountRows(account)
                         }
-                        if canEdit {
+                        if mayEdit(member) {
                             Button {
                                 addAccount(to: member)
                             } label: {
@@ -211,7 +223,7 @@ struct AssetsView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Color.dad)
 
-            if canEdit {
+            if mayEdit(member) {
                 Button("편집") { editingMember = member }
                     .font(.system(size: 11))
                     .buttonStyle(.plain)
@@ -265,7 +277,7 @@ struct AssetsView: View {
         .buttonStyle(.plain)
         // 계좌 자체를 고치는 길. 펼치기와 겹치지 않게 길게 눌러 연다.
         .contextMenu {
-            if canEdit {
+            if mayEdit(account.owner) {
                 Button("계좌 편집") { editingAccount = account }
             }
             if account.canSetTargets {
@@ -275,7 +287,7 @@ struct AssetsView: View {
 
         if isExpanded(account) {
             ForEach(account.sortedHoldings) { holding in
-                if canEdit {
+                if mayEdit(account.owner) {
                     Button {
                         editingHolding = holding
                     } label: {
@@ -288,15 +300,15 @@ struct AssetsView: View {
             }
             // 삼항 안의 클로저에는 타입을 적는다. `$0` 로 두면 `nil` 쪽 때문에
             // 추론할 근거가 없어 컴파일러가 막는다.
-            .onDelete(perform: canEdit ? { (offsets: IndexSet) in
+            .onDelete(perform: mayEdit(account.owner) ? { (offsets: IndexSet) in
                 pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: offsets)
             } : nil)
-            .onMove(perform: canEdit ? { (offsets: IndexSet, destination: Int) in
+            .onMove(perform: mayEdit(account.owner) ? { (offsets: IndexSet, destination: Int) in
                 move(offsets, to: destination, in: account)
             } : nil)
 
             HStack(spacing: 14) {
-                if canEdit {
+                if mayEdit(account.owner) {
                     Button {
                         addHolding(to: account)
                     } label: {

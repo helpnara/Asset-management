@@ -25,8 +25,33 @@ enum FamilyRole: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// 자기 구성원에 딸린 것(계좌·종목)을 고칠 수 있나.
+    /// 자기 구성원에 딸린 것(계좌·종목)을 고칠 수 있나 — 역할 수준의 답.
+    /// 어느 구성원인지까지 따지려면 `mayEdit(memberID:selfMemberID:)`.
     var canEdit: Bool { self != .viewer }
+
+    /// **본인 것만** (docs/09-family-sharing.md 4단계 · 합격 기준 7번).
+    ///
+    /// `CKShare` 의 권한은 존 전체에 걸린다 — "변경 가능" 이면 남의 계좌도
+    /// 서버는 받아 준다. 그래서 구성원 단위 잠금은 앱이 한다. 참가자는
+    /// 더보기 → 가족에서 **이 기기의 구성원**을 고르고, `editor` 는 그
+    /// 구성원의 것만 고친다. 안 골랐으면 아무것도 못 고친다 — 남의 것을
+    /// 열어 두느니 잠가 두는 쪽이 싸다.
+    func mayEdit(memberID: UUID?, selfMemberID: UUID?) -> Bool {
+        switch self {
+        case .owner: return true
+        case .editor: return memberID != nil && memberID == selfMemberID
+        case .viewer: return false
+        }
+    }
+
+    /// 이 기기를 쓰는 구성원의 `Member.id`. 기기마다 다르므로 UserDefaults 다 —
+    /// iCloud 로 퍼지면 안 된다.
+    static let selfMemberKey = "family.selfMemberID"
+
+    static var selfMemberID: UUID? {
+        get { UserDefaults.standard.string(forKey: selfMemberKey).flatMap(UUID.init) }
+        set { UserDefaults.standard.set(newValue?.uuidString, forKey: selfMemberKey) }
+    }
 
     /// 가구 전체에 걸리는 것 — 계획 가정, 구성원 추가·삭제, 백업 되돌리기,
     /// 알림·진단 설정. **관리자만이다.**
@@ -56,6 +81,11 @@ private struct FamilyRoleKey: EnvironmentKey {
     static let defaultValue = FamilyRole.owner
 }
 
+/// 이 기기를 쓰는 구성원. 관리자 기기에서는 안 쓴다.
+private struct SelfMemberIDKey: EnvironmentKey {
+    static let defaultValue: UUID? = nil
+}
+
 extension EnvironmentValues {
     var canEdit: Bool {
         get { self[CanEditKey.self] }
@@ -71,14 +101,26 @@ extension EnvironmentValues {
         get { self[FamilyRoleKey.self] }
         set { self[FamilyRoleKey.self] = newValue }
     }
+
+    var selfMemberID: UUID? {
+        get { self[SelfMemberIDKey.self] }
+        set { self[SelfMemberIDKey.self] = newValue }
+    }
+
+    /// 화면이 구성원 하나를 두고 묻는 한 줄. `role.mayEdit(memberID:selfMemberID:)`
+    /// 를 환경 둘로 묶은 것이다.
+    func mayEdit(_ member: Member?) -> Bool {
+        familyRole.mayEdit(memberID: member?.id, selfMemberID: selfMemberID)
+    }
 }
 
 extension View {
     /// 이 아래 화면 전부에 역할을 건다.
-    func familyRole(_ role: FamilyRole) -> some View {
+    func familyRole(_ role: FamilyRole, selfMemberID: UUID? = nil) -> some View {
         environment(\.familyRole, role)
             .environment(\.canEdit, role.canEdit)
             .environment(\.canManageHousehold, role.canManageHousehold)
+            .environment(\.selfMemberID, selfMemberID)
     }
 }
 

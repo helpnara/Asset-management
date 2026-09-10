@@ -18,6 +18,12 @@ struct WeeklyReviewView: View {
     @Environment(\.managedObjectContext) private var context
 
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Environment(\.self) private var environment
+
+    /// **적을 수 있는 구성원만 큐에 넣는다.** `editor` 는 본인 것만이다
+    /// (docs/09 4단계). 총액·구성원별 분해는 `members` 전체로 낸다 — 남의
+    /// 값은 못 고쳐도 가족 총액에는 들어가야 한다.
+    private var editableMembers: [Member] { members.filter { environment.mayEdit($0) } }
     @Fetched private var sessions: [ReviewSession]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
@@ -32,14 +38,14 @@ struct WeeklyReviewView: View {
         }
     }
 
-    private var queue: [Holding] { members.flatMap { queue(for: $0) } }
+    private var queue: [Holding] { editableMembers.flatMap { queue(for: $0) } }
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        ForEach(members) { member in
+                        ForEach(editableMembers) { member in
                             let rows = queue(for: member)
                             if !rows.isEmpty {
                                 Section {

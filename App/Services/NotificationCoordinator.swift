@@ -29,15 +29,23 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
         didReceive response: UNNotificationResponse
     ) async {
         let action = response.actionIdentifier
+        let category = response.notification.request.content.categoryIdentifier
         let typed = (response as? UNTextInputNotificationResponse)?.userText
         let container = container   // 메인 컨텍스트만 건드린다 — 컨테이너를 async 경계 너머로 넘기지 않는다
         await MainActor.run {
-            Self.handle(action: action, text: typed, container: container)
+            Self.handle(action: action, category: category, text: typed, container: container)
         }
     }
 
     @MainActor
-    private static func handle(action: String, text: String?, container: NSPersistentContainer) {
+    private static func handle(action: String, category: String, text: String?,
+                               container: NSPersistentContainer) {
+        // 일기 알림을 누르면 현황판 — 카드가 맨 위에 있다. 여기서 가르지 않으면
+        // 기본 탭 동작이 주간 점검을 열어 버린다.
+        if category == DiaryNotifications.Identifier.category {
+            AppRoute.shared.selectedTab = .dashboard
+            return
+        }
         switch action {
         case ReviewNotifications.Action.quickTotal:
             if let text { recordTotalOnly(text, container: container) }
