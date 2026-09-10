@@ -109,19 +109,19 @@ final class FamilySharing {
         }
     }
 
-    /// **뿌리에 안 매달린 기록을 전부 매달고, 공유가 있으면 공유 존으로 옮긴다.**
-    /// 남은 고아 수를 돌려준다 (매단 뒤에는 0).
+    /// **뿌리에 안 매달린 기록을 매달고, 공유 존 밖에 남은 기록을 센다.** 옮기지는 않는다.
     ///
     /// 왜 있나. `Household` 는 4차 2a 에 생겼고, `attachNew` 는 **저장할 때
-    /// 새로 만든 것**만 매단다. 그 전에 만든 31종목·24주치는 `household` 가
-    /// 비어 있었다. 공유는 뿌리와 **관계로 이어진 것**만 옮기므로 아내분 폰에는
-    /// 빈 가구만 갔다 — 합격 기준 3번("계획·궤적이 비어 있지 않다")이 그대로
-    /// 잡아냈다 (docs/09-family-sharing.md "2b 에서 막힌 것 ③").
+    /// 새로 만든 것**만 매단다. 그 전에 만든 기록은 `household` 가 비어 있었다.
+    /// 공유는 뿌리와 관계로 이어진 것만 옮기므로 아내분 폰에는 빈 가구만 갔다
+    /// (docs/09-family-sharing.md "2b 에서 막힌 것 ③").
     ///
-    /// 관계만 이어 주면 충분한가. 이미 개인 존에 올라간 레코드는 관계를
-    /// 바꿔도 존이 저절로 옮겨지지 않는다. 애플이 문서화한 길은
-    /// `share(_:to:)` 에 **기존 공유**를 넘기는 것이다 — 넘긴 객체를 그 공유의
-    /// 존으로 옮긴다. 그래서 매단 뒤 공유가 있으면 그것까지 한다.
+    /// **옮기기는 여기서 하지 않는다.** 처음엔 자동으로 옮겼는데, 옮기기가
+    /// 스키마(`CD_moveReceipt`)에 막혀 반쯤 실패하자 **다른 기기(아이폰)의
+    /// 기록이 전부 지워졌다.** 옮기기는 개인 존에서 지우고 공유 존에 새로
+    /// 만드는 두 단계라, 뒤가 실패하면 앞의 삭제만 퍼진다. 그래서 옮기기는
+    /// 사람이 **백업을 받은 뒤 버튼으로** 한 기기에서만 한다
+    /// (`moveUnsharedIntoShare`). 여기서는 매달기와 세기만 한다.
     ///
     /// 엔티티 이름을 손으로 적지 않는다. 모델에서 `household` 관계를 가진
     /// 엔티티를 전부 돈다 — 열다섯 개인데 하나 빠지면 그 종류만 상대 기기에
@@ -130,80 +130,102 @@ final class FamilySharing {
                                          container: NSPersistentCloudKitContainer) -> Int {
         let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
         guard let household = context.all(Household.self, sortedBy: byAge).first else { return 0 }
-        let entities = container.managedObjectModel.entities
-            .filter { $0.name != "Household" && $0.relationshipsByName["household"] != nil }
 
-        // A. 뿌리에 매단다.
-        var adopted: [NSManagedObject] = []
-        for entity in entities {
-            guard let name = entity.name else { continue }
-            let request = NSFetchRequest<NSManagedObject>(entityName: name)
+        // A. 뿌리에 매단다. 관계를 잇는 것뿐이라 지워지는 것은 없다.
+        var adopted = 0
+        for entity in householdEntities(of: container) {
+            let request = NSFetchRequest<NSManagedObject>(entityName: entity)
             request.predicate = NSPredicate(format: "household == nil")
             for object in (try? context.fetch(request)) ?? [] {
                 object.setValue(household, forKey: "household")
-                adopted.append(object)
+                adopted += 1
             }
         }
-        if !adopted.isEmpty {
+        if adopted > 0 {
             do {
                 try context.save()
             } catch {
-                let text = "기록 \(adopted.count)건을 뿌리에 매달지 못했습니다\n" + CloudKitErrorText.describe(error)
+                let text = "기록 \(adopted)건을 뿌리에 매달지 못했습니다\n" + CloudKitErrorText.describe(error)
                 Task { @MainActor in FamilySharing.shared.lastAdoption = text }
-                return adopted.count
+                return adopted
             }
         }
 
-        // B. 공유가 있으면 **공유 존 밖에 남은 것**을 옮긴다. 매달렸는지가 아니라
-        // 옮겨졌는지를 본다 — 첫 시도가 스키마(CD_moveReceipt)에 막혀 매달리기만
-        // 하고 못 옮긴 채 남았던 적이 있다. 매달림만 보면 영영 다시 안 옮긴다.
+        // B. 공유가 있으면 **공유 존 밖에 남은 것**을 센다. 옮기는 것은 버튼이다.
         guard let share = try? container.fetchShares(matching: [household.objectID])[household.objectID]
-        else {
-            if !adopted.isEmpty {
-                let count = adopted.count
-                Task { @MainActor in
-                    FamilySharing.shared.lastAdoption = "기록 \(count)건을 뿌리에 매달았습니다."
-                }
-            }
-            return 0
-        }
+        else { return 0 }
+        _ = share
+        return unshared(in: context, container: container).count
+    }
+
+    /// 모델에서 `household` 관계를 가진 엔티티 이름.
+    nonisolated static func householdEntities(of container: NSPersistentCloudKitContainer) -> [String] {
+        container.managedObjectModel.entities
+            .filter { $0.name != "Household" && $0.relationshipsByName["household"] != nil }
+            .compactMap(\.name)
+    }
+
+    /// 공유 존 밖에 있는 기록. "매달렸는가" 가 아니라 **"공유 존에 있는가"**
+    /// (`fetchShares(matching:)`) 로 본다 — 매달림만 보면 첫 실패 뒤 영영 다시
+    /// 안 옮긴다.
+    nonisolated static func unshared(in context: NSManagedObjectContext,
+                                     container: NSPersistentCloudKitContainer) -> [NSManagedObject] {
         var outside: [NSManagedObject] = []
-        for entity in entities {
-            guard let name = entity.name else { continue }
-            let request = NSFetchRequest<NSManagedObject>(entityName: name)
-            let objects = (try? context.fetch(request)) ?? []
+        for entity in householdEntities(of: container) {
+            let objects = (try? context.fetch(NSFetchRequest<NSManagedObject>(entityName: entity))) ?? []
             guard !objects.isEmpty else { continue }
             let shares = (try? container.fetchShares(matching: objects.map(\.objectID))) ?? [:]
             outside += objects.filter { shares[$0.objectID] == nil }
         }
-        guard !outside.isEmpty else { return 0 }
+        return outside
+    }
 
-        // 실패한 채로 앞으로 올 때마다 수백 건을 다시 밀지는 않는다. 3분에 한 번.
-        let attemptKey = "family.lastMoveAttempt"
-        let lastAttempt = UserDefaults.standard.double(forKey: attemptKey)
-        guard Date.now.timeIntervalSince1970 - lastAttempt > 180 else { return outside.count }
-        UserDefaults.standard.set(Date.now.timeIntervalSince1970, forKey: attemptKey)
-
-        let count = outside.count
-        Task { @MainActor in
-            FamilySharing.shared.lastAdoption = "기록 \(count)건을 공유 존으로 옮기는 중…"
+    /// **공유 존 밖의 기록을 공유 존으로 옮긴다.** 사람이 버튼으로 부른다.
+    ///
+    /// 옮기기 전에 백업을 받으라고 화면이 먼저 말한다. 옮기기는 개인 존에서
+    /// 지우고 공유 존에 새로 만드는 두 단계라, 뒤가 실패하면 다른 기기에는
+    /// 삭제만 퍼진다 — 실제로 한 번 그렇게 아이폰 기록이 통째로 사라졌고
+    /// 백업으로 되돌렸다 (docs/09-family-sharing.md ③-2).
+    func moveUnsharedIntoShare() {
+        guard let container = cloudContainer else {
+            lastAdoption = "iCloud 로 열리지 않아 옮길 수 없습니다."
+            return
         }
-        // 부른 스레드를 붙잡는 호출이라 여기(백그라운드)서만 부른다.
-        // 완료는 나중에 따로 온다 — 기다리지 않는다.
-        container.share(outside, to: share) { _, _, _, error in
-            let text = error.map { CloudKitErrorText.describe($0) }
-            Task { @MainActor in
-                let sharing = FamilySharing.shared
-                if let text {
-                    sharing.lastAdoption = "기록 \(count)건을 공유 존으로 옮기지 못했습니다\n" + text
-                } else {
-                    sharing.lastAdoption = "기록 \(count)건을 공유 존으로 옮겼습니다. "
-                        + "상대 기기에 1~2분 뒤 나타납니다."
+        lastAdoption = "공유 존으로 옮기는 중…"
+        let carried = UncheckedBox(container)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let container = carried.value
+            let context = container.newBackgroundContext()
+            context.perform {
+                let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
+                guard let household = context.all(Household.self, sortedBy: byAge).first,
+                      let share = try? container.fetchShares(matching: [household.objectID])[household.objectID]
+                else {
+                    Task { @MainActor in FamilySharing.shared.lastAdoption = "저장된 공유가 없어 옮길 수 없습니다." }
+                    return
                 }
-                sharing.refreshState()
+                let outside = Self.unshared(in: context, container: container)
+                let count = outside.count
+                guard count > 0 else {
+                    Task { @MainActor in FamilySharing.shared.lastAdoption = "공유 존 밖에 남은 기록이 없습니다." }
+                    return
+                }
+                // 부른 스레드를 붙잡는 호출이라 여기(백그라운드)서만 부른다.
+                container.share(outside, to: share) { _, _, _, error in
+                    let text = error.map { CloudKitErrorText.describe($0) }
+                    Task { @MainActor in
+                        let sharing = FamilySharing.shared
+                        if let text {
+                            sharing.lastAdoption = "기록 \(count)건을 공유 존으로 옮기지 못했습니다\n" + text
+                        } else {
+                            sharing.lastAdoption = "기록 \(count)건을 공유 존으로 옮겼습니다. "
+                                + "상대 기기에 1~2분 뒤 나타납니다."
+                        }
+                        sharing.refreshState()
+                    }
+                }
             }
         }
-        return count
     }
 
     /// `CKShare` 참가자 정보를 앱의 역할로 옮긴다. 백그라운드에서 부른다.

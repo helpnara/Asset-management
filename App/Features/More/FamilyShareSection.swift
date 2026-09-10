@@ -8,6 +8,7 @@ struct FamilyShareSection: View {
     @Fetched private var plans: [Plan]
 
     @State private var sharing = FamilySharing.shared
+    @State private var isConfirmingMove = false
 
     var body: some View {
         Section {
@@ -51,9 +52,23 @@ struct FamilyShareSection: View {
                     .foregroundStyle(Color.loss)
             }
             if sharing.state.orphans > 0 {
-                Text("공유에 안 실린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다. 앞으로 돌아올 때마다 다시 옮깁니다.")
+                Text("공유에 안 실린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.loss)
+                if canManageHousehold && !sharing.state.isParticipant {
+                    Button {
+                        isConfirmingMove = true
+                    } label: {
+                        Text("기록 \(sharing.state.orphans)건을 공유로 옮기기")
+                    }
+                    .confirmationDialog("먼저 백업을 받으셨나요?", isPresented: $isConfirmingMove,
+                                        titleVisibility: .visible) {
+                        Button("백업 받았음 — 옮기기") { sharing.moveUnsharedIntoShare() }
+                        Button("취소", role: .cancel) {}
+                    } message: {
+                        Text("더보기 → 내보내기 → 전체 백업을 먼저 받으세요. 옮기기는 개인 저장소에서 지우고 공유 저장소에 새로 만드는 두 단계라, 실패하면 다른 기기의 기록이 잠시 사라질 수 있습니다. 한 기기에서만 누르세요.")
+                    }
+                }
             }
             if let adoption = sharing.lastAdoption {
                 Text(adoption)
