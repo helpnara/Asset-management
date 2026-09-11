@@ -171,6 +171,8 @@ struct PastRecordDraft: Identifiable {
     var investableMinor: Int
     var liabilitiesMinor: Int
     let isNew: Bool
+    /// 그 주의 구성원별 금액 — 보기만 한다. 총액을 고치면 저장할 때 비례로 따라간다 (97번).
+    var memberLines: [(name: String, valueMinor: Int)] = []
 
     init() {
         // 지난 토요일. 오늘 날짜로 열어 두면 이번 주 점검과 헷갈린다.
@@ -187,6 +189,7 @@ struct PastRecordDraft: Identifiable {
         self.investableMinor = snapshot.investableMinor
         self.liabilitiesMinor = snapshot.liabilitiesMinor
         self.isNew = false
+        self.memberLines = snapshot.sortedLines.map { ($0.memberName.isEmpty ? "이름 없음" : $0.memberName, $0.valueMinor) }
     }
 }
 
@@ -194,6 +197,21 @@ struct PastRecordEditView: View {
     @State var draft: PastRecordDraft
     let onSave: (PastRecordDraft) -> Void
     @Environment(\.dismiss) private var dismiss
+
+    /// 열 때의 총액. 지금 총액과 다르면 구성원별을 비례로 미리 보여 준다.
+    private var originalTotal: Int { draft.memberLines.reduce(0) { $0 + $1.valueMinor } }
+
+    private func scaled(_ value: Int) -> Int {
+        guard originalTotal != 0, draft.netWorthMinor != originalTotal else { return value }
+        let shareBP = value * 10_000 / originalTotal
+        return draft.netWorthMinor * shareBP / 10_000
+    }
+
+    private var scaleNote: String {
+        originalTotal != 0 && draft.netWorthMinor != originalTotal
+            ? "총액을 고쳐서 같은 비율로 따라 바뀐 값입니다. 저장하면 이렇게 남습니다."
+            : "주간 점검이 남긴 분해입니다. 총액을 고치면 같은 비율로 따라 바뀝니다."
+    }
 
     var body: some View {
         NavigationStack {
@@ -218,6 +236,23 @@ struct PastRecordEditView: View {
                     Text("선택")
                 } footer: {
                     Text("몰라도 됩니다. 0으로 두면 그 시점의 비중 분석만 비어 있고 궤적은 그대로 그려집니다.")
+                }
+
+                // **구성원별은 보기만** (109번). 주간 점검이 남긴 분해다. 총액을
+                // 고치면 저장할 때 같은 비율로 따라 바뀐다 — 여기서 미리 보여 준다.
+                if !draft.memberLines.isEmpty {
+                    Section {
+                        ForEach(Array(draft.memberLines.enumerated()), id: \.offset) { _, line in
+                            LabeledContent(line.name) {
+                                Text(Won.abbreviated(Money(minorUnits: scaled(line.valueMinor), currency: .krw), suffix: "원"))
+                                    .font(.figure(13))
+                            }
+                        }
+                    } header: {
+                        Text("구성원별")
+                    } footer: {
+                        Text(scaleNote)
+                    }
                 }
             }
             .navigationTitle(draft.isNew ? "지난 기록 추가" : "지난 기록")

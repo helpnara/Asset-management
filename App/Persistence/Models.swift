@@ -129,8 +129,13 @@ extension Holding {
         case .weekly: return true
         case .fixed: return false
         case .monthly:
-            guard let last = lastEnteredAt else { return true }
-            return !calendar.isDate(last, equalTo: now, toGranularity: .month)
+            // **그 달에 값을 실제로 적었을 때만** 빠진다 (108번). "변동 없음" 으로
+            // 지나간 것은 적은 것이 아니다 — 안 그러면 하나를 적고 끝낸 뒤 다시
+            // 열면 나머지 월 1회 종목이 전부 사라진다. 실제로 적었는지는 기준값과
+            // 현재값이 다른지로 본다 (기준값은 이번 주 처음 손댈 때 옮겨진다).
+            guard let last = lastEnteredAt,
+                  calendar.isDate(last, equalTo: now, toGranularity: .month) else { return true }
+            return lastEnteredValueMinor == valueMinor
         }
     }
 

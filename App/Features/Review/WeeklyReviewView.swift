@@ -123,7 +123,7 @@ struct WeeklyReviewView: View {
                 Button("그대로 저장") { finish() }
                 Button("되돌리기") { revertSuspicious() }
                 Button("다시 보기", role: .cancel) {
-                    focusedID = suspiciousHoldings.first?.id
+                    focus(suspiciousHoldings.first?.id)
                 }
             } message: {
                 Text(largeChangeMessage)
@@ -161,7 +161,17 @@ struct WeeklyReviewView: View {
     private func revertSuspicious() {
         let items = suspiciousHoldings
         for holding in items { holding.valueMinor = holding.lastEnteredValueMinor }
-        focusedID = items.first?.id
+        focus(items.first?.id)
+    }
+
+    /// **확인 창이 닫힌 뒤에 준다** (107번). 창이 내려가는 중에 포커스를 주면
+    /// 창이 가져가 버려 커서가 안 옮겨졌다.
+    private func focus(_ id: UUID?) {
+        guard let id else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            focusedID = id
+        }
     }
 
     /// 열 때 값으로 전부 되돌린다 — `나중에` (103번).
@@ -318,7 +328,7 @@ struct WeeklyReviewView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
-            Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 한 번만 묻습니다.")
+            Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 값을 적고 나면 빠집니다.")
                 .font(.system(size: 10.5))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
