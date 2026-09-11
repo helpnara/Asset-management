@@ -4,6 +4,9 @@ import SwiftUI
 
 struct CashEventEditView: View {
     @ObservedObject var event: CashEvent
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
 
@@ -39,16 +42,23 @@ struct CashEventEditView: View {
                     TextField("메모", text: $event.note, axis: .vertical)
                         .lineLimit(1...4)
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(event.label.isEmpty ? "이 이벤트" : event.label) 을(를) 삭제할까요?",
+                                     consequence: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") {
+                            context.delete(event)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("목돈 이벤트")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: event) } }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(event.label.isEmpty ? "이 이벤트" : event.label) 을(를) 삭제할까요?",
-                                 consequence: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") {
-                        context.delete(event)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") {
@@ -69,5 +79,10 @@ struct CashEventEditView: View {
                 event.amountMinor = isInflow ? magnitude : -magnitude
             }
         }
+    }
+
+    private func cancel() {
+        if isNew { context.delete(event) } else { snapshot?.restore(to: event) }
+        dismiss()
     }
 }

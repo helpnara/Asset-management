@@ -17,6 +17,8 @@ struct PlanView: View {
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editingEvent: CashEvent?
+    /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
+    @State private var newIDs: Set<UUID> = []
     @State private var editingIncome: IncomeStream?
     @State private var pendingIncomeDelete: IndexSet?
     @State private var pendingEventDelete: IndexSet?
@@ -54,8 +56,12 @@ struct PlanView: View {
             }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $editingEvent) { CashEventEditView(event: $0) }
-            .sheet(item: $editingIncome) { IncomeStreamEditView(stream: $0) }
+            .sheet(item: $editingEvent, onDismiss: { newIDs.removeAll() }) {
+                CashEventEditView(event: $0, isNew: newIDs.contains($0.id))
+            }
+            .sheet(item: $editingIncome, onDismiss: { newIDs.removeAll() }) {
+                IncomeStreamEditView(stream: $0, isNew: newIDs.contains($0.id))
+            }
         }
     }
 
@@ -234,6 +240,7 @@ struct PlanView: View {
             if canManageHousehold {
                 Button {
                     let stream = IncomeStream(context: context, startYear: plan.retirementYear, sortIndex: incomes.count)
+                    newIDs.insert(stream.id)
                     editingIncome = stream
                 } label: {
                     Label("은퇴 후 소득 추가", systemImage: "plus")
@@ -286,6 +293,7 @@ struct PlanView: View {
             if canManageHousehold {
                 Button {
                     let event = CashEvent(context: context, date: .now, label: "", sortIndex: cashEvents.count)
+                    newIDs.insert(event.id)
                     editingEvent = event
                 } label: {
                     Label("목돈 이벤트 추가", systemImage: "plus")

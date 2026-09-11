@@ -38,6 +38,8 @@ struct AssetsView: View {
     @State private var editingMember: Member?
     @State private var editingAccount: Account?
     @State private var editingHolding: Holding?
+    /// 방금 만든 것의 id — 편집 시트의 `취소` 가 이걸 보고 지운다 (104번).
+    @State private var newIDs: Set<UUID> = []
     @State private var targetingAccount: Account?
     @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
@@ -182,9 +184,15 @@ struct AssetsView: View {
             .sheet(isPresented: $isOrderingMembers) {
                 MemberOrderView(members: members)
             }
-            .sheet(item: $editingMember) { MemberEditView(member: $0) }
-            .sheet(item: $editingAccount) { AccountEditView(account: $0) }
-            .sheet(item: $editingHolding) { HoldingEditView(holding: $0) }
+            .sheet(item: $editingMember, onDismiss: { newIDs.removeAll() }) {
+                MemberEditView(member: $0, isNew: newIDs.contains($0.id))
+            }
+            .sheet(item: $editingAccount, onDismiss: { newIDs.removeAll() }) {
+                AccountEditView(account: $0, isNew: newIDs.contains($0.id))
+            }
+            .sheet(item: $editingHolding, onDismiss: { newIDs.removeAll() }) {
+                HoldingEditView(holding: $0, isNew: newIDs.contains($0.id))
+            }
             .navigationDestination(item: $targetingAccount) { AccountTargetView(account: $0) }
             // 밀어 지우기도 확인을 거친다. 여기서 지우는 것은 그 종목에 적어 온
             // 평가액 전부라 되돌릴 방법이 없다 (docs/08-feedback.md 16번).
@@ -579,11 +587,13 @@ struct AssetsView: View {
 
     private func addMember() {
         let member = Member(context: context, name: "", colorIndex: members.count, sortIndex: members.count)
+        newIDs.insert(member.id)
         editingMember = member
     }
 
     private func addAccount(to member: Member) {
         let account = Account(context: context, name: "", owner: member, sortIndex: member.sortedAccounts.count)
+        newIDs.insert(account.id)
         editingAccount = account
     }
 
@@ -597,6 +607,7 @@ struct AssetsView: View {
                               instrumentType: assetClass.defaultInstrumentType,
                               cadence: account.kind.defaultCadence,
                               account: account, sortIndex: account.sortedHoldings.count)
+        newIDs.insert(holding.id)
         editingHolding = holding
     }
 

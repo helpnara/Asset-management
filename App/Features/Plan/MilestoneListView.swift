@@ -17,6 +17,8 @@ struct MilestoneListView: View {
     @Fetched(sort: \UserMilestone.year) private var milestones: [UserMilestone]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: UserMilestone?
+    /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
+    @State private var newIDs: Set<UUID> = []
     @State private var pendingDelete: IndexSet?
 
     var body: some View {
@@ -55,6 +57,7 @@ struct MilestoneListView: View {
                 if canEdit {
                     Button {
                         let milestone = UserMilestone(context: context, sortIndex: milestones.count)
+                        newIDs.insert(milestone.id)
                         editing = milestone
                     } label: {
                         Image(systemName: "plus")
@@ -62,7 +65,9 @@ struct MilestoneListView: View {
                 }
             }
         }
-        .sheet(item: $editing) { MilestoneEditView(milestone: $0) }
+        .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) {
+            MilestoneEditView(milestone: $0, isNew: newIDs.contains($0.id))
+        }
     }
 
     private func row(_ milestone: UserMilestone) -> some View {
@@ -108,6 +113,9 @@ struct MilestoneListView: View {
 
 struct MilestoneEditView: View {
     @ObservedObject var milestone: UserMilestone
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
@@ -150,21 +158,33 @@ struct MilestoneEditView: View {
                     TextField("자세한 내용", text: $milestone.note, axis: .vertical)
                         .lineLimit(1...4)
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(milestone.label.isEmpty ? "이 마일스톤" : milestone.label) 을(를) 삭제할까요?",
+                                     consequence: "되돌릴 수 없습니다.") {
+                            context.delete(milestone)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("마일스톤")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: milestone) } }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(milestone.label.isEmpty ? "이 마일스톤" : milestone.label) 을(를) 삭제할까요?",
-                                 consequence: "되돌릴 수 없습니다.") {
-                        context.delete(milestone)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
                 }
             }
         }
+    }
+
+    private func cancel() {
+        if isNew { context.delete(milestone) } else { snapshot?.restore(to: milestone) }
+        dismiss()
     }
 }

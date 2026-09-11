@@ -6,6 +6,9 @@ struct MemberEditView: View {
     @ObservedObject var member: Member
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
 
     /// 열었을 때의 이름. 닫을 때 견줘서 **추가인지 이름 변경인지** 가린다
     /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
@@ -90,29 +93,44 @@ struct MemberEditView: View {
                         }
                     }
                 }
+                if !isNew {
+                    Section {
+                        DeleteButton("\(member.name.isEmpty ? "이 구성원" : member.name) 을(를) 삭제할까요?",
+                                     consequence: memberDeleteWarning) {
+                            ChangeLogger.structureChanged(
+                                member.name.isEmpty ? "이름 없음" : member.name,
+                                "구성원을 삭제했습니다", in: context
+                            )
+                            nameOnOpen = nil          // 지운 것을 또 기록하지 않는다
+                            context.delete(member)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("구성원")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(member.name.isEmpty ? "이 구성원" : member.name) 을(를) 삭제할까요?",
-                                 consequence: memberDeleteWarning) {
-                        ChangeLogger.structureChanged(
-                            member.name.isEmpty ? "이름 없음" : member.name,
-                            "구성원을 삭제했습니다", in: context
-                        )
-                        nameOnOpen = nil          // 지운 것을 또 기록하지 않는다
-                        context.delete(member)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
                 }
             }
-            .onAppear { if nameOnOpen == nil { nameOnOpen = member.name } }
+            .onAppear {
+                if nameOnOpen == nil { nameOnOpen = member.name }
+                if snapshot == nil { snapshot = EditSnapshot(of: member) }
+            }
             .onDisappear { logChange() }
         }
+    }
+
+    /// 열 때 값으로 되돌리고 닫는다. 새로 만든 것이면 지운다 (104번).
+    private func cancel() {
+        nameOnOpen = nil
+        if isNew { context.delete(member) } else { snapshot?.restore(to: member) }
+        dismiss()
     }
 
     private func logChange() {
@@ -130,6 +148,9 @@ struct AccountEditView: View {
     @ObservedObject var account: Account
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.self) private var environment
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
@@ -228,22 +249,28 @@ struct AccountEditView: View {
                 } footer: {
                     Text(returnFooter)
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(account.name.isEmpty ? account.kind.label : account.name) 을(를) 삭제할까요?",
+                                     consequence: accountDeleteWarning) {
+                            ChangeLogger.structureChanged(
+                                logSubject,
+                                "계좌를 삭제했습니다 (종목 \(account.sortedHoldings.count)개 포함)",
+                                in: context
+                            )
+                            nameOnOpen = nil
+                            context.delete(account)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("계좌")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(account.name.isEmpty ? account.kind.label : account.name) 을(를) 삭제할까요?",
-                                 consequence: accountDeleteWarning) {
-                        ChangeLogger.structureChanged(
-                            logSubject,
-                            "계좌를 삭제했습니다 (종목 \(account.sortedHoldings.count)개 포함)",
-                            in: context
-                        )
-                        nameOnOpen = nil
-                        context.delete(account)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }
@@ -253,7 +280,10 @@ struct AccountEditView: View {
             }
             // 잠근 완료 버튼을 쓸어내려 빠져나가면 잠근 의미가 없다.
             .interactiveDismissDisabled(isDuplicate)
-            .onAppear { if nameOnOpen == nil { nameOnOpen = account.name } }
+            .onAppear {
+                if nameOnOpen == nil { nameOnOpen = account.name }
+                if snapshot == nil { snapshot = EditSnapshot(of: account) }
+            }
             .onDisappear { logChange() }
         }
     }
@@ -287,6 +317,12 @@ struct AccountEditView: View {
         let count = account.sortedHoldings.count
         guard count > 0 else { return "되돌릴 수 없습니다." }
         return "이 계좌에 담긴 종목 \(count)개와 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다."
+    }
+
+    private func cancel() {
+        nameOnOpen = nil
+        if isNew { context.delete(account) } else { snapshot?.restore(to: account) }
+        dismiss()
     }
 
     private var ownerBinding: Binding<UUID> {
@@ -380,6 +416,9 @@ struct HoldingEditView: View {
     @ObservedObject var holding: Holding
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.self) private var environment
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
@@ -502,24 +541,33 @@ struct HoldingEditView: View {
                     TextField("※ 주석", text: $holding.note, axis: .vertical)
                         .lineLimit(1...4)
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(holding.name.isEmpty ? "이 종목" : holding.name) 을(를) 삭제할까요?",
+                                     consequence: "적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
+                            ChangeLogger.structureChanged(logSubject, "종목을 삭제했습니다", in: context)
+                            nameOnOpen = nil
+                            context.delete(holding)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("종목")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(holding.name.isEmpty ? "이 종목" : holding.name) 을(를) 삭제할까요?",
-                                 consequence: "적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
-                        ChangeLogger.structureChanged(logSubject, "종목을 삭제했습니다", in: context)
-                        nameOnOpen = nil
-                        context.delete(holding)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
                 }
             }
-            .onAppear { if nameOnOpen == nil { nameOnOpen = holding.name } }
+            .onAppear {
+                if nameOnOpen == nil { nameOnOpen = holding.name }
+                if snapshot == nil { snapshot = EditSnapshot(of: holding) }
+            }
             .onDisappear { logChange() }
         }
     }
@@ -551,6 +599,12 @@ struct HoldingEditView: View {
     private var instrumentChoices: [InstrumentType] {
         let allowed = holding.assetClass.allowedInstrumentTypes
         return allowed.contains(holding.instrumentType) ? allowed : [holding.instrumentType] + allowed
+    }
+
+    private func cancel() {
+        nameOnOpen = nil
+        if isNew { context.delete(holding) } else { snapshot?.restore(to: holding) }
+        dismiss()
     }
 
     private var movableAccounts: [Account] {

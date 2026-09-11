@@ -5,6 +5,9 @@ import SwiftUI
 /// 은퇴 후 소득 하나. 국민연금 · 퇴직연금 · 개인연금 · 임대소득.
 struct IncomeStreamEditView: View {
     @ObservedObject var stream: IncomeStream
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
 
@@ -54,19 +57,26 @@ struct IncomeStreamEditView: View {
                          ? "해마다 물가만큼 오릅니다. 국민연금이 그렇습니다."
                          : "액면가가 고정입니다. 물가가 오르는 만큼 실제 구매력은 계속 줄어듭니다 — 30년이면 절반 아래로 내려갑니다.")
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(stream.label.isEmpty ? "이 수입" : stream.label) 을(를) 삭제할까요?",
+                                     consequence: "은퇴 후 이 수입이 궤적에서 빠집니다. 되돌릴 수 없습니다.") {
+                            context.delete(stream)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("은퇴 후 소득")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: stream) } }
             .onChange(of: hasEnd) { _, on in
                 stream.endYear = on ? max(stream.endYear, stream.startYear + 10) : 0
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(stream.label.isEmpty ? "이 수입" : stream.label) 을(를) 삭제할까요?",
-                                 consequence: "은퇴 후 이 수입이 궤적에서 빠집니다. 되돌릴 수 없습니다.") {
-                        context.delete(stream)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
@@ -81,5 +91,10 @@ struct IncomeStreamEditView: View {
             get: { max(stream.endYear, stream.startYear) },
             set: { stream.endYear = $0 }
         )
+    }
+
+    private func cancel() {
+        if isNew { context.delete(stream) } else { snapshot?.restore(to: stream) }
+        dismiss()
     }
 }

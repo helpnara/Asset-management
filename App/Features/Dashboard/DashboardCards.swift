@@ -6,13 +6,13 @@ import SwiftUI
 /// 있다 — 순서는 사람마다 다르니 기기에 둔다 (`UserDefaults`, 동기화 안 함).
 /// 총자산 카드는 끌 수 없다. 그것이 없는 현황판은 현황판이 아니다.
 enum DashboardCard: String, CaseIterable, Identifiable {
-    // 선언 순서가 기본 순서다 (2026-09-11 사용자): 목·실·감 → 로드맵 → 총자산 →
-    // 넣은 돈·자란 돈 → 이번 주 점검 → 나머지.
+    // 선언 순서가 기본 순서다 (2026-09-11 사용자, 106번): 목·실·감 → 이번 주
+    // 점검 → 로드맵 → 총자산 → 넣은 돈·자란 돈 → 나머지.
     case diary
+    case weekly
     case roadmap
     case hero
     case attribution
-    case weekly
     case monthly
     case lifeEvents
     case trajectory

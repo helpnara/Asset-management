@@ -12,6 +12,8 @@ struct TodoListView: View {
     @Fetched(sort: \TodoItem.sortIndex) private var items: [TodoItem]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
     @State private var editing: TodoItem?
+    /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
+    @State private var newIDs: Set<UUID> = []
     @State private var showsDone = false
 
     /// 만기 알림을 다시 걸 때 함께 넘긴다. 안 넘기면 할 일을 하나 고칠 때마다
@@ -95,6 +97,7 @@ struct TodoListView: View {
                 if canEdit {
                     Button {
                         let item = TodoItem(context: context, sortIndex: items.count)
+                        newIDs.insert(item.id)
                         editing = item
                     } label: {
                         Image(systemName: "plus")
@@ -102,7 +105,9 @@ struct TodoListView: View {
                 }
             }
         }
-        .sheet(item: $editing) { TodoEditView(item: $0) }
+        .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) {
+            TodoEditView(item: $0, isNew: newIDs.contains($0.id))
+        }
     }
 
     /// 90일 안으로 들어온 만기. 지난 것도 한 달까지는 남긴다 — 연장했는지
@@ -209,6 +214,9 @@ struct TodoListView: View {
 
 struct TodoEditView: View {
     @ObservedObject var item: TodoItem
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    @State private var snapshot: EditSnapshot?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \TodoItem.sortIndex) private var items: [TodoItem]
@@ -252,19 +260,26 @@ struct TodoEditView: View {
                     TextField("자세한 내용", text: $item.detail, axis: .vertical)
                         .lineLimit(1...5)
                 }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("\(item.title.isEmpty ? "이 할 일" : item.title) 을(를) 삭제할까요?",
+                                     consequence: "되돌릴 수 없습니다.") {
+                            context.delete(item)
+                            dismiss()
+                        }
+                    }
+                }
             }
             .navigationTitle("할 일")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: item) } }
             .onChange(of: hasDue) { _, on in
                 item.dueDate = on ? (item.dueDate ?? .now) : nil
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DeleteButton("\(item.title.isEmpty ? "이 할 일" : item.title) 을(를) 삭제할까요?",
-                                 consequence: "되돌릴 수 없습니다.") {
-                        context.delete(item)
-                        dismiss()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { cancel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)
@@ -279,5 +294,10 @@ struct TodoEditView: View {
 
     private var dueDate: Binding<Date> {
         Binding(get: { item.dueDate ?? .now }, set: { item.dueDate = $0 })
+    }
+
+    private func cancel() {
+        if isNew { context.delete(item) } else { snapshot?.restore(to: item) }
+        dismiss()
     }
 }

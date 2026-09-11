@@ -31,14 +31,27 @@ struct WeeklyReviewView: View {
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []
     @State private var completed: ReviewSession?
+    /// **열 때 정한 큐** (105번). 월 1회 종목은 값을 적는 순간 "이 달에 적음" 이
+    /// 되어 `isDue()` 가 거짓이 되는데, 큐를 매번 다시 계산하면 그 줄이 손에서
+    /// 사라진다. 열 때 한 번 정하고 그대로 둔다.
+    @State private var queuedIDs: Set<UUID>?
+    /// 열 때의 값 — `나중에` 는 전부 되돌린다 (103번). 값은 치는 대로 저장되므로
+    /// 되돌릴 것을 따로 들고 있어야 한다.
+    @State private var originals: [UUID: (value: Int, baseline: Int, at: Date?)] = [:]
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
 
     /// `고정` 은 큐에서 빼고, `월 1회` 는 그 달에 이미 적었으면 뺀다 (92번).
+    /// 열린 뒤에는 열 때 정한 큐를 지킨다 (105번).
     private func queue(for member: Member) -> [Holding] {
         member.sortedAccounts.flatMap { account in
-            account.sortedHoldings.filter { $0.isDue() }
+            account.sortedHoldings.filter { isQueued($0) }
         }
+    }
+
+    private func isQueued(_ holding: Holding) -> Bool {
+        if let queuedIDs { return queuedIDs.contains(holding.id) }
+        return holding.isDue()
     }
 
     private var queue: [Holding] { editableMembers.flatMap { queue(for: $0) } }
@@ -55,7 +68,7 @@ struct WeeklyReviewView: View {
                                     // 계좌마다 소제목을 단다. 증권사 앱을 옮겨가며 적으므로
                                     // 지금 어느 계좌를 보고 있는지가 보여야 한다.
                                     ForEach(member.sortedAccounts) { account in
-                                        let items = account.sortedHoldings.filter { $0.isDue() }
+                                        let items = account.sortedHoldings.filter { isQueued($0) }
                                         if !items.isEmpty {
                                             accountLabel(account)
                                             ForEach(items) { holding in
@@ -85,18 +98,30 @@ struct WeeklyReviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("나중에") { dismiss() }.foregroundStyle(Color.muted)
+                    // **취소다** (103번). 치는 대로 저장되므로 열 때 값으로 되돌린다.
+                    Button("나중에") { revertAll(); dismiss() }.foregroundStyle(Color.muted)
                 }
                 ToolbarItemGroup(placement: .keyboard) { accessory }
             }
-            .onAppear { focusedID = queue.first?.id }
-            .fullScreenCover(item: $completed) { ReviewCompleteView(session: $0) }
+            .onAppear {
+                if queuedIDs == nil {
+                    let items = queue
+                    queuedIDs = Set(items.map(\.id))
+                    for holding in items {
+                        originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
+                    }
+                }
+                focusedID = queue.first?.id
+            }
+            // 완료 화면을 닫으면 점검 화면도 함께 닫힌다 — 현황판으로 (103번).
+            .fullScreenCover(item: $completed, onDismiss: { dismiss() }) { ReviewCompleteView(session: $0) }
             // **오타를 한 번 되묻는다** (docs/08-feedback.md 81번, B2). 지난주보다
             // 30% 넘게 움직인 항목이 있으면 저장 전에 이름을 들어 보여 준다.
             // 막지는 않는다 — 진짜로 그렇게 움직였을 수 있다.
             .confirmationDialog(largeChangeTitle, isPresented: $isConfirmingLargeChanges,
                                 titleVisibility: .visible) {
                 Button("그대로 저장") { finish() }
+                Button("되돌리기") { revertSuspicious() }
                 Button("다시 보기", role: .cancel) {
                     focusedID = suspiciousHoldings.first?.id
                 }
@@ -130,6 +155,23 @@ struct WeeklyReviewView: View {
         }
         let more = suspiciousHoldings.count > 3 ? " 외 \(suspiciousHoldings.count - 3)건" : ""
         return names.joined(separator: "\n") + more + "\n지난주보다 30% 넘게 움직였습니다. 0 을 하나 더 쳤는지 한 번만 보세요."
+    }
+
+    /// 크게 바뀐 항목을 지난주 값으로 되돌리고 그 첫 줄로 간다 (103번).
+    private func revertSuspicious() {
+        let items = suspiciousHoldings
+        for holding in items { holding.valueMinor = holding.lastEnteredValueMinor }
+        focusedID = items.first?.id
+    }
+
+    /// 열 때 값으로 전부 되돌린다 — `나중에` (103번).
+    private func revertAll() {
+        for holding in queue {
+            guard let original = originals[holding.id] else { continue }
+            holding.valueMinor = original.value
+            holding.lastEnteredValueMinor = original.baseline
+            holding.lastEnteredAt = original.at
+        }
     }
 
     /// 완료 버튼이 부르는 곳. 크게 바뀐 것이 있으면 되묻고, 없으면 바로 끝낸다.
