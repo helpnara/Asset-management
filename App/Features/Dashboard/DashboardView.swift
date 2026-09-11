@@ -114,7 +114,8 @@ struct DashboardView: View {
             Rectangle().fill(Color.rule).frame(height: 1)
                 .padding(.horizontal, 20)
         case .weekly:
-            sectionHeader("이번 주 점검", trailing: weeklySubtitle)
+            // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
+            sectionHeader("이번 주 점검", trailing: "토요일 \(Self.shortDate.string(from: ReviewWeek.nextSaturday(after: .now)))")
             weeklyBar
             planReviewNudge
         case .attribution:
