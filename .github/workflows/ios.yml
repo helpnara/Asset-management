@@ -292,6 +292,15 @@ jobs:
           mkdir -p screenshots
           rm -f /tmp/shoot-failures
 
+          # **첫 장은 예열 뒤에 찍는다.** 위 콘솔 탐침이 앱을 끈 직후의 첫 실행은
+          # 시뮬레이터가 앱을 앞으로 올리기 전에 찍혀 홈 화면이 남은 적이 있다
+          # (2026-09-11, 02-dashboard 만 3.1MB 홈 화면 — 같은 빌드의 다크·iPad
+          # 는 멀쩡). 홈 화면은 PNG 가 커서 "빈 화면" 검사에도 안 걸린다.
+          xcrun simctl launch "$UDID" "$BUNDLE" -skipOnboarding -seedSampleData >/dev/null 2>&1 || true
+          sleep 8
+          xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+          sleep 2
+
           # 앱을 켜기만 하면 빈 화면밖에 못 본다.
           # 가상 데이터를 시드하고 탭을 지정해 화면마다 한 장씩 찍는다.
           # 한 번 찍고 끝내면 안 된다. 실제로 이런 일이 있었다:
