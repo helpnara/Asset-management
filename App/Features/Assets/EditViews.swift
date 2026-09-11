@@ -587,7 +587,7 @@ struct HoldingEditView: View {
         let after = holding.name
         // **값 변경도 남긴다** (111번). 주간 점검 밖에서 고친 평가액이 이력에 없어
         // 엄마 폰에서 고친 것이 아빠 폰에 안 보였다. 취소하면 값이 되돌아와 안 남는다.
-        if let opened = valueOnOpen, opened != holding.valueMinor, !holding.isDeleted {
+        if !before.isEmpty, let opened = valueOnOpen, opened != holding.valueMinor, !holding.isDeleted {
             ChangeLogger.record(.valueEdit, subject: logSubject,
                                 summary: "\(KoreanAmountFormatter.compact(Money(minorUnits: opened, currency: .krw))) → \(KoreanAmountFormatter.compact(holding.value))",
                                 in: context)
