@@ -52,7 +52,7 @@ struct OnePagerSettingsView: View {
                     .foregroundStyle(Color.muted)
             }
         }
-        .navigationTitle("1페이지 문서")
+        .navigationTitle("1페이지 문서 설정")
         .navigationBarTitleDisplayMode(.inline)
         // 여기서 고친 것도 계획의 수정 시각에 남는다.
         .onChange(of: plans.first?.editFingerprint) { previous, _ in

@@ -110,9 +110,6 @@ struct MoreView: View {
                     NavigationLink(value: Destination.dashboardCards) {
                         Label("현황판 카드 순서", systemImage: "rectangle.stack")
                     }
-                    NavigationLink(value: Destination.onePagerSettings) {
-                        Label("1페이지 문서", systemImage: "text.document")
-                    }
                     NavigationLink(value: Destination.export) {
                         Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
                     }

@@ -94,7 +94,7 @@ struct PlanView: View {
                         .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
                 }
             } footer: {
-                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 문서**에서 고칩니다.")
+                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 · 백업 내보내기 → 1페이지 문서 설정**에서 고칩니다.")
             }
 
             Section {

@@ -63,10 +63,15 @@ struct ExportView: View {
                 NavigationLink(value: MoreView.Destination.onePagerPreview) {
                     Label("한 장 미리보기", systemImage: "doc.text.magnifyingglass")
                 }
+                // 문서의 제목 · 기준 시점 · 맨 밑 한 줄. 최종 출력물의 속성이라
+                // 더보기 목록이 아니라 여기 산다 (2026-09-12 사용자, 134번).
+                NavigationLink(value: MoreView.Destination.onePagerSettings) {
+                    Label("1페이지 문서 설정", systemImage: "text.document")
+                }
             } header: {
                 Text("1페이지")
             } footer: {
-                Text("현재 값으로 A4 한 장을 그립니다. **PDF 라 인쇄해도 선명하고 글자를 고를 수 있습니다.** 화면이 어두운 모드여도 종이는 흰색으로 나옵니다.")
+                Text("현재 값으로 A4 한 장을 그립니다. **PDF 라 인쇄해도 선명하고 글자를 고를 수 있습니다.** 화면이 어두운 모드여도 종이는 흰색으로 나옵니다. 제목 · 기준 시점 · 맨 밑 한 줄은 "1페이지 문서 설정" 에서 고칩니다.")
             }
 
             Section {
