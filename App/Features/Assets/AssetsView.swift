@@ -321,6 +321,10 @@ struct AssetsView: View {
             }
         }
         .textCase(nil)
+        // 계좌를 끌어다 놓으면 이 구성원에게 옮겨진다 (110번).
+        .dropDestination(for: String.self) { items, _ in
+            drop(items, intoMember: member)
+        }
     }
 
     @ViewBuilder
@@ -374,6 +378,11 @@ struct AssetsView: View {
                 Button("목표 비중") { targetingAccount = account }
             }
         }
+        // 종목을 끌어다 놓는 자리 (110번). 계좌 자신도 구성원 머리글로 끌 수 있다.
+        .dropDestination(for: String.self) { items, _ in
+            drop(items, into: account)
+        }
+        .draggable(Self.dragToken(account: account))
 
         if isExpanded(account) || isNarrowing {
             ForEach(visibleHoldings(account)) { holding in
@@ -383,6 +392,8 @@ struct AssetsView: View {
                     } label: {
                         holdingRow(holding)
                     }
+                    // **끌어서 다른 계좌로** (110번). 계좌 줄에 놓으면 옮겨진다.
+                    .draggable(Self.dragToken(holding: holding))
                 } else {
                     // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                     holdingRow(holding)
@@ -609,6 +620,54 @@ struct AssetsView: View {
                               account: account, sortIndex: account.sortedHoldings.count)
         newIDs.insert(holding.id)
         editingHolding = holding
+    }
+
+    // MARK: - 끌어서 옮기기 (docs/08-feedback.md 110번)
+
+    /// 끄는 것이 무엇인지 글자로 싣는다 — `Transferable` 을 새로 만들지 않는다.
+    static func dragToken(holding: Holding) -> String { "holding:" + holding.id.uuidString }
+    static func dragToken(account: Account) -> String { "account:" + account.id.uuidString }
+
+    /// 종목을 계좌 줄에 놓았다.
+    private func drop(_ items: [String], into account: Account) -> Bool {
+        guard let token = items.first, token.hasPrefix("holding:"),
+              let id = UUID(uuidString: String(token.dropFirst("holding:".count))),
+              let holding = holdings.first(where: { $0.id == id }),
+              mayEdit(account.owner), mayEdit(holding.account?.owner),
+              holding.account != account else { return false }
+        let before = holding.account?.weightLabel ?? "이름 없음"
+        holding.account = account
+        holding.accountID = account.id
+        holding.sortIndex = account.sortedHoldings.count
+        if !account.kind.allowedAssetClasses.contains(holding.assetClass) {
+            holding.assetClass = account.kind.defaultAssetClass
+        }
+        let owner = account.owner?.name ?? ""
+        let name = holding.name.isEmpty ? "이름 없음" : holding.name
+        ChangeLogger.structureChanged(
+            [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
+            "종목을 \(before) 에서 끌어 옮겼습니다", in: context)
+        // 놓은 계좌가 접혀 있으면 펼친다 — 옮긴 것이 보여야 옮겨졌다고 믿는다.
+        if !isExpanded(account) { toggle(account) }
+        return true
+    }
+
+    /// 계좌를 구성원 머리글에 놓았다.
+    private func drop(_ items: [String], intoMember member: Member) -> Bool {
+        guard let token = items.first, token.hasPrefix("account:"),
+              let id = UUID(uuidString: String(token.dropFirst("account:".count))),
+              let account = accounts.first(where: { $0.id == id }),
+              mayEdit(member), mayEdit(account.owner),
+              account.owner != member else { return false }
+        let before = account.owner?.name ?? "이름 없음"
+        account.owner = member
+        account.ownerID = member.id
+        account.sortIndex = member.sortedAccounts.count
+        ChangeLogger.structureChanged(
+            [member.name, account.weightLabel].filter { !$0.isEmpty }.joined(separator: " · "),
+            "계좌를 \(before) 에서 끌어 옮겼습니다", in: context)
+        if !isExpanded(member) { toggle(member) }
+        return true
     }
 
     private func delete(_ offsets: IndexSet, from account: Account) {
