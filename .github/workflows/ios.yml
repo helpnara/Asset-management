@@ -312,13 +312,15 @@ jobs:
           shoot() {
             local file="$1"; shift
             local attempt pid size
-            for attempt in 1 2 3; do
+            # iPad 시뮬레이터는 느려서 7초 안에 안 그려질 때가 있다 (같은 118,630
+            # 바이트짜리 빈 창이 세 번). 기다리는 시간과 횟수를 변수로 둔다.
+            for attempt in $(seq 1 "${SHOOT_ATTEMPTS:-3}"); do
               xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
               pid=$(xcrun simctl launch "$UDID" "$BUNDLE" "$@" | awk '{print $NF}')
-              sleep 7
+              sleep "${SHOOT_WAIT:-7}"
               # (1) 앱이 살아 있나. 시뮬레이터 앱은 호스트의 프로세스라 여기서 보인다.
               if ! kill -0 "$pid" 2>/dev/null; then
-                echo "  앱이 떠 있지 않습니다 (pid $pid). 다시 ($attempt/3)"
+                echo "  앱이 떠 있지 않습니다 (pid $pid). 다시 ($attempt/${SHOOT_ATTEMPTS:-3})"
                 sleep 3
                 continue
               fi
@@ -329,7 +331,7 @@ jobs:
               # (3) 홈 화면은 벽지 때문에 PNG 가 유난히 크다 (3MB 안팎). 앱 화면은
               #     제일 복잡한 것도 1MB 를 넘지 않는다. 앱이 아직 앞으로 안 나온 것이다.
               if [ "$size" -ge 2000000 ]; then
-                echo "  홈 화면 같습니다 ($size 바이트). 다시 ($attempt/3)"
+                echo "  홈 화면 같습니다 ($size 바이트). 다시 ($attempt/${SHOOT_ATTEMPTS:-3})"
                 sleep 5
                 continue
               fi
@@ -337,7 +339,7 @@ jobs:
                 echo "찍음: $file ($*)"
                 return 0
               fi
-              echo "  빈 화면 같습니다 ($size 바이트). 다시 ($attempt/3)"
+              echo "  빈 화면 같습니다 ($size 바이트). 다시 ($attempt/${SHOOT_ATTEMPTS:-3})"
               sleep 3
             done
             echo "::error::$file — 세 번 찍었지만 화면이 비어 있습니다"
@@ -419,6 +421,7 @@ jobs:
           IPAD="${{ steps.ipad.outputs.udid }}"
           if [ -n "$IPAD" ]; then
             echo "── iPad: ${{ steps.ipad.outputs.name }} ──"
+            SHOOT_WAIT=12; SHOOT_ATTEMPTS=4
             xcrun simctl boot "$IPAD" || true
             xcrun simctl bootstatus "$IPAD" -b
             xcrun simctl status_bar "$IPAD" override \
