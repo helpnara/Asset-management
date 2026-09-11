@@ -75,6 +75,10 @@ struct OnePagerPreviewView: View {
         OnePagerBuilder.make(plan: plans.first, members: members, holdings: holdings,
                              cashEvents: cashEvents, incomes: incomes,
                              principles: principles, todos: todos, snapshots: snapshots)
+            // **제 크기로만 선다.** 바깥이 높이를 제안해도 안 받는다 — 확대(137)에서
+            // 바깥 frame 이 "잰 높이 × 배율" 을 제안하자 종이가 그 높이로 늘어나고,
+            // 그걸 다시 재서 또 늘어나는 되먹임이 iPad(배율 > 1)에서 앱을 멈췄다.
+            .fixedSize()
             // 재는 것은 **줄이기 전**이다. `scaleEffect` 뒤에 재면 축소된 값이 나온다.
             .background {
                 GeometryReader { geometry in
