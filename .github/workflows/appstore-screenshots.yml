@@ -203,9 +203,11 @@ jobs:
 
       - name: 문장 얹기
         run: |
-          pip3 install --quiet pillow
-          python3 Tools/store/compose.py screenshots/appstore/iphone screenshots/appstore/store/iphone iphone
-          python3 Tools/store/compose.py screenshots/appstore/ipad   screenshots/appstore/store/ipad   ipad
+          # 러너의 파이썬은 시스템 관리형(PEP 668)이라 pip 가 바로 안 된다 — venv 로.
+          python3 -m venv .venv-store
+          .venv-store/bin/pip install --quiet pillow
+          .venv-store/bin/python Tools/store/compose.py screenshots/appstore/iphone screenshots/appstore/store/iphone iphone
+          .venv-store/bin/python Tools/store/compose.py screenshots/appstore/ipad   screenshots/appstore/store/ipad   ipad
           echo "--- 크기 확인 (iPhone 1320×2868 · iPad 2064×2752) ---"
           for f in screenshots/appstore/store/*/*.png; do
             python3 -c "
