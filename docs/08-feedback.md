@@ -4203,8 +4203,11 @@ Pro Max 와 13" iPad Pro 두 시뮬레이터에서 다섯 장씩 찍고, `Tools/
 "규칙이 스스로 감시합니다" · "서버가 없습니다". 첫 장에서 "직접 적는 앱" 을
 말하는 것이 목적이다. 에디터 추천 신청서 초안은 docs/11-promote-request.md.
 
-**사용자가 할 것:** 워크플로를 한 번 돌리고(Run workflow), 결과 PNG 를 App Store
-Connect 버전 페이지에 올린다. 문장을 바꾸고 싶으면 `compose.py` 의 `CAPTIONS`.
+**2026-09-12 돌렸다.** 세 번 만에 됐다 — ① `pip3 install` 이 PEP 668 로 막혀
+venv 로, ② 브랜치 커밋이 403 이라 `permissions: contents: write`, 산출물 보관을
+커밋보다 앞에. 결과 스무 장이 `screenshots/appstore/` 에 있다 (원본 10 · 문장 10).
+**사용자가 할 것:** `store/iphone/` 과 `store/ipad/` 의 다섯 장씩을 App Store Connect
+버전 페이지에 올린다. 문장을 바꾸고 싶으면 `compose.py` 의 `CAPTIONS`.
 
 ## 🟢 137. 한 장 미리보기 — 손가락으로 확대 · 축소 — 빌드 71
 
