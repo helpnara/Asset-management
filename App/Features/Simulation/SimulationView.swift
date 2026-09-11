@@ -207,24 +207,38 @@ struct SimulationView: View {
         // **네 시나리오를 색으로 가른다** (docs/08-feedback.md 34·35번).
         // 예전에는 밴드 하나에 `물가만큼만 ~ 연 20%` 라고만 적어서, 어느 선이
         // 어느 가정인지 알 수 없었다 — 게다가 그 세 선의 금액이 실제로 같았다.
-        VStack(alignment: .leading, spacing: 5) {
+        // 큰 글자에서 한 줄에 안 들어가면 두 줄로 (138번).
+        ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
-                ForEach(SimulationChart.ScenarioKind.allCases) { kind in
-                    if kind != .plan || changed {
-                        legendItem(color: kind.color, label: kind.label,
-                                   dashed: !kind.dash.isEmpty)
-                    }
-                }
+                legendItems(changed: changed)
                 Spacer(minLength: 4)
-                Text(verbatim: "│ 은퇴 \(knobs.retirementYear)")
-                    .font(.figure(9.5))
-                    .foregroundStyle(Color.muted)
-                if plan.targetAmountMinor > 0 {
-                    Text("목표 " + Won.compact(plan.targetAmount))
-                        .font(.figure(9.5))
-                        .foregroundStyle(Color.muted)
-                }
+                legendTrail(plan, knobs: knobs)
             }
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 12) { legendItems(changed: changed) }
+                HStack(spacing: 8) { legendTrail(plan, knobs: knobs) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func legendItems(changed: Bool) -> some View {
+        ForEach(SimulationChart.ScenarioKind.allCases) { kind in
+            if kind != .plan || changed {
+                legendItem(color: kind.color, label: kind.label, dashed: !kind.dash.isEmpty)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func legendTrail(_ plan: Plan, knobs: Knobs) -> some View {
+        Text(verbatim: "│ 은퇴 \(knobs.retirementYear)")
+            .font(.figure(9.5))
+            .foregroundStyle(Color.muted)
+        if plan.targetAmountMinor > 0 {
+            Text("목표 " + Won.compact(plan.targetAmount))
+                .font(.figure(9.5))
+                .foregroundStyle(Color.muted)
         }
     }
 
@@ -568,7 +582,9 @@ struct SimulationView: View {
                                    projected: outcome.expected, isCurrent: true))
         }
         let column: CGFloat = Font.scaledLength(62)
-        return VStack(spacing: 0) {
+        // 큰 글자에서 네 열이 폭을 다 먹어 이름이 잘렸다 (138번). 안 들어가면
+        // 옆으로 밀어 보게 한다 — 줄이지도 자르지도 않는다.
+        let table = VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Text("나란히").font(.scaled(9.5)).foregroundStyle(Color.faint)
                 Spacer(minLength: 0)
@@ -586,6 +602,7 @@ struct SimulationView: View {
                         .font(.scaled(11.5, weight: row.isCurrent ? .semibold : .regular))
                         .foregroundStyle(row.isCurrent ? Color.dad : Color.ink)
                         .lineLimit(1)
+                        .frame(minWidth: Font.scaledLength(56), alignment: .leading)
                     Spacer(minLength: 0)
                     cell(Won.compact(Money(minorUnits: row.monthlyMinor, currency: .krw)), column)
                     cell("\(row.retirementYear)", column)
@@ -609,8 +626,15 @@ struct SimulationView: View {
             Text("은퇴 때 금액은 저장할 당시의 계산값입니다. 계획을 고친 뒤에는 다시 불러 저장하세요.")
                 .font(.scaled(9.5))
                 .foregroundStyle(Color.faint)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 6)
+        }
+        return ViewThatFits(in: .horizontal) {
+            table
+            ScrollView(.horizontal, showsIndicators: false) {
+                table.fixedSize(horizontal: true, vertical: false)
+            }
         }
     }
 

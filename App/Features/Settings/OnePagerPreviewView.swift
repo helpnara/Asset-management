@@ -57,7 +57,8 @@ struct OnePagerPreviewView: View {
                     Task { @MainActor in measuredHeight = height }
                 }
             }
-            .gesture(
+            // `.gesture` 는 ScrollView 의 제 손짓에 밀려 두 손가락이 안 잡혔다 (138번).
+            .simultaneousGesture(
                 MagnifyGesture()
                     .updating($pinch) { value, state, _ in state = value.magnification }
                     .onEnded { value in zoom = min(max(zoom * value.magnification, 1), 4) }
