@@ -22,24 +22,32 @@ TestFlight까지 왔다면 기술적인 준비는 대부분 끝났습니다.
 
 **모든 앱에 필수입니다.** 데이터를 안 모으는 앱도 예외가 아닙니다.
 
-방침 본문은 이미 저장소에 있습니다 → [`docs/privacy-policy.md`](privacy-policy.md)
+방침 본문은 저장소에 있습니다 → [`docs/privacy-policy.md`](privacy-policy.md).
+이걸 **웹 주소로** 만들어야 합니다. GitHub Pages 를 쓰되, **`/docs` 폴더
+전체가 아니라 방침과 지원 페이지 둘만** 올립니다 (2026-09-11 사용자 결정 —
+설계 문서와 피드백 기록까지 공개되는 것은 원치 않는다).
 
-이걸 **웹 주소로** 만들어야 합니다. GitHub Pages가 가장 쉽습니다.
+`Tools/site/build.py` 가 방침을 HTML 로 바꿔 `_site/` 를 만들고,
+`.github/workflows/pages.yml` 이 그 폴더만 배포합니다. 방침 파일을 고쳐
+푸시하면 저절로 갱신됩니다.
+
+**처음 한 번, 사용자가 할 것:**
 
 1. <https://github.com/helpnara/Asset-management/settings/pages>
-2. **Source** → `Deploy from a branch`
-3. **Branch** → `claude/iphone-asset-management-design-7aafjc` (이 저장소의 기본 브랜치다 — `main` 이 아니다) / **폴더** → `/docs`
-4. **Save**
+2. **Build and deployment → Source** → **GitHub Actions** 를 고른다 (브랜치가 아니다).
+3. 저장하면 끝. 다음에 방침 파일이 푸시될 때, 또는
+   <https://github.com/helpnara/Asset-management/actions/workflows/pages.yml> 에서
+   **Run workflow** 를 누르면 배포된다.
 
-몇 분 뒤 이 주소가 살아납니다:
+몇 분 뒤 이 두 주소가 살아납니다:
 
 ```
-https://helpnara.github.io/Asset-management/privacy-policy
+https://helpnara.github.io/Asset-management/privacy-policy/   ← 개인정보 처리방침 URL
+https://helpnara.github.io/Asset-management/                  ← 지원 URL
 ```
 
-> ⚠️ **저장소가 비공개면 GitHub Pages가 안 됩니다** (무료 플랜 기준).
-> 공개하기 싫으면 Notion 공개 페이지, Google Docs 게시, 개인 블로그 등 아무거나
-> 됩니다. 애플은 **누구나 열 수 있는 URL** 이기만 하면 됩니다.
+> ⚠️ **저장소가 비공개면 GitHub Pages 가 안 됩니다** (무료 플랜 기준).
+> 지금은 공개라 됩니다. 비공개로 돌리면 Notion 공개 페이지 등으로 옮겨야 합니다.
 
 ## 2단계 · 앱 정보 채우기
 
@@ -235,8 +243,8 @@ Face ID 잠금과 금액 가리기, CSV 백업을 지원합니다.
 
 ### 지원 URL
 
-<https://github.com/helpnara/Asset-management/issues> 로 두면 됩니다.
-저장소가 비공개면 이메일 주소를 적은 페이지라도 있어야 합니다.
+<https://helpnara.github.io/Asset-management/> — 1단계의 지원 페이지 (문의 메일 ·
+방침 링크). Issues 주소보다 이쪽이 낫다 — 남에게 GitHub 계정을 요구하지 않는다.
 
 ## 6단계 · 심사 정보
 

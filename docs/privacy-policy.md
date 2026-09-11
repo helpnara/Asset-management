@@ -1,6 +1,6 @@
 # 개인정보 처리방침 — 느린 부자의 기록
 
-최종 수정일: 2026년 9월 9일
+최종 수정일: 2026년 9월 11일
 
 ## 한 줄 요약
 
@@ -95,4 +95,5 @@ iCloud에 저장된 자료의 처리는 [애플의 개인정보 처리방침](ht
 
 ## 10. 문의
 
-<https://github.com/helpnara/Asset-management/issues>
+- 이메일: <kyunglagkwon@gmail.com>
+- <https://github.com/helpnara/Asset-management/issues>

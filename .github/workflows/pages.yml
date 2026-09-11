@@ -1,0 +1,47 @@
+name: 지원 페이지 (GitHub Pages)
+
+# 개인정보 처리방침과 지원 페이지 **둘만** GitHub Pages 에 올린다.
+# `/docs` 폴더 전체를 올리면 설계 문서까지 공개되므로 (2026-09-11 사용자:
+# "방침만 따로 두자") `Tools/site/build.py` 가 만든 `_site/` 만 배포한다.
+#
+# 처음 한 번: 저장소 Settings → Pages → Source 를 **GitHub Actions** 로.
+# 주소: https://helpnara.github.io/Asset-management/privacy-policy/
+
+on:
+  push:
+    branches: [claude/iphone-asset-management-design-7aafjc]
+    paths:
+      - docs/privacy-policy.md
+      - Tools/site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 페이지 만들기
+        run: python3 Tools/site/build.py _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
