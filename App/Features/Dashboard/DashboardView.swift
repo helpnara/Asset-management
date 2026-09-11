@@ -115,7 +115,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
         case .weekly:
             // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
-            sectionHeader("이번 주 점검", trailing: "토요일 \(Self.shortDate.string(from: ReviewWeek.nextSaturday(after: .now)))")
+            sectionHeader("이번 주 점검", trailing: "토요일 \(Self.shortDate.string(from: reviewDay))")
             weeklyBar
             planReviewNudge
         case .attribution:
@@ -256,6 +256,13 @@ struct DashboardView: View {
         if !canEdit { return "기록 대기 중" }
         let days = ReviewWeek.daysUntilReview(from: .now)
         return days == 0 ? "오늘이 점검일입니다" : "토요일까지 D-\(days)"
+    }
+
+    /// 이번 점검일. 토요일이면 오늘, 아니면 오는 토요일.
+    private var reviewDay: Date {
+        ReviewWeek.daysUntilReview(from: .now) == 0
+            ? ReviewWeek.anchor(for: .now)
+            : ReviewWeek.nextSaturday(after: .now)
     }
 
     private var weeklySubtitle: String {
