@@ -28,16 +28,23 @@ struct OnePagerPreviewView: View {
     /// 큰 글자에서 문구가 종이 위로 겹쳤다 (132번, 빌드 69 확인 6).
     private var captionHeight: CGFloat { Font.scaledLength(38) * 1.15 }
 
+    /// **손가락으로 확대** (137번). 폭 맞춤(1배)에서 4배까지. 두 번 두드리면
+    /// 2.5배와 1배를 오간다. 확대하면 가로로도 스크롤된다.
+    @State private var zoom: CGFloat = 1
+    @GestureState private var pinch: CGFloat = 1
+    /// 잰 종이 높이(줄이기 전). 확대했을 때 스크롤 영역을 종이 크기에 맞추려면 필요하다.
+    @State private var measuredHeight: CGFloat = 0
+
     var body: some View {
         GeometryReader { proxy in
-            let scale = max(0.1, (proxy.size.width - 24) / paperWidth)
-            ScrollView {
+            let fit = max(0.1, (proxy.size.width - 24) / paperWidth)
+            let scale = fit * min(max(zoom * pinch, 1), 4)
+            ScrollView([.vertical, .horizontal]) {
                 VStack(alignment: .leading, spacing: 10) {
                     // 안내 문구는 아래 `overlayPreferenceValue` 가 채운다.
-                    // 잰 높이를 상태로 받아 쓰지 않으려는 것이다 — 뷰 안에서
-                    // 바로 읽어 그리면 상태 왕복도, 다시 그리기도 없다.
                     Color.clear.frame(height: captionHeight)
                     page(scale: scale)
+                        .frame(height: max(measuredHeight, paperHeight) * scale, alignment: .topLeading)
                 }
                 .padding(12)
                 .overlayPreferenceValue(PageHeightKey.self) { height in
@@ -45,6 +52,15 @@ struct OnePagerPreviewView: View {
                         .padding(12)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
+                .onPreferenceChange(PageHeightKey.self) { measuredHeight = $0 }
+            }
+            .gesture(
+                MagnifyGesture()
+                    .updating($pinch) { value, state, _ in state = value.magnification }
+                    .onEnded { value in zoom = min(max(zoom * value.magnification, 1), 4) }
+            )
+            .onTapGesture(count: 2) {
+                withAnimation(.easeInOut(duration: 0.2)) { zoom = zoom > 1 ? 1 : 2.5 }
             }
         }
         .background(Color.ground)
