@@ -55,6 +55,7 @@ struct ReviewCompleteView: View {
     private static let reviewAskedKey = "review.lastAskedAt"
 
     /// 축하 화면이 뜬 지 1.5초 뒤, 90일에 한 번.
+    @MainActor
     private func askForReviewIfDue() async {
         let last = UserDefaults.standard.object(forKey: Self.reviewAskedKey) as? Date ?? .distantPast
         guard Date.now.timeIntervalSince(last) > 90 * 86_400 else { return }
