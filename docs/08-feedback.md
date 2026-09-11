@@ -4189,3 +4189,20 @@ PNG 가 2MB 를 넘으면 홈 화면으로 보고 다시 찍는다.
 대부분 `minimumScaleFactor(0.8)` 이 있어 조금 줄어들 뿐 잘리지 않는다.
 1페이지 종이는 이번에도 손대지 않는다. 배율을 안 타는 서체는 이제 종이뿐이다.
 
+## 🟢 136. 스토어용 스크린샷 — 6.9" · iPad 13" · 첫 장 문장 — 워크플로
+
+출시 준비 ② (docs/10 §4). `Actions → App Store 스크린샷` 워크플로가 이제
+Pro Max 와 13" iPad Pro 두 시뮬레이터에서 다섯 장씩 찍고, `Tools/store/compose.py`
+가 위에 문장 두 줄을 얹어 `screenshots/appstore/store/{iphone,ipad}/` 에 놓는다
+(크기는 그대로 1320×2868 · 2064×2752). 순서는 ① 궤적 ② 주간 점검 ③ 가족 자산
+배분 ④ 자산 진단 ⑤ 동기화(서버 없음). ①은 현황판 카드 순서를 실행 인자
+`-dashboard.cardOrder` 로 덮어 궤적을 맨 위에 둔다 — AppStorage 라 그게 된다.
+⑤는 더보기의 동기화 구역에 `id("sync")` 를 붙여 `-scrollTo sync` 로 간다.
+
+문장: "계획선 위인가, 아래인가" · "매주 토요일, 3분" · "노후는 가족 단위입니다" ·
+"규칙이 스스로 감시합니다" · "서버가 없습니다". 첫 장에서 "직접 적는 앱" 을
+말하는 것이 목적이다. 에디터 추천 신청서 초안은 docs/11-promote-request.md.
+
+**사용자가 할 것:** 워크플로를 한 번 돌리고(Run workflow), 결과 PNG 를 App Store
+Connect 버전 페이지에 올린다. 문장을 바꾸고 싶으면 `compose.py` 의 `CAPTIONS`.
+

@@ -127,6 +127,7 @@ struct MoreView: View {
                     .id("family")
 
                 SyncStatusSection()
+                    .id("sync")
 
                 Section {
                     NavigationLink(value: Destination.help) {

@@ -1,10 +1,13 @@
-name: App Store 스크린샷 (6.9")
+name: App Store 스크린샷 (6.9" · iPad 13")
 
-# App Store 는 6.9" 아이폰 스크린샷을 요구한다 (1320×2868).
-# 평소 CI 는 가장 최신 iPhone 을 골라 찍으므로 그 크기가 아닐 수 있다.
-# 이 워크플로는 **Pro Max 계열만** 골라 제출용 크기로 찍는다.
+# App Store 는 6.9" 아이폰(1320×2868)과, iPad 를 지원하면 13" iPad(2064×2752)
+# 스크린샷을 요구한다. 평소 CI 는 가장 최신 iPhone 을 골라 찍으므로 그 크기가
+# 아닐 수 있다. 이 워크플로는 **Pro Max 와 13" iPad Pro** 를 골라 제출용
+# 크기로 찍고, `Tools/store/compose.py` 가 문장을 얹는다 (docs/10 §4 · 136번).
 #
-# 손으로 실행할 때만 돈다 (docs/07-app-store.md 4단계).
+# 손으로 실행할 때만 돈다 (docs/07-app-store.md 4단계). 결과:
+#   screenshots/appstore/iphone/  원본     screenshots/appstore/store/iphone/  문장 얹은 것
+#   screenshots/appstore/ipad/    원본     screenshots/appstore/store/ipad/    문장 얹은 것
 
 on:
   workflow_dispatch:
@@ -112,45 +115,103 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: 13" iPad 시뮬레이터 고르기
+        id: ipad
+        run: |
+          set -euo pipefail
+          read -r UDID NAME <<< "$(xcrun simctl list devices available --json | python3 -c "
+          import json, re, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              m = re.search(r'iOS-(\d+)-(\d+)', runtime)
+              version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+              for d in devices:
+                  name = d.get('name', '')
+                  if not d.get('isAvailable') or 'iPad Pro' not in name or '13-inch' not in name:
+                      continue
+                  key = (version, name)
+                  if best is None or key > best[0]:
+                      best = (key, d['udid'], name)
+          if best is None:
+              sys.exit('13-inch iPad Pro 시뮬레이터를 찾지 못했습니다')
+          print(best[1], best[2])
+          ")"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "선택한 iPad: $NAME ($UDID)"
+
       - name: 찍기
         run: |
-          UDID="${{ steps.sim.outputs.udid }}"
           BUNDLE=com.helpnara.slowrich
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl status_bar "$UDID" override \
-            --time "9:41" \
-            --dataNetwork wifi --wifiMode active --wifiBars 3 \
-            --cellularMode active --cellularBars 4 \
-            --batteryState charged --batteryLevel 100
-
           APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
-          xcrun simctl install "$UDID" "$APP"
-          mkdir -p screenshots/appstore
+          rm -rf screenshots/appstore
+          mkdir -p screenshots/appstore/iphone screenshots/appstore/ipad
 
-          shoot() {
-            local file="$1"; shift
-            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
-            xcrun simctl launch "$UDID" "$BUNDLE" "$@"
-            sleep 5
-            xcrun simctl io "$UDID" screenshot "screenshots/appstore/$file"
-            echo "찍음: $file"
+          prepare() {
+            local udid="$1"
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl status_bar "$udid" override \
+              --time "9:41" \
+              --dataNetwork wifi --wifiMode active --wifiBars 3 \
+              --cellularMode active --cellularBars 4 \
+              --batteryState charged --batteryLevel 100
+            xcrun simctl install "$udid" "$APP"
+            # 첫 실행은 예열 — 앱이 앞으로 나오기 전에 찍히면 홈 화면이 남는다.
+            xcrun simctl launch "$udid" "$BUNDLE" -skipOnboarding -seedSampleData >/dev/null 2>&1 || true
+            sleep 8
+            xcrun simctl terminate "$udid" "$BUNDLE" >/dev/null 2>&1 || true
           }
 
-          # App Store 에 올릴 순서 그대로 번호를 붙인다.
-          shoot 1-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
-          shoot 2-review.png      -skipOnboarding -seedSampleData -startTab dashboard -startReview
-          shoot 3-simulation.png  -skipOnboarding -seedSampleData -startTab simulation
-          shoot 4-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
-          shoot 5-plan.png        -skipOnboarding -seedSampleData -startTab plan
+          shoot() {
+            local udid="$1" file="$2"; shift 2
+            local attempt size
+            for attempt in 1 2 3; do
+              xcrun simctl terminate "$udid" "$BUNDLE" >/dev/null 2>&1 || true
+              xcrun simctl launch "$udid" "$BUNDLE" "$@" >/dev/null
+              sleep 7
+              xcrun simctl io "$udid" screenshot "$file"
+              size=$(stat -f%z "$file")
+              # 홈 화면(벽지)은 유난히 크고, 안 그려진 화면은 유난히 작다.
+              if [ "$size" -lt 3500000 ] && [ "$size" -ge 200000 ]; then
+                echo "찍음: $file"
+                return 0
+              fi
+              echo "  다시 ($attempt/3): $size 바이트"
+              sleep 4
+            done
+            echo "::error::$file — 세 번 찍었지만 화면이 이상합니다"
+            exit 1
+          }
 
-          echo "--- 크기 확인 (App Store 는 1320×2868 을 기대한다) ---"
-          for f in screenshots/appstore/*.png; do
+          # 순서는 docs/10 §4 — ① 궤적 ② 주간 점검 ③ 가족 ④ 진단 ⑤ 서버 없음.
+          # ① 은 현황판 카드 순서를 실행 인자로 바꿔 궤적을 맨 위에 둔다
+          #    (`dashboard.cardOrder` 는 AppStorage 라 -키 값 인자로 덮인다).
+          for DEV in iphone ipad; do
+            if [ "$DEV" = iphone ]; then UDID="${{ steps.sim.outputs.udid }}"; else UDID="${{ steps.ipad.outputs.udid }}"; fi
+            prepare "$UDID"
+            OUT="screenshots/appstore/$DEV"
+            shoot "$UDID" "$OUT/1-trajectory.png"  -skipOnboarding -seedSampleData -startTab dashboard -dashboard.cardOrder "trajectory,hero,roadmap,attribution,weekly,diary,monthly,lifeEvents,diagnostics,members,totals"
+            shoot "$UDID" "$OUT/2-review.png"      -skipOnboarding -seedSampleData -startTab dashboard -startReview
+            shoot "$UDID" "$OUT/3-family.png"      -skipOnboarding -seedSampleData -startTab assets -startFamilyAllocation
+            shoot "$UDID" "$OUT/4-diagnostics.png" -skipOnboarding -seedSampleData -startTab more -startDiagnostics
+            shoot "$UDID" "$OUT/5-no-server.png"   -skipOnboarding -seedSampleData -startTab more -scrollTo sync
+            xcrun simctl shutdown "$UDID" || true
+          done
+
+      - name: 문장 얹기
+        run: |
+          pip3 install --quiet pillow
+          python3 Tools/store/compose.py screenshots/appstore/iphone screenshots/appstore/store/iphone iphone
+          python3 Tools/store/compose.py screenshots/appstore/ipad   screenshots/appstore/store/ipad   ipad
+          echo "--- 크기 확인 (iPhone 1320×2868 · iPad 2064×2752) ---"
+          for f in screenshots/appstore/store/*/*.png; do
             python3 -c "
-          import struct, sys
+          import struct
           with open('$f','rb') as fh:
-              fh.read(16)
-              w, h = struct.unpack('>II', fh.read(8))
+              fh.read(16); w, h = struct.unpack('>II', fh.read(8))
           print('$f', f'{w}×{h}')
           "
           done
@@ -164,7 +225,7 @@ jobs:
             echo "바뀐 것이 없습니다."
             exit 0
           fi
-          git commit -m "chore: App Store 제출용 스크린샷 (6.9\") [skip ci]"
+          git commit -m "chore: App Store 제출용 스크린샷 (6.9\" · iPad 13\") [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: 산출물 보관

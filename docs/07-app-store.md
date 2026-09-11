@@ -145,6 +145,12 @@ python3 Tools/preview-icon.py     # 실제 크기(180·120·60px)로 확인
 
 ## 4단계 · 스크린샷
 
+> **2026-09-12 갱신 (136번):** `Actions → App Store 스크린샷` 이 iPhone 6.9" 와
+> iPad 13" 을 다섯 장씩 찍고 문장까지 얹는다. 올릴 파일은
+> `screenshots/appstore/store/iphone/` 과 `…/ipad/` 다. 아래 "만드는 법" 은
+> 그 워크플로가 없던 때의 설명이다.
+
+
 **필수는 6.9" 아이폰 한 종류**입니다 (iPhone 16/17 Pro Max 계열, 1320×2868).
 다른 크기는 애플이 자동으로 줄여 씁니다.
 
