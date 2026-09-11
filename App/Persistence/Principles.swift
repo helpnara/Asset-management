@@ -84,6 +84,8 @@ enum ChangeKind: String, Codable, Sendable, CaseIterable {
     case planValue      // 계획 값 변경
     /// 선을 넘긴 주 — 억 단위 · 두 배 · 목표 · 연속 기록 (88번).
     case milestone
+    /// 자산 탭에서 평가액을 직접 고쳤다 (111번). 주간 점검 밖의 값 변경.
+    case valueEdit
     case other
 
     var label: String {
@@ -92,6 +94,7 @@ enum ChangeKind: String, Codable, Sendable, CaseIterable {
         case .structure: return "구성 변경"
         case .planValue: return "계획 변경"
         case .milestone: return "축하"
+        case .valueEdit: return "값 변경"
         case .other: return "기타"
         }
     }

@@ -40,6 +40,9 @@ struct AssetsView: View {
     @State private var editingHolding: Holding?
     /// 방금 만든 것의 id — 편집 시트의 `취소` 가 이걸 보고 지운다 (104번).
     @State private var newIDs: Set<UUID> = []
+    /// 옮길 대상을 고르는 시트 (113번).
+    @State private var movingHolding: Holding?
+    @State private var movingAccount: Account?
     @State private var targetingAccount: Account?
     @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
@@ -194,6 +197,22 @@ struct AssetsView: View {
                 HoldingEditView(holding: $0, isNew: newIDs.contains($0.id))
             }
             .navigationDestination(item: $targetingAccount) { AccountTargetView(account: $0) }
+            .sheet(item: $movingHolding) { holding in
+                MoveTargetSheet(title: holding.name.isEmpty ? "종목 옮기기" : "\(holding.name) 옮기기",
+                                members: members.filter { mayEdit($0) },
+                                pickAccounts: true,
+                                current: holding.account?.id) { member, account in
+                    if let account { move(holding, to: account) }
+                }
+            }
+            .sheet(item: $movingAccount) { account in
+                MoveTargetSheet(title: "\(account.weightLabel) 옮기기",
+                                members: members.filter { mayEdit($0) },
+                                pickAccounts: false,
+                                current: account.owner?.id) { member, _ in
+                    move(account, to: member)
+                }
+            }
             // 밀어 지우기도 확인을 거친다. 여기서 지우는 것은 그 종목에 적어 온
             // 평가액 전부라 되돌릴 방법이 없다 (docs/08-feedback.md 16번).
             .confirmationDialog("종목을 삭제할까요?",
@@ -321,10 +340,6 @@ struct AssetsView: View {
             }
         }
         .textCase(nil)
-        // 계좌를 끌어다 놓으면 이 구성원에게 옮겨진다 (110번).
-        .dropDestination(for: String.self) { items, _ in
-            drop(items, intoMember: member)
-        }
     }
 
     @ViewBuilder
@@ -377,12 +392,11 @@ struct AssetsView: View {
             if account.canSetTargets {
                 Button("목표 비중") { targetingAccount = account }
             }
+            // **다른 구성원에게** (113번). 끌어 놓기는 List 안에서 안 잡혀 메뉴로.
+            if mayEdit(account.owner) && members.filter({ mayEdit($0) }).count > 1 {
+                Button("다른 구성원에게 옮기기…") { movingAccount = account }
+            }
         }
-        // 종목을 끌어다 놓는 자리 (110번). 계좌 자신도 구성원 머리글로 끌 수 있다.
-        .dropDestination(for: String.self) { items, _ in
-            drop(items, into: account)
-        }
-        .draggable(Self.dragToken(account: account))
 
         if isExpanded(account) || isNarrowing {
             ForEach(visibleHoldings(account)) { holding in
@@ -392,8 +406,10 @@ struct AssetsView: View {
                     } label: {
                         holdingRow(holding)
                     }
-                    // **끌어서 다른 계좌로** (110번). 계좌 줄에 놓으면 옮겨진다.
-                    .draggable(Self.dragToken(holding: holding))
+                    // **다른 계좌로** (113번). 길게 누르면 메뉴.
+                    .contextMenu {
+                        Button("다른 계좌로 옮기기…") { movingHolding = holding }
+                    }
                 } else {
                     // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                     holdingRow(holding)
@@ -622,19 +638,11 @@ struct AssetsView: View {
         editingHolding = holding
     }
 
-    // MARK: - 끌어서 옮기기 (docs/08-feedback.md 110번)
+    // MARK: - 옮기기 (docs/08-feedback.md 113번)
 
-    /// 끄는 것이 무엇인지 글자로 싣는다 — `Transferable` 을 새로 만들지 않는다.
-    static func dragToken(holding: Holding) -> String { "holding:" + holding.id.uuidString }
-    static func dragToken(account: Account) -> String { "account:" + account.id.uuidString }
-
-    /// 종목을 계좌 줄에 놓았다.
-    private func drop(_ items: [String], into account: Account) -> Bool {
-        guard let token = items.first, token.hasPrefix("holding:"),
-              let id = UUID(uuidString: String(token.dropFirst("holding:".count))),
-              let holding = holdings.first(where: { $0.id == id }),
-              mayEdit(account.owner), mayEdit(holding.account?.owner),
-              holding.account != account else { return false }
+    /// 종목을 다른 계좌로. 편집 시트의 "소속" 과 같은 일이다.
+    private func move(_ holding: Holding, to account: Account) {
+        guard mayEdit(account.owner), mayEdit(holding.account?.owner), holding.account != account else { return }
         let before = holding.account?.weightLabel ?? "이름 없음"
         holding.account = account
         holding.accountID = account.id
@@ -646,28 +654,22 @@ struct AssetsView: View {
         let name = holding.name.isEmpty ? "이름 없음" : holding.name
         ChangeLogger.structureChanged(
             [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
-            "종목을 \(before) 에서 끌어 옮겼습니다", in: context)
-        // 놓은 계좌가 접혀 있으면 펼친다 — 옮긴 것이 보여야 옮겨졌다고 믿는다.
+            "종목을 \(before) 에서 옮겼습니다", in: context)
+        // 옮긴 계좌가 접혀 있으면 펼친다 — 옮긴 것이 보여야 옮겨졌다고 믿는다.
         if !isExpanded(account) { toggle(account) }
-        return true
     }
 
-    /// 계좌를 구성원 머리글에 놓았다.
-    private func drop(_ items: [String], intoMember member: Member) -> Bool {
-        guard let token = items.first, token.hasPrefix("account:"),
-              let id = UUID(uuidString: String(token.dropFirst("account:".count))),
-              let account = accounts.first(where: { $0.id == id }),
-              mayEdit(member), mayEdit(account.owner),
-              account.owner != member else { return false }
+    /// 계좌를 다른 구성원에게.
+    private func move(_ account: Account, to member: Member) {
+        guard mayEdit(member), mayEdit(account.owner), account.owner != member else { return }
         let before = account.owner?.name ?? "이름 없음"
         account.owner = member
         account.ownerID = member.id
         account.sortIndex = member.sortedAccounts.count
         ChangeLogger.structureChanged(
             [member.name, account.weightLabel].filter { !$0.isEmpty }.joined(separator: " · "),
-            "계좌를 \(before) 에서 끌어 옮겼습니다", in: context)
+            "계좌를 \(before) 에서 옮겼습니다", in: context)
         if !isExpanded(member) { toggle(member) }
-        return true
     }
 
     private func delete(_ offsets: IndexSet, from account: Account) {
@@ -745,5 +747,79 @@ struct HoldingDeleteRequest: Identifiable {
         let holdings = account.sortedHoldings
         let picked = offsets.compactMap { holdings.indices.contains($0) ? holdings[$0] : nil }
         return picked.map(\.weightLabel).joined(separator: " · ")
+    }
+}
+
+
+/// 옮길 곳을 고르는 시트 (113번). 종목이면 계좌를, 계좌면 구성원을 고른다.
+struct MoveTargetSheet: View {
+    let title: String
+    let members: [Member]
+    let pickAccounts: Bool
+    let current: UUID?
+    let onPick: (Member, Account?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(members) { member in
+                    if pickAccounts {
+                        Section(member.name.isEmpty ? "이름 없음" : member.name) {
+                            ForEach(member.sortedAccounts.filter { !$0.isArchived }) { account in
+                                Button {
+                                    onPick(member, account)
+                                    dismiss()
+                                } label: {
+                                    HStack {
+                                        Text(account.weightLabel)
+                                            .foregroundStyle(Color.ink)
+                                        if !account.institution.isEmpty {
+                                            Text(account.institution)
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(Color.faint)
+                                        }
+                                        Spacer()
+                                        if account.id == current {
+                                            Text("지금 여기")
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(Color.muted)
+                                        }
+                                    }
+                                }
+                                .disabled(account.id == current)
+                            }
+                        }
+                    } else {
+                        Button {
+                            onPick(member, nil)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Circle().fill(Color.member(member.colorIndex)).frame(width: 10, height: 10)
+                                Text(member.name.isEmpty ? "이름 없음" : member.name)
+                                    .foregroundStyle(Color.ink)
+                                Spacer()
+                                if member.id == current {
+                                    Text("지금 여기")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(Color.muted)
+                                }
+                            }
+                        }
+                        .disabled(member.id == current)
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

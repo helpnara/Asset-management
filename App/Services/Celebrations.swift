@@ -28,7 +28,7 @@ enum Celebrations {
             let before = previousTotal / eok
             let after = newTotal / eok
             if after > before {
-                found.append(("\(after)억을 넘었습니다", "가족 총자산 \(Won.compact(now))"))
+                found.append(("\(after)억을 넘었습니다", "가족 총자산 \(KoreanAmountFormatter.compact(now))"))
             }
         }
 
@@ -36,13 +36,13 @@ enum Celebrations {
         if let firstTotal, firstTotal > 0, previousTotal > 0,
            previousTotal < firstTotal * 2, newTotal >= firstTotal * 2 {
             found.append(("처음 기록의 두 배가 됐습니다",
-                          "\(Won.compact(Money(minorUnits: firstTotal, currency: .krw))) → \(Won.compact(now))"))
+                          "\(KoreanAmountFormatter.compact(Money(minorUnits: firstTotal, currency: .krw))) → \(KoreanAmountFormatter.compact(now))"))
         }
 
         // 은퇴 목표.
         if targetMinor > 0, previousTotal > 0, previousTotal < targetMinor, newTotal >= targetMinor {
             found.append(("은퇴 목표 금액에 닿았습니다",
-                          "목표 \(Won.compact(Money(minorUnits: targetMinor, currency: .krw)))"))
+                          "목표 \(KoreanAmountFormatter.compact(Money(minorUnits: targetMinor, currency: .krw)))"))
         }
 
         // 연속 기록.

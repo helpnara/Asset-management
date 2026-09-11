@@ -419,6 +419,8 @@ struct HoldingEditView: View {
     /// 방금 만든 것인가 — 취소하면 지운다 (104번).
     var isNew = false
     @State private var snapshot: EditSnapshot?
+    /// 열 때의 평가액. 닫을 때 다르면 이력에 "값 변경" 으로 남긴다 (111번).
+    @State private var valueOnOpen: Int?
     @Environment(\.self) private var environment
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
@@ -567,6 +569,7 @@ struct HoldingEditView: View {
             .onAppear {
                 if nameOnOpen == nil { nameOnOpen = holding.name }
                 if snapshot == nil { snapshot = EditSnapshot(of: holding) }
+                if valueOnOpen == nil { valueOnOpen = holding.valueMinor }
             }
             .onDisappear { logChange() }
         }
@@ -582,6 +585,13 @@ struct HoldingEditView: View {
     private func logChange() {
         guard let before = nameOnOpen else { return }
         let after = holding.name
+        // **값 변경도 남긴다** (111번). 주간 점검 밖에서 고친 평가액이 이력에 없어
+        // 엄마 폰에서 고친 것이 아빠 폰에 안 보였다. 취소하면 값이 되돌아와 안 남는다.
+        if let opened = valueOnOpen, opened != holding.valueMinor, !holding.isDeleted {
+            ChangeLogger.record(.valueEdit, subject: logSubject,
+                                summary: "\(KoreanAmountFormatter.compact(Money(minorUnits: opened, currency: .krw))) → \(KoreanAmountFormatter.compact(holding.value))",
+                                in: context)
+        }
         if before.isEmpty, !after.isEmpty {
             ChangeLogger.structureChanged(logSubject, "종목을 추가했습니다", in: context)
         } else if !before.isEmpty, before != after, !after.isEmpty {

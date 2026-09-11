@@ -38,6 +38,8 @@ struct WeeklyReviewView: View {
     /// 열 때의 값 — `나중에` 는 전부 되돌린다 (103번). 값은 치는 대로 저장되므로
     /// 되돌릴 것을 따로 들고 있어야 한다.
     @State private var originals: [UUID: (value: Int, baseline: Int, at: Date?)] = [:]
+    /// 확인 창이 닫힌 뒤 특정 줄로 스크롤하고 포커스를 주기 위해 붙잡아 둔다 (112번).
+    @State private var scrollProxy: ScrollViewProxy?
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
 
@@ -84,6 +86,7 @@ struct WeeklyReviewView: View {
                         footer
                     }
                 }
+                .onAppear { scrollProxy = proxy }
                 .onChange(of: focusedID) { _, newValue in
                     guard let newValue else { return }
                     visited.insert(newValue)
@@ -169,7 +172,11 @@ struct WeeklyReviewView: View {
     private func focus(_ id: UUID?) {
         guard let id else { return }
         Task { @MainActor in
+            // 1) 창이 내려갈 때까지, 2) 그 줄이 화면에 오도록 스크롤(늦게 만드는
+            // 목록이라 화면 밖 줄은 아직 없어서 포커스를 못 받는다), 3) 그 뒤 포커스.
             try? await Task.sleep(for: .milliseconds(450))
+            withAnimation(.easeOut(duration: 0.2)) { scrollProxy?.scrollTo(id, anchor: .center) }
+            try? await Task.sleep(for: .milliseconds(400))
             focusedID = id
         }
     }
@@ -511,9 +518,10 @@ struct WeeklyReviewView: View {
         // **무엇이 언제 바뀌었나** 를 남긴다 (docs/08-feedback.md 29번).
         // 주간 점검은 이 앱에서 가장 자주 일어나는 변경이라 첫 줄에 온다.
         let previousTotal = Money(minorUnits: session.previousTotalValueMinor, currency: .krw)
+        // 이력은 가리기를 거치지 않는다 — 가린 채 끝내면 "••••" 가 영영 남는다 (111번).
         let summary = session.previousTotalValueMinor > 0
-            ? "\(Won.compact(previousTotal)) → \(Won.compact(rollup.netWorth))"
-            : "\(Won.compact(rollup.netWorth))"
+            ? "\(KoreanAmountFormatter.compact(previousTotal)) → \(KoreanAmountFormatter.compact(rollup.netWorth))"
+            : "\(KoreanAmountFormatter.compact(rollup.netWorth))"
         ChangeLogger.record(.weeklyEntry,
                             subject: "주간 점검 · 종목 \(queue.count)건" + (existing == nil ? "" : " (이어서)"),
                             summary: summary, in: context)
