@@ -12,6 +12,10 @@ name: App Store 스크린샷 (6.9" · iPad 13")
 on:
   workflow_dispatch:
 
+# 브랜치에 커밋하려면 쓰기 권한이 있어야 한다 — 없어서 403 으로 막혔다 (136번).
+permissions:
+  contents: write
+
 jobs:
   shoot:
     name: 제출용 스크린샷
@@ -218,6 +222,12 @@ jobs:
           "
           done
 
+      - name: 산출물 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: appstore-screenshots
+          path: screenshots/appstore/
+
       - name: 브랜치에 커밋
         run: |
           git config user.name "github-actions[bot]"
@@ -229,9 +239,3 @@ jobs:
           fi
           git commit -m "chore: App Store 제출용 스크린샷 (6.9\" · iPad 13\") [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
-
-      - name: 산출물 보관
-        uses: actions/upload-artifact@v4
-        with:
-          name: appstore-screenshots
-          path: screenshots/appstore/
