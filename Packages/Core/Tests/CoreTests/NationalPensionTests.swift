@@ -73,6 +73,37 @@ struct NationalPensionTests {
         #expect(estimate.replacementBP == 8000)
     }
 
+    // 2012~2045 (34년 폭) 인데 실제 300개월. Σ상수 = 44,595, 초과 60개월.
+    // 44595 × 9,459,062 × 300 / (1000·240·12·34) = 1,292,361.73 → 1,292,362
+    // 대체율 = 44595 × 10 / (3 × 34) = 4372.06 → 4372
+    @Test("실제 가입 개월 수가 연도 폭보다 짧으면 그만큼만 센다 (125번)")
+    func actualMonths() throws {
+        let estimate = try #require(NationalPension.estimate(
+            averageMonthlyIncome: krw(10_000_000), firstYear: 2012, lastYear: 2045, months: 300))
+        #expect(estimate.years == 25)
+        #expect(estimate.monthly.minorUnits == 1_292_362)
+        #expect(estimate.replacementBP == 4372)
+        // 개월 수를 폭 전부로 주면 안 준 것과 같다.
+        #expect(NationalPension.estimate(averageMonthlyIncome: krw(3_000_000),
+                                         firstYear: 2016, lastYear: 2045, months: 360)?.monthly.minorUnits
+                == NationalPension.estimate(averageMonthlyIncome: krw(3_000_000),
+                                            firstYear: 2016, lastYear: 2045)?.monthly.minorUnits)
+        // 119개월은 연금이 아니다.
+        #expect(NationalPension.estimate(averageMonthlyIncome: krw(3_000_000),
+                                         firstYear: 2012, lastYear: 2045, months: 119) == nil)
+    }
+
+    @Test("수령 개시 나이 — 1969년생부터 65세")
+    func claimAge() {
+        #expect(NationalPension.claimAge(birthYear: 1952) == 60)
+        #expect(NationalPension.claimAge(birthYear: 1955) == 61)
+        #expect(NationalPension.claimAge(birthYear: 1960) == 62)
+        #expect(NationalPension.claimAge(birthYear: 1963) == 63)
+        #expect(NationalPension.claimAge(birthYear: 1968) == 64)
+        #expect(NationalPension.claimAge(birthYear: 1969) == 65)
+        #expect(NationalPension.claimAge(birthYear: 1985) == 65)
+    }
+
     @Test("10년 미만이면 연금이 아니다")
     func tooShort() {
         #expect(NationalPension.estimate(averageMonthlyIncome: krw(3_000_000),

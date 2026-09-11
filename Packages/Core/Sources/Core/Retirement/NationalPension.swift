@@ -40,7 +40,7 @@ public enum NationalPension {
     public struct Estimate: Sendable, Hashable {
         /// 예상 월 수령액, 오늘 돈 기준.
         public let monthly: Money
-        /// 센 가입 연수.
+        /// 센 가입 연수 (개월 ÷ 12, 내림).
         public let years: Int
         /// 가입 기간에 적용된 평균 소득대체율 (basis point). 2026년 이후만이면 4300.
         public let replacementBP: Int
@@ -58,23 +58,41 @@ public enum NationalPension {
         }
     }
 
+    /// 노령연금을 받기 시작하는 나이. 1969년생부터 65세다 (그 전은 4년마다 한 살씩).
+    public static func claimAge(birthYear: Int) -> Int {
+        switch birthYear {
+        case ..<1953: return 60
+        case 1953...1956: return 61
+        case 1957...1960: return 62
+        case 1961...1964: return 63
+        case 1965...1968: return 64
+        default: return 65
+        }
+    }
+
     /// - Parameters:
     ///   - averageMonthlyIncome: 본인의 가입 기간 평균 월소득 (오늘 돈). 상·하한 안으로 자른다.
     ///   - firstYear: 처음 납부한 해. 1988년 전이면 1988 로 본다.
     ///   - lastYear: 마지막으로 납부하는 해 (포함).
+    ///   - months: **실제 가입 개월 수.** 공단 화면의 "총 N개월" 이다. 중간에 안
+    ///     낸 기간이 있으면 연도 폭보다 짧다 — 이걸 안 넣으면 그만큼 부풀려진다
+    ///     (사용자가 공단 값과 견줘 보니 개월 수를 맞추면 1~2% 안에 들어왔다,
+    ///     docs/08-feedback.md 125번). `nil` 이면 연도 폭 전부.
     ///   - aValue: A값. 기본은 2026년 고시값.
-    /// - Returns: 가입 기간이 10년 미만이거나 연도가 뒤집혔으면 `nil`.
+    /// - Returns: 가입 기간이 10년(120개월) 미만이거나 연도가 뒤집혔으면 `nil`.
     public static func estimate(averageMonthlyIncome: Money,
                                 firstYear: Int, lastYear: Int,
+                                months: Int? = nil,
                                 aValue: Money = Money(minorUnits: referenceAValueMinor, currency: .krw)) -> Estimate? {
         let first = max(firstYear, firstSchemeYear)
         guard lastYear >= first else { return nil }
         let years = lastYear - first + 1
-        guard years >= minimumYears else { return nil }
+        let months = min(max(months ?? years * 12, 0), years * 12)
+        guard months >= minimumYears * 12 else { return nil }
 
         let income = min(max(averageMonthlyIncome.minorUnits, incomeFloorMinor), incomeCeilingMinor)
+        // 비례상수는 연도 폭으로 가중한다 — 어느 달을 빠뜨렸는지는 모르므로.
         let sumMilli = (first...lastYear).reduce(0) { $0 + constantMilli(forYear: $1) }
-        let months = years * 12
         let extraMonths = max(0, months - 240)
 
         // 연 기본연금액 = (Σ상수/연수)/1000 × (A + B) × (240 + 초과월수)/240 → 월은 ÷ 12.
@@ -88,7 +106,7 @@ public enum NationalPension {
                                               rounding: .bankers)
 
         return Estimate(monthly: Money(minorUnits: monthly, currency: averageMonthlyIncome.currency),
-                        years: years, replacementBP: replacement,
+                        years: months / 12, replacementBP: replacement,
                         incomeUsed: Money(minorUnits: income, currency: averageMonthlyIncome.currency))
     }
 }

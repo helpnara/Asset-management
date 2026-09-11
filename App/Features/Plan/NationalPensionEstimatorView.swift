@@ -10,11 +10,15 @@ import SwiftUI
 struct NationalPensionEstimatorView: View {
     @ObservedObject var stream: IncomeStream
     @Environment(\.dismiss) private var dismiss
-    @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
 
     @State private var firstYear: Int
     @State private var lastYear: Int
     @State private var incomeMinor: Int = 3_000_000
+    /// 실제 가입 개월 수 (125번). 손대기 전에는 연도 폭 전부.
+    @State private var monthsOverride: Int?
+    /// 태어난 해 → 수령 개시 나이 (1969년생부터 65세).
+    @State private var birthYear: Int
+    @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
@@ -23,11 +27,16 @@ struct NationalPensionEstimatorView: View {
         let year = Calendar.current.component(.year, from: .now)
         _firstYear = State(initialValue: year - 15)
         _lastYear = State(initialValue: year + 10)
+        _birthYear = State(initialValue: year - 45)
     }
+
+    private var spanMonths: Int { max(0, lastYear - firstYear + 1) * 12 }
+    private var months: Int { min(monthsOverride ?? spanMonths, spanMonths) }
+    private var claimYear: Int { birthYear + NationalPension.claimAge(birthYear: birthYear) }
 
     private var estimate: NationalPension.Estimate? {
         NationalPension.estimate(averageMonthlyIncome: Money(minorUnits: incomeMinor, currency: .krw),
-                                 firstYear: firstYear, lastYear: lastYear)
+                                 firstYear: firstYear, lastYear: lastYear, months: months)
     }
 
     var body: some View {
@@ -40,11 +49,48 @@ struct NationalPensionEstimatorView: View {
                     Stepper(value: $lastYear, in: firstYear...(currentYear + 50)) {
                         LabeledContent("마지막으로 내는 해") { Text(verbatim: "\(lastYear)년").font(.figure(15)) }
                     }
+                    // 공단 화면의 "총 N개월" (125번). 중간에 안 낸 기간이 있으면 폭보다 짧다.
+                    HStack {
+                        Text("실제 가입 개월 수")
+                        Spacer()
+                        TextField("개월", value: Binding(
+                            get: { months },
+                            set: { monthsOverride = $0 == spanMonths ? nil : max(0, $0) }
+                        ), format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.figure(15))
+                            .frame(maxWidth: 90)
+                        Text("개월").foregroundStyle(Color.muted)
+                    }
                     MoneyField(title: "가입 기간 평균 월소득", minorUnits: $incomeMinor)
                 } header: {
                     Text("가입 기간과 소득")
                 } footer: {
-                    Text("월소득은 **오늘 돈 기준**으로, 세전 기준소득월액입니다. 상한 \(KoreanAmountFormatter.compact(Money(minorUnits: NationalPension.incomeCeilingMinor, currency: .krw))) 을 넘는 소득은 상한으로 봅니다. 은퇴 목표 연도보다 일찍 그만 내면 그 해를 적으세요.")
+                    Text("공단 앱 '예상연금액 조회' 의 **총 예상가입기간(N개월)** 을 그대로 적으면 가장 가깝습니다 — 중간에 안 낸 달이 있으면 연도 폭보다 짧습니다. 월소득은 **오늘 돈 기준** 세전 기준소득월액이고, 상한 \(KoreanAmountFormatter.compact(Money(minorUnits: NationalPension.incomeCeilingMinor, currency: .krw))) 을 넘으면 상한으로 봅니다.")
+                }
+
+                Section {
+                    Stepper(value: $birthYear, in: 1940...currentYear) {
+                        LabeledContent("태어난 해") { Text(verbatim: "\(birthYear)년").font(.figure(15)) }
+                    }
+                    if members.contains(where: { $0.birthYear > 0 }) {
+                        Menu {
+                            ForEach(members.filter { $0.birthYear > 0 }) { member in
+                                Button("\(member.name) · \(String(member.birthYear))년") { birthYear = member.birthYear }
+                            }
+                        } label: {
+                            Label("구성원의 생년으로", systemImage: "person.2")
+                        }
+                    }
+                    LabeledContent("받기 시작") {
+                        Text(verbatim: "\(claimYear)년 (\(NationalPension.claimAge(birthYear: birthYear))세)")
+                            .font(.figure(14))
+                    }
+                } header: {
+                    Text("받는 시기")
+                } footer: {
+                    Text("1969년생부터 65세, 그 전은 4년마다 한 살씩 빠릅니다. 조기·연기 수령은 반영하지 않습니다.")
                 }
 
                 Section {
@@ -55,7 +101,7 @@ struct NationalPensionEstimatorView: View {
                                 .foregroundStyle(Color.ink)
                         }
                         LabeledContent("가입 기간") {
-                            Text(verbatim: "\(estimate.years)년").font(.figure(14))
+                            Text(verbatim: "\(months)개월 (\(estimate.years)년)").font(.figure(14))
                         }
                         LabeledContent("적용 소득대체율") {
                             Text("\(PercentFormatter.oneDecimal(Decimal(estimate.replacementBP) / 10_000))%")
@@ -80,7 +126,7 @@ struct NationalPensionEstimatorView: View {
                     }
                     .disabled(estimate == nil)
                 } footer: {
-                    Text("**참고값입니다.** 소득 재평가·크레딧·조기·연기 수령은 반영하지 않습니다. 정확한 값은 국민연금공단 '내 연금 알아보기' 에서 확인하고, 알게 되면 그 값으로 고치세요.")
+                    Text("**세전 참고값입니다.** 공단 예상액과 개월 수를 맞추면 1~2% 안에 들어오지만, 소득 재평가·크레딧·조기·연기 수령은 반영하지 않습니다. 공단 앱에서 확인한 세후 값을 알게 되면 그 값으로 고치세요.")
                 }
             }
             .navigationTitle("국민연금 얼마나 받을까")
@@ -91,14 +137,13 @@ struct NationalPensionEstimatorView: View {
         }
     }
 
-    /// 수령 시작은 은퇴 목표 연도(없으면 마지막 납부 다음 해), 종신, 물가 연동 —
-    /// 국민연금이 그런 연금이다.
+    /// 수령 시작은 태어난 해가 정하는 개시 연도(마지막 납부 다음 해보다는 뒤), 종신,
+    /// 물가 연동 — 국민연금이 그런 연금이다.
     private func apply() {
         guard let estimate else { return }
         stream.monthlyAmountMinor = estimate.monthly.minorUnits
         if stream.label.isEmpty { stream.label = "국민연금 (추정)" }
-        let retirement = plans.first?.retirementYear ?? 0
-        stream.startYear = max(retirement > 0 ? retirement : lastYear + 1, lastYear + 1, currentYear)
+        stream.startYear = max(claimYear, lastYear + 1, currentYear)
         stream.endYear = 0
         stream.isInflationLinked = true
         dismiss()
