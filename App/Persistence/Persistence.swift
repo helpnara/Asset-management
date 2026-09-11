@@ -306,8 +306,7 @@ enum Persistence {
     /// 진짜 저장소와 완전히 따로다 — iCloud 로 안 올라가고, 가족 공유에 안
     /// 섞이고, 앱을 끄면 사라진다(켤 때 다시 채운다). 처음에는 진짜 저장소에
     /// 넣었다가 참가자 폰에서 **동기화된 가족 기록과 합쳐지는** 일이 났다 (133번).
-    /// CI 스크린샷도 같은 것을 쓴다.
-    @MainActor
+    /// CI 스크린샷도 같은 것을 쓴다. `open()` 이 격리 없이 부르므로 여기도 격리가 없다.
     static func makeTrialContainer() -> NSPersistentContainer {
         let container = NSPersistentContainer(name: modelName, managedObjectModel: managedObjectModel)
         let description = NSPersistentStoreDescription()
