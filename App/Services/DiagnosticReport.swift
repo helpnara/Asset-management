@@ -83,7 +83,7 @@ enum DiagnosticReport {
         case .couldNotDetermine: return "확인 불가"
         case .temporarilyUnavailable: return "일시적으로 사용 불가"
         case nil: return "확인 중"
-        @unknown default: return "알 수 없음"
+        default: return "알 수 없음"
         }
     }
 

@@ -44,6 +44,6 @@ extension HoldingRecord {
             limit: limit)
         // 같은 주가 둘이면(두 기기가 같은 주에 끝냄) 하나만.
         var seen: Set<Date> = []
-        return newestFirst.filter { seen.insert($0.weekAnchor).inserted }.reversed()
+        return Array(newestFirst.filter { seen.insert($0.weekAnchor).inserted }.reversed())
     }
 }

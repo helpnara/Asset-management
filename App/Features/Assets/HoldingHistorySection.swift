@@ -74,9 +74,13 @@ struct HoldingHistorySection: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                AxisValueLabel(format: .dateTime.month(.defaultDigits).day(), centered: false)
-                    .font(.figure(9))
+            AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                AxisValueLabel {
+                    if let date = value.as(Date.self) {
+                        Text(date.formatted(.dateTime.month(.defaultDigits).day()))
+                            .font(.figure(9))
+                    }
+                }
             }
         }
         .frame(height: 110)
