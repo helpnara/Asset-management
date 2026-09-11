@@ -411,7 +411,11 @@ struct HoldingEditView: View {
                     // 자산 탭에서 고쳐도 이번 주 처음이면 직전 값이 기준값으로 (91번).
                     MoneyField(title: "평가액", minorUnits: Binding(
                         get: { holding.valueMinor },
-                        set: { holding.rollBaselineIfNewWeek(); holding.valueMinor = $0 }
+                        set: {
+                            guard $0 != holding.valueMinor else { return }
+                            holding.rollBaselineIfNewWeek()
+                            holding.valueMinor = $0
+                        }
                     ))
                 } footer: {
                     // 해외 종목을 달러로 적어 넣으면 합계가 조용히 1,400배 틀린다.

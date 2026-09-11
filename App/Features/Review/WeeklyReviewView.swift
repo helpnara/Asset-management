@@ -342,9 +342,13 @@ struct WeeklyReviewView: View {
         Binding(
             get: { holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor) },
             set: {
+                // **값이 실제로 바뀔 때만.** 포커스만 옮겨도 세터가 같은 값으로
+                // 한 번 불리는데, 그때 기준값을 옮기면 증감이 사라진다 (CI 에서 잡음).
+                let next = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0
+                guard next != holding.valueMinor else { return }
                 // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번).
                 holding.rollBaselineIfNewWeek()
-                holding.valueMinor = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0
+                holding.valueMinor = next
             }
         )
     }
