@@ -52,7 +52,10 @@ struct OnePagerPreviewView: View {
                         .padding(12)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .onPreferenceChange(PageHeightKey.self) { measuredHeight = $0 }
+                // Swift 6: 이 클로저는 Sendable 이라 @State 를 바로 못 고친다.
+                .onPreferenceChange(PageHeightKey.self) { height in
+                    Task { @MainActor in measuredHeight = height }
+                }
             }
             .gesture(
                 MagnifyGesture()
