@@ -28,7 +28,7 @@ TestFlight까지 왔다면 기술적인 준비는 대부분 끝났습니다.
 
 1. <https://github.com/helpnara/Asset-management/settings/pages>
 2. **Source** → `Deploy from a branch`
-3. **Branch** → `main` (또는 기본 브랜치) / **폴더** → `/docs`
+3. **Branch** → `claude/iphone-asset-management-design-7aafjc` (이 저장소의 기본 브랜치다 — `main` 이 아니다) / **폴더** → `/docs`
 4. **Save**
 
 몇 분 뒤 이 주소가 살아납니다:
