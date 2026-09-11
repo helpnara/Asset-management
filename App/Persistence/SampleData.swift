@@ -189,6 +189,15 @@ enum SampleData {
             session.setEnteredMembers(Set(members.enumerated()
                 .filter { !($0.offset == 1 && weeksAgo == 1) }
                 .map { $0.element.id }))
+            // 진단 이력 (A9). 은퇴 필요 자금은 내내 조치, 저축률은 6주 전에
+            // 주의에서 지킴으로 — "몇 주째" 와 "바뀐 주" 가 둘 다 찍히게.
+            session.diagnosisRaw = [
+                "retirementTarget=act",
+                "savingsRate=" + (weeksAgo > 6 ? "watch" : "pass"),
+                "realEstateShare=pass",
+                "countryMix=watch",
+                "targetWeights=act",
+            ].joined(separator: ",")
 
             let snapshot = Snapshot(context: context, weekAnchor: anchor,
                                     netWorthMinor: running,

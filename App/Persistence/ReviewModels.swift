@@ -45,6 +45,45 @@ extension ReviewSession {
         let anchor = ReviewWeek.anchor(for: asOf)
         return sessions.contains { $0.weekAnchor == anchor && $0.enteredMemberIDSet.contains(memberID) }
     }
+
+    // MARK: - 진단 이력 (A9)
+
+    /// 점검을 끝내던 순간의 진단 결과. `규칙=상태` 를 쉼표로 이은 `diagnosisRaw`
+    /// 를 푼 것이다. 이 칸이 생기기 전의 점검은 빈 사전이다.
+    var diagnosisStatuses: [DiagnosisKind: DiagnosisStatus] {
+        var result: [DiagnosisKind: DiagnosisStatus] = [:]
+        for pair in diagnosisRaw.split(separator: ",") {
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2,
+                  let kind = DiagnosisKind(rawValue: String(parts[0])),
+                  let status = DiagnosisStatus(rawValue: String(parts[1])) else { continue }
+            result[kind] = status
+        }
+        return result
+    }
+
+    /// 이번 점검의 판정을 남긴다. 켜 둔 규칙만 들어 있다 — 꺼 둔 규칙은
+    /// 결과에 없으므로 이력에서도 빠진다.
+    func setDiagnosis(_ result: DiagnosticsResult) {
+        let next = result.diagnoses
+            .sorted { DiagnosisKind.allCases.firstIndex(of: $0.kind)! < DiagnosisKind.allCases.firstIndex(of: $1.kind)! }
+            .map { "\($0.kind.rawValue)=\($0.status.rawValue)" }
+            .joined(separator: ",")
+        if next != diagnosisRaw { diagnosisRaw = next }
+    }
+
+    /// 한 규칙의 최근 판정들, **오래된 주가 앞**. 그 규칙이 기록된 점검만 센다.
+    static func diagnosisHistory(_ kind: DiagnosisKind, sessions: [ReviewSession],
+                                 limit: Int = 8) -> [(weekAnchor: Date, status: DiagnosisStatus)] {
+        let newestFirst = sessions
+            .filter(\.isComplete)
+            .sorted { $0.weekAnchor > $1.weekAnchor }
+            .compactMap { session -> (weekAnchor: Date, status: DiagnosisStatus)? in
+                guard let status = session.diagnosisStatuses[kind] else { return nil }
+                return (weekAnchor: session.weekAnchor, status: status)
+            }
+        return Array(newestFirst.prefix(limit).reversed())
+    }
 }
 
 /// 주간 실제 기록. 궤적의 "실제" 선은 이 값을 이은 것이다.

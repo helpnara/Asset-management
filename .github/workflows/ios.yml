@@ -373,6 +373,8 @@ jobs:
           shoot 18-change-log.png  -skipOnboarding -seedSampleData -startTab more -startChangeLog
           # 월간 회고 (docs/08-feedback.md 86번). 가상 자료가 12주치라 지난달이 채워진다.
           shoot 23-retrospective.png -skipOnboarding -seedSampleData -startTab more -startRetrospective
+          # 도움말 · 용어집 (G1). 글이 전부라 잘리는 줄이 없는지 본다.
+          shoot 24-help.png -skipOnboarding -seedSampleData -startTab more -startHelp
 
           # **보기 전용 화면** (docs/09-family-sharing.md 4단계). 아내분이 보게
           # 될 화면이라 원격 세션에서 그림으로 확인할 수 있어야 한다 — 고치는

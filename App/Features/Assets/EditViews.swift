@@ -401,7 +401,7 @@ struct AccountEditView: View {
     private var returnFooter: String {
         switch account.kind.returnProfile {
         case .investment:
-            return "궤적에서 이 계좌의 돈이 자라는 속도입니다. 비워 두면 계획의 연 기대수익률을 씁니다."
+            return "궤적에서 이 계좌의 돈이 자라는 속도입니다. 비워 두면 주식·ETF 는 계획의 연 기대수익률로, 채권·금·예수금은 계획의 자산군별 값으로 굴립니다. 여기 적으면 이 계좌의 모든 종목에 이 값이 걸립니다."
         case .lowYield:
             return "예적금·연금보험은 투자 수익률로 굴리지 않습니다. 금리가 바뀌면 여기서 고치세요."
         case .realEstate:

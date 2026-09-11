@@ -134,12 +134,16 @@ struct PlanView: View {
             }
 
             Section {
-                percentRow("예적금 · 연금보험", bind.lowYieldReturnBP, range: 0...800, step: 10)
+                percentRow("채권", bind.bondReturnBP, range: 0...1000, step: 25)
+                percentRow("금 · 원자재", bind.commodityReturnBP, range: 0...1000, step: 25)
+                percentRow("예적금 · 연금보험 · 예수금", bind.lowYieldReturnBP, range: 0...800, step: 10)
                 percentRow("부동산", bind.realEstateReturnBP, range: 0...800, step: 25)
             } header: {
-                Text("잘 자라지 않는 돈")
+                Text("자산군별 기대수익률")
             } footer: {
-                Text("위 기대수익률은 **투자자산에만** 걸립니다. 예적금·연금보험은 여기 값으로, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 굴립니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다.")
+                // 기본값이 곧 대부분 사용자의 값이다 (D6, 사용자 결정 09-11). 무엇에
+                // 무엇이 걸리는지를 여기서 다 말해야 손댈 사람이 손댄다.
+                Text("위 기대수익률은 **주식 · ETF 에만** 걸립니다. 투자 계좌 안에 있어도 채권·금·예수금은 여기 값으로 따로 굴리고, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 봅니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다 — 그 값이 이깁니다.")
             }
 
             Section("기간") {

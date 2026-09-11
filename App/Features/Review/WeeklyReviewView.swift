@@ -27,6 +27,10 @@ struct WeeklyReviewView: View {
     @Fetched private var sessions: [ReviewSession]
     @Fetched(sort: \Snapshot.weekAnchor) private var snapshots: [Snapshot]
     @Fetched(sort: \Plan.createdAt) private var plans: [Plan]
+    // 진단 이력(A9)에 쓴다 — 점검을 끝내는 순간의 판정을 남긴다.
+    @Fetched private var accounts: [Account]
+    @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
+    @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     @FocusState private var focusedID: UUID?
     @State private var visited: Set<UUID> = []
@@ -534,6 +538,16 @@ struct WeeklyReviewView: View {
                            firstTotal: snapshots.first.map(\.netWorthMinor),
                            targetMinor: plans.first?.targetAmountMinor ?? 0,
                            streak: streakAfter, in: context)
+
+        // **그 주의 진단 판정을 남긴다** (A9). 진단은 늘 현재 값으로만 계산하므로
+        // 여기 남기지 않으면 "몇 주째 조치인가" 를 영영 알 수 없다.
+        if let plan = plans.first {
+            let projection = plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
+                                             incomes: incomes, members: members)
+            let result = Diagnostics.run(plan.diagnosticsInput(
+                rollup: rollup, accounts: accounts, projection: projection, members: members))
+            session.setDiagnosis(result)
+        }
 
         focusedID = nil
         completed = session

@@ -21,6 +21,8 @@ struct DiagnosticsView: View {
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    /// 진단 이력 (A9). 점검을 끝낼 때마다 그 주의 판정이 남는다.
+    @Fetched private var sessions: [ReviewSession]
 
     @State private var expanded: Set<String> = []
     @State private var isEditingCriteria = false
@@ -146,6 +148,8 @@ struct DiagnosticsView: View {
                 gauge(progress, color: color(diagnosis.status))
             }
 
+            history(diagnosis)
+
             Text(diagnosis.action)
                 .font(.system(size: 12))
                 .foregroundStyle(Color.muted)
@@ -181,6 +185,40 @@ struct DiagnosticsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(cardBackground)
+    }
+
+    // MARK: - 이력 (A9)
+
+    /// **언제부터 이랬나.** 최근 점검 여덟 주의 판정을 점으로, 지금 판정이 몇 주째
+    /// 이어지는지를 글로 보인다. 이력이 없으면(이 칸이 생기기 전) 자리도 없다.
+    @ViewBuilder
+    private func history(_ diagnosis: Diagnosis) -> some View {
+        let past = ReviewSession.diagnosisHistory(diagnosis.kind, sessions: sessions)
+        if !past.isEmpty {
+            HStack(spacing: 6) {
+                HStack(spacing: 3) {
+                    ForEach(Array(past.enumerated()), id: \.offset) { _, item in
+                        Circle()
+                            .fill(color(item.status))
+                            .frame(width: 7, height: 7)
+                    }
+                }
+                Text(trend(diagnosis.status, past: past.map(\.status)))
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.muted)
+            }
+        }
+    }
+
+    /// 지금 판정이 몇 주째인가. 최근 점검부터 거슬러 같은 판정이 이어진 수다.
+    private func trend(_ current: DiagnosisStatus, past: [DiagnosisStatus]) -> String {
+        let streak = past.reversed().prefix { $0 == current }.count
+        if streak == 0, let last = past.last {
+            return "지난 점검엔 \(last.label) → 지금 \(current.label)"
+        }
+        return streak == past.count
+            ? "기록된 \(streak)주 내내 \(current.label)"
+            : "\(streak)주째 \(current.label)"
     }
 
     /// 게이지는 1.0 을 기준선으로 둔다. 넘어가는 규칙(부동산 상한)과

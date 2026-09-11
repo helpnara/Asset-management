@@ -45,6 +45,13 @@ extension ReviewSession {
     /// 은 마지막 한 번만 남아 지난주까지밖에 못 보므로 여기 남긴다.
     /// 배열 칸을 CloudKit 에 더하지 않으려고 `Member.editorIDs` 와 같은 꼴이다.
     @NSManaged var enteredMemberIDs: String
+
+    /// **그 주의 자산 진단 결과** (A9). `규칙=상태` 를 쉼표로 이은 것 —
+    /// `retirementTarget=act,savingsRate=pass,…`. 점검을 끝내는 순간의 판정을
+    /// 남겨 "몇 주째 조치인가" 를 셀 수 있게 한다. 진단은 늘 현재 값으로만
+    /// 계산하므로 이게 없으면 추세를 알 길이 없다. 빈 문자열은 이 칸이 생기기
+    /// 전의 점검이다.
+    @NSManaged var diagnosisRaw: String
     /// 공유의 뿌리 (docs/09-family-sharing.md 2단계). `CKShare` 는 **관계로
     /// 이어진 것**만 공유 존으로 옮기므로, 이 한 줄이 없으면 나중에 만든 것이
     /// 상대 화면에 조용히 안 보인다. 옵셔널인 것은 CloudKit 제약이다.

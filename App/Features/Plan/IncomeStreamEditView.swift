@@ -12,6 +12,8 @@ struct IncomeStreamEditView: View {
     @Environment(\.managedObjectContext) private var context
 
     @State private var hasEnd: Bool
+    /// 국민연금 추정기 (D3).
+    @State private var isEstimatingPension = false
 
     init(stream: IncomeStream, isNew: Bool = false) {
         self.stream = stream
@@ -30,6 +32,16 @@ struct IncomeStreamEditView: View {
                 } footer: {
                     // 여기를 액면가로 적으면 30년 뒤 계산이 통째로 틀린다.
                     Text("**오늘 돈 기준**으로 적으세요. \"65세부터 월 150만원\"의 150만원은 지금 물가로 말한 것이지 그때의 액면가가 아닙니다.")
+                }
+
+                Section {
+                    Button {
+                        isEstimatingPension = true
+                    } label: {
+                        Label("국민연금 얼마나 받을까 — 추정해서 채우기", systemImage: "function")
+                    }
+                } footer: {
+                    Text("가입 기간과 평균 소득으로 근사합니다. 모르면 0 으로 두고, 공단에서 확인한 값을 알게 되면 그때 고치세요.")
                 }
 
                 Section {
@@ -74,6 +86,9 @@ struct IncomeStreamEditView: View {
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: stream) } }
             .onChange(of: hasEnd) { _, on in
                 stream.endYear = on ? max(stream.endYear, stream.startYear + 10) : 0
+            }
+            .sheet(isPresented: $isEstimatingPension, onDismiss: { hasEnd = stream.endYear > 0 }) {
+                NationalPensionEstimatorView(stream: stream)
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

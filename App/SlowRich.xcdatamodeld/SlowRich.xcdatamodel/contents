@@ -137,6 +137,8 @@
         <attribute name="postRetirementReturnBP" attributeType="Integer 64" defaultValueString="500" usesScalarValueType="YES"/>
         <attribute name="lowYieldReturnBP" attributeType="Integer 64" defaultValueString="200" usesScalarValueType="YES"/>
         <attribute name="realEstateReturnBP" attributeType="Integer 64" defaultValueString="200" usesScalarValueType="YES"/>
+        <attribute name="bondReturnBP" attributeType="Integer 64" defaultValueString="350" usesScalarValueType="YES"/>
+        <attribute name="commodityReturnBP" attributeType="Integer 64" defaultValueString="300" usesScalarValueType="YES"/>
         <attribute name="targetAmountMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="monthlySpendingMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="withdrawalRateBP" attributeType="Integer 64" defaultValueString="400" usesScalarValueType="YES"/>
@@ -175,6 +177,7 @@
         <attribute name="totalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="previousTotalValueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="enteredMemberIDs" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="diagnosisRaw" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
         <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="reviewSessions" inverseEntity="Household"/>
     </entity>
     <entity name="Scenario" representedClassName="Scenario" syncable="YES">

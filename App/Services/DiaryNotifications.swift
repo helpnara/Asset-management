@@ -25,15 +25,24 @@ enum DiarySettings {
 ///
 /// 주간 점검 알림과 따로 건다 — 식별자도 카테고리도 다르다. 반복 트리거 하나가
 /// 기본인데, 반복 트리거는 "오늘은 이미 적었으니 건너뛰기" 를 못 한다. 그래서
-/// 오늘 이미 적었고 아직 시각 전이면 **내일 한 번짜리**로 바꿔 걸고, 다음에 앱이
-/// 뜰 때 다시 반복으로 돌린다. 앱을 며칠 안 열어도 반복이 살아 있어 알림은
-/// 이어진다.
+/// 오늘 이미 적었고 아직 시각 전이면 **내일부터 7일치 한 번짜리**로 바꿔 걸고,
+/// 다음에 앱이 뜰 때 다시 반복으로 돌린다.
+///
+/// 예전에는 내일 **하루치만** 걸었다. 그 뒤 앱을 안 열면 반복을 걷어낸 채라
+/// 모레부터 알림이 끊겼다 (docs/05-roadmap.md 동결 이슈 1). 7일치면 일주일은
+/// 앱을 안 열어도 이어지고, 여는 순간 다시 채워진다.
 enum DiaryNotifications {
 
     enum Identifier {
         static let daily = "diary-daily"
+        /// 옛 식별자. 지금은 `once(_:)` 로 날짜별로 건다 — 지울 때만 쓴다.
         static let once = "diary-once"
         static let category = "DIARY"
+        /// 오늘 적은 뒤 거는 한 번짜리 알림의 날 수.
+        static let onceDays = 7
+
+        static func once(_ dayOffset: Int) -> String { "diary-once-\(dayOffset)" }
+        static var allOnce: [String] { [once] + (1...onceDays).map(once(_:)) }
     }
 
     /// 오늘 일기에 글자가 하나라도 있나.
@@ -48,7 +57,7 @@ enum DiaryNotifications {
     /// 여러 번 불러도 안전하다 — 같은 식별자를 덮어쓴다.
     static func refresh(todayWritten: Bool) async {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [Identifier.daily, Identifier.once])
+        center.removePendingNotificationRequests(withIdentifiers: [Identifier.daily] + Identifier.allOnce)
 
         guard DiarySettings.enabled else { return }
         guard await center.notificationSettings().authorizationStatus != .denied else { return }
@@ -64,14 +73,16 @@ enum DiaryNotifications {
         let todayAt = calendar.date(bySettingHour: DiarySettings.hour, minute: DiarySettings.minute,
                                     second: 0, of: now) ?? now
 
-        if todayWritten, now < todayAt,
-           let tomorrow = calendar.date(byAdding: .day, value: 1, to: todayAt) {
-            // 오늘 몫은 끝났다. 내일 같은 시각에 한 번만.
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: tomorrow)
-            let request = UNNotificationRequest(
-                identifier: Identifier.once, content: content,
-                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))
-            try? await center.add(request)
+        if todayWritten, now < todayAt {
+            // 오늘 몫은 끝났다. 내일부터 7일, 같은 시각에 한 번씩.
+            for offset in 1...Identifier.onceDays {
+                guard let day = calendar.date(byAdding: .day, value: offset, to: todayAt) else { continue }
+                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: day)
+                let request = UNNotificationRequest(
+                    identifier: Identifier.once(offset), content: content,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))
+                try? await center.add(request)
+            }
             return
         }
 

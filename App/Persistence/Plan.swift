@@ -302,14 +302,25 @@ extension Plan {
 
         for member in members {
             for account in member.sortedAccounts where !account.isArchived {
-                let value = account.sortedHoldings.reduce(0) { $0 + $1.valueMinor }
-                guard value != 0 else { continue }
                 let profile = account.kind.returnProfile
-                let key = Key(profile: profile,
-                              bp: account.expectedReturnBP ?? defaultReturnBP(for: profile),
-                              custom: account.expectedReturnBP != nil)
-                // 부채는 음수로 담는다. 그래야 덩어리의 합이 순자산과 맞는다.
-                sums[key, default: 0] += account.kind.isLiability ? -value : value
+                for holding in account.sortedHoldings where holding.valueMinor != 0 {
+                    let value = holding.valueMinor
+                    let key: Key
+                    if let custom = account.expectedReturnBP {
+                        // 계좌에 따로 적은 수익률이 그 안의 모든 종목에 이긴다.
+                        key = Key(profile: profile, bp: custom, custom: true)
+                    } else if profile == .investment,
+                              let rate = classReturnBP(for: holding.assetClass) {
+                        // **투자 계좌 안의 채권·금·예수금** (D6). 계좌는 투자자산인데
+                        // 종목은 주식 속도로 안 자라는 것들 — 자산군의 수익률로
+                        // 따로 굴리고, 계획 수익률 손잡이는 건드리지 않는다.
+                        key = Key(profile: rate.profile, bp: rate.bp, custom: true)
+                    } else {
+                        key = Key(profile: profile, bp: defaultReturnBP(for: profile), custom: false)
+                    }
+                    // 부채는 음수로 담는다. 그래야 덩어리의 합이 순자산과 맞는다.
+                    sums[key, default: 0] += account.kind.isLiability ? -value : value
+                }
             }
         }
 
@@ -349,6 +360,23 @@ extension Plan {
         case .lowYield: return lowYieldReturnBP
         case .realEstate: return realEstateReturnBP
         case .fixed: return 0
+        }
+    }
+
+    /// 투자 계좌 안에서 **자산군이 정하는** 수익률 (D6). `nil` 이면 계좌의
+    /// 프로필(계획 수익률)을 따른다 — 주식·ETF·암호화폐·기타가 그렇다.
+    ///
+    /// 기본값이 곧 대부분 사용자의 값이다 (사용자 결정 09-11). 채권 3.5% ·
+    /// 금 3% · 예수금·예적금·보험 은 "예적금 · 연금보험" 값 · 부동산 은
+    /// 부동산 값 · 보증금·받을 돈 은 0.
+    func classReturnBP(for assetClass: AssetClass) -> (profile: ReturnProfile, bp: Int)? {
+        switch assetClass {
+        case .equity, .crypto, .other: return nil
+        case .bond: return (.investment, bondReturnBP)
+        case .commodity: return (.investment, commodityReturnBP)
+        case .cash, .deposit, .insurance: return (.lowYield, lowYieldReturnBP)
+        case .realEstate: return (.realEstate, realEstateReturnBP)
+        case .leaseDeposit, .receivable: return (.fixed, 0)
         }
     }
 

@@ -64,6 +64,15 @@ extension Plan {
     /// 부동산 기대수익률. 기본은 물가상승률과 같게 둔다.
     @NSManaged var realEstateReturnBP: Int
 
+    /// **채권** 종목의 기대수익률 (D6). 기본 350 = 3.5%. 투자 계좌 안에 있어도
+    /// 채권은 주식 속도로 안 자란다 — 종목의 자산군이 채권이면 이 값으로 굴린다.
+    /// 계좌에 수익률을 따로 적었으면 그 값이 이긴다.
+    @NSManaged var bondReturnBP: Int
+
+    /// **금 · 원자재** 종목의 기대수익률 (D6). 기본 300 = 3% — 긴 기간 금은
+    /// 물가보다 조금 앞서는 정도였다. 위와 같은 규칙으로 붙는다.
+    @NSManaged var commodityReturnBP: Int
+
     /// 은퇴 시점 목표 금액. 0이면 목표선을 그리지 않는다.
     @NSManaged var targetAmountMinor: Int
 

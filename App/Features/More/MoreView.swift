@@ -36,6 +36,7 @@ struct MoreView: View {
         case changeLog
         case dashboardCards
         case retrospective
+        case help
     }
 
     /// CI 가 스크롤 아래 구역을 찍을 수 있게 하는 갈고리.
@@ -128,6 +129,15 @@ struct MoreView: View {
                 SyncStatusSection()
 
                 Section {
+                    NavigationLink(value: Destination.help) {
+                        Label("도움말 · 용어집", systemImage: "questionmark.circle")
+                    }
+                    // 문의 메일 (G2). 주소를 정하기 전에는 줄이 없다.
+                    if let url = SupportContact.mailURL(version: Self.versionText) {
+                        Link(destination: url) {
+                            Label("문의 · 피드백 메일", systemImage: "envelope")
+                        }
+                    }
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
                         .font(.system(size: 11))
                         .foregroundStyle(Color.faint)
@@ -135,6 +145,8 @@ struct MoreView: View {
                     LabeledContent("버전", value: Self.versionText)
                         .font(.figure(12))
                         .foregroundStyle(Color.faint)
+                } header: {
+                    Text("도움말")
                 }
             }
             .onAppear {
@@ -175,6 +187,7 @@ struct MoreView: View {
                 case .changeLog: ChangeLogView()
                 case .dashboardCards: DashboardCardsView()
                 case .retrospective: RetrospectiveView()
+                case .help: HelpView()
                 }
             }
         }
@@ -191,6 +204,7 @@ struct MoreView: View {
         if arguments.contains("-startExport") { return [.export] }
         if arguments.contains("-startChangeLog") { return [.changeLog] }
         if arguments.contains("-startRetrospective") { return [.retrospective] }
+        if arguments.contains("-startHelp") { return [.help] }
         return []
     }
 

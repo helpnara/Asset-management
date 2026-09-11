@@ -88,6 +88,9 @@ struct BackupDocument: Codable, Sendable {
         /// 옛 백업에는 없으므로 옵셔널이라야 읽힌다.
         var disabledDiagnosesRaw: String?
         var contributionOrderRaw: String?
+        /// 자산군별 기대수익률 (D6, 빌드 67 부터). 옛 백업에는 없다.
+        var bondReturnBP: Int?
+        var commodityReturnBP: Int?
     }
 
     struct MemberData: Codable, Sendable {
@@ -216,6 +219,8 @@ struct BackupDocument: Codable, Sendable {
         var previousTotalValueMinor: Int
         /// 빌드 61 부터 (C8). 옛 백업에는 없어 옵셔널이다.
         var enteredMemberIDs: String?
+        /// 빌드 67 부터 (A9). 그 주의 진단 결과.
+        var diagnosisRaw: String?
     }
 
     struct SnapshotData: Codable, Sendable {
@@ -341,7 +346,9 @@ extension BackupDocument {
                 updatedAt: plan.updatedAt,
                 // 선언 순서와 같아야 한다 — 멤버와이즈 초기화는 순서를 지킨다.
                 disabledDiagnosesRaw: plan.disabledDiagnosesRaw,
-                contributionOrderRaw: plan.contributionOrderRaw
+                contributionOrderRaw: plan.contributionOrderRaw,
+                bondReturnBP: plan.bondReturnBP,
+                commodityReturnBP: plan.commodityReturnBP
             )
         }
 
@@ -388,7 +395,8 @@ extension BackupDocument {
                                   isTotalOnly: $0.isTotalOnly,
                                   totalValueMinor: $0.totalValueMinor,
                                   previousTotalValueMinor: $0.previousTotalValueMinor,
-                                  enteredMemberIDs: $0.enteredMemberIDs)
+                                  enteredMemberIDs: $0.enteredMemberIDs,
+                                  diagnosisRaw: $0.diagnosisRaw)
             },
             snapshots: context.all(Snapshot.self).sorted { $0.weekAnchor < $1.weekAnchor }.map { snapshot in
                 SnapshotData(id: snapshot.id, weekAnchor: snapshot.weekAnchor,
@@ -599,6 +607,7 @@ extension BackupDocument {
             session.totalValueMinor = data.totalValueMinor
             session.previousTotalValueMinor = data.previousTotalValueMinor
             session.enteredMemberIDs = data.enteredMemberIDs ?? ""
+            session.diagnosisRaw = data.diagnosisRaw ?? ""
         }
 
         for data in document.snapshots {
@@ -665,6 +674,35 @@ extension BackupDocument {
         for item in context.all(type) { context.delete(item) }
     }
 
+    /// **데이터 전부 지우기** (docs/05-roadmap.md G3 · docs/02 2.6.4 "데이터 초기화").
+    ///
+    /// 남이 쓰다 그만두거나 처음부터 다시 시작할 때다. 되돌리기와 같은 길로
+    /// 지우되 채우지 않는다 — 그래서 iCloud 로도 삭제가 퍼진다. `Household`
+    /// 는 남긴다: 가족 공유의 뿌리라 지우면 초대가 끊기는데, 그건 "가족" 에서
+    /// 따로 하는 일이다. 일기도 지운다 — 전부라고 했으면 전부다.
+    /// 지운 뒤에는 빈 계획 하나가 새로 선다.
+    @MainActor
+    static func wipeAll(in context: NSManagedObjectContext) {
+        deleteAll(Member.self, in: context)
+        deleteAll(Account.self, in: context)
+        deleteAll(Holding.self, in: context)
+        deleteAll(Snapshot.self, in: context)
+        deleteAll(SnapshotLine.self, in: context)
+        deleteAll(ReviewSession.self, in: context)
+        deleteAll(Plan.self, in: context)
+        deleteAll(CashEvent.self, in: context)
+        deleteAll(IncomeStream.self, in: context)
+        deleteAll(UserMilestone.self, in: context)
+        deleteAll(TodoItem.self, in: context)
+        deleteAll(Scenario.self, in: context)
+        deleteAll(Principle.self, in: context)
+        deleteAll(ChangeLog.self, in: context)
+        deleteAll(FamilyTarget.self, in: context)
+        deleteAll(DiaryEntry.self, in: context)
+        _ = Plan.current(in: context)
+        try? context.save()
+    }
+
     @MainActor
     private static func insert(plan data: PlanData, into context: NSManagedObjectContext) {
         let plan = Plan(context: context)
@@ -696,6 +734,8 @@ extension BackupDocument {
         plan.driftRelativeBP = data.driftRelativeBP
         plan.disabledDiagnosesRaw = data.disabledDiagnosesRaw ?? ""
         plan.contributionOrderRaw = data.contributionOrderRaw ?? ""
+        plan.bondReturnBP = data.bondReturnBP ?? 350
+        plan.commodityReturnBP = data.commodityReturnBP ?? 300
         plan.createdAt = data.createdAt
         plan.updatedAt = data.updatedAt
     }
