@@ -19,7 +19,7 @@ struct EditGrantsView: View {
             if sharing.state.people.isEmpty {
                 Section {
                     Text("아직 참가자가 없습니다. 초대를 받아들인 사람이 여기에 나타납니다.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                 }
             }
@@ -49,7 +49,7 @@ struct EditGrantsView: View {
             if let result = sharing.lastPermissionResult {
                 Section {
                     Text(result)
-                        .font(.system(size: 11.5))
+                        .font(.scaled(11.5))
                         .foregroundStyle(result.contains("못했") ? Color.loss : Color.muted)
                         .textSelection(.enabled)
                 }

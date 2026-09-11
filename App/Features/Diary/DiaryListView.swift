@@ -14,7 +14,7 @@ struct DiaryListView: View {
             if entries.isEmpty {
                 Section {
                     Text("아직 적은 날이 없습니다. 현황판 맨 위 칸에 오늘 한 줄을 적으면 여기 쌓입니다.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                 }
             }
@@ -48,11 +48,11 @@ struct DiaryListView: View {
         if !text.isEmpty {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(label)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.scaled(11, weight: .medium))
                     .foregroundStyle(Color.muted)
                     .frame(width: 26, alignment: .leading)
                 Text(text)
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.ink)
             }
         }

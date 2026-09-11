@@ -97,7 +97,7 @@ struct ReviewCompleteView: View {
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text("첫 기록입니다. 다음 주부터 증감이 보입니다.")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
             } else {
@@ -105,7 +105,7 @@ struct ReviewCompleteView: View {
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(session.changeMinor < 0 ? Color.loss : Color.gain)
                 Text("\(driftMembers.count > 1 ? "가족 총자산" : "총자산") \(Won.abbreviated(total)) · \(session.enteredCount)건 입력")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
 
@@ -125,7 +125,7 @@ struct ReviewCompleteView: View {
                     // 말한다. 점검을 마치고 나가는 길목이라 놓치기 어렵다
                     // (docs/08-feedback.md 14번).
                     Text("비중이 어긋난 종목 \(driftCount)개")
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.scaled(11.5, weight: .medium))
                         .foregroundStyle(Color.loss)
                         .padding(.top, 4)
                 }
@@ -159,10 +159,10 @@ struct ReviewCompleteView: View {
                         Text("🎉")
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.subject)
-                                .font(.system(size: 14, weight: .bold))
+                                .font(.scaled(14, weight: .bold))
                                 .foregroundStyle(Color.ink)
                             Text(item.summary)
-                                .font(.system(size: 11))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.muted)
                         }
                         Spacer(minLength: 0)
@@ -181,7 +181,7 @@ struct ReviewCompleteView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("연속 기록")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.scaled(14, weight: .bold))
                     .foregroundStyle(Color.ink)
                 Spacer()
                 Text("\(streak)주")
@@ -206,7 +206,7 @@ struct ReviewCompleteView: View {
             Text(streak <= 1
                  ? "다음 토요일에 또 적으면 연속 기록이 시작됩니다."
                  : "\(streak)주째 거르지 않았습니다.")
-                .font(.system(size: 10))
+                .font(.scaled(10))
                 .foregroundStyle(Color.faint)
                 .padding(.horizontal, 20)
                 .padding(.top, 9)
@@ -220,11 +220,11 @@ struct ReviewCompleteView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("구성원별")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.scaled(14, weight: .bold))
                         .foregroundStyle(Color.ink)
                     Spacer()
                     Text("이 점검 시점 기준")
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                 }
                 .padding(.horizontal, 20)
@@ -237,11 +237,11 @@ struct ReviewCompleteView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(line.memberName.isEmpty ? "이름 없음" : line.memberName)
-                                .font(.system(size: 12.5))
+                                .font(.scaled(12.5))
                                 .foregroundStyle(Color.ink)
                             // 이 주에 그 사람 몫이 적혔나, 몇 주째인가 (C8).
                             Text(memberLine(line.memberID))
-                                .font(.system(size: 9.5))
+                                .font(.scaled(9.5))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
@@ -271,14 +271,14 @@ struct ReviewCompleteView: View {
                 dismiss()
             } label: {
                 Text("현황판에서 보기")
-                    .font(.system(size: 13.5, weight: .medium))
+                    .font(.scaled(13.5, weight: .medium))
                     .foregroundStyle(Color.onInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
             }
             Text("다음 점검 \(nextReviewText) 토요일")
-                .font(.system(size: 10))
+                .font(.scaled(10))
                 .foregroundStyle(Color.faint)
         }
         .padding(20)

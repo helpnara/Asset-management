@@ -19,7 +19,7 @@ struct WelcomeView: View {
             Text("느 린 부 자 의 기 록")
                 .eyebrowStyle()
             Text("매주 토요일,\n숫자 하나씩 적어 갑니다")
-                .font(.system(size: 26, weight: .bold))
+                .font(.scaled(26, weight: .bold))
                 .foregroundStyle(Color.ink)
                 .lineSpacing(6)
                 .padding(.top, 8)
@@ -49,7 +49,7 @@ struct WelcomeView: View {
                     HStack(spacing: 8) {
                         if isAsking { ProgressView().controlSize(.small).tint(.white) }
                         Text("토요일 알림 받기")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.scaled(15, weight: .semibold))
                             .foregroundStyle(Color.onInk)
                     }
                     .frame(maxWidth: .infinity)
@@ -60,7 +60,7 @@ struct WelcomeView: View {
                 .disabled(isAsking || didAsk)
 
                 Button("나중에 하기") { onFinish() }
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.muted)
                     .disabled(isAsking)
 
@@ -70,7 +70,7 @@ struct WelcomeView: View {
                     onTrial()
                 } label: {
                     Label("체험 자료로 둘러보기", systemImage: "sparkles")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.scaled(13, weight: .medium))
                         .foregroundStyle(Color.dad)
                 }
                 .disabled(isAsking)
@@ -78,7 +78,7 @@ struct WelcomeView: View {
 
                 // 거절해도 막다른 길이 아니라는 것을 먼저 알려 준다.
                 Text("나중에 [더보기 → 주간 점검 알림]에서 켤 수 있습니다.")
-                    .font(.system(size: 10.5))
+                    .font(.scaled(10.5))
                     .foregroundStyle(Color.faint)
             }
         }
@@ -97,10 +97,10 @@ struct WelcomeView: View {
                 .padding(.top, 5)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text(detail)
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)

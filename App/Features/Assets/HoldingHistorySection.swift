@@ -20,7 +20,7 @@ struct HoldingHistorySection: View {
         Section {
             if records.isEmpty {
                 Text("아직 없습니다. 주간 점검을 끝낼 때마다 그 주의 값이 한 줄씩 남습니다.")
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
             } else {
                 if records.count >= 3 { chart }

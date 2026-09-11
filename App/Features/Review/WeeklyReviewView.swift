@@ -229,7 +229,7 @@ struct WeeklyReviewView: View {
     private func memberHeader(_ member: Member, count: Int) -> some View {
         HStack {
             Text(member.name.isEmpty ? "이름 없음" : member.name)
-                .font(.system(size: 11, weight: .bold))
+                .font(.scaled(11, weight: .bold))
                 .foregroundStyle(Color.ink)
             Spacer()
             Text("\(visitedCount(member)) / \(count)")
@@ -245,11 +245,11 @@ struct WeeklyReviewView: View {
     private func accountLabel(_ account: Account) -> some View {
         HStack(spacing: 6) {
             Text(account.name.isEmpty ? account.kind.label : account.name)
-                .font(.system(size: 10, weight: .medium))
+                .font(.scaled(10, weight: .medium))
                 .foregroundStyle(Color.muted)
             if !account.institution.isEmpty {
                 Text(account.institution)
-                    .font(.system(size: 9.5))
+                    .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
             }
             if account.kind.isLiability {
@@ -278,7 +278,7 @@ struct WeeklyReviewView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 5) {
                     Text(holding.name.isEmpty ? "이름 없음" : holding.name)
-                        .font(.system(size: 13.5, weight: isActive ? .medium : .regular))
+                        .font(.scaled(13.5, weight: isActive ? .medium : .regular))
                         .foregroundStyle(Color.ink)
                     if holding.status != .accumulating {
                         StatusBadge(text: holding.status.label,
@@ -295,7 +295,7 @@ struct WeeklyReviewView: View {
                 // 같은 주에 다시 열었으면 기준은 지난주가 아니라 **이번 주에 먼저
                 // 적은 값**이다 (90번). 끝낼 때 기준값이 그 값으로 바뀌어 있다.
                 Text("\(baselineLabel(holding)) \(Won.grouped(holding.lastEnteredValueMinor))")
-                    .font(.system(size: 9.5))
+                    .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
             }
 
@@ -321,7 +321,7 @@ struct WeeklyReviewView: View {
                         StatusBadge(text: "30%↑", foreground: .loss, background: Color.lossSoft)
                     }
                     Text(deltaText(holding))
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(deltaColor(holding))
                 }
             }
@@ -340,7 +340,7 @@ struct WeeklyReviewView: View {
     private var footer: some View {
         VStack(spacing: 12) {
             Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 값을 적고 나면 빠집니다.")
-                .font(.system(size: 10.5))
+                .font(.scaled(10.5))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
@@ -349,7 +349,7 @@ struct WeeklyReviewView: View {
                 requestFinish()
             } label: {
                 Text("점검 완료")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.scaled(14, weight: .medium))
                     .foregroundStyle(Color.onInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
@@ -367,9 +367,9 @@ struct WeeklyReviewView: View {
                 .disabled(currentIndex >= queue.count - 1)
 
             Button("만") { multiplyFocused(by: 10_000) }
-                .font(.system(size: 13))
+                .font(.scaled(13))
             Button("억") { multiplyFocused(by: 100_000_000) }
-                .font(.system(size: 13))
+                .font(.scaled(13))
 
             Spacer()
 
@@ -380,11 +380,11 @@ struct WeeklyReviewView: View {
             Spacer()
 
             Button("변동 없음") { move(1) }
-                .font(.system(size: 13))
+                .font(.scaled(13))
             Button(currentIndex >= queue.count - 1 ? "완료" : "다음") {
                 if currentIndex >= queue.count - 1 { requestFinish() } else { move(1) }
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(.scaled(13, weight: .semibold))
         }
     }
 

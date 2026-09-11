@@ -55,7 +55,7 @@ struct DiaryCard: View {
             HStack(alignment: .firstTextBaseline) {
                 if embedsTitle {
                     Text("오늘의 목 · 실 · 감")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.scaled(12, weight: .semibold))
                         .foregroundStyle(Color.ink)
                     Text(Self.dayText(today))
                         .font(.figure(11))
@@ -69,16 +69,16 @@ struct DiaryCard: View {
                 Spacer(minLength: 0)
                 NavigationLink(value: DiaryDestination.list) {
                     Text(pastCount > 0 ? "지난 일기 \(pastCount)" : "지난 일기")
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.scaled(11.5, weight: .medium))
                         .foregroundStyle(Color.muted)
                 }
                 if isEditing {
                     Button("완료") { finishEditing() }
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.scaled(12, weight: .semibold))
                         .foregroundStyle(Color.ink)
                 } else {
                     Button(hasAnyText ? "편집" : "쓰기") { beginEditing() }
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.scaled(12, weight: .semibold))
                         .foregroundStyle(Color.ink)
                 }
             }
@@ -116,12 +116,12 @@ struct DiaryCard: View {
     private func line(_ label: String, _ text: Binding<String>, _ field: Field) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(label)
-                .font(.system(size: 11.5, weight: .medium))
+                .font(.scaled(11.5, weight: .medium))
                 .foregroundStyle(Color.muted)
                 .frame(width: 28, alignment: .leading)
                 .padding(.top, 1)
             TextField("한 줄", text: text, axis: .vertical)
-                .font(.system(size: 13))
+                .font(.scaled(13))
                 .foregroundStyle(Color.ink)
                 .lineLimit(1...3)
                 .focused($focus, equals: field)
@@ -132,12 +132,12 @@ struct DiaryCard: View {
     private func shown(_ label: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(label)
-                .font(.system(size: 11.5, weight: .medium))
+                .font(.scaled(11.5, weight: .medium))
                 .foregroundStyle(Color.muted)
                 .frame(width: 28, alignment: .leading)
                 .padding(.top, 1)
             Text(text.isEmpty ? "아직 안 적음" : text)
-                .font(.system(size: 13))
+                .font(.scaled(13))
                 .foregroundStyle(text.isEmpty ? Color.muted.opacity(0.6) : Color.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

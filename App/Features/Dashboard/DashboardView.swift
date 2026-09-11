@@ -170,7 +170,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("느 린 부 자 의 기 록").eyebrowStyle()
             Text("우리 가족 노후자금 준비")
-                .font(.system(size: 16, weight: .bold))
+                .font(.scaled(16, weight: .bold))
                 .foregroundStyle(Color.ink)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,7 +189,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
             if !rollup.liabilities.isZero {
                 Text("자산 \(Won.abbreviated(rollup.assets)) · 부채 \(Won.abbreviated(rollup.liabilities))")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
                     .padding(.horizontal, 20)
@@ -214,15 +214,15 @@ struct DashboardView: View {
     private var weeklyBar: some View {
         HStack(spacing: 10) {
             Image(systemName: didReviewThisWeek ? "checkmark.circle" : "calendar")
-                .font(.system(size: 15, weight: .regular))
+                .font(.scaled(15, weight: .regular))
                 .foregroundStyle(didReviewThisWeek ? Color.gain : Color.ink)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(weeklyTitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.scaled(12, weight: .medium))
                     .foregroundStyle(Color.ink)
                 Text(weeklySubtitle)
-                    .font(.system(size: 10))
+                    .font(.scaled(10))
                     .foregroundStyle(Color.muted)
             }
             Spacer(minLength: 0)
@@ -234,7 +234,7 @@ struct DashboardView: View {
                     isReviewing = true
                 } label: {
                     Text(didReviewThisWeek ? "다시 열기" : "지금 입력")
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.scaled(11.5, weight: .medium))
                         .foregroundStyle(didReviewThisWeek ? Color.muted : Color.ink)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
@@ -280,14 +280,14 @@ struct DashboardView: View {
         if !violations.isEmpty {
             HStack(alignment: .top, spacing: 9) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .foregroundStyle(Color.loss)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("세적 제약 — 한국 상장 ETF \(violations.count)건")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.scaled(12, weight: .medium))
                         .foregroundStyle(Color.ink)
                     Text(violations.map(\.name).joined(separator: " · ") + " · PFIC 대상")
-                        .font(.system(size: 10.5))
+                        .font(.scaled(10.5))
                         .foregroundStyle(Color.muted)
                 }
                 Spacer(minLength: 0)
@@ -353,7 +353,7 @@ struct DashboardView: View {
                         Spacer(minLength: 0)
                         ForEach(["증감", "넣은 돈", "자란 돈"], id: \.self) { title in
                             Text(title)
-                                .font(.system(size: 9.5))
+                                .font(.scaled(9.5))
                                 .foregroundStyle(Color.faint)
                                 .frame(width: Self.attributionColumn, alignment: .trailing)
                         }
@@ -363,7 +363,7 @@ struct DashboardView: View {
                     ForEach(rows) { row in
                         HStack(spacing: 8) {
                             Text(row.label)
-                                .font(.system(size: 12))
+                                .font(.scaled(12))
                                 .foregroundStyle(Color.ink)
                             Spacer(minLength: 0)
                             if let split = row.split {
@@ -372,7 +372,7 @@ struct DashboardView: View {
                                 figure(split.gained, tone: true)
                             } else {
                                 Text("기록 없음")
-                                    .font(.system(size: 10.5))
+                                    .font(.scaled(10.5))
                                     .foregroundStyle(Color.faint)
                             }
                         }
@@ -382,7 +382,7 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal, 20)
                 Text("넣은 돈은 계획의 월 적립을 날수로 나눠 어림한 값이고, 목돈 이벤트는 날짜대로 더했습니다. 자란 돈은 증감에서 그것을 뺀 나머지입니다.")
-                    .font(.system(size: 10))
+                    .font(.scaled(10))
                     .foregroundStyle(Color.faint)
                     .lineSpacing(3)
                     .padding(.horizontal, 20)
@@ -431,7 +431,7 @@ struct DashboardView: View {
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.scaled(11, weight: .semibold))
                         .foregroundStyle(Color.faint)
                 }
                 .padding(13)
@@ -543,14 +543,14 @@ struct DashboardView: View {
                               trailing: plan.map { "\($0.yearsToRetirement)년 남음" } ?? "")
                 if let depletionYear {
                     Text("\(String(depletionYear))년에 바닥납니다")
-                        .font(.system(size: 11.5, weight: .medium))
+                        .font(.scaled(11.5, weight: .medium))
                         .foregroundStyle(Color.loss)
                         .padding(.bottom, 6)
                 }
                 RoadmapStrip(stops: roadmapStops) { selectedStop = $0 }
                     .padding(.bottom, 4)
                 Text("정거장을 누르면 그때까지의 적립 · 수익과 구성원별 예상이 보입니다")
-                    .font(.system(size: 9.5))
+                    .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
                     .padding(.horizontal, 20)
             }
@@ -574,19 +574,19 @@ struct DashboardView: View {
         if let years = PlanTrack.yearsSincePlanReview(plan) {
             HStack(spacing: 10) {
                 Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 15))
+                    .font(.scaled(15))
                     .foregroundStyle(Color.ink)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("계획을 \(years)년째 안 고쳤습니다")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.scaled(12, weight: .medium))
                         .foregroundStyle(Color.ink)
                     Text("기대수익률 · 물가 · 목표 금액을 지금도 그렇게 보시나요?")
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.muted)
                 }
                 Spacer(minLength: 0)
                 Button("계획 열기") { AppRoute.shared.selectedTab = RootView.Tab.plan }
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.scaled(11.5, weight: .medium))
                     .foregroundStyle(Color.ink)
             }
             .padding(13)
@@ -683,7 +683,7 @@ struct DashboardView: View {
                     .font(.figure(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text(event.yearsAway == 0 ? "올해" : "\(event.yearsAway)년 뒤")
-                    .font(.system(size: 9.5))
+                    .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
             }
             .frame(width: 54, alignment: .leading)
@@ -691,7 +691,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {
                     Text(event.label)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.scaled(13, weight: .medium))
                         .foregroundStyle(Color.ink)
                     if let owner = event.ownerName {
                         HStack(spacing: 3) {
@@ -699,14 +699,14 @@ struct DashboardView: View {
                                 .fill(Color.member(event.colorIndex))
                                 .frame(width: 6, height: 6)
                             Text(event.age.map { "\(owner) \($0)세" } ?? owner)
-                                .font(.system(size: 10))
+                                .font(.scaled(10))
                                 .foregroundStyle(Color.muted)
                         }
                     }
                 }
                 if !event.note.isEmpty {
                     Text(event.note)
-                        .font(.system(size: 10.5))
+                        .font(.scaled(10.5))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                 }
@@ -719,7 +719,7 @@ struct DashboardView: View {
                         .font(.figure(13, weight: .semibold))
                         .foregroundStyle(Color.ink)
                     Text("그때 예상")
-                        .font(.system(size: 9))
+                        .font(.scaled(9))
                         .foregroundStyle(Color.faint)
                 }
             }
@@ -772,7 +772,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("순자산 궤적")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.scaled(14, weight: .bold))
                     .foregroundStyle(Color.ink)
                 Spacer()
             }
@@ -811,13 +811,13 @@ struct DashboardView: View {
 
             if let summary = trajectorySummary {
                 Text(summary)
-                    .font(.system(size: 12.5))
+                    .font(.scaled(12.5))
                     .foregroundStyle(Color.bodyText)
                     .lineSpacing(4)
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                 Text(assumptionLine)
-                    .font(.system(size: 10))
+                    .font(.scaled(10))
                     .foregroundStyle(Color.faint)
                     .padding(.horizontal, 20)
                     .padding(.top, 5)
@@ -837,7 +837,7 @@ struct DashboardView: View {
                 }
                 .frame(width: 14, height: 2)
             Text(label)
-                .font(.system(size: 9.5))
+                .font(.scaled(9.5))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -876,16 +876,16 @@ struct DashboardView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 5) {
                             Text(member.name.isEmpty ? "이름 없음" : member.name)
-                                .font(.system(size: 13.5, weight: .bold))
+                                .font(.scaled(13.5, weight: .bold))
                                 .foregroundStyle(Color.ink)
                             Text("\(member.roleNote.isEmpty ? "" : member.roleNote + " · ")\(member.age)세")
-                                .font(.system(size: 10))
+                                .font(.scaled(10))
                                 .foregroundStyle(Color.faint)
                         }
                         // **사람마다 연속 주** (C8). 안정화 기준 2 "넷이 각자
                         // 4주 연속" 을 앱이 직접 센다.
                         Text(memberStreakText(member))
-                            .font(.system(size: 9.5))
+                            .font(.scaled(9.5))
                             .foregroundStyle(Color.faint)
                     }
                     Spacer(minLength: 0)
@@ -941,7 +941,7 @@ struct DashboardView: View {
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.scaled(11, weight: .semibold))
                             .foregroundStyle(Color.faint)
                     }
                     .padding(.horizontal, 20)
@@ -949,7 +949,7 @@ struct DashboardView: View {
 
                     if let first = result.sorted.first, first.status != .pass {
                         Text(first.title + " — " + first.headline)
-                            .font(.system(size: 11))
+                            .font(.scaled(11))
                             .foregroundStyle(Color.muted)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
@@ -969,7 +969,7 @@ struct DashboardView: View {
                 .font(.figure(15, weight: .bold))
                 .foregroundStyle(count > 0 ? color : Color.faint)
             Text(label)
-                .font(.system(size: 10.5))
+                .font(.scaled(10.5))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -1002,7 +1002,7 @@ struct DashboardView: View {
                     Spacer()
                     Text("미국 \(split[1])")
                 }
-                .font(.system(size: 10.5))
+                .font(.scaled(10.5))
                 .foregroundStyle(Color.muted)
 
                 GeometryReader { proxy in
@@ -1028,7 +1028,7 @@ struct DashboardView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(label)
-                    .font(.system(size: 12, weight: emphasized ? .medium : .regular))
+                    .font(.scaled(12, weight: emphasized ? .medium : .regular))
                     .foregroundStyle(emphasized ? Color.ink : Color.muted)
                 Spacer()
                 Text(Won.full(money))
@@ -1044,11 +1044,11 @@ struct DashboardView: View {
     private func sectionHeader(_ title: String, trailing: String = "") -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.system(size: 14, weight: .bold))
+                .font(.scaled(14, weight: .bold))
                 .foregroundStyle(Color.ink)
             Spacer()
             Text(trailing)
-                .font(.system(size: 10))
+                .font(.scaled(10))
                 .foregroundStyle(Color.faint)
         }
         .padding(.horizontal, 20)
@@ -1061,10 +1061,10 @@ struct DashboardView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("아직 등록된 자산이 없습니다")
-                .font(.system(size: 15, weight: .bold))
+                .font(.scaled(15, weight: .bold))
                 .foregroundStyle(Color.ink)
             Text("구성원을 먼저 추가하세요.\n한 명 · 한 종목만 넣어도 합계가 그려집니다.")
-                .font(.system(size: 12.5))
+                .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(4)
 
@@ -1073,7 +1073,7 @@ struct DashboardView: View {
                 AppRoute.shared.selectedTab = RootView.Tab.assets
             } label: {
                 Label("구성원 추가하기", systemImage: "person.badge.plus")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.onInk)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 8)

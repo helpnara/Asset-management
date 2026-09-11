@@ -84,13 +84,13 @@ struct DiagnosticsView: View {
             }
 
             Text(headline(result))
-                .font(.system(size: 12.5))
+                .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             // 상시 고지 (docs/10 §2-2, 규제 R6). 맨 아래 긴 고지는 스크롤해야 보인다.
             Text("널리 쓰이는 경험칙이며 투자 조언이 아닙니다. 기준은 전부 직접 고칠 수 있습니다.")
-                .font(.system(size: 10.5))
+                .font(.scaled(10.5))
                 .foregroundStyle(Color.faint)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -105,7 +105,7 @@ struct DiagnosticsView: View {
                 .font(.figure(22, weight: .bold))
                 .foregroundStyle(count > 0 ? color : Color.faint)
             Text(label)
-                .font(.system(size: 10.5))
+                .font(.scaled(10.5))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -129,7 +129,7 @@ struct DiagnosticsView: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline) {
                 Text(diagnosis.title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Spacer()
                 StatusBadge(text: diagnosis.status.label,
@@ -157,7 +157,7 @@ struct DiagnosticsView: View {
             history(diagnosis)
 
             Text(diagnosis.action)
-                .font(.system(size: 12))
+                .font(.scaled(12))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -173,15 +173,15 @@ struct DiagnosticsView: View {
                 HStack(spacing: 4) {
                     Text("왜 이 기준인가")
                     Image(systemName: expanded.contains(diagnosis.id) ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 9))
+                        .font(.scaled(9))
                 }
-                .font(.system(size: 11))
+                .font(.scaled(11))
                 .foregroundStyle(Color.dad)
             }
 
             if expanded.contains(diagnosis.id) {
                 Text(diagnosis.rationale)
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.faint)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -210,7 +210,7 @@ struct DiagnosticsView: View {
                     }
                 }
                 Text(trend(diagnosis.status, past: past.map(\.status)))
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.muted)
             }
         }
@@ -264,7 +264,7 @@ struct DiagnosticsView: View {
                 isEditingCriteria = true
             } label: {
                 Label("진단 기준 바꾸기", systemImage: "slider.horizontal.3")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
             }
@@ -275,7 +275,7 @@ struct DiagnosticsView: View {
 
     private var disclaimer: some View {
         Text("여기 기준은 널리 쓰이는 원칙일 뿐 정답이 아니고, 전부 직접 고칠 수 있습니다. 이 앱은 세법을 따라가지 않습니다 — 계좌 한도는 직접 확인해 넣으세요. 투자 권유가 아닙니다.")
-            .font(.system(size: 10.5))
+            .font(.scaled(10.5))
             .foregroundStyle(Color.faint)
             .lineSpacing(3)
             .frame(maxWidth: .infinity, alignment: .leading)

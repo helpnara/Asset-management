@@ -36,10 +36,10 @@ struct FamilyShareSection: View {
     private func contingencyLine(_ title: String, _ body: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.scaled(12, weight: .semibold))
                 .foregroundStyle(Color.ink)
             Text(body)
-                .font(.system(size: 11))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(2)
         }
@@ -82,7 +82,7 @@ struct FamilyShareSection: View {
                     LabeledContent("나") {
                         HStack(spacing: 6) {
                             Text(ActorName.current)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.scaled(13, weight: .medium))
                             Text(Self.tail(sharing.state.participantID))
                                 .font(.figure(11))
                                 .foregroundStyle(Color.faint)
@@ -90,7 +90,7 @@ struct FamilyShareSection: View {
                     }
                     if sharing.state.strays > 0 {
                         Text("개인 저장소에 남은 가족 기록이 \(sharing.state.strays)건 있습니다. 이 기록은 상대 기기에 안 갑니다 — 지우고 다시 만드세요 (빌드 58 부터는 새 기록이 공유 저장소로 갑니다).")
-                            .font(.system(size: 11))
+                            .font(.scaled(11))
                             .foregroundStyle(Color.loss)
                     }
                 }
@@ -126,13 +126,13 @@ struct FamilyShareSection: View {
             if sharing.state.shareLost && monitor.hasFinishedImport {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("가족 공유가 끊긴 것 같습니다")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.scaled(13, weight: .semibold))
                         .foregroundStyle(Color.loss)
                     Text("관리자가 이 기기를 참가자에서 빼거나 공유를 중단하면 이렇게 됩니다. 다시 함께 쓰려면 관리자에게 초대 링크를 새로 받으세요. 이 기기에서 혼자 새로 시작하려면 아래를 누르세요 — 관리자의 기록은 그대로입니다.")
-                        .font(.system(size: 11.5))
+                        .font(.scaled(11.5))
                         .foregroundStyle(Color.muted)
                     Button("참가자 상태 지우고 새로 시작") { isConfirmingForget = true }
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.scaled(12.5, weight: .medium))
                         .foregroundStyle(Color.loss)
                         .confirmationDialog("참가자 상태를 지울까요?", isPresented: $isConfirmingForget,
                                             titleVisibility: .visible) {
@@ -151,20 +151,20 @@ struct FamilyShareSection: View {
             // 앱이 그 사실을 아무 데도 안 보여 줘서 알 방법이 없었다.
             LabeledContent("상태") {
                 Text(sharing.state.label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .foregroundStyle(sharing.state.isTrouble ? Color.loss
                                      : (sharing.state.isSaved ? Color.gain : Color.muted))
             }
             if sharing.state.households > 1 {
                 Text("가구가 \(sharing.state.households)개입니다. 하나여야 합니다 — 공유가 엉뚱한 쪽에 붙을 수 있습니다."
                      + (sharing.state.pruneBlockers.map { " 못 치우는 이유: \($0)" } ?? ""))
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.loss)
                     .textSelection(.enabled)
             }
             if sharing.state.orphans > 0 {
                 Text("공유에 안 실린 기록이 \(sharing.state.orphans)건 있습니다. 이 기록은 상대 기기에 안 보입니다.")
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.loss)
                 if canManageHousehold && !sharing.state.isParticipant {
                     Button {
@@ -183,7 +183,7 @@ struct FamilyShareSection: View {
             }
             if let adoption = sharing.lastAdoption {
                 Text(adoption)
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.muted)
                     .textSelection(.enabled)
             }
@@ -195,10 +195,10 @@ struct FamilyShareSection: View {
             if let failure = sharing.lastFailure {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("공유가 안 된 이유")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.scaled(11, weight: .semibold))
                         .foregroundStyle(Color.muted)
                     Text(failure)
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.loss)
                         .textSelection(.enabled)
                 }

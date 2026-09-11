@@ -62,13 +62,13 @@ struct MoreView: View {
                     if notificationsDenied {
                         VStack(alignment: .leading, spacing: 4) {
                             Label("알림이 꺼져 있습니다", systemImage: "bell.slash")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.scaled(13, weight: .medium))
                                 .foregroundStyle(Color.loss)
                             Text("토요일 점검·목실감·회고 알림이 오지 않습니다.")
-                                .font(.system(size: 11.5))
+                                .font(.scaled(11.5))
                                 .foregroundStyle(Color.muted)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
-                                Link("설정 앱에서 켜기", destination: url).font(.system(size: 12.5))
+                                Link("설정 앱에서 켜기", destination: url).font(.scaled(12.5))
                             }
                         }
                     }
@@ -154,7 +154,7 @@ struct MoreView: View {
                               systemImage: copiedReport ? "checkmark" : "doc.on.doc")
                     }
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                     // 피드백 때 "몇 번 빌드인지" (100번, A8).
                     LabeledContent("버전", value: Self.versionText)
@@ -261,13 +261,13 @@ struct NotificationSettingsView: View {
                 case .denied:
                     VStack(alignment: .leading, spacing: 6) {
                         Text("알림이 꺼져 있습니다")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.scaled(13, weight: .medium))
                             .foregroundStyle(Color.loss)
                         Text("토요일에 알려드릴 수 없습니다. 설정 앱에서 알림을 켜주세요.")
-                            .font(.system(size: 11.5))
+                            .font(.scaled(11.5))
                             .foregroundStyle(Color.muted)
                         if let url = URL(string: UIApplication.openSettingsURLString) {
-                            Link("설정 열기", destination: url).font(.system(size: 12.5))
+                            Link("설정 열기", destination: url).font(.scaled(12.5))
                         }
                     }
                 default:
@@ -310,7 +310,7 @@ struct NotificationSettingsView: View {
 
             Section {
                 Text("알림에 금액을 보여줄지는 [잠금 · 가리기]에서 정합니다. 알림은 잠긴 화면에도 뜹니다.")
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
             }
         }
@@ -349,7 +349,7 @@ struct SyncStatusSection: View {
         Section {
             LabeledContent("저장 방식") {
                 Text(modeLabel)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .foregroundStyle(modeColor)
             }
             // **기기에 쓰는 것부터가 먼저다.** iCloud 로 올라가느냐 이전에,
@@ -358,10 +358,10 @@ struct SyncStatusSection: View {
             if let failure = autosave.lastFailure {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("저장 실패")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.scaled(11, weight: .semibold))
                         .foregroundStyle(Color.muted)
                     Text(failure)
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.loss)
                         .textSelection(.enabled)
                 }
@@ -385,7 +385,7 @@ struct SyncStatusSection: View {
                     // **길게 눌러 복사된다.** 이 글자가 맥 없는 이 저장소에서
                     // 유일한 단서다. 복사할 수 없으면 옮겨 적다 틀린다.
                     Text(failure)
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.loss)
                         .textSelection(.enabled)
                 }
@@ -401,10 +401,10 @@ struct SyncStatusSection: View {
             if case .localOnly(let reason) = Persistence.mode {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("붙지 못한 이유")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.scaled(11, weight: .semibold))
                         .foregroundStyle(Color.muted)
                     Text(reason)
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.loss)
                         .textSelection(.enabled)
                 }
@@ -430,11 +430,11 @@ struct SyncStatusSection: View {
         LabeledContent(title) {
             if let attempt {
                 Text(attempt.succeeded ? "성공" : "실패")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .foregroundStyle(attempt.succeeded ? Color.gain : Color.loss)
             } else {
                 Text("아직 없음")
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.muted)
             }
         }

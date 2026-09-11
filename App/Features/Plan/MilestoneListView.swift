@@ -26,7 +26,7 @@ struct MilestoneListView: View {
             if milestones.isEmpty {
                 Section {
                     Text("자동으로 판정되는 마일스톤(자산 2배 · 수익 > 적립금 · 목표 달성)은 이미 로드맵에 있습니다.\n여기에는 앱이 알 수 없는 것을 적습니다 — 아이 대학 입학, 전세 만기 같은 것들.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
                 }
@@ -79,7 +79,7 @@ struct MilestoneListView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(milestone.label.isEmpty ? "이름 없음" : milestone.label)
-                        .font(.system(size: 13))
+                        .font(.scaled(13))
                         .foregroundStyle(Color.ink)
                     // 누구의 일인가. 가족 전체면 배지를 달지 않는다 —
                     // 대부분이 가족 일이라 배지가 다 붙으면 소용없다.
@@ -89,14 +89,14 @@ struct MilestoneListView: View {
                                 .fill(Color.member(member.colorIndex))
                                 .frame(width: 6, height: 6)
                             Text(member.name.isEmpty ? "이름 없음" : member.name)
-                                .font(.system(size: 10))
+                                .font(.scaled(10))
                                 .foregroundStyle(Color.muted)
                         }
                     }
                 }
                 if !milestone.note.isEmpty {
                     Text(milestone.note)
-                        .font(.system(size: 10.5))
+                        .font(.scaled(10.5))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                 }

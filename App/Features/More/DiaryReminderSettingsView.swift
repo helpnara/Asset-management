@@ -37,10 +37,10 @@ struct DiaryReminderSettingsView: View {
                 case .denied:
                     VStack(alignment: .leading, spacing: 6) {
                         Text("알림이 꺼져 있습니다")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.scaled(13, weight: .medium))
                             .foregroundStyle(Color.loss)
                         if let url = URL(string: UIApplication.openSettingsURLString) {
-                            Link("설정 열기", destination: url).font(.system(size: 12.5))
+                            Link("설정 열기", destination: url).font(.scaled(12.5))
                         }
                     }
                 default:

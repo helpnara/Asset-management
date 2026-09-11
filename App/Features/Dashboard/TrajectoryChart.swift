@@ -134,7 +134,7 @@ struct TrajectoryChart: View {
             // 오른쪽 끝과 맞아야 한 덩어리로 읽힌다.
             Toggle(isOn: $showsReal) {
                 Text("오늘 돈으로 보기")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
             }
             .toggleStyle(.switch)
@@ -159,7 +159,7 @@ struct TrajectoryChart: View {
                 .lineLimit(2)
         } else {
             Text("차트를 누르거나 끌면 그 시점의 값이 보입니다")
-                .font(.system(size: 9.5))
+                .font(.scaled(9.5))
                 .foregroundStyle(Color.faint)
         }
     }
@@ -228,7 +228,7 @@ struct TrajectoryChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     .annotation(position: .bottom, alignment: .center, spacing: 1) {
                         Text(event.label)
-                            .font(.system(size: 7.5))
+                            .font(.scaled(7.5))
                             .foregroundStyle(Color.faint)
                             .lineLimit(1)
                     }
@@ -283,10 +283,10 @@ struct TrajectoryChart: View {
     private var placeholder: some View {
         VStack(spacing: 6) {
             Text("궤적은 점검을 두 번 하면 그려집니다")
-                .font(.system(size: 12))
+                .font(.scaled(12))
                 .foregroundStyle(Color.muted)
             Text("계획 탭에서 월 적립액과 기대수익률을 넣으면 예측선이 먼저 나타납니다")
-                .font(.system(size: 10))
+                .font(.scaled(10))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
         }

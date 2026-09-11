@@ -9,7 +9,7 @@ struct ReadOnlyNote: View {
 
     var body: some View {
         Label(text, systemImage: "lock")
-            .font(.system(size: 12))
+            .font(.scaled(12))
             .foregroundStyle(Color.muted)
     }
 }

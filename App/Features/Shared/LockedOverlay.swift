@@ -14,19 +14,19 @@ struct LockedOverlay: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "lock.fill")
-                .font(.system(size: 34, weight: .light))
+                .font(.scaled(34, weight: .light))
                 .foregroundStyle(Color.faint)
 
             Text("느 린 부 자 의 기 록")
                 .eyebrowStyle()
 
             Text("잠겨 있습니다")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.scaled(17, weight: .semibold))
                 .foregroundStyle(Color.ink)
 
             if let error = lock.lastError {
                 Text(error)
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.loss)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
@@ -40,7 +40,7 @@ struct LockedOverlay: View {
                 }
             } label: {
                 Text(isAsking ? "인증 중…" : "\(AppLock.biometryLabel)로 열기")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.onInk)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
@@ -55,10 +55,10 @@ struct LockedOverlay: View {
                 // 어차피 아무나 열 수 있으므로 이 잠금이 지키는 것이 없다.
                 VStack(spacing: 8) {
                     Text("이 기기로는 본인 확인을 할 수 없습니다.")
-                        .font(.system(size: 11.5))
+                        .font(.scaled(11.5))
                         .foregroundStyle(Color.muted)
                     Button("잠금을 끄고 들어가기") { lock.disableLockAndEnter() }
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.scaled(13, weight: .medium))
                 }
                 .padding(.top, 10)
             } else if lock.lastError != nil {
@@ -67,7 +67,7 @@ struct LockedOverlay: View {
                         UIApplication.shared.open(url)
                     }
                 }
-                .font(.system(size: 13))
+                .font(.scaled(13))
                 .padding(.top, 2)
             }
         }

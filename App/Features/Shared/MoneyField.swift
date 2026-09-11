@@ -80,17 +80,17 @@ struct MoneyField: View {
                         if isFocused {
                             // `만` · `억` (93번, B3). 12 → 만 → 120,000.
                             Button("만") { multiply(10_000) }
-                                .font(.system(size: 14))
+                                .font(.scaled(14))
                             Button("억") { multiply(100_000_000) }
-                                .font(.system(size: 14))
+                                .font(.scaled(14))
                             Spacer()
                             Button("완료") { isFocused = false }
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.scaled(15, weight: .semibold))
                         }
                     }
                 }
             Text("원")
-                .font(.system(size: 13))
+                .font(.scaled(13))
                 .foregroundStyle(Color.muted)
         }
     }

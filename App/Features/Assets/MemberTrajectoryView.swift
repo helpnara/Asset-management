@@ -56,7 +56,7 @@ struct MemberTrajectoryView: View {
             }
             if retirementYear != householdRetirementYear {
                 Text("가구 은퇴 연도는 \(String(householdRetirementYear))년입니다. 이 사람은 은퇴 나이를 따로 적어 두었습니다.")
-                    .font(.system(size: 10.5))
+                    .font(.scaled(10.5))
                     .foregroundStyle(Color.faint)
             }
         }
@@ -70,7 +70,7 @@ struct MemberTrajectoryView: View {
     private var chart: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("궤적")
-                .font(.system(size: 12.5, weight: .medium))
+                .font(.scaled(12.5, weight: .medium))
                 .foregroundStyle(Color.bodyText)
             TrajectoryChart(
                 points: points,
@@ -131,7 +131,7 @@ struct MemberTrajectoryView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("이 사람의 월 적립 (회사 매칭 포함)")
-                    .font(.system(size: 12.5))
+                    .font(.scaled(12.5))
                     .foregroundStyle(Color.bodyText)
                 Spacer()
                 Text(Won.abbreviated(Money(minorUnits: effectiveMonthly, currency: .krw),
@@ -150,7 +150,7 @@ struct MemberTrajectoryView: View {
 
             if monthlyMinor != nil, monthlyMinor != plannedMonthly {
                 Button("계획값으로 되돌리기") { monthlyMinor = nil }
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
             }
         }
         .padding(14)
@@ -159,7 +159,7 @@ struct MemberTrajectoryView: View {
 
     private var disclaimer: some View {
         Text("손잡이를 돌려도 계획은 바뀌지 않습니다. 얼마를 더 넣으면 어떻게 되는지 보는 곳입니다.")
-            .font(.system(size: 10.5))
+            .font(.scaled(10.5))
             .foregroundStyle(Color.faint)
     }
 

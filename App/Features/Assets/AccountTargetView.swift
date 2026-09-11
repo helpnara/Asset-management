@@ -38,7 +38,7 @@ struct AccountTargetView: View {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(holding.weightLabel)
-                                .font(.system(size: 12.5))
+                                .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Text(Won.abbreviated(holding.value, suffix: "원"))
                                 .font(.figure(10))
@@ -72,7 +72,7 @@ struct AccountTargetView: View {
                     ForEach(splitSuggestion, id: \.label) { row in
                         HStack {
                             Text(row.label)
-                                .font(.system(size: 12.5))
+                                .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Spacer()
                             Text(Won.abbreviated(row.amount, suffix: "원"))
@@ -92,7 +92,7 @@ struct AccountTargetView: View {
         .overlay {
             if account.weightedHoldings.isEmpty {
                 Text("먼저 종목을 등록하세요")
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.muted)
             }
         }

@@ -34,7 +34,7 @@ struct PastRecordsView: View {
                     Text(canManageHousehold
                          ? "아직 기록이 없습니다. 오른쪽 위 + 로 과거 시점의 총자산을 넣으세요."
                          : "아직 기록이 없습니다.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                 }
             }
@@ -53,7 +53,7 @@ struct PastRecordsView: View {
 
             Section {
                 Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.")
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
         }
@@ -82,7 +82,7 @@ struct PastRecordsView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(snapshot.weekAnchor, format: .dateTime.year().month().day())
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 if snapshot.liabilitiesMinor != 0 {
                     Text("부채 " + Won.abbreviated(

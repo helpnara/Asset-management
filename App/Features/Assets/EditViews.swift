@@ -240,7 +240,7 @@ struct AccountEditView: View {
                     } else {
                         LabeledContent("연 기대수익률") {
                             Text("계획의 \(account.kind.returnProfile.label) 값을 따름")
-                                .font(.system(size: 12))
+                                .font(.scaled(12))
                                 .foregroundStyle(Color.muted)
                         }
                     }
@@ -531,7 +531,7 @@ struct HoldingEditView: View {
                     Section {
                         Label {
                             Text("미국 세적 구성원의 계좌에 한국 상장 ETF입니다. PFIC로 분류되어 세금이 징벌적입니다.")
-                                .font(.system(size: 12))
+                                .font(.scaled(12))
                         } icon: {
                             Image(systemName: "exclamationmark.triangle")
                         }

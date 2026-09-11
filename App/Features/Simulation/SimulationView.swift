@@ -135,7 +135,7 @@ struct SimulationView: View {
     private func headline(_ plan: Plan, _ knobs: Knobs) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: "\(knobs.retirementYear)년 예상")
-                .font(.system(size: 11.5))
+                .font(.scaled(11.5))
                 .foregroundStyle(Color.muted)
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -153,7 +153,7 @@ struct SimulationView: View {
                     .foregroundStyle(outcome.delta.minorUnits > 0 ? Color.gain : Color.loss)
             } else {
                 Text("계획 그대로입니다. 아래 손잡이를 돌려 보세요.")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.faint)
             }
 
@@ -234,7 +234,7 @@ struct SimulationView: View {
                 .fill(color)
                 .frame(width: dashed ? 6 : 12, height: 2.5)
             Text(label)
-                .font(.system(size: 9.5))
+                .font(.scaled(9.5))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -248,7 +248,7 @@ struct SimulationView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("은퇴 때 목표를 넘길 확률")
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.scaled(12.5, weight: .medium))
                         .foregroundStyle(Color.bodyText)
                     Spacer()
                     Text(verbatim: "\(percent)%")
@@ -277,7 +277,7 @@ struct SimulationView: View {
                 // 무엇을 어떻게 센 숫자인지 한 문단. "70%면 괜찮은 건가" 에
                 // 답하려면 셈법이 보여야 한다 (68번).
                 Text(probabilityExplanation)
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.muted)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -288,7 +288,7 @@ struct SimulationView: View {
                     let survivalPercent = Int((survival * 100).rounded())
                     HStack(alignment: .firstTextBaseline) {
                         Text("끝까지 안 바닥날 확률")
-                            .font(.system(size: 12))
+                            .font(.scaled(12))
                             .foregroundStyle(Color.muted)
                         Spacer()
                         Text(verbatim: "\(survivalPercent)%")
@@ -399,7 +399,7 @@ struct SimulationView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(title)
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
                 Spacer()
                 // 값을 누르면 숫자로 넣는다 (101번).
@@ -412,7 +412,7 @@ struct SimulationView: View {
                             .font(.figure(14, weight: .semibold))
                             .foregroundStyle(value.wrappedValue == baselineValue ? Color.ink : Color.dad)
                         Image(systemName: "keyboard")
-                            .font(.system(size: 9))
+                            .font(.scaled(9))
                             .foregroundStyle(Color.faint)
                     }
                 }
@@ -467,7 +467,7 @@ struct SimulationView: View {
     private func depletionRow(_ outcome: SimulationOutcome) -> some View {
         HStack {
             Text("자산 고갈")
-                .font(.system(size: 12))
+                .font(.scaled(12))
                 .foregroundStyle(Color.muted)
             Spacer()
             if let year = outcome.depletionYear {
@@ -476,7 +476,7 @@ struct SimulationView: View {
                     .foregroundStyle(Color.loss)
             } else {
                 Text("끝까지 안 바닥남")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .foregroundStyle(Color.gain)
             }
         }
@@ -486,7 +486,7 @@ struct SimulationView: View {
     private func spreadRow(_ label: String, _ amount: Money, _ color: Color) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 12))
+                .font(.scaled(12))
                 .foregroundStyle(Color.muted)
             Spacer()
             Text(Won.abbreviated(amount, suffix: "원"))
@@ -504,7 +504,7 @@ struct SimulationView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("시나리오")
-                    .font(.system(size: 12.5, weight: .medium))
+                    .font(.scaled(12.5, weight: .medium))
                     .foregroundStyle(Color.bodyText)
                 Spacer()
                 if canEdit {
@@ -513,7 +513,7 @@ struct SimulationView: View {
                         isNamingScenario = true
                     } label: {
                         Label("지금 조합 저장", systemImage: "bookmark")
-                            .font(.system(size: 12))
+                            .font(.scaled(12))
                     }
                     .disabled(outcome == nil)
                 }
@@ -523,7 +523,7 @@ struct SimulationView: View {
                 Text(canEdit
                      ? "마음에 든 조합에 이름을 붙여 두면 손잡이를 다시 돌리지 않아도 됩니다."
                      : "저장해 둔 조합이 없습니다. 손잡이는 마음껏 돌려 보셔도 계획은 바뀌지 않습니다.")
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             } else {
                 ForEach(scenarios) { scenario in
@@ -570,10 +570,10 @@ struct SimulationView: View {
         let column: CGFloat = 62
         return VStack(spacing: 0) {
             HStack(spacing: 6) {
-                Text("나란히").font(.system(size: 9.5)).foregroundStyle(Color.faint)
+                Text("나란히").font(.scaled(9.5)).foregroundStyle(Color.faint)
                 Spacer(minLength: 0)
                 ForEach(["월 적립", "은퇴", "수익률", "은퇴 때"], id: \.self) { title in
-                    Text(title).font(.system(size: 9.5)).foregroundStyle(Color.faint)
+                    Text(title).font(.scaled(9.5)).foregroundStyle(Color.faint)
                         .frame(width: column, alignment: .trailing)
                 }
             }
@@ -583,7 +583,7 @@ struct SimulationView: View {
             ForEach(rows) { row in
                 HStack(spacing: 6) {
                     Text(row.name)
-                        .font(.system(size: 11.5, weight: row.isCurrent ? .semibold : .regular))
+                        .font(.scaled(11.5, weight: row.isCurrent ? .semibold : .regular))
                         .foregroundStyle(row.isCurrent ? Color.dad : Color.ink)
                         .lineLimit(1)
                     Spacer(minLength: 0)
@@ -607,7 +607,7 @@ struct SimulationView: View {
                 Rectangle().fill(Color.rule).frame(height: 1)
             }
             Text("은퇴 때 금액은 저장할 당시의 계산값입니다. 계획을 고친 뒤에는 다시 불러 저장하세요.")
-                .font(.system(size: 9.5))
+                .font(.scaled(9.5))
                 .foregroundStyle(Color.faint)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 6)
@@ -637,7 +637,7 @@ struct SimulationView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(scenario.name.isEmpty ? "이름 없음" : scenario.name)
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.ink)
                     Text(verbatim: "월 \(Won.abbreviated(Money(minorUnits: scenario.monthlyMinor, currency: .krw), suffix: "원")) · \(scenario.retirementYear)년 · \(PercentFormatter.oneDecimal(Decimal(scenario.returnBP) / 10000))%")
                         .font(.figure(10))
@@ -657,7 +657,7 @@ struct SimulationView: View {
                     context.delete(scenario)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.scaled(14))
                         .foregroundStyle(Color.ruleStrong)
                 }
                 .buttonStyle(.plain)
@@ -681,7 +681,7 @@ struct SimulationView: View {
         // 변동성은 밴드에만 쓰고 계획에는 저장하지 않는다. 이걸 적어 두지 않으면
         // "반영을 눌렀는데 변동성이 안 남는다"는 오해가 생긴다.
         Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다. 밴드는 변동성을 넣고 여러 번 굴린 결과이고, 변동성은 계획에 저장되지 않습니다.")
-            .font(.system(size: 10.5))
+            .font(.scaled(10.5))
             .foregroundStyle(Color.faint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 2)

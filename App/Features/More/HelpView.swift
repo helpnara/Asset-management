@@ -63,10 +63,10 @@ struct HelpView: View {
     private func row(_ entry: Entry) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(entry.term)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.scaled(14, weight: .semibold))
                 .foregroundStyle(Color.ink)
             Text(entry.meaning)
-                .font(.system(size: 12.5))
+                .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)

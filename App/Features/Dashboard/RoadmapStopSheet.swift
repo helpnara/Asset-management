@@ -27,7 +27,7 @@ struct RoadmapStopSheet: View {
                     thatYear
                     byMember
                     Text("입력한 가정(연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))%)에 따른 계산이며 미래 수익을 보장하지 않습니다. 구성원별 합은 사람마다 따로 굴린 값이라 가족 예상과 조금 다를 수 있습니다.")
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                         .lineSpacing(3)
                         .padding(20)
@@ -57,7 +57,7 @@ struct RoadmapStopSheet: View {
                 .foregroundStyle(Color.ink)
             if let point {
                 Text("오늘 돈으로 \(Won.compact(point.real)) · \(year - thisYear)년 뒤")
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 8)
             }
@@ -119,10 +119,10 @@ struct RoadmapStopSheet: View {
                         HStack(spacing: 6) {
                             Circle().fill(Color.member(member.colorIndex)).frame(width: 8, height: 8)
                             Text(member.name.isEmpty ? "이름 없음" : member.name)
-                                .font(.system(size: 12.5))
+                                .font(.scaled(12.5))
                                 .foregroundStyle(Color.ink)
                             Text("\(max(0, year - member.birthYear))세")
-                                .font(.system(size: 10))
+                                .font(.scaled(10))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
@@ -143,7 +143,7 @@ struct RoadmapStopSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text(label)
-                    .font(.system(size: 12, weight: emphasized ? .medium : .regular))
+                    .font(.scaled(12, weight: emphasized ? .medium : .regular))
                     .foregroundStyle(emphasized ? Color.ink : Color.muted)
                 Spacer()
                 Text(Won.compact(money, sign: sign ? .always : .negativeOnly))
@@ -158,7 +158,7 @@ struct RoadmapStopSheet: View {
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 14, weight: .bold))
+            .font(.scaled(14, weight: .bold))
             .foregroundStyle(Color.ink)
             .padding(.horizontal, 20)
             .padding(.top, 20)

@@ -32,13 +32,13 @@ struct SyncLoadingHint: View {
                 Text(sharing.state.isParticipant
                      ? "관리자가 공유한 기록을 받아오는 중"
                      : "iCloud 에서 기록을 받아오는 중")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.scaled(15, weight: .bold))
                     .foregroundStyle(Color.ink)
             }
             Text(sharing.state.isParticipant
                  ? "처음에는 1~2분 걸릴 수 있습니다. 화면이 그대로면 앱을 껐다 켜 보세요."
                  : "다른 기기에서 적은 기록이 있으면 곧 나타납니다. 처음 쓰는 기기라면 잠시 뒤 시작 화면이 뜹니다.")
-                .font(.system(size: 12.5))
+                .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .lineSpacing(4)
         }

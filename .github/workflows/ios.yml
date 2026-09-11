@@ -326,6 +326,13 @@ jobs:
               # (2) 아직 안 그려진 화면은 단색이라 PNG 가 유난히 작다.
               #     제일 단순한 실제 화면(01-empty)도 15만 바이트가 넘는다.
               size=$(stat -f%z "screenshots/$file")
+              # (3) 홈 화면은 벽지 때문에 PNG 가 유난히 크다 (3MB 안팎). 앱 화면은
+              #     제일 복잡한 것도 1MB 를 넘지 않는다. 앱이 아직 앞으로 안 나온 것이다.
+              if [ "$size" -ge 2000000 ]; then
+                echo "  홈 화면 같습니다 ($size 바이트). 다시 ($attempt/3)"
+                sleep 5
+                continue
+              fi
               if [ "$size" -ge 120000 ]; then
                 echo "찍음: $file ($*)"
                 return 0

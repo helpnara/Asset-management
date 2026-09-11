@@ -76,10 +76,10 @@ struct OnePagerPreviewView: View {
         let overflows = pageHeight > paperHeight + 0.5
         return VStack(alignment: .leading, spacing: 3) {
             Text(fitText(pageHeight: pageHeight, overflows: overflows))
-                .font(.system(size: 13, weight: .semibold))
+                .font(.scaled(13, weight: .semibold))
                 .foregroundStyle(overflows ? Color.loss : Color.ink)
             Text("A4 한 장은 595 × 842pt 입니다. 빨간 선이 한 장이 끝나는 자리입니다.")
-                .font(.system(size: 11))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

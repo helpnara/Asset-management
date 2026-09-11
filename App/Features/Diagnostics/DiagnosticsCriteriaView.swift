@@ -81,7 +81,7 @@ struct DiagnosticsCriteriaView: View {
 
                 Section {
                     Text("계좌별 연간 한도와 올해 납입액은 자산 탭에서 계좌를 열어 넣습니다. IRP · 연금저축 · ISA 계좌에만 나타납니다.")
-                        .font(.system(size: 12))
+                        .font(.scaled(12))
                         .foregroundStyle(Color.muted)
                 } header: {
                     Text("세제혜택 계좌")
@@ -94,7 +94,7 @@ struct DiagnosticsCriteriaView: View {
                 Section {
                     ForEach(DiagnosisKind.allCases) { kind in
                         Toggle(kind.title, isOn: binding(for: kind))
-                            .font(.system(size: 14))
+                            .font(.scaled(14))
                     }
                 } header: {
                     Text("볼 규칙")

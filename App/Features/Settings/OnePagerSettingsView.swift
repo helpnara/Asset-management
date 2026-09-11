@@ -48,7 +48,7 @@ struct OnePagerSettingsView: View {
                 }
             } else {
                 Text("계획을 먼저 만드세요")
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.muted)
             }
         }

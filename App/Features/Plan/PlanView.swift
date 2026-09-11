@@ -90,7 +90,7 @@ struct PlanView: View {
                 }
                 LabeledContent("마지막 수정") {
                     Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
-                        .font(.system(size: 13))
+                        .font(.scaled(13))
                         .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
                 }
             } footer: {
@@ -196,7 +196,7 @@ struct PlanView: View {
             }
             if members.isEmpty {
                 Text("자산 탭에서 구성원을 먼저 추가하세요.")
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
             }
         } header: {
@@ -248,7 +248,7 @@ struct PlanView: View {
                     editingIncome = stream
                 } label: {
                     Label("은퇴 후 소득 추가", systemImage: "plus")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                 }
             }
         } header: {
@@ -262,7 +262,7 @@ struct PlanView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(stream.label.isEmpty ? "이름 없음" : stream.label)
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 5) {
                     Text(verbatim: stream.endYear > 0
@@ -301,7 +301,7 @@ struct PlanView: View {
                     editingEvent = event
                 } label: {
                     Label("목돈 이벤트 추가", systemImage: "plus")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                 }
             }
         } header: {
@@ -315,11 +315,11 @@ struct PlanView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(event.label.isEmpty ? "이름 없음" : event.label)
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 5) {
                     Text(event.date, format: .dateTime.year().month())
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                     if event.isAlreadyReflected {
                         StatusBadge(text: "이미 반영됨")

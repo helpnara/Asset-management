@@ -48,14 +48,14 @@ struct PrincipleListView: View {
                             .font(.figure(13, weight: .semibold))
                             .foregroundStyle(Color.faint)
                         TextField("한 줄 제목", text: bind.title)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.scaled(14, weight: .medium))
                     }
                     TextField("부연 설명", text: bind.detail, axis: .vertical)
-                        .font(.system(size: 12))
+                        .font(.scaled(12))
                         .foregroundStyle(Color.bodyText)
                         .lineLimit(1...4)
                     TextField("점검 주기 (분기 1회 …)", text: bind.reviewNote)
-                        .font(.system(size: 11))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                 }
                 .padding(.vertical, 2)
@@ -74,7 +74,7 @@ struct PrincipleListView: View {
                     add()
                 } label: {
                     Label("원칙 추가", systemImage: "plus")
-                        .font(.system(size: 13))
+                        .font(.scaled(13))
                 }
             }
 
@@ -87,7 +87,7 @@ struct PrincipleListView: View {
                     } label: {
                         Label("기본 원칙 넣기 (\(missingDefaults.count)개)",
                               systemImage: "text.badge.plus")
-                            .font(.system(size: 13))
+                            .font(.scaled(13))
                     }
                 } footer: {
                     Text("투자 원칙 열여섯 개를 그대로 넣습니다. 넣은 뒤에 고치고 지울 수 있고, 이미 적어 둔 것과 같은 문장은 건너뜁니다.")
@@ -101,10 +101,10 @@ struct PrincipleListView: View {
         if principles.isEmpty {
             VStack(spacing: 10) {
                 Text("아직 적은 원칙이 없습니다")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 **기본 원칙 넣기** 를 누르면 열여섯 개로 시작할 수 있습니다.")
-                    .font(.system(size: 12))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)

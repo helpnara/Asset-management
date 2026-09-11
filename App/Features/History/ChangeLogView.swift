@@ -16,7 +16,7 @@ struct ChangeLogView: View {
             if logs.isEmpty {
                 Section {
                     Text("아직 남은 이력이 없습니다.\n주간 점검을 마치거나 계좌·종목을 더하고 계획 값을 고치면 여기 쌓입니다.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
                 }
@@ -43,24 +43,24 @@ struct ChangeLogView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(log.kind.label)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.scaled(9, weight: .medium))
                         .foregroundStyle(Color.muted)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Color.raised, in: Capsule())
                     Text(log.subject)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.scaled(13, weight: .medium))
                         .foregroundStyle(Color.ink)
                 }
                 Text(log.summary)
-                    .font(.system(size: 11.5))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.bodyText)
             }
             Spacer(minLength: 6)
             // **누가** (74번). 가족 넷이 쓰면 이것 없이는 이력이 반쪽이다.
             if !log.actor.isEmpty {
                 Text(log.actor)
-                    .font(.system(size: 10))
+                    .font(.scaled(10))
                     .foregroundStyle(Color.faint)
                     .lineLimit(1)
             }

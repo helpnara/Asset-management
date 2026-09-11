@@ -248,10 +248,10 @@ struct AssetsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("가족 총자산")
-                                .font(.system(size: 12.5))
+                                .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Text("구성원 · 지역 · 자산군 비중")
-                                .font(.system(size: 9.5))
+                                .font(.scaled(9.5))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
@@ -279,7 +279,7 @@ struct AssetsView: View {
                                 addAccount(to: member)
                             } label: {
                                 Label("계좌 추가", systemImage: "plus")
-                                    .font(.system(size: 12.5))
+                                    .font(.scaled(12.5))
                             }
                         }
                     }
@@ -299,13 +299,13 @@ struct AssetsView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isExpanded(member) ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.scaled(9, weight: .semibold))
                         .foregroundStyle(Color.faint)
                     Text(member.name.isEmpty ? "이름 없음" : member.name)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.scaled(12, weight: .bold))
                         .foregroundStyle(Color.ink)
                     Text("\(member.age)세")
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                 }
             }
@@ -327,14 +327,14 @@ struct AssetsView: View {
                 MemberTrajectoryView(member: member)
             } label: {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.dad)
 
             if mayEdit(member) {
                 Button("편집") { editingMember = member }
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.dad)
             }
@@ -349,14 +349,14 @@ struct AssetsView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: isExpanded(account) ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.scaled(8, weight: .semibold))
                     .foregroundStyle(Color.faint)
                 Text(account.name.isEmpty ? account.kind.label : account.name)
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 if !account.institution.isEmpty {
                     Text(account.institution)
-                        .font(.system(size: 10))
+                        .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                 }
                 if account.kind.isLiability {
@@ -435,7 +435,7 @@ struct AssetsView: View {
                             addHolding(to: account)
                         } label: {
                             Label("종목 추가", systemImage: "plus")
-                                .font(.system(size: 12))
+                                .font(.scaled(12))
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(Color.dad)
@@ -446,7 +446,7 @@ struct AssetsView: View {
                             targetingAccount = account
                         } label: {
                             Label("목표 비중", systemImage: "chart.pie")
-                                .font(.system(size: 12))
+                                .font(.scaled(12))
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(Color.dad)
@@ -530,7 +530,7 @@ struct AssetsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 5) {
                     Text(holding.name.isEmpty ? "이름 없음" : holding.name)
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.bodyText)
                     if holding.status != .accumulating {
                         StatusBadge(text: holding.status.label,
@@ -551,7 +551,7 @@ struct AssetsView: View {
                 // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
                 // 목록에서 실제로 궁금한 것은 상품 종류다.
                 Text("\(holding.instrumentType.label) · \(holding.listingCountryCode) · \(holding.cadence.label)")
-                    .font(.system(size: 9.5))
+                    .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
             }
             Spacer(minLength: 8)
@@ -576,16 +576,16 @@ struct AssetsView: View {
     private var emptyState: some View {
         VStack(spacing: 14) {
             Text("구성원부터 추가하세요")
-                .font(.system(size: 15, weight: .bold))
+                .font(.scaled(15, weight: .bold))
                 .foregroundStyle(Color.ink)
             Text("아빠 · 엄마 · 아들 · 딸처럼 가족 단위로 나눠 관리합니다.\n한 명만 넣어도 시작할 수 있습니다.")
-                .font(.system(size: 12.5))
+                .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
             if canManageHousehold {
                 Button("구성원 추가") { addMember() }
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.scaled(13, weight: .medium))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
                     .foregroundStyle(Color.onInk)
@@ -709,10 +709,10 @@ struct MemberOrderView: View {
                             .fill(Color.member(member.colorIndex))
                             .frame(width: 10, height: 10)
                         Text(member.name.isEmpty ? "이름 없음" : member.name)
-                            .font(.system(size: 13))
+                            .font(.scaled(13))
                             .foregroundStyle(Color.ink)
                         Text(member.roleNote)
-                            .font(.system(size: 10))
+                            .font(.scaled(10))
                             .foregroundStyle(Color.faint)
                     }
                 }
@@ -777,13 +777,13 @@ struct MoveTargetSheet: View {
                                             .foregroundStyle(Color.ink)
                                         if !account.institution.isEmpty {
                                             Text(account.institution)
-                                                .font(.system(size: 11))
+                                                .font(.scaled(11))
                                                 .foregroundStyle(Color.faint)
                                         }
                                         Spacer()
                                         if account.id == current {
                                             Text("지금 여기")
-                                                .font(.system(size: 11))
+                                                .font(.scaled(11))
                                                 .foregroundStyle(Color.muted)
                                         }
                                     }
@@ -803,7 +803,7 @@ struct MoveTargetSheet: View {
                                 Spacer()
                                 if member.id == current {
                                     Text("지금 여기")
-                                        .font(.system(size: 11))
+                                        .font(.scaled(11))
                                         .foregroundStyle(Color.muted)
                                 }
                             }

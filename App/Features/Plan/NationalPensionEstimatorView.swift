@@ -109,7 +109,7 @@ struct NationalPensionEstimatorView: View {
                         }
                     } else {
                         Text("가입 기간이 \(NationalPension.minimumYears)년 미만이면 연금이 아니라 반환일시금입니다.")
-                            .font(.system(size: 12.5))
+                            .font(.scaled(12.5))
                             .foregroundStyle(Color.loss)
                     }
                 } header: {

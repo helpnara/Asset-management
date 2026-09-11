@@ -75,7 +75,7 @@ struct RoadmapStrip: View {
                     .frame(height: 12)
 
                     Text(stop.label)
-                        .font(.system(size: 8.5, weight: stop.isNow ? .semibold : .regular))
+                        .font(.scaled(8.5, weight: stop.isNow ? .semibold : .regular))
                         .foregroundStyle(labelColor(stop))
                         .lineLimit(2)
                         .multilineTextAlignment(.center)

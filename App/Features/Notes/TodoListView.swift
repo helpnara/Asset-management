@@ -32,7 +32,7 @@ struct TodoListView: View {
                     Text(canEdit
                          ? "아직 적어 둔 것이 없습니다. 오른쪽 위 + 로 추가하세요.\n\"연금저축 5월까지 채우기\" 처럼 숫자로 판정할 수 없는 것들을 여기 둡니다."
                          : "아직 적어 둔 것이 없습니다. 관리자가 적으면 여기에 보입니다.")
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
                 }
@@ -47,14 +47,14 @@ struct TodoListView: View {
                     ForEach(upcomingMaturities, id: \.id) { account in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Image(systemName: "calendar.badge.exclamationmark")
-                                .font(.system(size: 13))
+                                .font(.scaled(13))
                                 .foregroundStyle(Color.loss)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(maturityTitle(account))
-                                    .font(.system(size: 13.5, weight: .medium))
+                                    .font(.scaled(13.5, weight: .medium))
                                     .foregroundStyle(Color.ink)
                                 Text(maturityDetail(account))
-                                    .font(.system(size: 11.5))
+                                    .font(.scaled(11.5))
                                     .foregroundStyle(Color.muted)
                             }
                         }
@@ -84,7 +84,7 @@ struct TodoListView: View {
                         ForEach(done) { row($0) }
                     } label: {
                         Text("완료 \(done.count)건")
-                            .font(.system(size: 12.5))
+                            .font(.scaled(12.5))
                             .foregroundStyle(Color.muted)
                     }
                 }
@@ -184,14 +184,14 @@ struct TodoListView: View {
 
     private func checkmark(_ item: TodoItem) -> some View {
         Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 18))
+            .font(.scaled(18))
             .foregroundStyle(item.isDone ? Color.gain : Color.ruleStrong)
     }
 
     private func summary(_ item: TodoItem) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(item.title.isEmpty ? "이름 없음" : item.title)
-                .font(.system(size: 13))
+                .font(.scaled(13))
                 .foregroundStyle(item.isDone ? Color.faint : Color.ink)
                 .strikethrough(item.isDone, color: Color.faint)
                 .multilineTextAlignment(.leading)

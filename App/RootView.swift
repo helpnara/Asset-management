@@ -97,13 +97,13 @@ struct RootView: View {
     private var trialBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "sparkles")
-                .font(.system(size: 11, weight: .medium))
+                .font(.scaled(11, weight: .medium))
             Text("체험 자료입니다 · 실제 금액이 아닙니다")
-                .font(.system(size: 11, weight: .medium))
+                .font(.scaled(11, weight: .medium))
                 .lineLimit(2)
             Spacer(minLength: 0)
             Button("내 자료로 시작") { isEndingTrial = true }
-                .font(.system(size: 11, weight: .semibold))
+                .font(.scaled(11, weight: .semibold))
         }
         .foregroundStyle(Color.ink)
         .padding(.horizontal, 14)
@@ -126,10 +126,10 @@ struct RootView: View {
                 ProgressView().controlSize(.mini)
             } else {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.scaled(11, weight: .medium))
             }
             Text(text)
-                .font(.system(size: 11, weight: .medium))
+                .font(.scaled(11, weight: .medium))
                 .lineLimit(2)
             Spacer(minLength: 0)
         }

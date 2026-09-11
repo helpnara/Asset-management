@@ -31,7 +31,7 @@ struct FamilyAllocationView: View {
                 ForEach(FamilyAllocation.memberSlices(members)) { slice in
                     HStack {
                         Text(slice.label)
-                            .font(.system(size: 12.5))
+                            .font(.scaled(12.5))
                             .foregroundStyle(Color.bodyText)
                         Spacer()
                         WeightLabel(slice: slice, showsStatus: false)
@@ -58,7 +58,7 @@ struct FamilyAllocationView: View {
         .overlay {
             if familyTotal.minorUnits == 0 {
                 Text("먼저 자산을 등록하세요")
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.muted)
             }
         }
@@ -76,7 +76,7 @@ struct FamilyAllocationView: View {
             ForEach(slices) { slice in
                 HStack(spacing: 8) {
                     Text(slice.label)
-                        .font(.system(size: 12.5))
+                        .font(.scaled(12.5))
                         .foregroundStyle(Color.bodyText)
                     Spacer(minLength: 6)
                     WeightLabel(slice: slice, hidesNoTarget: true)

@@ -133,7 +133,7 @@ struct SimulationChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading, spacing: 2) {
                         Text("바닥")
-                            .font(.system(size: 8.5, weight: .semibold))
+                            .font(.scaled(8.5, weight: .semibold))
                             .foregroundStyle(Color.loss)
                     }
             }
@@ -173,7 +173,7 @@ struct SimulationChart: View {
 
     private var placeholder: some View {
         Text("계획 탭에서 월 적립액과 기대수익률을 먼저 넣어 주세요")
-            .font(.system(size: 12))
+            .font(.scaled(12))
             .foregroundStyle(Color.muted)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)

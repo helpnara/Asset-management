@@ -53,7 +53,7 @@ struct RetrospectiveView: View {
                     share()
                 } label: {
                     Label("그림으로 공유", systemImage: "square.and.arrow.up")
-                        .font(.system(size: 13.5, weight: .medium))
+                        .font(.scaled(13.5, weight: .medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }
@@ -62,7 +62,7 @@ struct RetrospectiveView: View {
                 .disabled(!summary.hasRecords)
 
                 Text("넣은 돈은 계획의 월 적립을 날수로 나눠 어림한 값입니다. 그림에는 금액이 그대로 나옵니다 — 가리기가 켜져 있어도요.")
-                    .font(.system(size: 10))
+                    .font(.scaled(10))
                     .foregroundStyle(Color.faint)
                     .lineSpacing(3)
             }
@@ -78,13 +78,13 @@ struct RetrospectiveView: View {
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
             Spacer()
             Text(period.title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.scaled(15, weight: .bold))
                 .foregroundStyle(Color.ink)
             Spacer()
             Button { step(1) } label: { Image(systemName: "chevron.right") }
                 .disabled(period.isCurrent())
         }
-        .font(.system(size: 14, weight: .semibold))
+        .font(.scaled(14, weight: .semibold))
         .foregroundStyle(Color.ink)
         .padding(.horizontal, 4)
     }
@@ -138,7 +138,7 @@ struct RetrospectiveCard: View {
                 if forPrint { signature }
             } else {
                 Text("이 기간에는 기록이 없습니다")
-                    .font(.system(size: 13))
+                    .font(.scaled(13))
                     .foregroundStyle(muted)
                     .padding(.vertical, 20)
             }
@@ -183,7 +183,7 @@ struct RetrospectiveCard: View {
                     .foregroundStyle(muted)
             } else if summary.endTotal != nil {
                 Text("이 기간 앞의 기록이 없어 증감을 낼 수 없습니다")
-                    .font(.system(size: 11))
+                    .font(.scaled(11))
                     .foregroundStyle(muted)
             }
             if let text = summary.planGapText {
@@ -209,7 +209,7 @@ struct RetrospectiveCard: View {
     private func stat(_ label: String, _ value: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(size: 9.5))
+                .font(.scaled(9.5))
                 .foregroundStyle(muted)
             Text(value)
                 .font(.figure(14, weight: .semibold))
@@ -234,7 +234,7 @@ struct RetrospectiveCard: View {
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 12))
+                .font(.scaled(12))
                 .foregroundStyle(muted)
             Spacer()
             Text(value)
@@ -249,10 +249,10 @@ struct RetrospectiveCard: View {
                 HStack(spacing: 6) {
                     Circle().fill(Color.member(member.colorIndex)).frame(width: 7, height: 7)
                     Text(member.name)
-                        .font(.system(size: 12))
+                        .font(.scaled(12))
                         .foregroundStyle(ink)
                     Text("\(member.enteredWeeks)주 적음")
-                        .font(.system(size: 9.5))
+                        .font(.scaled(9.5))
                         .foregroundStyle(muted)
                     Spacer()
                     if let change = member.change {
@@ -277,7 +277,7 @@ struct RetrospectiveCard: View {
                 HStack(spacing: 6) {
                     Text("🎉")
                     Text(title)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.scaled(12, weight: .medium))
                         .foregroundStyle(ink)
                 }
             }
@@ -290,7 +290,7 @@ struct RetrospectiveCard: View {
         HStack {
             Spacer()
             Text("느린 부자의 기록")
-                .font(.system(size: 9, weight: .medium))
+                .font(.scaled(9, weight: .medium))
                 .foregroundStyle(muted)
         }
         .padding(.top, 14)
