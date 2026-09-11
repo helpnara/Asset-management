@@ -2,13 +2,38 @@ import Core
 import Foundation
 import CoreData
 
-#if DEBUG
-/// CI 스크린샷과 미리보기용 가상 데이터.
+/// CI 스크린샷 · 미리보기 · **체험 자료** 용 가상 데이터.
 ///
 /// **실제 금액·기관명이 아니다.** 저장소에 개인 금융 정보를 커밋하지 않는다는 원칙에 따라
 /// 구조만 실제와 같게 두고 숫자는 전부 지어낸 값을 쓴다.
-/// 실행 인자 `-seedSampleData` 가 있을 때만 인메모리 저장소에 채운다.
+///
+/// 두 길로 쓴다. 실행 인자 `-seedSampleData` 면 인메모리 저장소에 채운다(CI).
+/// 첫 화면의 "체험 자료로 둘러보기" 면 **진짜 저장소에** 채우고 `isActiveKey`
+/// 를 켠다 — 심사자와 처음 받은 사람이 빈 화면 대신 3분 안에 궤적·진단·
+/// 시뮬레이션을 보게 (docs/10-store-strategy.md §2-1). 그래서 Release 에도
+/// 들어간다 (예전에는 `#if DEBUG` 였다).
 enum SampleData {
+
+    /// 지금 저장소가 체험 자료인가. 현황판 위 띠가 이걸 보고 "내 자료로 시작" 을 내민다.
+    static let isActiveKey = "sample.active"
+    static var isActive: Bool { UserDefaults.standard.bool(forKey: isActiveKey) }
+
+    /// 체험 자료를 진짜 저장소에 넣는다. 비어 있을 때만 — 이미 무언가 있으면 안 건드린다.
+    @MainActor
+    static func startTrial(in context: NSManagedObjectContext) {
+        guard context.all(Member.self).isEmpty, context.all(Holding.self).isEmpty else { return }
+        for plan in context.all(Plan.self) { context.delete(plan) }
+        seed(into: context)
+        UserDefaults.standard.set(true, forKey: isActiveKey)
+        try? context.save()
+    }
+
+    /// 체험을 끝내고 빈 상태로. 전부 지우기(G3)와 같은 길이다.
+    @MainActor
+    static func endTrial(in context: NSManagedObjectContext) {
+        BackupDocument.wipeAll(in: context)
+        UserDefaults.standard.removeObject(forKey: isActiveKey)
+    }
 
     static func seed(into context: NSManagedObjectContext) {
         let dad = Member(context: context, name: "아빠", roleNote: "본인", birthYear: 1984, birthMonth: 3,
@@ -266,4 +291,3 @@ enum SampleData {
         holding.lastEnteredAt = Calendar.current.date(byAdding: .day, value: -7, to: .now)
     }
 }
-#endif

@@ -131,9 +131,7 @@ enum Persistence {
             container.loadPersistentStores { _, error in failure = error }
             if let failure { fatalError("인메모리 저장소를 열지 못했습니다: \(failure)") }
             configure(container.viewContext)
-            #if DEBUG
             SampleData.seed(into: container.viewContext)
-            #endif
             return Store(container: container, mode: .inMemory)
         }
 

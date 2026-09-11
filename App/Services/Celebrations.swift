@@ -28,7 +28,7 @@ enum Celebrations {
             let before = previousTotal / eok
             let after = newTotal / eok
             if after > before {
-                found.append(("\(after)억을 넘었습니다", "가족 총자산 \(KoreanAmountFormatter.compact(now))"))
+                found.append(("\(after)억을 넘었습니다", "총자산 \(KoreanAmountFormatter.compact(now))"))
             }
         }
 

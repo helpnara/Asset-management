@@ -8,6 +8,8 @@ import SwiftUI
 /// 설정 화면 깊숙이 묻어 두면 아무도 찾지 않는다.
 struct WelcomeView: View {
     let onFinish: () -> Void
+    /// "체험 자료로 둘러보기" (docs/10 §2-1). 가상의 가족 넷과 12주 기록을 넣고 시작한다.
+    var onTrial: () -> Void = {}
 
     @State private var isAsking = false
     @State private var didAsk = false
@@ -61,6 +63,18 @@ struct WelcomeView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Color.muted)
                     .disabled(isAsking)
+
+                // 처음 받은 사람(심사자 포함)은 가족도 자료도 없다. 빈 화면 대신
+                // 가상 가족의 12주로 궤적·진단·시뮬레이션을 먼저 보게 한다.
+                Button {
+                    onTrial()
+                } label: {
+                    Label("체험 자료로 둘러보기", systemImage: "sparkles")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.dad)
+                }
+                .disabled(isAsking)
+                .padding(.top, 4)
 
                 // 거절해도 막다른 길이 아니라는 것을 먼저 알려 준다.
                 Text("나중에 [더보기 → 주간 점검 알림]에서 켤 수 있습니다.")

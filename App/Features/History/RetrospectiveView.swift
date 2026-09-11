@@ -135,6 +135,7 @@ struct RetrospectiveCard: View {
                     Rectangle().fill(rule).frame(height: 1).padding(.vertical, 12)
                     milestoneRows
                 }
+                if forPrint { signature }
             } else {
                 Text("이 기간에는 기록이 없습니다")
                     .font(.system(size: 13))
@@ -281,5 +282,17 @@ struct RetrospectiveCard: View {
                 }
             }
         }
+    }
+
+    /// 공유 그림 맨 아래 한 줄 (docs/10 §3-5). 카톡으로 간 그림이 이 앱이 알려지는
+    /// 유일한 길이다 — 광고가 없으니. 화면에는 안 찍는다.
+    private var signature: some View {
+        HStack {
+            Spacer()
+            Text("느린 부자의 기록")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(muted)
+        }
+        .padding(.top, 14)
     }
 }

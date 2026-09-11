@@ -375,6 +375,10 @@ jobs:
           shoot 23-retrospective.png -skipOnboarding -seedSampleData -startTab more -startRetrospective
           # 도움말 · 용어집 (G1). 글이 전부라 잘리는 줄이 없는지 본다.
           shoot 24-help.png -skipOnboarding -seedSampleData -startTab more -startHelp
+          # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
+          # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
+          shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL
+          shoot 26-review-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -startReview -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL
 
           # **보기 전용 화면** (docs/09-family-sharing.md 4단계). 아내분이 보게
           # 될 화면이라 원격 세션에서 그림으로 확인할 수 있어야 한다 — 고치는

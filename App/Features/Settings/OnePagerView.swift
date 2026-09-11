@@ -502,9 +502,16 @@ struct OnePagerView: View {
                         .foregroundStyle(Paper.muted)
                 }
             }
-            Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다. 시세를 외부에서 가져오지 않고 직접 적어 넣은 숫자입니다.")
-                .font(.system(size: 6))
-                .foregroundStyle(Paper.faint)
+            HStack(alignment: .firstTextBaseline) {
+                Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다. 시세를 외부에서 가져오지 않고 직접 적어 넣은 숫자입니다.")
+                    .font(.system(size: 6))
+                    .foregroundStyle(Paper.faint)
+                Spacer(minLength: 6)
+                // 남에게 건네는 종이에 앱 이름 한 줄 (docs/10 §3-5).
+                Text("느린 부자의 기록")
+                    .font(.system(size: 6, weight: .medium))
+                    .foregroundStyle(Paper.muted)
+            }
         }
         .padding(.top, 8)
     }

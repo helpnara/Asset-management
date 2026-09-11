@@ -11,6 +11,9 @@ struct RootView: View {
     /// 역할 확인을 이만큼은 기다린다. 그 뒤에는 아는 대로 연다 — 오프라인
     /// 첫 실행에서 영영 잠긴 채 서 있으면 안 된다 (76번).
     @State private var roleWaitExpired = false
+    /// 체험 자료 띠 (docs/10 §2-1).
+    @State private var isTrial = SampleData.isActive
+    @State private var isEndingTrial = false
 
 
     @Fetched private var holdings: [Holding]
@@ -78,13 +81,42 @@ struct RootView: View {
     /// 화면 위의 한 줄 알림. 없으면 자리도 없다.
     @ViewBuilder
     private var notices: some View {
-        if isRolePending {
+        if isTrial {
+            trialBar
+        } else if isRolePending {
             noticeBar(icon: "icloud", text: "iCloud 에서 역할을 확인하는 중 — 잠시 뒤 편집이 열립니다",
                       spinning: true)
         } else if isShareLost {
             noticeBar(icon: "person.2.slash",
                       text: "가족 공유가 끊긴 것 같습니다 · 더보기 → 가족에서 확인하세요",
                       spinning: false)
+        }
+    }
+
+    /// **체험 자료** 띠 (docs/10 §2-1). 가상 자료라는 것을 늘 보이고, 한 번에 지운다.
+    private var trialBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 11, weight: .medium))
+            Text("체험 자료입니다 · 실제 금액이 아닙니다")
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(2)
+            Spacer(minLength: 0)
+            Button("내 자료로 시작") { isEndingTrial = true }
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .foregroundStyle(Color.ink)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.alertSoft)
+        .confirmationDialog("체험 자료를 지우고 빈 상태로 시작할까요?",
+                            isPresented: $isEndingTrial, titleVisibility: .visible) {
+            Button("지우고 시작", role: .destructive) {
+                SampleData.endTrial(in: context)
+                isTrial = false
+            }
+            Button("계속 둘러보기", role: .cancel) {}
         }
     }
 

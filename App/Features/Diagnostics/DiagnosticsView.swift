@@ -87,6 +87,12 @@ struct DiagnosticsView: View {
                 .font(.system(size: 12.5))
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // 상시 고지 (docs/10 §2-2, 규제 R6). 맨 아래 긴 고지는 스크롤해야 보인다.
+            Text("널리 쓰이는 경험칙이며 투자 조언이 아닙니다. 기준은 전부 직접 고칠 수 있습니다.")
+                .font(.system(size: 10.5))
+                .foregroundStyle(Color.faint)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)

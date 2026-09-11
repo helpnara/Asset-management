@@ -27,7 +27,7 @@ enum ReviewNotifications {
             title: "총액만 기록",
             options: [],
             textInputButtonTitle: "기록",
-            textInputPlaceholder: "가족 총자산 (원)"
+            textInputPlaceholder: "총자산 (원)"
         )
         let open = UNNotificationAction(
             identifier: Action.openReview,

@@ -44,7 +44,11 @@ struct SlowRichApp: App {
             ZStack {
                 RootView()
                     .fullScreenCover(isPresented: .constant(needsOnboarding)) {
-                        WelcomeView { onboardingCompleted = true }
+                        WelcomeView(onFinish: { onboardingCompleted = true },
+                                    onTrial: {
+                                        SampleData.startTrial(in: container.viewContext)
+                                        onboardingCompleted = true
+                                    })
                     }
 
                 // 잠금은 화면 위를 통째로 덮는다. 아래를 흐리게만 두면

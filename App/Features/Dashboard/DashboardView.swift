@@ -181,7 +181,8 @@ struct DashboardView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("가족 총자산")
+            // 혼자 쓰면 "가족" 이 어색하다 (docs/10 §3-2).
+            sectionHeader(members.count > 1 ? "가족 총자산" : "총자산")
             Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                 .font(.figure(38, weight: .semibold))
                 .foregroundStyle(Color.ink)

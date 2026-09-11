@@ -1,5 +1,6 @@
 import Core
 import CoreData
+import StoreKit
 import SwiftUI
 
 /// 점검 완료 — 입력의 보상.
@@ -23,6 +24,10 @@ struct ReviewCompleteView: View {
     let session: ReviewSession
 
     @Environment(\.dismiss) private var dismiss
+    /// 별점 창은 **축하가 있는 주에만** 띄운다 (docs/10 §3-4). 아무 때나 띄우면
+    /// 별 셋, 기쁜 순간에 띄우면 별 다섯이다. 애플이 1년에 세 번으로 막으므로
+    /// 우리 쪽에서도 90일에 한 번만 청한다.
+    @Environment(\.requestReview) private var requestReview
     @Fetched private var sessions: [ReviewSession]
     @Fetched private var snapshots: [Snapshot]
     @Fetched(sort: \CashEvent.date) private var cashEvents: [CashEvent]
@@ -46,6 +51,18 @@ struct ReviewCompleteView: View {
     private var change: Money { Money(minorUnits: session.changeMinor, currency: .krw) }
     private var total: Money { Money(minorUnits: session.totalValueMinor, currency: .krw) }
     private var isFirstEver: Bool { session.previousTotalValueMinor == 0 }
+
+    private static let reviewAskedKey = "review.lastAskedAt"
+
+    /// 축하 화면이 뜬 지 1.5초 뒤, 90일에 한 번.
+    private func askForReviewIfDue() async {
+        let last = UserDefaults.standard.object(forKey: Self.reviewAskedKey) as? Date ?? .distantPast
+        guard Date.now.timeIntervalSince(last) > 90 * 86_400 else { return }
+        guard SampleData.isActive == false else { return }
+        try? await Task.sleep(for: .seconds(1.5))
+        UserDefaults.standard.set(Date.now, forKey: Self.reviewAskedKey)
+        requestReview()
+    }
 
     var body: some View {
         NavigationStack {
@@ -86,7 +103,7 @@ struct ReviewCompleteView: View {
                 Text(Won.abbreviated(change, suffix: "원", sign: .always))
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(session.changeMinor < 0 ? Color.loss : Color.gain)
-                Text("가족 총자산 \(Won.abbreviated(total)) · \(session.enteredCount)건 입력")
+                Text("\(driftMembers.count > 1 ? "가족 총자산" : "총자산") \(Won.abbreviated(total)) · \(session.enteredCount)건 입력")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
@@ -134,6 +151,8 @@ struct ReviewCompleteView: View {
         let items = logs.filter { $0.kind == .milestone && $0.at >= session.weekAnchor && $0.at < weekEnd }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
+                Color.clear.frame(height: 0)
+                    .task { await askForReviewIfDue() }
                 ForEach(items) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("🎉")
