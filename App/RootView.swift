@@ -11,8 +11,8 @@ struct RootView: View {
     /// 역할 확인을 이만큼은 기다린다. 그 뒤에는 아는 대로 연다 — 오프라인
     /// 첫 실행에서 영영 잠긴 채 서 있으면 안 된다 (76번).
     @State private var roleWaitExpired = false
-    /// 체험 자료 띠 (docs/10 §2-1).
-    @State private var isTrial = SampleData.isActive
+    /// 체험 모드 (docs/10 §2-1 · 133번).
+    @State private var trial = TrialMode.shared
     @State private var isEndingTrial = false
 
 
@@ -28,6 +28,8 @@ struct RootView: View {
     /// 실제 공유가 확인된 뒤 지웠다 (2026-09-10).
     private var role: FamilyRole {
         if let preview = RolePreview.launchArgument { return preview }
+        // 체험 저장소는 내 것이다 — 참가자 폰에서도 다 만져 볼 수 있어야 한다.
+        if trial.isActive { return .owner }
         // **아직 모르는 동안은 잠근다** (76번). 이 기기가 한 번도 역할을 판정한
         // 적이 없고 가져오기도 안 끝났으면, 참가자 폰의 첫 실행일 수 있다 —
         // 그때 소유자로 열어 두면 남의 것을 고치다 나중에 잠긴다.
@@ -81,7 +83,7 @@ struct RootView: View {
     /// 화면 위의 한 줄 알림. 없으면 자리도 없다.
     @ViewBuilder
     private var notices: some View {
-        if isTrial {
+        if trial.isActive {
             trialBar
         } else if isRolePending {
             noticeBar(icon: "icloud", text: "iCloud 에서 역할을 확인하는 중 — 잠시 뒤 편집이 열립니다",
@@ -110,12 +112,9 @@ struct RootView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background(Color.alertSoft)
-        .confirmationDialog("체험 자료를 지우고 빈 상태로 시작할까요?",
+        .confirmationDialog("체험을 끝내고 내 자료로 갈까요? 체험 자료는 저장되지 않습니다.",
                             isPresented: $isEndingTrial, titleVisibility: .visible) {
-            Button("지우고 시작", role: .destructive) {
-                SampleData.endTrial(in: context)
-                isTrial = false
-            }
+            Button("내 자료로 시작") { trial.end() }
             Button("계속 둘러보기", role: .cancel) {}
         }
     }

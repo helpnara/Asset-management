@@ -626,6 +626,24 @@ final class FamilySharing {
     /// **참가자 상태를 지운다** (79번). 관리자가 공유를 끊은 뒤 이 기기가
     /// 영영 "참가 중" 으로 남지 않게 — 기억한 역할과 받아 둔 참가자 ID 를
     /// 비우고 다시 읽는다. 공유 저장소는 이미 비어 있으므로 지울 기록은 없다.
+    /// **개인 저장소에 남은 가족 기록을 지운다** (133번). 참가자 폰에서만.
+    ///
+    /// 참가자 폰의 개인 저장소에 든 가족 기록은 상대에게 안 가고, 화면에서는
+    /// 공유 기록과 섞여 보인다 — 체험 자료가 진짜 저장소로 들어갔던 사고가
+    /// 그렇게 남았다. 공유 저장소는 손대지 않는다.
+    func deleteStrays() {
+        guard state.isParticipant, let container = cloudContainer,
+              let privateStore = Persistence.privateStore else { return }
+        let context = Persistence.viewContext
+        for entity in Self.householdEntities(of: container) + ["Household"] {
+            let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+            request.affectedStores = [privateStore]
+            for object in (try? context.fetch(request)) ?? [] { context.delete(object) }
+        }
+        try? context.save()
+        refreshState()
+    }
+
     func forgetParticipation() {
         UserDefaults.standard.removeObject(forKey: Self.roleKey)
         UserDefaults.standard.removeObject(forKey: Self.userRecordKey)

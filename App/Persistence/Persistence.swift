@@ -122,17 +122,7 @@ enum Persistence {
     static func open() -> Store {
         // CI 스크린샷은 인메모리다. 여기에 iCloud 를 붙이면 안 된다.
         if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
-            let container = NSPersistentContainer(name: modelName,
-                                                  managedObjectModel: managedObjectModel)
-            let description = NSPersistentStoreDescription()
-            description.type = NSInMemoryStoreType
-            container.persistentStoreDescriptions = [description]
-            var failure: Error?
-            container.loadPersistentStores { _, error in failure = error }
-            if let failure { fatalError("인메모리 저장소를 열지 못했습니다: \(failure)") }
-            configure(container.viewContext)
-            SampleData.seed(into: container.viewContext)
-            return Store(container: container, mode: .inMemory)
+            return Store(container: makeTrialContainer(), mode: .inMemory)
         }
 
         // CI 는 `CODE_SIGNING_ALLOWED=NO` 로 빌드해서 entitlement 가 붙지 않는다.
@@ -311,6 +301,26 @@ enum Persistence {
     /// **바깥에서 온 변경을 자동으로 받아들인다.** iCloud 로 내려온 값이
     /// 화면에 반영되려면 이게 있어야 한다. 충돌은 **저장소 쪽 값**을 택한다 —
     /// 다른 기기에서 이미 확정된 값을 이 기기의 낡은 값으로 덮지 않는다.
+    /// **체험 자료 저장소** (docs/10 §2-1 · 133번). 인메모리에 가상 자료를 채운다.
+    ///
+    /// 진짜 저장소와 완전히 따로다 — iCloud 로 안 올라가고, 가족 공유에 안
+    /// 섞이고, 앱을 끄면 사라진다(켤 때 다시 채운다). 처음에는 진짜 저장소에
+    /// 넣었다가 참가자 폰에서 **동기화된 가족 기록과 합쳐지는** 일이 났다 (133번).
+    /// CI 스크린샷도 같은 것을 쓴다.
+    @MainActor
+    static func makeTrialContainer() -> NSPersistentContainer {
+        let container = NSPersistentContainer(name: modelName, managedObjectModel: managedObjectModel)
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [description]
+        var failure: Error?
+        container.loadPersistentStores { _, error in failure = error }
+        if let failure { fatalError("인메모리 저장소를 열지 못했습니다: \(failure)") }
+        configure(container.viewContext)
+        SampleData.seed(into: container.viewContext)
+        return container
+    }
+
     private static func configure(_ context: NSManagedObjectContext) {
         context.automaticallyMergesChangesFromParent = true
         // 전역 `var NSMergeByPropertyStoreTrumpMergePolicy` 는 Swift 6 에서

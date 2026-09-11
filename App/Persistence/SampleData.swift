@@ -2,6 +2,39 @@ import Core
 import Foundation
 import CoreData
 
+/// **체험 모드** (docs/10 §2-1 · 133번). 켜져 있으면 앱 전체가 인메모리 체험
+/// 저장소를 본다. 진짜 저장소는 그대로 뒤에 있고, 끝내면 그리로 돌아온다.
+///
+/// 처음에는 체험 자료를 진짜 저장소에 넣었다. 그러자 참가자(아내분) 폰에서
+/// 앱을 지웠다 다시 깔고 체험을 누르니 **iCloud 에서 내려온 가족 기록과
+/// 합쳐졌다** — 그리고 "내 자료로 시작" 은 전부 지우기라 가족 기록까지 지울
+/// 뻔했다. 체험은 진짜 저장소에 손대면 안 된다.
+@MainActor
+@Observable
+final class TrialMode {
+    static let shared = TrialMode()
+
+    /// 체험 저장소. `nil` 이면 체험 중이 아니다.
+    private(set) var container: NSPersistentContainer?
+
+    var isActive: Bool { container != nil }
+
+    private init() {
+        if SampleData.isActive { container = Persistence.makeTrialContainer() }
+    }
+
+    func begin() {
+        UserDefaults.standard.set(true, forKey: SampleData.isActiveKey)
+        container = Persistence.makeTrialContainer()
+    }
+
+    /// 체험을 끝낸다. 지울 것이 없다 — 인메모리라 놓으면 사라진다.
+    func end() {
+        UserDefaults.standard.removeObject(forKey: SampleData.isActiveKey)
+        container = nil
+    }
+}
+
 /// CI 스크린샷 · 미리보기 · **체험 자료** 용 가상 데이터.
 ///
 /// **실제 금액·기관명이 아니다.** 저장소에 개인 금융 정보를 커밋하지 않는다는 원칙에 따라
@@ -14,26 +47,9 @@ import CoreData
 /// 들어간다 (예전에는 `#if DEBUG` 였다).
 enum SampleData {
 
-    /// 지금 저장소가 체험 자료인가. 현황판 위 띠가 이걸 보고 "내 자료로 시작" 을 내민다.
+    /// 체험 중인가 — 앱을 껐다 켜도 이어진다. 저장소 자체는 `TrialMode` 가 든다.
     static let isActiveKey = "sample.active"
     static var isActive: Bool { UserDefaults.standard.bool(forKey: isActiveKey) }
-
-    /// 체험 자료를 진짜 저장소에 넣는다. 비어 있을 때만 — 이미 무언가 있으면 안 건드린다.
-    @MainActor
-    static func startTrial(in context: NSManagedObjectContext) {
-        guard context.all(Member.self).isEmpty, context.all(Holding.self).isEmpty else { return }
-        for plan in context.all(Plan.self) { context.delete(plan) }
-        seed(into: context)
-        UserDefaults.standard.set(true, forKey: isActiveKey)
-        try? context.save()
-    }
-
-    /// 체험을 끝내고 빈 상태로. 전부 지우기(G3)와 같은 길이다.
-    @MainActor
-    static func endTrial(in context: NSManagedObjectContext) {
-        BackupDocument.wipeAll(in: context)
-        UserDefaults.standard.removeObject(forKey: isActiveKey)
-    }
 
     static func seed(into context: NSManagedObjectContext) {
         let dad = Member(context: context, name: "아빠", roleNote: "본인", birthYear: 1984, birthMonth: 3,

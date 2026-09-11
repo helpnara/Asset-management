@@ -9,6 +9,8 @@ struct SlowRichApp: App {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var lock = AppLock.shared
+    /// 체험 모드 (133번). 켜져 있으면 화면 전체가 체험 저장소를 본다.
+    @State private var trial = TrialMode.shared
 
     /// 초대 링크를 받으려면 씬 델리게이트가 있어야 한다 (`ShareAcceptance.swift`).
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -43,10 +45,13 @@ struct SlowRichApp: App {
         WindowGroup {
             ZStack {
                 RootView()
+                    // 체험을 켜고 끌 때 화면을 통째로 새로 만든다 — `@FetchRequest`
+                    // 가 컨텍스트를 바꿔 물게 하는 가장 확실한 길이다.
+                    .id(trial.isActive)
                     .fullScreenCover(isPresented: .constant(needsOnboarding)) {
                         WelcomeView(onFinish: { onboardingCompleted = true },
                                     onTrial: {
-                                        SampleData.startTrial(in: container.viewContext)
+                                        trial.begin()
                                         onboardingCompleted = true
                                     })
                     }
@@ -73,6 +78,6 @@ struct SlowRichApp: App {
         }
         // SwiftData 의 `.modelContainer(_:)` 자리. Core Data 는 컨텍스트를
         // 환경으로 내리고, `@Fetched` 가 그것을 읽는다.
-        .environment(\.managedObjectContext, container.viewContext)
+        .environment(\.managedObjectContext, (trial.container ?? container).viewContext)
     }
 }

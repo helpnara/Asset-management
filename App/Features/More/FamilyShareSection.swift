@@ -10,6 +10,7 @@ struct FamilyShareSection: View {
     @Environment(\.self) private var environment
 
     @State private var sharing = FamilySharing.shared
+    @State private var isConfirmingStrays = false
     @State private var monitor = CloudKitSyncMonitor.shared
     @State private var isConfirmingMove = false
     @State private var isConfirmingForget = false
@@ -89,9 +90,17 @@ struct FamilyShareSection: View {
                         }
                     }
                     if sharing.state.strays > 0 {
-                        Text("개인 저장소에 남은 가족 기록이 \(sharing.state.strays)건 있습니다. 이 기록은 상대 기기에 안 갑니다 — 지우고 다시 만드세요 (빌드 58 부터는 새 기록이 공유 저장소로 갑니다).")
+                        Text("개인 저장소에 남은 가족 기록이 \(sharing.state.strays)건 있습니다. 이 기록은 상대 기기에 안 갑니다 — 관리자의 기록과 섞여 보이기만 합니다. 지우면 공유 기록만 남습니다.")
                             .font(.scaled(11))
                             .foregroundStyle(Color.loss)
+                        Button("개인 저장소의 기록 \(sharing.state.strays)건 지우기", role: .destructive) {
+                            isConfirmingStrays = true
+                        }
+                        .confirmationDialog("개인 저장소의 기록 \(sharing.state.strays)건을 지울까요? 관리자가 공유한 기록은 그대로입니다.",
+                                            isPresented: $isConfirmingStrays, titleVisibility: .visible) {
+                            Button("지우기", role: .destructive) { sharing.deleteStrays() }
+                            Button("취소", role: .cancel) {}
+                        }
                     }
                 }
             }
