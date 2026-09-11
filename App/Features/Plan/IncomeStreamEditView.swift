@@ -13,8 +13,9 @@ struct IncomeStreamEditView: View {
 
     @State private var hasEnd: Bool
 
-    init(stream: IncomeStream) {
+    init(stream: IncomeStream, isNew: Bool = false) {
         self.stream = stream
+        self.isNew = isNew
         _hasEnd = State(initialValue: stream.endYear > 0)
     }
 

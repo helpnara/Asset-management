@@ -227,8 +227,9 @@ struct TodoEditView: View {
     /// 알림을 통째로 다시 걸므로 만기도 함께 넘겨야 한다.
     private var allAccounts: [Account] { members.flatMap(\.sortedAccounts) }
 
-    init(item: TodoItem) {
+    init(item: TodoItem, isNew: Bool = false) {
         self.item = item
+        self.isNew = isNew
         _hasDue = State(initialValue: item.dueDate != nil)
     }
 
