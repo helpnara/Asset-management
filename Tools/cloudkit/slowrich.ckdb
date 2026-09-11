@@ -178,6 +178,34 @@ DEFINE SCHEMA
         GRANT READ TO "_creator"
     );
 
+    RECORD TYPE CD_HoldingRecord (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        CD_entityName   STRING,
+        CD_moveReceipt  BYTES,
+        CD_moveReceipt_ckAsset ASSET,
+        CD_id STRING,
+        CD_id_ckAsset ASSET,
+        CD_weekAnchor TIMESTAMP,
+        CD_holdingID STRING,
+        CD_holdingID_ckAsset ASSET,
+        CD_holdingName STRING,
+        CD_holdingName_ckAsset ASSET,
+        CD_accountName STRING,
+        CD_accountName_ckAsset ASSET,
+        CD_memberID STRING,
+        CD_memberID_ckAsset ASSET,
+        CD_valueMinor INT64,
+        CD_household STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_creator",
+        GRANT READ TO "_creator"
+    );
+
     RECORD TYPE CD_Household (
         "___createTime" TIMESTAMP,
         "___createdBy"  REFERENCE,

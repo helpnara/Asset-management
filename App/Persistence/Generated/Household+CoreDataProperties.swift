@@ -39,6 +39,9 @@ extension Household {
 
     @NSManaged var holdings: NSSet?
 
+    /// 종목별 주간 값 (A3). 점검을 끝낼 때 종목마다 한 줄씩 쌓인다.
+    @NSManaged var holdingRecords: NSSet?
+
     @NSManaged var incomeStreams: NSSet?
 
     @NSManaged var members: NSSet?
@@ -122,6 +125,18 @@ extension Household {
 
     @objc(removeHoldings:)
     @NSManaged func removeFromHoldings(_ values: NSSet)
+
+    @objc(addHoldingRecordsObject:)
+    @NSManaged func addToHoldingRecords(_ value: HoldingRecord)
+
+    @objc(removeHoldingRecordsObject:)
+    @NSManaged func removeFromHoldingRecords(_ value: HoldingRecord)
+
+    @objc(addHoldingRecords:)
+    @NSManaged func addToHoldingRecords(_ values: NSSet)
+
+    @objc(removeHoldingRecords:)
+    @NSManaged func removeFromHoldingRecords(_ values: NSSet)
 
     @objc(addIncomeStreamsObject:)
     @NSManaged func addToIncomeStreams(_ value: IncomeStream)

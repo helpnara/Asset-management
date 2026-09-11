@@ -18,6 +18,9 @@ struct MoreView: View {
 
     /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
     @State private var refreshNote: String?
+    /// 진단 정보 복사 (G5). 눌렀다는 표시를 잠깐 보인다.
+    @State private var copiedReport = false
+    @Environment(\.managedObjectContext) private var context
     @State private var path: [Destination] = MoreView.initialPath
 
     enum Destination: Hashable {
@@ -137,6 +140,18 @@ struct MoreView: View {
                         Link(destination: url) {
                             Label("문의 · 피드백 메일", systemImage: "envelope")
                         }
+                    }
+                    // 진단 정보 (G5). 문의할 때 붙여 넣는 한 장 — 금액은 없다.
+                    Button {
+                        Task {
+                            UIPasteboard.general.string = await DiagnosticReport.build(in: context)
+                            copiedReport = true
+                            try? await Task.sleep(for: .seconds(2))
+                            copiedReport = false
+                        }
+                    } label: {
+                        Label(copiedReport ? "진단 정보 복사됨" : "진단 정보 복사",
+                              systemImage: copiedReport ? "checkmark" : "doc.on.doc")
                     }
                     Text("시세를 외부에서 가져오지 않습니다. 매주 직접 적어 넣는 숫자가 이 앱의 기준입니다.")
                         .font(.system(size: 11))

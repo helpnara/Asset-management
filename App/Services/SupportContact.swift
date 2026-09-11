@@ -6,8 +6,8 @@ import Foundation
 /// 비어 있으면 더보기에 문의 줄이 아예 안 뜬다. 제목에 버전과 빌드가 들어가
 /// "몇 번 빌드였나" 를 묻지 않아도 된다 (A8).
 enum SupportContact {
-    /// 문의 받을 주소. 아직 정하지 않았다 — 사용자가 알려 주면 여기 적는다.
-    static let email = ""
+    /// 문의 받을 주소 (사용자가 2026-09-11 에 정해 준 것).
+    static let email = "kyunglagkwon@gmail.com"
 
     static var isConfigured: Bool { !email.isEmpty }
 

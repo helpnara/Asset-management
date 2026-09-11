@@ -95,7 +95,10 @@ struct FamilyAllocationView: View {
             }
             .textCase(nil)
         } footer: {
-            Text(dimension.footnote)
+            // 미국 목표는 여기가 원본이다 (A4). 진단의 "국가 배분" 이 이 값을 읽는다.
+            Text(dimension == .region
+                 ? dimension.footnote + " 여기 적은 미국 목표를 자산 진단의 국가 배분이 씁니다 — 안 적으면 미국 \(PercentFormatter.integer(Decimal(plans.first?.usTargetBP ?? 5_000) / 10_000))% 가 기본입니다."
+                 : dimension.footnote)
         }
     }
 

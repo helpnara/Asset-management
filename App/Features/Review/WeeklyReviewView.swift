@@ -539,6 +539,9 @@ struct WeeklyReviewView: View {
                            targetMinor: plans.first?.targetAmountMinor ?? 0,
                            streak: streakAfter, in: context)
 
+        // **종목마다 그 주의 값을 남긴다** (A3). 종목별 궤적·되돌리기의 재료.
+        HoldingRecord.record(members: members, weekAnchor: anchor, in: context)
+
         // **그 주의 진단 판정을 남긴다** (A9). 진단은 늘 현재 값으로만 계산하므로
         // 여기 남기지 않으면 "몇 주째 조치인가" 를 영영 알 수 없다.
         if let plan = plans.first {

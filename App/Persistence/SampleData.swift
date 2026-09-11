@@ -204,6 +204,25 @@ enum SampleData {
                                     investableMinor: running - 100_000_000,
                                     liabilitiesMinor: 4_500_000)
 
+            // 종목별 지난 값 (A3). 지금 값에서 주마다 조금씩 거슬러 — 오르내림이
+            // 섞이게 홀짝으로 방향을 바꾼다. 고정 종목은 그대로.
+            for member in members {
+                for account in member.sortedAccounts {
+                    for (position, holding) in account.sortedHoldings.enumerated() {
+                        let line = HoldingRecord(context: context)
+                        line.weekAnchor = anchor
+                        line.holdingID = holding.id
+                        line.holdingName = holding.name
+                        line.accountName = account.name
+                        line.memberID = member.id
+                        let drift = holding.cadence == .fixed ? 0
+                            : holding.valueMinor / 50 * weeksAgo * (position % 2 == 0 ? -1 : 1)
+                            + holding.valueMinor / 200 * (weeksAgo % 3)
+                        line.valueMinor = holding.valueMinor + drift
+                    }
+                }
+            }
+
             var assigned = 0
             for (position, member) in members.enumerated() {
                 let isLast = position == members.count - 1

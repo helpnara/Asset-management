@@ -68,7 +68,23 @@ extension Plan {
     var withdrawalRate: Ratio { Ratio(basisPoints: withdrawalRateBP) }
     var savingsFloor: Ratio { Ratio(basisPoints: savingsFloorBP) }
     var illiquidCap: Ratio { Ratio(basisPoints: illiquidCapBP) }
-    var usTarget: Ratio { Ratio(basisPoints: usTargetBP) }
+    /// **미국 목표 비중은 한 군데다** (A4). 가족 자산 배분의 지역 목표에 미국이
+    /// 적혀 있으면 그것이고, 없으면 계획의 `usTargetBP` (기본 50%) 다. 예전에는
+    /// 두 화면이 서로 다른 값을 들고 있어 "목표 없음" 과 "미국 50%" 를 동시에
+    /// 말했다.
+    var usTarget: Ratio {
+        if let bp = familyUSTargetBP { return Ratio(basisPoints: bp) }
+        return Ratio(basisPoints: usTargetBP)
+    }
+
+    /// 가족 자산 배분에 적힌 미국 목표. 없으면 `nil`.
+    var familyUSTargetBP: Int? {
+        guard let targets = household?.familyTargets as? Set<FamilyTarget>,
+              let us = targets.first(where: {
+                  $0.dimension == .region && $0.key == Region.unitedStates.rawValue && $0.targetBP > 0
+              }) else { return nil }
+        return us.targetBP
+    }
     var mixTolerance: Ratio { Ratio(basisPoints: mixToleranceBP) }
 
     /// 목표 비중 판정 기준. 퍼센트포인트 하나다.

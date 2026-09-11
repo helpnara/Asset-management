@@ -72,6 +72,16 @@
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Account" inverseName="holdings" inverseEntity="Account"/>
         <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="holdings" inverseEntity="Household"/>
     </entity>
+    <entity name="HoldingRecord" representedClassName="HoldingRecord" syncable="YES">
+        <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="weekAnchor" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <attribute name="holdingID" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="holdingName" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="accountName" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
+        <attribute name="memberID" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
+        <attribute name="valueMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="household" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Household" inverseName="holdingRecords" inverseEntity="Household"/>
+    </entity>
     <entity name="Household" representedClassName="Household" syncable="YES">
         <attribute name="id" attributeType="UUID" defaultValueString="00000000-0000-0000-0000-000000000000" usesScalarValueType="NO"/>
         <attribute name="title" attributeType="String" defaultValueString="" usesScalarValueType="NO"/>
@@ -81,6 +91,7 @@
         <relationship name="changeLogs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ChangeLog" inverseName="household" inverseEntity="ChangeLog"/>
         <relationship name="familyTargets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FamilyTarget" inverseName="household" inverseEntity="FamilyTarget"/>
         <relationship name="holdings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Holding" inverseName="household" inverseEntity="Holding"/>
+        <relationship name="holdingRecords" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="HoldingRecord" inverseName="household" inverseEntity="HoldingRecord"/>
         <relationship name="incomeStreams" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="IncomeStream" inverseName="household" inverseEntity="IncomeStream"/>
         <relationship name="members" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Member" inverseName="household" inverseEntity="Member"/>
         <relationship name="plans" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Plan" inverseName="household" inverseEntity="Plan"/>

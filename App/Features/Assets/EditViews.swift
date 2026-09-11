@@ -544,6 +544,9 @@ struct HoldingEditView: View {
                         .lineLimit(1...4)
                 }
 
+                // 종목별 지난 값 (A3). 새 종목에는 있을 수 없다.
+                if !isNew { HoldingHistorySection(holding: holding) }
+
                 if !isNew {
                     Section {
                         DeleteButton("\(holding.name.isEmpty ? "이 종목" : holding.name) 을(를) 삭제할까요?",

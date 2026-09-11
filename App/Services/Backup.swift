@@ -37,6 +37,18 @@ struct BackupDocument: Codable, Sendable {
     /// 목실감 일기. 이 기기 사용자의 개인 기록이라 백업에는 넣고 공유에는 안
     /// 넣는다. 옛 백업에는 없으므로 옵셔널이다.
     var diary: [DiaryData]?
+    /// 종목별 주간 값 (A3, 빌드 67 부터). 옛 백업에는 없다.
+    var holdingRecords: [HoldingRecordData]?
+
+    struct HoldingRecordData: Codable, Sendable {
+        var id: UUID
+        var weekAnchor: Date
+        var holdingID: UUID
+        var holdingName: String
+        var accountName: String
+        var memberID: UUID
+        var valueMinor: Int
+    }
 
     struct DiaryData: Codable, Sendable {
         var id: UUID
@@ -88,7 +100,7 @@ struct BackupDocument: Codable, Sendable {
         /// 옛 백업에는 없으므로 옵셔널이라야 읽힌다.
         var disabledDiagnosesRaw: String?
         var contributionOrderRaw: String?
-        /// 자산군별 기대수익률 (D6, 빌드 67 부터). 옛 백업에는 없다.
+        /// 자산군별 기대수익률 (D6, 빌드 66 부터). 옛 백업에는 없다.
         var bondReturnBP: Int?
         var commodityReturnBP: Int?
     }
@@ -219,7 +231,7 @@ struct BackupDocument: Codable, Sendable {
         var previousTotalValueMinor: Int
         /// 빌드 61 부터 (C8). 옛 백업에는 없어 옵셔널이다.
         var enteredMemberIDs: String?
-        /// 빌드 67 부터 (A9). 그 주의 진단 결과.
+        /// 빌드 66 부터 (A9). 그 주의 진단 결과.
         var diagnosisRaw: String?
     }
 
@@ -428,7 +440,14 @@ extension BackupDocument {
             diary: context.all(DiaryEntry.self).sorted { $0.day < $1.day }.map {
                 DiaryData(id: $0.id, day: $0.day, goal: $0.goal, result: $0.result,
                           gratitude: $0.gratitude, createdAt: $0.createdAt)
-            }
+            },
+            holdingRecords: context.all(HoldingRecord.self)
+                .sorted { ($0.weekAnchor, $0.holdingName) < ($1.weekAnchor, $1.holdingName) }
+                .map {
+                    HoldingRecordData(id: $0.id, weekAnchor: $0.weekAnchor, holdingID: $0.holdingID,
+                                      holdingName: $0.holdingName, accountName: $0.accountName,
+                                      memberID: $0.memberID, valueMinor: $0.valueMinor)
+                }
         )
     }
 
@@ -490,6 +509,7 @@ extension BackupDocument {
         deleteAll(Principle.self, in: context)
         deleteAll(ChangeLog.self, in: context)
         deleteAll(FamilyTarget.self, in: context)
+        deleteAll(HoldingRecord.self, in: context)
         // 일기는 백업에 있을 때만 갈아 끼운다. 옛 백업(일기 칸이 없던 때)으로
         // 되돌린다고 오늘까지 쓴 일기가 지워지면 안 된다.
         if document.diary != nil { deleteAll(DiaryEntry.self, in: context) }
@@ -633,6 +653,17 @@ extension BackupDocument {
             principle.createdAt = data.createdAt
         }
 
+        for data in document.holdingRecords ?? [] {
+            let record = HoldingRecord(context: context)
+            record.id = data.id
+            record.weekAnchor = data.weekAnchor
+            record.holdingID = data.holdingID
+            record.holdingName = data.holdingName
+            record.accountName = data.accountName
+            record.memberID = data.memberID
+            record.valueMinor = data.valueMinor
+        }
+
         for data in document.changeLog {
             let log = ChangeLog(context: context, kind: ChangeKind(rawValue: data.kind) ?? .other,
                                 subject: data.subject, summary: data.summary, actor: data.actor)
@@ -698,6 +729,7 @@ extension BackupDocument {
         deleteAll(Principle.self, in: context)
         deleteAll(ChangeLog.self, in: context)
         deleteAll(FamilyTarget.self, in: context)
+        deleteAll(HoldingRecord.self, in: context)
         deleteAll(DiaryEntry.self, in: context)
         _ = Plan.current(in: context)
         try? context.save()
