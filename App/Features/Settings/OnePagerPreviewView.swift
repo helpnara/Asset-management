@@ -24,8 +24,9 @@ struct OnePagerPreviewView: View {
     /// A4 @72dpi. `OnePagerView` 의 폭과 같은 값이라야 미리보기가 거짓말을 안 한다.
     private let paperWidth: CGFloat = 595
     private let paperHeight: CGFloat = 842
-    /// 위쪽 안내 문구가 앉을 자리.
-    private let captionHeight: CGFloat = 38
+    /// 위쪽 안내 문구가 앉을 자리. 글자가 커지면 같이 커진다 — 고정 38pt 였을 때
+    /// 큰 글자에서 문구가 종이 위로 겹쳤다 (132번, 빌드 69 확인 6).
+    private var captionHeight: CGFloat { Font.scaledLength(38) * 1.15 }
 
     var body: some View {
         GeometryReader { proxy in
@@ -78,9 +79,11 @@ struct OnePagerPreviewView: View {
             Text(fitText(pageHeight: pageHeight, overflows: overflows))
                 .font(.scaled(13, weight: .semibold))
                 .foregroundStyle(overflows ? Color.loss : Color.ink)
+                .fixedSize(horizontal: false, vertical: true)
             Text("A4 한 장은 595 × 842pt 입니다. 빨간 선이 한 장이 끝나는 자리입니다.")
                 .font(.scaled(11))
                 .foregroundStyle(Color.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

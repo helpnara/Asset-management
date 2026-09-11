@@ -41,5 +41,12 @@ extension Font {
         return .system(size: min(user, cap), weight: weight)
     }
 
+    /// 글자에 맞춰 커져야 하는 **길이** (자리 높이 · 칸 폭). `scaled` 와 같은 배율, 같은 상한.
+    static func scaledLength(_ length: CGFloat) -> CGFloat {
+        let user = UIFontMetrics.default.scaledValue(for: length)
+        let cap = UIFontMetrics.default.scaledValue(for: length, compatibleWith: capTraits)
+        return min(user, cap)
+    }
+
     private static let capTraits = UITraitCollection(preferredContentSizeCategory: .extraExtraExtraLarge)
 }
