@@ -308,7 +308,7 @@ struct WeeklyReviewView: View {
                     .multilineTextAlignment(.trailing)
                     .font(.figure(isActive ? 19 : 16, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(Color.ink)
-                    .frame(width: 155)
+                    .frame(width: Font.scaledLength(155))
                 // **읽는 값** (80번, B1). 활성 행에서만 — 열다섯 자리 중 0 하나가
                 // 더 붙었는지 치는 순간 보인다. 입력 칸이라 가리기를 안 거친다.
                 if isActive && holding.valueMinor >= 10_000 {

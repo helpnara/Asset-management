@@ -50,7 +50,7 @@ struct DiaryListView: View {
                 Text(label)
                     .font(.scaled(11, weight: .medium))
                     .foregroundStyle(Color.muted)
-                    .frame(width: 26, alignment: .leading)
+                    .frame(width: Font.scaledLength(26), alignment: .leading)
                 Text(text)
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)

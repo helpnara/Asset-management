@@ -60,7 +60,7 @@ struct NationalPensionEstimatorView: View {
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .font(.figure(15))
-                            .frame(maxWidth: 90)
+                            .frame(maxWidth: Font.scaledLength(90))
                         Text("개월").foregroundStyle(Color.muted)
                     }
                     MoneyField(title: "가입 기간 평균 월소득", minorUnits: $incomeMinor)

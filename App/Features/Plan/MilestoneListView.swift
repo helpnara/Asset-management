@@ -75,7 +75,7 @@ struct MilestoneListView: View {
             Text(verbatim: "\(milestone.year)")
                 .font(.figure(14, weight: .semibold))
                 .foregroundStyle(Color.dad)
-                .frame(width: 52, alignment: .leading)
+                .frame(width: Font.scaledLength(52), alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(milestone.label.isEmpty ? "이름 없음" : milestone.label)

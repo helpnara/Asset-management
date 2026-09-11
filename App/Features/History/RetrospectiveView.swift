@@ -264,7 +264,7 @@ struct RetrospectiveCard: View {
                         Text(money(end))
                             .font(.figure(12, weight: .medium))
                             .foregroundStyle(ink)
-                            .frame(minWidth: 64, alignment: .trailing)
+                            .frame(minWidth: Font.scaledLength(64), alignment: .trailing)
                     }
                 }
             }

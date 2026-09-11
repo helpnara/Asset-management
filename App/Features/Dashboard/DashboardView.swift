@@ -391,7 +391,8 @@ struct DashboardView: View {
         }
     }
 
-    private static let attributionColumn: CGFloat = 78
+    /// 글자 배율을 따른다 (135번) — 고정 78pt 면 큰 글자에서 숫자가 잘린다.
+    private static var attributionColumn: CGFloat { Font.scaledLength(78) }
 
     private func figure(_ money: Money, tone: Bool) -> some View {
         Text(Won.compact(money, sign: .always))
@@ -686,7 +687,7 @@ struct DashboardView: View {
                     .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
             }
-            .frame(width: 54, alignment: .leading)
+            .frame(width: Font.scaledLength(54), alignment: .leading)
 
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {

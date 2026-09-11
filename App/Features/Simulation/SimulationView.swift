@@ -567,7 +567,7 @@ struct SimulationView: View {
                                    retirementYear: current.retirementYear, returnBP: current.returnBP,
                                    projected: outcome.expected, isCurrent: true))
         }
-        let column: CGFloat = 62
+        let column: CGFloat = Font.scaledLength(62)
         return VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Text("나란히").font(.scaled(9.5)).foregroundStyle(Color.faint)

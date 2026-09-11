@@ -39,7 +39,7 @@ struct ChangeLogView: View {
             Text(Self.timeFormatter.string(from: log.at))
                 .font(.figure(11))
                 .foregroundStyle(Color.faint)
-                .frame(width: 48, alignment: .leading)
+                .frame(width: Font.scaledLength(48), alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(log.kind.label)
