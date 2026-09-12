@@ -180,7 +180,6 @@ struct WeeklyReviewView: View {
                     // **이번 주 커서가 다녀간 줄은 지난 것으로 센다** (144-C). 같은 주에
                     // 다시 열면(90번) 진행 바가 거기서부터 차 있고, 커서는 아직 손이
                     // 안 간 첫 줄로 간다. 다 다녀갔으면 맨 위 — 다시 보는 자리다.
-                    let ids = Set(items.map(\.id))
                     visited = VisitedStore.load(anchor: ReviewWeek.anchor(for: .now)).intersection(ids)
                     visitedAtOpen = visited
                     let target = (wanted.flatMap { ids.contains($0) ? $0 : nil })
