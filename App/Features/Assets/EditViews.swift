@@ -427,6 +427,13 @@ struct HoldingEditView: View {
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?
 
+    /// **값은 주간 점검에서만 적는다** (145번). 여기서 고칠 수 있는 것은 둘뿐이다 —
+    /// 한 번도 적힌 적 없는 종목의 **첫 값**, 그리고 점검 큐에 오지 않는 `고정` 주기.
+    /// 열 때 정한다: 첫 값을 치는 순간 `lastEnteredAt` 이 찍히는데, 그때 칸이
+    /// 읽기 전용으로 바뀌면 나머지 자리를 못 친다.
+    @State private var valueEditableAtOpen: Bool?
+    private var canEditValue: Bool { (valueEditableAtOpen ?? true) || holding.cadence == .fixed }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -449,22 +456,39 @@ struct HoldingEditView: View {
 
                 Section {
                     TextField("종목 이름 (VOO · 삼성전자 …)", text: $holding.name)
-                    // 자산 탭에서 고쳐도 이번 주 처음이면 직전 값이 기준값으로 (91번).
-                    MoneyField(title: "평가액", minorUnits: Binding(
-                        get: { holding.valueMinor },
-                        set: {
-                            guard $0 != holding.valueMinor else { return }
-                            holding.rollBaselineIfNewWeek()
-                            holding.valueMinor = $0
+                    if canEditValue {
+                        // 자산 탭에서 고쳐도 이번 주 처음이면 직전 값이 기준값으로 (91번).
+                        MoneyField(title: "평가액", minorUnits: Binding(
+                            get: { holding.valueMinor },
+                            set: {
+                                guard $0 != holding.valueMinor else { return }
+                                holding.rollBaselineIfNewWeek()
+                                holding.valueMinor = $0
+                            }
+                        ))
+                    } else {
+                        // **값의 출입구는 주간 점검 하나다** (145번). 여기서는 보기만 하고,
+                        // 고치려면 점검을 열어 이 줄에서 적는다.
+                        LabeledContent("평가액") {
+                            Text(Won.full(holding.value))
+                                .font(.figure(15))
+                                .foregroundStyle(Color.ink)
                         }
-                    ))
+                        Button {
+                            openReviewHere()
+                        } label: {
+                            Label("이번 주 점검에서 고치기", systemImage: "checklist")
+                        }
+                    }
                 } footer: {
                     // 해외 종목을 달러로 적어 넣으면 합계가 조용히 1,400배 틀린다.
                     // 다중 통화(환율 직접 입력)는 M5 이고, 그전까지는 여기서 못을 박는다.
                     //
                     // 문자열 변수를 넘기면 Text 가 마크다운을 해석하지 않아 별표가 그대로 보인다.
                     // 굵게 쓰려면 리터럴이어야 하므로 분기를 문자열이 아니라 뷰로 나눈다.
-                    if holding.listingCountryCode == "KR" {
+                    if !canEditValue {
+                        Text("평가액은 **주간 점검에서만** 적습니다. 값의 출입구가 하나여야 지난주 대비 증감과 주별 기록이 어긋나지 않습니다. 지금 고치려면 위 버튼으로 이번 주 점검을 열어 이 줄에서 적으세요.")
+                    } else if holding.listingCountryCode == "KR" {
                         Text("시세를 가져오지 않습니다. 매주 직접 적어 넣는 이 숫자가 기준입니다.")
                     } else {
                         Text("시세를 가져오지 않습니다. 해외 종목도 **원화로 환산한 금액**을 적어 주세요. 이 앱의 모든 금액은 원화입니다.")
@@ -573,8 +597,21 @@ struct HoldingEditView: View {
                 if nameOnOpen == nil { nameOnOpen = holding.name }
                 if snapshot == nil { snapshot = EditSnapshot(of: holding) }
                 if valueOnOpen == nil { valueOnOpen = holding.valueMinor }
+                if valueEditableAtOpen == nil { valueEditableAtOpen = isNew || holding.lastEnteredAt == nil }
             }
             .onDisappear { logChange() }
+        }
+    }
+
+    /// 이 시트를 닫고 점검을 이 줄에서 연다 (145번). 점검은 뿌리 화면의 전체 화면
+    /// 덮개라, 시트가 내려간 뒤에 열어야 한다 — 겹쳐 올리면 iOS 가 거부한다.
+    private func openReviewHere() {
+        let id = holding.id
+        dismiss()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            AppRoute.shared.reviewFocusID = id
+            AppRoute.shared.showReview = true
         }
     }
 

@@ -10,6 +10,9 @@ final class AppRoute {
     static let shared = AppRoute()
 
     var showReview = false
+    /// 자산 탭의 `이번 주 점검에서 고치기` 가 점검을 열며 건네는 종목 (145번). 점검은
+    /// 이 줄을 큐에 넣고(월 1회라 이미 빠졌어도) 커서를 여기에 둔 뒤 비운다.
+    var reviewFocusID: UUID?
     /// 현황판 빈 상태에서 "구성원 추가"를 누르면 자산 탭으로 보낸다.
     /// 탭 선택을 RootView 의 `@State` 로만 두면 다른 화면에서 바꿀 길이 없다.
     var selectedTab = RootView.initialTab

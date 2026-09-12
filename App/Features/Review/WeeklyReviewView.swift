@@ -163,8 +163,17 @@ struct WeeklyReviewView: View {
             }
             .onAppear {
                 if queuedIDs == nil {
+                    var ids = Set(queue.map(\.id))
+                    // 자산 탭에서 `이번 주 점검에서 고치기` 로 들어왔다 (145번). 그 줄이
+                    // 월 1회라 이미 빠졌어도 큐에 넣는다 — 내 구성원의 것일 때만.
+                    let wanted = AppRoute.shared.reviewFocusID
+                    AppRoute.shared.reviewFocusID = nil
+                    if let wanted, editableMembers.flatMap(\.sortedAccounts).flatMap(\.sortedHoldings)
+                        .contains(where: { $0.id == wanted }) {
+                        ids.insert(wanted)
+                    }
+                    queuedIDs = ids
                     let items = queue
-                    queuedIDs = Set(items.map(\.id))
                     for holding in items {
                         originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
                     }
@@ -174,7 +183,9 @@ struct WeeklyReviewView: View {
                     let ids = Set(items.map(\.id))
                     visited = VisitedStore.load(anchor: ReviewWeek.anchor(for: .now)).intersection(ids)
                     visitedAtOpen = visited
-                    let target = items.first { !visited.contains($0.id) }?.id ?? items.first?.id
+                    let target = (wanted.flatMap { ids.contains($0) ? $0 : nil })
+                        ?? items.first { !visited.contains($0.id) }?.id
+                        ?? items.first?.id
                     if target == items.first?.id {
                         focusedID = target
                     } else {
