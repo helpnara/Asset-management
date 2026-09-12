@@ -34,7 +34,13 @@ struct WeeklyReviewView: View {
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
 
     @FocusState private var focusedID: UUID?
+    /// **커서가 떠난 줄** (144-C, 빌드 77 에서 고침). 처음에는 커서가 **닿은** 줄을
+    /// 넣었는데, 열 때 커서가 저절로 앉는 줄까지 "다녀간 줄" 이 되어 다시 열면
+    /// 그 줄을 건너뛰었다. 이제 떠날 때 넣는다 — `다음`·`변동 없음`·다른 줄 탭·
+    /// 완료 전부 "떠남" 이다. 화면의 진행은 지금 줄까지 센다(`shownVisited`).
     @State private var visited: Set<UUID> = []
+    /// 열 때의 방문 기록 — `나중에` 는 값과 함께 이것도 되돌린다.
+    @State private var visitedAtOpen: Set<UUID> = []
     @State private var completed: ReviewSession?
     /// **열 때 정한 큐** (105번). 월 1회 종목은 값을 적는 순간 "이 달에 적음" 이
     /// 되어 `isDue()` 가 거짓이 되는데, 큐를 매번 다시 계산하면 그 줄이 손에서
@@ -123,13 +129,16 @@ struct WeeklyReviewView: View {
                     }
                 }
                 .onAppear { scrollProxy = proxy }
-                .onChange(of: focusedID) { _, newValue in
+                .onChange(of: focusedID) { oldValue, newValue in
                     // 줄이 바뀌면 친 글자는 버리고 그 줄의 값을 자리표시로 (144-A).
                     draft = nil
                     focusOriginal = newValue.flatMap { id in queue.first { $0.id == id } }?.valueMinor ?? 0
+                    // 떠난 줄이 "다녀간 줄" 이다 (144-C).
+                    if let oldValue {
+                        visited.insert(oldValue)
+                        VisitedStore.save(visited, anchor: ReviewWeek.anchor(for: .now))
+                    }
                     guard let newValue else { return }
-                    visited.insert(newValue)
-                    VisitedStore.save(visited, anchor: ReviewWeek.anchor(for: .now))
                     withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(newValue, anchor: .center)
                     }
@@ -164,7 +173,15 @@ struct WeeklyReviewView: View {
                     // 안 간 첫 줄로 간다. 다 다녀갔으면 맨 위 — 다시 보는 자리다.
                     let ids = Set(items.map(\.id))
                     visited = VisitedStore.load(anchor: ReviewWeek.anchor(for: .now)).intersection(ids)
-                    focusedID = items.first { !visited.contains($0.id) }?.id ?? items.first?.id
+                    visitedAtOpen = visited
+                    let target = items.first { !visited.contains($0.id) }?.id ?? items.first?.id
+                    if target == items.first?.id {
+                        focusedID = target
+                    } else {
+                        // 아래쪽 줄은 아직 안 만들어져 있어 바로 포커스를 못 받는다 (107번).
+                        // 스크롤해 만든 뒤에 준다 — 이것이 "가끔 커서가 안 오던" 이유다.
+                        focus(target)
+                    }
                 }
             }
             // **완료 화면은 같은 창 안에서 밀어 넣는다** (144-B). 예전에는 점검 화면
@@ -236,8 +253,9 @@ struct WeeklyReviewView: View {
         }
     }
 
-    /// 열 때 값으로 전부 되돌린다 — `나중에` (103번).
+    /// 열 때 값으로 전부 되돌린다 — `나중에` (103번). 방문 기록도 열 때 것으로.
     private func revertAll() {
+        VisitedStore.save(visitedAtOpen, anchor: ReviewWeek.anchor(for: .now))
         for holding in queue {
             guard let original = originals[holding.id] else { continue }
             holding.valueMinor = original.value
@@ -272,9 +290,15 @@ struct WeeklyReviewView: View {
         .background(Color.canvas)
     }
 
+    /// 화면에 보이는 진행 — 지금 커서가 있는 줄까지 센다.
+    private var shownVisited: Set<UUID> {
+        guard let focusedID else { return visited }
+        return visited.union([focusedID])
+    }
+
     private var fraction: CGFloat {
         guard !queue.isEmpty else { return 0 }
-        return CGFloat(visited.count) / CGFloat(queue.count)
+        return CGFloat(shownVisited.count) / CGFloat(queue.count)
     }
 
     private func memberHeader(_ member: Member, count: Int) -> some View {
@@ -320,7 +344,7 @@ struct WeeklyReviewView: View {
     }
 
     private func visitedCount(_ member: Member) -> Int {
-        queue(for: member).filter { visited.contains($0.id) }.count
+        queue(for: member).filter { shownVisited.contains($0.id) }.count
     }
 
     private func row(_ holding: Holding) -> some View {
