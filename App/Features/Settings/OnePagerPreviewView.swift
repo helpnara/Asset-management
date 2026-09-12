@@ -24,47 +24,22 @@ struct OnePagerPreviewView: View {
     /// A4 @72dpi. `OnePagerView` 의 폭과 같은 값이라야 미리보기가 거짓말을 안 한다.
     private let paperWidth: CGFloat = 595
     private let paperHeight: CGFloat = 842
-    /// 위쪽 안내 문구가 앉을 자리. 글자가 커지면 같이 커진다 — 고정 38pt 였을 때
-    /// 큰 글자에서 문구가 종이 위로 겹쳤다 (132번, 빌드 69 확인 6).
-    private var captionHeight: CGFloat { Font.scaledLength(38) * 1.15 }
-
-    /// **손가락으로 확대** (137번). 폭 맞춤(1배)에서 4배까지. 두 번 두드리면
-    /// 2.5배와 1배를 오간다. 확대하면 가로로도 스크롤된다.
-    @State private var zoom: CGFloat = 1
-    @GestureState private var pinch: CGFloat = 1
-    /// 잰 종이 높이(줄이기 전). 확대했을 때 스크롤 영역을 종이 크기에 맞추려면 필요하다.
+    /// 잰 종이 높이 (줄이기 전). 안내 문구와 2배 그림의 높이가 이걸 쓴다.
     @State private var measuredHeight: CGFloat = 0
 
+    /// **종이를 2배로 그려 넣는다** (139번). 확대는 `UIScrollView` 의 변환이라
+    /// 그려 둔 것을 늘리는 것이다 — 1배로 그리면 4배에서 흐릿하다. 2배면
+    /// 아이폰 최대 확대에서도 원래 해상도 안쪽이다.
+    private let renderScale: CGFloat = 2
+
     var body: some View {
-        GeometryReader { proxy in
-            let fit = max(0.1, (proxy.size.width - 24) / paperWidth)
-            let scale = fit * min(max(zoom * pinch, 1), 4)
-            ScrollView([.vertical, .horizontal]) {
-                VStack(alignment: .leading, spacing: 10) {
-                    // 안내 문구는 아래 `overlayPreferenceValue` 가 채운다.
-                    Color.clear.frame(height: captionHeight)
-                    page(scale: scale)
-                        .frame(height: max(measuredHeight, paperHeight) * scale, alignment: .topLeading)
-                }
-                .padding(12)
-                .overlayPreferenceValue(PageHeightKey.self) { height in
-                    caption(pageHeight: height)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                }
-                // Swift 6: 이 클로저는 Sendable 이라 @State 를 바로 못 고친다.
-                .onPreferenceChange(PageHeightKey.self) { height in
-                    Task { @MainActor in measuredHeight = height }
-                }
-            }
-            // `.gesture` 는 ScrollView 의 제 손짓에 밀려 두 손가락이 안 잡혔다 (138번).
-            .simultaneousGesture(
-                MagnifyGesture()
-                    .updating($pinch) { value, state, _ in state = value.magnification }
-                    .onEnded { value in zoom = min(max(zoom * value.magnification, 1), 4) }
-            )
-            .onTapGesture(count: 2) {
-                withAnimation(.easeInOut(duration: 0.2)) { zoom = zoom > 1 ? 1 : 2.5 }
+        VStack(alignment: .leading, spacing: 6) {
+            caption(pageHeight: measuredHeight)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+            // 확대 · 축소 · 두 번 두드리기 · 튕김 — 전부 UIKit 이 한다 (137 · 139번).
+            ZoomableScrollView(contentWidth: paperWidth * renderScale) {
+                page(scale: renderScale)
             }
         }
         .background(Color.ground)
@@ -86,6 +61,10 @@ struct OnePagerPreviewView: View {
                     Color.clear.preference(key: PageHeightKey.self, value: geometry.size.height)
                 }
             }
+            // Swift 6: 이 클로저는 Sendable 이라 @State 를 바로 못 고친다.
+            .onPreferenceChange(PageHeightKey.self) { height in
+                Task { @MainActor in measuredHeight = height }
+            }
             .overlay(alignment: .top) {
                 // 한 장이 끝나는 자리. 이 선 아래로 내려간 것은 둘째 장이다.
                 Rectangle()
@@ -94,7 +73,11 @@ struct OnePagerPreviewView: View {
                     .offset(y: paperHeight)
             }
             .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: paperWidth * scale, alignment: .topLeading)
+            // `scaleEffect` 는 배치 크기를 안 바꾼다 — 확대 스크롤이 제 크기를 알아야
+            // 하므로 폭과 높이를 배율만큼 직접 준다. 높이는 잰 뒤에 정해진다.
+            .frame(width: paperWidth * scale,
+                   height: measuredHeight > 0 ? measuredHeight * scale : nil,
+                   alignment: .topLeading)
     }
 
     private func caption(pageHeight: CGFloat) -> some View {
