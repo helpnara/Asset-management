@@ -443,13 +443,16 @@ struct WeeklyReviewView: View {
             Button { pasteIntoFocused() } label: { Image(systemName: "doc.on.clipboard").font(.scaled(15, weight: .medium)) }
                 .accessibilityLabel("붙여넣기")
 
-            Spacer()
+            Spacer(minLength: 0)
 
             if !isCompactAccessory {
+                // 한 줄로 못 박는다 — 좁아지면 `1 / 14` 가 세 줄로 꺾였다 (빌드 76 사진).
                 Text("\(min(currentIndex + 1, max(queue.count, 1))) / \(queue.count)")
                     .font(.figure(11))
                     .foregroundStyle(Color.muted)
-                Spacer()
+                    .lineLimit(1)
+                    .fixedSize()
+                Spacer(minLength: 0)
             }
 
             Button("변동 없음") { move(1) }
