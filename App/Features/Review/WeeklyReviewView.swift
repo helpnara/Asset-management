@@ -382,10 +382,17 @@ struct WeeklyReviewView: View {
         .padding(20)
     }
 
+    /// 큰 글씨에서는 도구막대가 넘친다 (144 CI 큰 글씨 스크린샷 — `다음` 이 잘렸다).
+    /// 위 화살표와 `n / N` 을 뺀다: 진행은 구성원 머리에도 있고, 위로는 줄을 누르면 된다.
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var isCompactAccessory: Bool { typeSize >= .xxLarge }
+
     private var accessory: some View {
-        HStack(spacing: 10) {
-            Button { move(-1) } label: { Image(systemName: "chevron.up") }
-                .disabled(currentIndex == 0)
+        HStack(spacing: isCompactAccessory ? 8 : 10) {
+            if !isCompactAccessory {
+                Button { move(-1) } label: { Image(systemName: "chevron.up") }
+                    .disabled(currentIndex == 0)
+            }
             Button { move(1) } label: { Image(systemName: "chevron.down") }
                 .disabled(currentIndex >= queue.count - 1)
 
@@ -399,11 +406,12 @@ struct WeeklyReviewView: View {
 
             Spacer()
 
-            Text("\(min(currentIndex + 1, max(queue.count, 1))) / \(queue.count)")
-                .font(.figure(11))
-                .foregroundStyle(Color.muted)
-
-            Spacer()
+            if !isCompactAccessory {
+                Text("\(min(currentIndex + 1, max(queue.count, 1))) / \(queue.count)")
+                    .font(.figure(11))
+                    .foregroundStyle(Color.muted)
+                Spacer()
+            }
 
             Button("변동 없음") { move(1) }
                 .font(.scaled(13))
