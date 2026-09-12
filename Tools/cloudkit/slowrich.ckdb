@@ -221,6 +221,7 @@ DEFINE SCHEMA
         CD_title STRING,
         CD_title_ckAsset ASSET,
         CD_createdAt TIMESTAMP,
+        CD_latestBuild INT64,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_creator",
         GRANT READ TO "_creator"

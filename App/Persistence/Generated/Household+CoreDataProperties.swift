@@ -29,6 +29,12 @@ extension Household {
 
     @NSManaged var createdAt: Date
 
+    /// 가족 기기 중 **가장 높은 빌드 번호** (143번). 앱이 뜰 때 자기 빌드가 더
+    /// 높으면 올려 적고, 낮으면 "업데이트 뒤 사용하세요" 띠를 띄운다. 서버가
+    /// 없어서 새 판이 나왔다는 것을 알 길이 이것뿐이다 — 외부 요청은 안 한다
+    /// (ADR-0005). 이 칸이 없던 빌드(74 이하)는 안내를 못 받는다.
+    @NSManaged var latestBuild: Int
+
     @NSManaged var accounts: NSSet?
 
     @NSManaged var cashEvents: NSSet?

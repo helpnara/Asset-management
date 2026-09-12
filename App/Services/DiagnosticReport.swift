@@ -48,6 +48,7 @@ enum DiagnosticReport {
         lines.append("공유: \(state.label)")
         lines.append("가구 수: \(Household.count(in: context)) · 뿌리에 안 매달린 기록: \(state.orphans) · 개인 저장소에 남은 가족 기록: \(state.strays)")
         if let blockers = state.pruneBlockers { lines.append("빈 가구 안 치워진 이유: \(blockers)") }
+        lines.append("가족 최신 빌드: \(AppUpdate.latestKnownBuild(in: context)) · 이 기기: \(AppUpdate.currentBuild)")
         lines.append("")
 
         // 기록 (건수만)

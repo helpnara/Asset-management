@@ -8,12 +8,15 @@ struct RootView: View {
     @State private var monitor = CloudKitSyncMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.managedObjectContext) private var context
+    @Environment(\.openURL) private var openURL
     /// 역할 확인을 이만큼은 기다린다. 그 뒤에는 아는 대로 연다 — 오프라인
     /// 첫 실행에서 영영 잠긴 채 서 있으면 안 된다 (76번).
     @State private var roleWaitExpired = false
     /// 체험 모드 (docs/10 §2-1 · 133번).
     @State private var trial = TrialMode.shared
     @State private var isEndingTrial = false
+    /// 새 판 알림창 (143번). 띠는 늘 보이고, 창은 새 빌드마다 한 번.
+    @State private var showsUpdateAlert = false
 
 
     @Fetched private var holdings: [Holding]
@@ -21,6 +24,7 @@ struct RootView: View {
     @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
     @Fetched private var accounts: [Account]
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var diary: [DiaryEntry]
+    @Fetched private var households: [Household]
 
     /// **역할은 `CKShare` 가 정한다** (docs/09-family-sharing.md 4단계). 초대를
     /// 받아들인 기기는 참가자 권한대로, 나머지는 소유자다. 실행 인자는 CI 가
@@ -51,13 +55,24 @@ struct RootView: View {
         sharing.state.shareLost && monitor.hasFinishedImport
     }
 
+    /// 가족 기기 중 하나가 더 새 빌드를 쓰고 있으면 그 번호 (143번). `@Fetched` 라
+    /// iCloud 로 번호가 내려오는 순간 띠가 뜬다. 체험 저장소는 안 본다.
+    private var newerBuild: Int? {
+        guard !trial.isActive else { return nil }
+        let latest = households.map(\.latestBuild).max() ?? 0
+        return latest > AppUpdate.currentBuild ? latest : nil
+    }
+
     var body: some View {
         tabs
             .familyRole(role, participantID: sharing.state.participantID)
             .safeAreaInset(edge: .top, spacing: 0) { notices }
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
             // 넓혀 주면 참가자 쪽은 다음에 앞으로 왔을 때 편집이 열린다.
-            .task { sharing.refreshState() }
+            .task {
+                sharing.refreshState()
+                recordBuild()
+            }
             .task {
                 try? await Task.sleep(for: .seconds(20))
                 roleWaitExpired = true
@@ -69,15 +84,39 @@ struct RootView: View {
                     sharing.refreshState()
                     // 같은 주 기록이 둘이면 하나로 (96번). 가져온 뒤라야 둘 다 보인다.
                     WeekDedup.run(in: context)
+                    recordBuild()
                 }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     sharing.refreshState()
+                    recordBuild()
                     let written = DiaryNotifications.todayWritten(diary)
                     Task { await DiaryNotifications.refresh(todayWritten: written) }
                 }
             }
+            // 새 빌드 번호가 처음 보이면 한 번 묻는다 (143번). 띠는 그 뒤로도 남는다.
+            .onChange(of: newerBuild, initial: true) { _, newer in
+                if let newer, AppUpdate.shouldAlert(for: newer) { showsUpdateAlert = true }
+            }
+            .alert("새 버전이 나왔습니다", isPresented: $showsUpdateAlert) {
+                Button("지금 업데이트") {
+                    if let newer = newerBuild { AppUpdate.markAlerted(newer) }
+                    if let url = AppUpdate.updateURL { openURL(url) }
+                }
+                Button("나중에", role: .cancel) {
+                    if let newer = newerBuild { AppUpdate.markAlerted(newer) }
+                }
+            } message: {
+                Text("가족 기기 중 하나가 빌드 \(newerBuild ?? 0) 을 쓰고 있습니다. 이 기기는 빌드 \(AppUpdate.currentBuild) 입니다. 판이 다르면 새 항목이 안 보이거나 기록이 어긋날 수 있으니, 업데이트한 뒤 사용해 주세요.")
+            }
+    }
+
+    /// 이 기기의 빌드를 가구에 적는다 (143번). 역할을 아직 모르거나 보기 전용이면
+    /// 안 적는다 — 서버가 거부할 쓰기를 만들지 않는다.
+    private func recordBuild() {
+        guard !trial.isActive, !isRolePending, role != .viewer else { return }
+        AppUpdate.record(in: context)
     }
 
     /// 화면 위의 한 줄 알림. 없으면 자리도 없다.
@@ -88,11 +127,34 @@ struct RootView: View {
         } else if isRolePending {
             noticeBar(icon: "icloud", text: "iCloud 에서 역할을 확인하는 중 — 잠시 뒤 편집이 열립니다",
                       spinning: true)
+        } else if let newer = newerBuild {
+            updateBar(newer)
         } else if isShareLost {
             noticeBar(icon: "person.2.slash",
                       text: "가족 공유가 끊긴 것 같습니다 · 더보기 → 가족에서 확인하세요",
                       spinning: false)
         }
+    }
+
+    /// **새 판** 띠 (143번). 업데이트할 때까지 모든 탭 위에 남는다.
+    private func updateBar(_ newer: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .font(.scaled(11, weight: .medium))
+            Text("새 버전(빌드 \(newer))이 나왔습니다 · 업데이트 뒤 사용해 주세요")
+                .font(.scaled(11, weight: .medium))
+                .lineLimit(2)
+            Spacer(minLength: 0)
+            Button("업데이트") {
+                if let url = AppUpdate.updateURL { openURL(url) }
+            }
+            .font(.scaled(11, weight: .semibold))
+        }
+        .foregroundStyle(Color.ink)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.alertSoft)
     }
 
     /// **체험 자료** 띠 (docs/10 §2-1). 가상 자료라는 것을 늘 보이고, 한 번에 지운다.
