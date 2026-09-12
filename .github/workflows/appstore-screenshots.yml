@@ -212,7 +212,7 @@ jobs:
           .venv-store/bin/pip install --quiet pillow
           .venv-store/bin/python Tools/store/compose.py screenshots/appstore/iphone screenshots/appstore/store/iphone iphone
           .venv-store/bin/python Tools/store/compose.py screenshots/appstore/ipad   screenshots/appstore/store/ipad   ipad
-          echo "--- 크기 확인 (iPhone 1320×2868 · iPad 2064×2752) ---"
+          echo "--- 크기 확인 (iPhone 1320×2868 · iPhone 6.5 1284×2778 · iPad 2064×2752) ---"
           for f in screenshots/appstore/store/*/*.png; do
             python3 -c "
           import struct

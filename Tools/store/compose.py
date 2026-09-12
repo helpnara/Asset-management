@@ -115,6 +115,14 @@ def main() -> None:
         compose(source, target, title, subtitle, kind)
         with Image.open(target) as done:
             print(f"{target} {done.width}×{done.height}")
+            # App Store Connect 의 아이폰 칸이 6.5" (1284×2778) 로 잡힌 계정이 있다
+            # (140번). 비율 차이가 0.4% 라 줄여 넣어도 티가 안 난다.
+            if kind == "iphone":
+                small_dir = target_dir.parent / "iphone-6.5"
+                small_dir.mkdir(parents=True, exist_ok=True)
+                small = done.convert("RGB").resize((1284, 2778), Image.LANCZOS)
+                small.save(small_dir / source.name, "PNG", optimize=True)
+                print(f"{small_dir / source.name} 1284×2778")
 
 
 if __name__ == "__main__":
