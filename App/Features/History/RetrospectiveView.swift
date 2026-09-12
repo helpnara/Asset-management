@@ -24,7 +24,8 @@ struct RetrospectiveView: View {
 
     @State private var scope: Retrospective.Scope = .month
     /// 월간은 지난달에서, 연간은 올해에서 시작한다 — 회고는 뒤를 본다.
-    @State private var monthOffset = -1
+    /// 이번 달에서 시작한다 (141번). 예전에는 지난달이라 열 때마다 8월이었다.
+    @State private var monthOffset = 0
     @State private var yearOffset = 0
 
     private var period: Retrospective.Period {
@@ -77,9 +78,16 @@ struct RetrospectiveView: View {
         HStack {
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
             Spacer()
-            Text(period.title)
-                .font(.scaled(15, weight: .bold))
-                .foregroundStyle(Color.ink)
+            VStack(spacing: 1) {
+                Text(period.title)
+                    .font(.scaled(15, weight: .bold))
+                    .foregroundStyle(Color.ink)
+                if period.isCurrent() {
+                    Text("진행 중 · 오늘까지")
+                        .font(.scaled(10))
+                        .foregroundStyle(Color.muted)
+                }
+            }
             Spacer()
             Button { step(1) } label: { Image(systemName: "chevron.right") }
                 .disabled(period.isCurrent())
