@@ -22,8 +22,15 @@ struct ReviewCompleteView: View {
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     let session: ReviewSession
+    /// 점검 화면 안에 밀어 넣어 열렸을 때 (144-B) — 닫기는 점검 창을 통째로
+    /// 닫는다. 현황판에서 지난 점검을 열 때는 nil 이라 제 창으로 뜬다.
+    var onClose: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+
+    private func close() {
+        if let onClose { onClose() } else { dismiss() }
+    }
     /// 별점 창은 **축하가 있는 주에만** 띄운다 (docs/10 §3-4). 아무 때나 띄우면
     /// 별 셋, 기쁜 순간에 띄우면 별 다섯이다. 애플이 1년에 세 번으로 막으므로
     /// 우리 쪽에서도 90일에 한 번만 청한다.
@@ -66,24 +73,31 @@ struct ReviewCompleteView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    headline
-                    Rectangle().fill(Color.rule).frame(height: 1)
-                    celebrations
-                    streakSection
-                    memberSection
-                    footer
-                }
+        if onClose != nil {
+            // 점검 창의 스택에 밀려 들어왔다. 뒤로 가면 안 된다 — 점검은 끝났다.
+            content.navigationBarBackButtonHidden(true)
+        } else {
+            NavigationStack { content }
+        }
+    }
+
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                headline
+                Rectangle().fill(Color.rule).frame(height: 1)
+                celebrations
+                streakSection
+                memberSection
+                footer
             }
-            .background(Color.canvas)
-            .navigationTitle("점검 완료")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("닫기") { dismiss() }.fontWeight(.semibold)
-                }
+        }
+        .background(Color.canvas)
+        .navigationTitle("점검 완료")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("닫기") { close() }.fontWeight(.semibold)
             }
         }
     }
@@ -268,7 +282,7 @@ struct ReviewCompleteView: View {
     private var footer: some View {
         VStack(spacing: 10) {
             Button {
-                dismiss()
+                close()
             } label: {
                 Text("현황판에서 보기")
                     .font(.scaled(13.5, weight: .medium))

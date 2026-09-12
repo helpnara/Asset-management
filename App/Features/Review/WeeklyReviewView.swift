@@ -1,6 +1,7 @@
 import Core
 import CoreData
 import SwiftUI
+import UIKit
 
 /// 주간 점검 — 이 앱의 심장.
 ///
@@ -47,6 +48,15 @@ struct WeeklyReviewView: View {
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
 
+    /// **활성 행에 친 글자** (144-A). 활성 행의 입력칸은 비어 있고 지난 값은 회색
+    /// 자리표시로만 보인다 — 여덟 자리를 지우고 치는 수고를 없앤다. 어느 줄의
+    /// 글자인지 `id` 로 못 박는다: 포커스가 옮겨 가는 순간 새 줄의 세터가 한 번
+    /// 불리는데, 그때 앞 줄의 글자가 딸려 들어가면 안 된다.
+    private struct Draft { var id: UUID; var text: String }
+    @State private var draft: Draft?
+    /// 포커스를 받은 순간의 값. 자리표시로 보이고, 친 것을 다 지우면 이리로 돌아간다.
+    @State private var focusOriginal = 0
+
     /// `고정` 은 큐에서 빼고, `월 1회` 는 그 달에 이미 적었으면 뺀다 (92번).
     /// 열린 뒤에는 열 때 정한 큐를 지킨다 (105번).
     private func queue(for member: Member) -> [Holding] {
@@ -92,6 +102,9 @@ struct WeeklyReviewView: View {
                 }
                 .onAppear { scrollProxy = proxy }
                 .onChange(of: focusedID) { _, newValue in
+                    // 줄이 바뀌면 친 글자는 버리고 그 줄의 값을 자리표시로 (144-A).
+                    draft = nil
+                    focusOriginal = newValue.flatMap { id in queue.first { $0.id == id } }?.valueMinor ?? 0
                     guard let newValue else { return }
                     visited.insert(newValue)
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -117,11 +130,20 @@ struct WeeklyReviewView: View {
                     for holding in items {
                         originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
                     }
+                    // **이번 주 이미 적은 줄은 지난 것으로 센다** (144-C). 같은 주에
+                    // 다시 열면(90번) 진행 바가 거기서부터 차 있고, 커서는 아직 안
+                    // 적은 첫 줄로 간다. 다 적었으면 맨 위 — 다시 보는 자리다.
+                    let entered = items.filter { $0.wasEntered(thisWeekOf: .now) }
+                    visited = Set(entered.map(\.id))
+                    focusedID = items.first { !$0.wasEntered(thisWeekOf: .now) }?.id ?? items.first?.id
                 }
-                focusedID = queue.first?.id
             }
-            // 완료 화면을 닫으면 점검 화면도 함께 닫힌다 — 현황판으로 (103번).
-            .fullScreenCover(item: $completed, onDismiss: { dismiss() }) { ReviewCompleteView(session: $0) }
+            // **완료 화면은 같은 창 안에서 밀어 넣는다** (144-B). 예전에는 점검 화면
+            // 위에 한 번 더 덮어서, 닫기를 누르면 둘이 차례로 내려갔다. 이제 닫기
+            // 한 번에 이 창(점검)이 통째로 내려간다 — 현황판으로 (103번).
+            .navigationDestination(item: $completed) { session in
+                ReviewCompleteView(session: session, onClose: { dismiss() })
+            }
             // **오타를 한 번 되묻는다** (docs/08-feedback.md 81번, B2). 지난주보다
             // 30% 넘게 움직인 항목이 있으면 저장 전에 이름을 들어 보여 준다.
             // 막지는 않는다 — 진짜로 그렇게 움직였을 수 있다.
@@ -302,7 +324,8 @@ struct WeeklyReviewView: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 3) {
-                TextField("0", text: valueText(holding))
+                // 활성 행은 빈칸 + 지난 값 자리표시 (144-A).
+                TextField(isActive ? placeholderText : "0", text: valueText(holding))
                     .keyboardType(.numberPad)
                     .focused($focusedID, equals: holding.id)
                     .multilineTextAlignment(.trailing)
@@ -370,6 +393,9 @@ struct WeeklyReviewView: View {
                 .font(.scaled(13))
             Button("억") { multiplyFocused(by: 100_000_000) }
                 .font(.scaled(13))
+            // 증권사 앱에서 복사해 온 숫자를 한 번에 (144-D).
+            Button { pasteIntoFocused() } label: { Image(systemName: "doc.on.clipboard") }
+                .accessibilityLabel("붙여넣기")
 
             Spacer()
 
@@ -401,19 +427,59 @@ struct WeeklyReviewView: View {
         focusedID = queue[next].id
     }
 
+    /// 활성 행의 자리표시 — 포커스 받은 순간의 값 (144-A).
+    private var placeholderText: String {
+        focusOriginal == 0 ? "0" : Won.grouped(focusOriginal)
+    }
+
+    /// 활성 행은 **친 글자**를, 나머지 행은 값을 보인다 (144-A).
     private func valueText(_ holding: Holding) -> Binding<String> {
         Binding(
-            get: { holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor) },
-            set: {
-                // **값이 실제로 바뀔 때만.** 포커스만 옮겨도 세터가 같은 값으로
-                // 한 번 불리는데, 그때 기준값을 옮기면 증감이 사라진다 (CI 에서 잡음).
-                let next = Int(String($0.filter(\.isNumber).prefix(15))) ?? 0
+            get: {
+                if focusedID == holding.id {
+                    return draft?.id == holding.id ? (draft?.text ?? "") : ""
+                }
+                return holding.valueMinor == 0 ? "" : Won.grouped(holding.valueMinor)
+            },
+            set: { newText in
+                // 활성 행만 받는다. 포커스가 옮겨 갈 때 앞 줄 세터가 제 값으로 한 번
+                // 더 불리는데, 그것은 값이 아니라 표시다.
+                guard focusedID == holding.id else { return }
+                let digits = String(newText.filter(\.isNumber).prefix(15))
+                if digits.isEmpty {
+                    // 친 것을 다 지웠다 — 포커스 받은 순간의 값으로 (변동 없음).
+                    // 아직 아무것도 안 친 줄에 오는 빈 세터는 그냥 둔다.
+                    guard draft?.id == holding.id else { return }
+                    draft = Draft(id: holding.id, text: "")
+                    if holding.valueMinor != focusOriginal { holding.valueMinor = focusOriginal }
+                    return
+                }
+                let next = Int(digits) ?? 0
+                draft = Draft(id: holding.id, text: Won.grouped(next))
+                // **값이 실제로 바뀔 때만.** 같은 값으로 불렸을 때 기준값을 옮기면
+                // 증감이 사라진다 (CI 에서 잡음).
                 guard next != holding.valueMinor else { return }
                 // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번).
                 holding.rollBaselineIfNewWeek()
                 holding.valueMinor = next
             }
         )
+    }
+
+    /// 클립보드의 숫자를 활성 행에 넣고 다음 줄로 (144-D). 소수점 뒤는 버린다 —
+    /// 원화에 소수는 없고, `1,234.56` 을 통째로 읽으면 자리가 두 칸 는다.
+    private func pasteIntoFocused() {
+        guard let focusedID, let holding = queue.first(where: { $0.id == focusedID }),
+              let text = UIPasteboard.general.string else { return }
+        let whole = text.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
+        let digits = String(whole.filter(\.isNumber).prefix(15))
+        guard let next = Int(digits), next > 0 else { return }
+        draft = Draft(id: holding.id, text: Won.grouped(next))
+        if next != holding.valueMinor {
+            holding.rollBaselineIfNewWeek()
+            holding.valueMinor = next
+        }
+        move(1)
     }
 
     /// 키보드 위 `만` · `억` (93번, B3). 12 → 만 → 120,000.
@@ -423,6 +489,7 @@ struct WeeklyReviewView: View {
         guard holding.valueMinor > 0, next < 1_000_000_000_000_000 else { return }
         holding.rollBaselineIfNewWeek()
         holding.valueMinor = next
+        draft = Draft(id: holding.id, text: Won.grouped(next))
     }
 
     /// 기준값은 이번 주 처음 손대기 직전의 값이라 늘 "지난주" 다 (91번).
