@@ -114,8 +114,15 @@ struct RootView: View {
 
     /// 이 기기의 빌드를 가구에 적는다 (143번). 역할을 아직 모르거나 보기 전용이면
     /// 안 적는다 — 서버가 거부할 쓰기를 만들지 않는다.
+    ///
+    /// **가져오기가 한 번 끝난 뒤에만 적는다** (146번). TestFlight 가 뒤에서 앱을
+    /// 올려 두면 다음 실행의 로컬 번호는 옛것(또는 0)이다. 그때 바로 적으면
+    /// 서버에 이미 있는 더 높은 번호 위에 낮은 번호를 덮어쓴다 — 밀어 넣기의
+    /// 충돌 해결이 "내가 바꾼 칸은 내 것" 이라서, 아이패드(77)가 아빠 폰(78)을
+    /// 지웠다. 서버 값을 먼저 받아 견준 뒤에 적으면 그 일이 없다.
     private func recordBuild() {
-        guard !trial.isActive, !isRolePending, role != .viewer else { return }
+        guard !trial.isActive, !isRolePending, role != .viewer,
+              monitor.hasFinishedImport else { return }
         AppUpdate.record(in: context)
     }
 
