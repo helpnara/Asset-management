@@ -57,6 +57,28 @@ struct WeeklyReviewView: View {
     /// 포커스를 받은 순간의 값. 자리표시로 보이고, 친 것을 다 지우면 이리로 돌아간다.
     @State private var focusOriginal = 0
 
+    /// **이번 주에 커서가 다녀간 줄** 을 기기에 남긴다 (144-C, 빌드 76 에서 고침).
+    /// 처음에는 `lastEnteredAt` 으로 "적은 줄" 을 가렸는데, 점검을 끝내는 순간
+    /// 큐 전체에 시각이 찍히므로(변동 없음도 기록이다) 다시 열면 늘 맨 위였다.
+    /// 사용자가 뜻한 "안 적은 줄" 은 **아직 손이 안 간 줄**이라, 커서가 간 줄만
+    /// 따로 센다. 자료가 아니라 이 기기의 편의라 UserDefaults 면 된다.
+    private enum VisitedStore {
+        static let weekKey = "review.visited.week"
+        static let idsKey = "review.visited.ids"
+
+        static func load(anchor: Date) -> Set<UUID> {
+            let defaults = UserDefaults.standard
+            guard defaults.double(forKey: weekKey) == anchor.timeIntervalSince1970 else { return [] }
+            return Set((defaults.stringArray(forKey: idsKey) ?? []).compactMap(UUID.init(uuidString:)))
+        }
+
+        static func save(_ ids: Set<UUID>, anchor: Date) {
+            let defaults = UserDefaults.standard
+            defaults.set(anchor.timeIntervalSince1970, forKey: weekKey)
+            defaults.set(ids.map(\.uuidString).sorted(), forKey: idsKey)
+        }
+    }
+
     /// `고정` 은 큐에서 빼고, `월 1회` 는 그 달에 이미 적었으면 뺀다 (92번).
     /// 열린 뒤에는 열 때 정한 큐를 지킨다 (105번).
     private func queue(for member: Member) -> [Holding] {
@@ -107,6 +129,7 @@ struct WeeklyReviewView: View {
                     focusOriginal = newValue.flatMap { id in queue.first { $0.id == id } }?.valueMinor ?? 0
                     guard let newValue else { return }
                     visited.insert(newValue)
+                    VisitedStore.save(visited, anchor: ReviewWeek.anchor(for: .now))
                     withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(newValue, anchor: .center)
                     }
@@ -121,7 +144,13 @@ struct WeeklyReviewView: View {
                     // **취소다** (103번). 치는 대로 저장되므로 열 때 값으로 되돌린다.
                     Button("나중에") { revertAll(); dismiss() }.foregroundStyle(Color.muted)
                 }
-                ToolbarItemGroup(placement: .keyboard) { accessory }
+            }
+            // **도구막대는 키보드 툴바가 아니라 화면 안의 띠다** (144 빌드 76). SwiftUI 의
+            // `placement: .keyboard` 툴바는 늦게 만드는 목록에서 포커스가 줄 사이를
+            // 오갈 때 붙었다 떨어졌다 했다 — `만`·`억`·`변동 없음` 이 보였다 안 보였다.
+            // 아래 안전 영역에 두면 키보드가 올라온 만큼 위로 밀려 늘 키보드 바로 위에 있다.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if focusedID != nil { accessoryBar }
             }
             .onAppear {
                 if queuedIDs == nil {
@@ -130,12 +159,12 @@ struct WeeklyReviewView: View {
                     for holding in items {
                         originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
                     }
-                    // **이번 주 이미 적은 줄은 지난 것으로 센다** (144-C). 같은 주에
-                    // 다시 열면(90번) 진행 바가 거기서부터 차 있고, 커서는 아직 안
-                    // 적은 첫 줄로 간다. 다 적었으면 맨 위 — 다시 보는 자리다.
-                    let entered = items.filter { $0.wasEntered(thisWeekOf: .now) }
-                    visited = Set(entered.map(\.id))
-                    focusedID = items.first { !$0.wasEntered(thisWeekOf: .now) }?.id ?? items.first?.id
+                    // **이번 주 커서가 다녀간 줄은 지난 것으로 센다** (144-C). 같은 주에
+                    // 다시 열면(90번) 진행 바가 거기서부터 차 있고, 커서는 아직 손이
+                    // 안 간 첫 줄로 간다. 다 다녀갔으면 맨 위 — 다시 보는 자리다.
+                    let ids = Set(items.map(\.id))
+                    visited = VisitedStore.load(anchor: ReviewWeek.anchor(for: .now)).intersection(ids)
+                    focusedID = items.first { !visited.contains($0.id) }?.id ?? items.first?.id
                 }
             }
             // **완료 화면은 같은 창 안에서 밀어 넣는다** (144-B). 예전에는 점검 화면
@@ -387,13 +416,23 @@ struct WeeklyReviewView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     private var isCompactAccessory: Bool { typeSize >= .xxLarge }
 
+    private var accessoryBar: some View {
+        accessory
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(Color.surface)
+            .overlay(Rectangle().fill(Color.rule).frame(height: 1), alignment: .top)
+            .tint(Color.ink)
+    }
+
     private var accessory: some View {
-        HStack(spacing: isCompactAccessory ? 8 : 10) {
+        HStack(spacing: isCompactAccessory ? 10 : 14) {
             if !isCompactAccessory {
-                Button { move(-1) } label: { Image(systemName: "chevron.up") }
+                Button { move(-1) } label: { Image(systemName: "chevron.up").font(.scaled(15, weight: .medium)) }
                     .disabled(currentIndex == 0)
             }
-            Button { move(1) } label: { Image(systemName: "chevron.down") }
+            Button { move(1) } label: { Image(systemName: "chevron.down").font(.scaled(15, weight: .medium)) }
                 .disabled(currentIndex >= queue.count - 1)
 
             Button("만") { multiplyFocused(by: 10_000) }
@@ -401,7 +440,7 @@ struct WeeklyReviewView: View {
             Button("억") { multiplyFocused(by: 100_000_000) }
                 .font(.scaled(13))
             // 증권사 앱에서 복사해 온 숫자를 한 번에 (144-D).
-            Button { pasteIntoFocused() } label: { Image(systemName: "doc.on.clipboard") }
+            Button { pasteIntoFocused() } label: { Image(systemName: "doc.on.clipboard").font(.scaled(15, weight: .medium)) }
                 .accessibilityLabel("붙여넣기")
 
             Spacer()
