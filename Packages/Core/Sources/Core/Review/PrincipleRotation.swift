@@ -55,4 +55,28 @@ public enum PrincipleRotation {
         let start = ((week * take) % count + count) % count
         return (0..<take).map { (start + $0) % count }
     }
+
+    // MARK: - 하루에 하나 (현황판, 148번)
+
+    /// 이 날짜가 1970-01-01 에서 며칠째인가. 하루의 시작으로 잘라 센다 —
+    /// 시각이 섞이면 같은 날인데 다른 수가 나온다.
+    public static func dayIndex(for date: Date, calendar: Calendar = .current) -> Int {
+        let epoch = calendar.startOfDay(for: Date(timeIntervalSince1970: 0))
+        let day = calendar.startOfDay(for: date)
+        return calendar.dateComponents([.day], from: epoch, to: day).day ?? 0
+    }
+
+    /// **오늘 현황판에 올릴 원칙의 자리 번호.** 원칙이 없으면 `nil`.
+    ///
+    /// 1페이지와 같은 이유로 난수를 쓰지 않는다. 진짜 난수면 하루에 앱을 두 번
+    /// 열 때 문구가 바뀌고, 어제와 오늘이 같을 수도 있다. 날짜로 정하면
+    /// **하루 종일 같은 한 줄**이고, 가족의 기기가 같은 날 같은 문구를 보며,
+    /// N개가 N일에 한 바퀴를 고르게 돈다.
+    public static func index(count: Int, on date: Date,
+                            calendar: Calendar = .current) -> Int? {
+        guard count > 0 else { return nil }
+        let day = dayIndex(for: date, calendar: calendar)
+        // 1970 이전이면 음수다 — 나머지를 0 이상으로 접는다.
+        return ((day % count) + count) % count
+    }
 }

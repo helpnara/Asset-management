@@ -23,6 +23,8 @@ final class AppRoute {
     var wantsDiagnostics = false
     /// 월간 회고 알림이나 현황판 카드를 누르면 더보기 탭의 회고 화면까지 밀어 넣는다 (86번).
     var wantsRetrospective = false
+    /// 현황판의 오늘의 운용 원칙을 누르면 더보기 탭의 원칙 목록까지 밀어 넣는다 (148번).
+    var wantsPrinciples = false
     /// 알림에서 총액만 기록한 직후 보여줄 안내.
     var totalOnlyMessage: String?
 

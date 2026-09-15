@@ -23,6 +23,7 @@ struct DashboardView: View {
     @Fetched(sort: \UserMilestone.year) private var userMilestones: [UserMilestone]
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var diary: [DiaryEntry]
     @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
+    @Fetched(sort: \Principle.order) private var principles: [Principle]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -106,6 +107,8 @@ struct DashboardView: View {
         // 목·실·감은 카드 안에, 총자산은 자간 넓힌 작은 글자로. 전부
         // `sectionHeader` 로 세운다.
         switch card {
+        case .principle:
+            principleCard
         case .diary:
             sectionHeader("오늘의 목 · 실 · 감", trailing: DiaryCard.dayText(Calendar.current.startOfDay(for: .now)))
             DiaryCard(embedsTitle: false)
@@ -959,6 +962,59 @@ struct DashboardView: View {
                     }
                 }
                 .padding(.bottom, 20)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// **오늘의 운용 원칙 한 줄** (148번).
+    ///
+    /// 원칙은 1페이지 PDF 에만 실려 있었다 — 종이를 뽑지 않으면 영영 안 읽는다.
+    /// 지킬 때 값이 나는 문장이니 매일 여는 자리에 하나씩 올린다.
+    ///
+    /// 고르는 것은 **날짜**다. 난수면 하루에 두 번 열 때 문구가 바뀌고 어제와
+    /// 오늘이 같을 수도 있다. 날짜로 정하면 하루 종일 같고, 가족의 기기가 같은
+    /// 날 같은 문구를 본다 (`PrincipleRotation.index`).
+    ///
+    /// 원칙이 하나도 없으면 카드가 아예 안 뜬다 — 빈 카드는 자리만 먹는다.
+    @ViewBuilder
+    private var principleCard: some View {
+        if let index = PrincipleRotation.index(count: principles.count, on: .now),
+           principles.indices.contains(index) {
+            let principle = principles[index]
+            Button {
+                AppRoute.shared.wantsPrinciples = true
+                AppRoute.shared.selectedTab = RootView.Tab.more
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    sectionHeader("오늘의 운용 원칙",
+                                  trailing: "\(index + 1) / \(principles.count)")
+                    Rectangle().fill(Color.rule).frame(height: 1)
+
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(principle.title)
+                                .font(.scaled(15, weight: .semibold))
+                                .foregroundStyle(Color.ink)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !principle.detail.isEmpty {
+                                Text(principle.detail)
+                                    .font(.scaled(11.5))
+                                    .foregroundStyle(Color.muted)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.scaled(11, weight: .semibold))
+                            .foregroundStyle(Color.faint)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
+                }
             }
             .buttonStyle(.plain)
         }

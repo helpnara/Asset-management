@@ -194,6 +194,11 @@ struct MoreView: View {
                 route.wantsRetrospective = false
                 if path.last != .retrospective { path.append(.retrospective) }
             }
+            .onChange(of: route.wantsPrinciples, initial: true) { _, wants in
+                guard wants else { return }
+                route.wantsPrinciples = false
+                if path.last != .principles { path.append(.principles) }
+            }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .history: PastRecordsView()

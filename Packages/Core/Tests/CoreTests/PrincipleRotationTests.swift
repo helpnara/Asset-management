@@ -89,4 +89,43 @@ struct PrincipleRotationTests {
         #expect(PrincipleRotation.weekIndex(for: date(1970, 1, 3), calendar: calendar) == 1)
         #expect(PrincipleRotation.weekIndex(for: date(2026, 9, 5), calendar: calendar) == 2_958)
     }
+
+    // MARK: - 하루에 하나 (현황판, 148번)
+
+    /// 기댓값은 파이썬으로 따로 셌다: 1970-01-01 → 2026-09-15 가 20,711일,
+    /// 20711 % 16 = 7.
+    @Test("하루 안에서는 같은 원칙, 다음 날은 다음 원칙")
+    func dailyRotationAdvancesByOneADay() {
+        let today = PrincipleRotation.index(count: 16, on: date(2026, 9, 15), calendar: calendar)
+        let laterToday = PrincipleRotation.index(
+            count: 16,
+            on: calendar.date(byAdding: .hour, value: 23, to: date(2026, 9, 15)) ?? .distantPast,
+            calendar: calendar
+        )
+        let tomorrow = PrincipleRotation.index(count: 16, on: date(2026, 9, 16), calendar: calendar)
+        #expect(today == 7)
+        #expect(laterToday == 7)
+        #expect(tomorrow == 8)
+    }
+
+    @Test("원칙 개수만큼 지나면 한 바퀴 — 빠짐도 겹침도 없다")
+    func dailyRotationCoversEveryPrincipleOnce() {
+        var seen: [Int] = []
+        for offset in 0..<16 {
+            let day = calendar.date(byAdding: .day, value: offset, to: date(2026, 9, 15)) ?? .distantPast
+            seen.append(PrincipleRotation.index(count: 16, on: day, calendar: calendar) ?? -1)
+        }
+        #expect(Set(seen).count == 16)
+        #expect(seen.allSatisfy { (0..<16).contains($0) })
+        // 16일 뒤에는 처음으로 돌아온다.
+        #expect(PrincipleRotation.index(count: 16, on: date(2026, 10, 1), calendar: calendar) == seen[0])
+    }
+
+    @Test("원칙이 없으면 nil, 기준일 이전이어도 범위 안")
+    func dailyRotationEdges() {
+        #expect(PrincipleRotation.index(count: 0, on: date(2026, 9, 15), calendar: calendar) == nil)
+        // 파이썬 대조: 1969-12-31 은 -1일 → (-1 % 16 + 16) % 16 = 15
+        #expect(PrincipleRotation.index(count: 16, on: date(1969, 12, 31), calendar: calendar) == 15)
+        #expect(PrincipleRotation.index(count: 1, on: date(2026, 9, 15), calendar: calendar) == 0)
+    }
 }
