@@ -40,6 +40,15 @@ struct DiaryCard: View {
 
     private var today: Date { Calendar.current.startOfDay(for: .now) }
     private var todayEntry: DiaryEntry? { entries.first { $0.day == today } }
+
+    /// 오늘 일기의 글자 셋을 하나로 — **다른 기기에서 적은 것이 iCloud 로 내려오면**
+    /// 이 값이 바뀌고, 그때 화면 글자를 다시 읽는다 (147번). 예전에는 열 때 한 번만
+    /// 읽어서, 아이폰에서 적은 일기가 아이패드의 지난 일기 목록에는 보이는데 오늘
+    /// 카드에는 안 보였다.
+    private var todayText: String {
+        guard let entry = todayEntry else { return "" }
+        return entry.goal + "\u{1F}" + entry.result + "\u{1F}" + entry.gratitude
+    }
     private var pastCount: Int { entries.filter { $0.day != today }.count }
 
     /// 오늘(또는 어제)까지 이어진 날 수. 빈 항목(만들었다가 다 지운 날)은 안 센다.
@@ -105,6 +114,14 @@ struct DiaryCard: View {
         .onAppear(perform: load)
         // 날이 바뀐 채 앱이 떠 있었으면(자정을 넘김) 오늘 칸을 새로 읽는다.
         .onChange(of: today) { _, _ in load() }
+        // 편집 중이면 손대지 않는다 — 치는 중인 글자를 덮으면 안 된다. 완료하면
+        // 이 기기가 적은 것이 이긴다 (마지막에 쓴 쪽이 이기는 iCloud 규칙과 같다).
+        .onChange(of: todayText) { _, _ in
+            guard !isEditing else { return }
+            goal = todayEntry?.goal ?? ""
+            result = todayEntry?.result ?? ""
+            gratitude = todayEntry?.gratitude ?? ""
+        }
         .onChange(of: goal) { _, value in write(\.goal, value) }
         .onChange(of: result) { _, value in write(\.result, value) }
         .onChange(of: gratitude) { _, value in write(\.gratitude, value) }
