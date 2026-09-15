@@ -58,7 +58,52 @@ struct MoreView: View {
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
             List {
-                Section("점검") {
+                // **구역은 동사로 나눈다** (149번). 예전에는 `점검`·`기록`·`자산`
+                // 셋이었는데, `기록` 한 칸에 회고 · 진단 · 원칙 · 카드 순서 ·
+                // 내보내기가 다 들어가 아홉 줄을 읽어야 찾을 수 있었다.
+                // 누를 수 없는 줄(상태)은 전부 맨 위 `한눈에` 로 모은다 —
+                // 메뉴 사이에 끼어 있으면 눌러 보고 나서야 메뉴가 아닌 줄 안다.
+                Section("한눈에") {
+                    LabeledContent("연속 기록", value: "\(streak)주")
+                    LabeledContent("기록한 주", value: "\(sessions.filter(\.isComplete).count)주")
+                    LabeledContent("등록한 종목", value: holdingsSummary)
+                }
+
+                Section("돌아보기") {
+                    NavigationLink(value: Destination.retrospective) {
+                        Label("월간 · 연간 회고", systemImage: "calendar.badge.checkmark")
+                    }
+                    NavigationLink(value: Destination.diagnostics) {
+                        Label("자산 진단", systemImage: "checklist")
+                    }
+                    NavigationLink(value: Destination.changeLog) {
+                        Label("변경 이력", systemImage: "clock.arrow.circlepath")
+                    }
+                    NavigationLink(value: Destination.history) {
+                        Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
+                    }
+                }
+
+                Section("내가 정한 것") {
+                    NavigationLink(value: Destination.principles) {
+                        Label("운용 원칙", systemImage: "list.number")
+                    }
+                    NavigationLink(value: Destination.milestones) {
+                        Label("내 마일스톤", systemImage: "flag")
+                    }
+                    NavigationLink(value: Destination.todos) {
+                        Label("유의사항 · 할 일", systemImage: "note.text")
+                    }
+                }
+
+                // 자료를 앱 밖으로 내는 유일한 줄이라 혼자 둔다.
+                Section("내보내기") {
+                    NavigationLink(value: Destination.export) {
+                        Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
+                    }
+                }
+
+                Section("알림") {
                     if notificationsDenied {
                         VStack(alignment: .leading, spacing: 4) {
                             Label("알림이 꺼져 있습니다", systemImage: "bell.slash")
@@ -78,49 +123,15 @@ struct MoreView: View {
                     NavigationLink(value: Destination.diaryReminder) {
                         Label("목 · 실 · 감 알림", systemImage: "sun.max")
                     }
-                    NavigationLink(value: Destination.security) {
-                        Label("잠금 · 가리기", systemImage: "lock")
-                    }
-                    LabeledContent("연속 기록", value: "\(streak)주")
-                    LabeledContent("기록한 주", value: "\(sessions.filter(\.isComplete).count)주")
                 }
 
-                Section("기록") {
-                    NavigationLink(value: Destination.retrospective) {
-                        Label("월간 · 연간 회고", systemImage: "calendar.badge.checkmark")
-                    }
-                    NavigationLink(value: Destination.history) {
-                        Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
-                    }
-                    NavigationLink(value: Destination.diagnostics) {
-                        Label("자산 진단", systemImage: "checklist")
-                    }
-                    NavigationLink(value: Destination.changeLog) {
-                        Label("변경 이력", systemImage: "clock.arrow.circlepath")
-                    }
-                    NavigationLink(value: Destination.todos) {
-                        Label("유의사항 · 할 일", systemImage: "note.text")
-                    }
-                    NavigationLink(value: Destination.principles) {
-                        Label("운용 원칙", systemImage: "list.number")
-                    }
-                    NavigationLink(value: Destination.milestones) {
-                        Label("내 마일스톤", systemImage: "flag")
+                Section("앱 설정") {
+                    NavigationLink(value: Destination.security) {
+                        Label("잠금 · 가리기", systemImage: "lock")
                     }
                     NavigationLink(value: Destination.dashboardCards) {
                         Label("현황판 카드 순서", systemImage: "rectangle.stack")
                     }
-                    NavigationLink(value: Destination.export) {
-                        Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
-                    }
-                }
-
-
-                Section("자산") {
-                    LabeledContent("등록한 종목", value: "\(holdings.count)건")
-                    LabeledContent("매주 입력", value: "\(holdings.filter { $0.cadence == .weekly }.count)건")
-                    LabeledContent("월 1회 입력", value: "\(holdings.filter { $0.cadence == .monthly }.count)건")
-                    LabeledContent("고정 (건너뜀)", value: "\(holdings.filter { $0.cadence == .fixed }.count)건")
                 }
 
                 FamilyShareSection()
@@ -219,6 +230,20 @@ struct MoreView: View {
         if arguments.contains("-startRetrospective") { return [.retrospective] }
         if arguments.contains("-startHelp") { return [.help] }
         return []
+    }
+
+    /// 자산 네 줄(등록 · 매주 · 월 1회 · 고정)을 한 줄로 (149번). 0인 주기는
+    /// 적지 않는다 — `고정 0건` 은 알려 주는 것이 없다.
+    private var holdingsSummary: String {
+        let weekly = holdings.filter { $0.cadence == .weekly }.count
+        let monthly = holdings.filter { $0.cadence == .monthly }.count
+        let fixed = holdings.filter { $0.cadence == .fixed }.count
+        var parts: [String] = []
+        if weekly > 0 { parts.append("매주 \(weekly)") }
+        if monthly > 0 { parts.append("월 \(monthly)") }
+        if fixed > 0 { parts.append("고정 \(fixed)") }
+        guard !parts.isEmpty else { return "\(holdings.count)건" }
+        return "\(holdings.count)건 (\(parts.joined(separator: " · ")))"
     }
 
     private var streak: Int {
