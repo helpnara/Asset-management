@@ -116,7 +116,10 @@ struct ExportView: View {
             } header: {
                 Text("전체 백업")
             } footer: {
-                Text(backupFootnote)
+                // **`LocalizedStringKey` 로 감싼다.** SwiftUI 의 마크다운은
+                // 리터럴 문자열에만 걸린다 — 변수를 그냥 넘기면 `**전부**` 가
+                // 별표째로 찍힌다 (빌드 82 스크린샷에서 잡았다).
+                Text(LocalizedStringKey(backupFootnote))
             }
 
             // **되돌리기** (docs/08-feedback.md 40번).
