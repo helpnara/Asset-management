@@ -21,13 +21,14 @@ struct MoreView: View {
     /// 진단 정보 복사 (G5). 눌렀다는 표시를 잠깐 보인다.
     @State private var copiedReport = false
     @Environment(\.managedObjectContext) private var context
+    /// 보기 전용 참가자에게는 지우기 줄을 내놓지 않는다.
+    @Environment(\.canEdit) private var canEdit
     @State private var path: [Destination] = MoreView.initialPath
 
     enum Destination: Hashable {
         case history
         case principles
         case notifications
-        case diaryReminder
         case editGrants
         case diagnostics
         case todos
@@ -38,6 +39,7 @@ struct MoreView: View {
         case onePagerPreview
         case changeLog
         case dashboardCards
+        case eraseAll
         case retrospective
         case help
     }
@@ -71,7 +73,7 @@ struct MoreView: View {
 
                 Section("돌아보기") {
                     NavigationLink(value: Destination.retrospective) {
-                        Label("월간 · 연간 회고", systemImage: "calendar.badge.checkmark")
+                        Label("회고", systemImage: "calendar.badge.checkmark")
                     }
                     NavigationLink(value: Destination.diagnostics) {
                         Label("자산 진단", systemImage: "checklist")
@@ -80,7 +82,7 @@ struct MoreView: View {
                         Label("변경 이력", systemImage: "clock.arrow.circlepath")
                     }
                     NavigationLink(value: Destination.history) {
-                        Label("지난 기록 직접 입력", systemImage: "calendar.badge.plus")
+                        Label("지난 기록", systemImage: "calendar.badge.plus")
                     }
                 }
 
@@ -99,7 +101,7 @@ struct MoreView: View {
                 // 자료를 앱 밖으로 내는 유일한 줄이라 혼자 둔다.
                 Section("내보내기") {
                     NavigationLink(value: Destination.export) {
-                        Label("1페이지 · 백업 내보내기", systemImage: "square.and.arrow.up")
+                        Label("내보내기", systemImage: "square.and.arrow.up")
                     }
                 }
 
@@ -109,7 +111,9 @@ struct MoreView: View {
                             Label("알림이 꺼져 있습니다", systemImage: "bell.slash")
                                 .font(.scaled(13, weight: .medium))
                                 .foregroundStyle(Color.loss)
-                            Text("토요일 점검·목실감·회고 알림이 오지 않습니다.")
+                            // 화면에서는 `목 · 실 · 감` 으로 적는다 (152번 1-5).
+                            // `목실감` 은 진단 정보처럼 한 줄에 욱여넣는 곳에서만 쓴다.
+                            Text("토요일 점검, 목 · 실 · 감, 회고 알림이 오지 않습니다.")
                                 .font(.scaled(11.5))
                                 .foregroundStyle(Color.muted)
                             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -117,21 +121,33 @@ struct MoreView: View {
                             }
                         }
                     }
+                    // **알림은 한 화면에 모은다** (152번 2-2). 예전에는 `주간 점검
+                    // 알림` 화면 **안에** 월간 회고 토글이 숨어 있고 목 · 실 · 감은
+                    // 딴 화면이었다 — 회고 알림을 끄려면 주간 점검에 들어가야
+                    // 한다는 것을 알 길이 없었다.
                     NavigationLink(value: Destination.notifications) {
-                        Label("주간 점검 알림", systemImage: "bell")
-                    }
-                    NavigationLink(value: Destination.diaryReminder) {
-                        Label("목 · 실 · 감 알림", systemImage: "sun.max")
+                        Label("알림", systemImage: "bell")
                     }
                 }
 
-                Section("앱 설정") {
+                Section {
                     NavigationLink(value: Destination.security) {
                         Label("잠금 · 가리기", systemImage: "lock")
                     }
                     NavigationLink(value: Destination.dashboardCards) {
                         Label("현황판 카드 순서", systemImage: "rectangle.stack")
                     }
+                    // **지우기는 내보내기 화면에서 여기로 옮겼다** (152번 2-8).
+                    // 백업을 받으러 들어간 화면 맨 아래에 "전부 지우기" 가 있는 것은
+                    // 반대 방향의 일이 한 화면에 있는 것이다. 확인 절차는 그대로다.
+                    if canEdit {
+                        NavigationLink(value: Destination.eraseAll) {
+                            Label("데이터 전부 지우기", systemImage: "trash")
+                                .foregroundStyle(Color.loss)
+                        }
+                    }
+                } header: {
+                    Text("앱 설정")
                 }
 
                 FamilyShareSection()
@@ -203,7 +219,6 @@ struct MoreView: View {
                 switch destination {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
-                case .diaryReminder: DiaryReminderSettingsView()
                 case .editGrants: EditGrantsView()
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
@@ -215,6 +230,7 @@ struct MoreView: View {
                 case .onePagerPreview: OnePagerPreviewView()
                 case .changeLog: ChangeLogView()
                 case .dashboardCards: DashboardCardsView()
+                case .eraseAll: EraseAllView()
                 case .retrospective: RetrospectiveView()
                 case .help: HelpView()
                 }
@@ -234,6 +250,7 @@ struct MoreView: View {
         if arguments.contains("-startChangeLog") { return [.changeLog] }
         if arguments.contains("-startRetrospective") { return [.retrospective] }
         if arguments.contains("-startHelp") { return [.help] }
+        if arguments.contains("-startNotifications") { return [.notifications] }
         return []
     }
 
@@ -266,6 +283,12 @@ struct MoreView: View {
     }
 }
 
+/// **알림 한 화면** (152번 2-2).
+///
+/// 예전에는 `주간 점검 알림` 화면 **안에** 월간 회고 토글이 들어 있고
+/// 목 · 실 · 감은 더보기의 딴 줄이었다. 회고 알림을 끄려면 주간 점검 화면에
+/// 들어가야 한다는 것을 알 길이 없었다 — 이 앱이 거는 알림은 셋뿐이니
+/// 한 화면에 나란히 둔다. 권한은 맨 위에서 한 번만 묻는다.
 struct NotificationSettingsView: View {
     @AppStorage(ReviewSettings.weekdayKey) private var weekday = ReviewSettings.defaultWeekday
     @AppStorage(ReviewSettings.hourKey) private var hour = ReviewSettings.defaultHour
@@ -273,8 +296,14 @@ struct NotificationSettingsView: View {
     @AppStorage(ReviewSettings.followUpKey) private var followUpEnabled = true
     @AppStorage(RetrospectiveNotifications.enabledKey) private var monthlyReminder = true
 
+    // 목 · 실 · 감 (마지막 묶음 1, 선택). 기본은 꺼짐이고 참가자도 자기 기기에서 켠다.
+    @AppStorage(DiarySettings.enabledKey) private var diaryEnabled = false
+    @AppStorage(DiarySettings.hourKey) private var diaryHour = DiarySettings.defaultHour
+    @AppStorage(DiarySettings.minuteKey) private var diaryMinute = DiarySettings.defaultMinute
+
     @Fetched private var holdings: [Holding]
     @Fetched private var sessions: [ReviewSession]
+    @Fetched(sort: \DiaryEntry.day, order: .reverse) private var entries: [DiaryEntry]
 
     @State private var status: UNAuthorizationStatus = .notDetermined
 
@@ -291,7 +320,7 @@ struct NotificationSettingsView: View {
                         Text("알림이 꺼져 있습니다")
                             .font(.scaled(13, weight: .medium))
                             .foregroundStyle(Color.loss)
-                        Text("토요일에 알려드릴 수 없습니다. 설정 앱에서 알림을 켜주세요.")
+                        Text("아래를 켜 두어도 알림이 오지 않습니다. 설정 앱에서 알림을 켜주세요.")
                             .font(.scaled(11.5))
                             .foregroundStyle(Color.muted)
                         if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -310,7 +339,7 @@ struct NotificationSettingsView: View {
                 Text("이 앱은 외부에서 자료를 가져오지 않습니다. 알림이 점검을 시작하는 유일한 계기입니다.")
             }
 
-            Section("점검일") {
+            Section {
                 Picker("요일", selection: $weekday) {
                     ForEach(1...7, id: \.self) { day in
                         Text("\(weekdayNames[day - 1])요일").tag(day)
@@ -322,16 +351,33 @@ struct NotificationSettingsView: View {
                 Picker("분", selection: $minute) {
                     ForEach([0, 15, 30, 45], id: \.self) { Text("\($0)분").tag($0) }
                 }
-            }
-
-            Section {
                 Toggle("다음날 한 번 더 알림", isOn: $followUpEnabled)
+            } header: {
+                Text("주간 점검")
             } footer: {
                 Text("점검일에 적지 않으면 다음날 같은 시각에 한 번만 더 부릅니다. 그것도 놓치면 조용히 넘어갑니다.")
             }
 
             Section {
+                Toggle("매일 알림", isOn: $diaryEnabled)
+                if diaryEnabled {
+                    Picker("시각", selection: $diaryHour) {
+                        ForEach(5...23, id: \.self) { Text("\($0)시").tag($0) }
+                    }
+                    Picker("분", selection: $diaryMinute) {
+                        ForEach([0, 15, 30, 45], id: \.self) { Text("\($0)분").tag($0) }
+                    }
+                }
+            } header: {
+                Text("목 · 실 · 감")
+            } footer: {
+                Text("그 시각 전에 오늘 것을 이미 적었으면 그날은 부르지 않습니다. 알림을 누르면 현황판의 오늘 칸이 열립니다.")
+            }
+
+            Section {
                 Toggle("매달 1일 회고 알림", isOn: $monthlyReminder)
+            } header: {
+                Text("월간 회고")
             } footer: {
                 Text("매달 1일 오전 9시에 지난달 회고를 열어 보라고 부릅니다 — 얼마를 넣어서 얼마가 자랐는지, 몇 주를 적었는지.")
             }
@@ -342,7 +388,7 @@ struct NotificationSettingsView: View {
                     .foregroundStyle(Color.muted)
             }
         }
-        .navigationTitle("주간 점검 알림")
+        .navigationTitle("알림")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }
         .onChange(of: weekday) { _, _ in Task { await reschedule() } }
@@ -350,10 +396,25 @@ struct NotificationSettingsView: View {
         .onChange(of: minute) { _, _ in Task { await reschedule() } }
         .onChange(of: followUpEnabled) { _, _ in Task { await reschedule() } }
         .onChange(of: monthlyReminder) { _, _ in Task { await RetrospectiveNotifications.refresh() } }
+        .onChange(of: diaryEnabled) { _, on in
+            Task {
+                if on, status == .notDetermined {
+                    await ReviewNotifications.requestAuthorization()
+                }
+                await refresh()
+            }
+        }
+        .onChange(of: diaryHour) { _, _ in Task { await refreshDiary() } }
+        .onChange(of: diaryMinute) { _, _ in Task { await refreshDiary() } }
     }
 
     private func refresh() async {
         status = await ReviewNotifications.authorizationStatus()
+        await refreshDiary()
+    }
+
+    private func refreshDiary() async {
+        await DiaryNotifications.refresh(todayWritten: DiaryNotifications.todayWritten(entries))
     }
 
     private func reschedule() async {

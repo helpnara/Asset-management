@@ -71,7 +71,7 @@ struct TodoListView: View {
                 let group = open.filter { $0.category == category }
                 if !group.isEmpty {
                     Section(category.label) {
-                        ForEach(group) { row($0) }
+                        ForEach(group) { todoRow($0) }
                     }
                 }
             }
@@ -81,7 +81,7 @@ struct TodoListView: View {
                     // 완료 항목은 접어 둔다. 다 한 일이 목록의 절반을 차지하면
                     // 남은 일이 안 보인다.
                     DisclosureGroup(isExpanded: $showsDone) {
-                        ForEach(done) { row($0) }
+                        ForEach(done) { todoRow($0) }
                     } label: {
                         Text("완료 \(done.count)건")
                             .font(.scaled(12.5))
@@ -150,29 +150,38 @@ struct TodoListView: View {
         return "\(day) — \(days)일 남았습니다"
     }
 
-    /// **보기 전용이면 버튼으로 두지 않는다.** 눌러도 아무 일이 없는 버튼은
-    /// 잠긴 화면이 아니라 고장 난 화면으로 읽힌다 — 4차가 피하려는 바로 그것이다.
-    private func row(_ item: TodoItem) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            if canEdit {
-                Button {
+    private func todoRow(_ item: TodoItem) -> some View {
+        TodoRow(item: item, canEdit: canEdit,
+                onToggle: {
                     item.isDone.toggle()
                     item.completedAt = item.isDone ? .now : nil
                     Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items, accounts: allAccounts)) }
-                } label: {
-                    checkmark(item)
-                }
-                .buttonStyle(.plain)
+                },
+                onEdit: { editing = item })
+    }
+}
 
-                Button {
-                    editing = item
-                } label: {
-                    summary(item)
-                }
-                .buttonStyle(.plain)
+/// 한 줄 (150번). 관리 객체를 그리는 줄은 그 객체를 지켜본다 —
+/// 이유는 `DiaryRow` 에 적어 두었다.
+///
+/// **보기 전용이면 버튼으로 두지 않는다.** 눌러도 아무 일이 없는 버튼은
+/// 잠긴 화면이 아니라 고장 난 화면으로 읽힌다 — 4차가 피하려는 바로 그것이다.
+private struct TodoRow: View {
+    @ObservedObject var item: TodoItem
+    var canEdit: Bool
+    var onToggle: () -> Void
+    var onEdit: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 11) {
+            if canEdit {
+                Button(action: onToggle) { checkmark }
+                    .buttonStyle(.plain)
+                Button(action: onEdit) { summary }
+                    .buttonStyle(.plain)
             } else {
-                checkmark(item)
-                summary(item)
+                checkmark
+                summary
             }
 
             if item.repeatsYearly {
@@ -182,13 +191,13 @@ struct TodoListView: View {
         .padding(.vertical, 2)
     }
 
-    private func checkmark(_ item: TodoItem) -> some View {
+    private var checkmark: some View {
         Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
             .font(.scaled(18))
             .foregroundStyle(item.isDone ? Color.gain : Color.ruleStrong)
     }
 
-    private func summary(_ item: TodoItem) -> some View {
+    private var summary: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(item.title.isEmpty ? "이름 없음" : item.title)
                 .font(.scaled(13))

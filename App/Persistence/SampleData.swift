@@ -172,7 +172,7 @@ enum SampleData {
         let logs: [(ChangeKind, String, String, Int)] = [
             (.weeklyEntry, "주간 점검 · 종목 14건", "2억 9,800만 → 3억 800만", 0),
             (.structure, "아들 · 증여계좌 · 해외 ETF B", "종목을 추가했습니다", 2),
-            (.planValue, "계획", "월 적립 · 연 기대수익률 을(를) 고쳤습니다", 9),
+            (.planValue, "계획", "고친 것 — 월 적립 · 연 기대수익률", 9),
             // 축하 (88번). 지난달 회고와 변경 이력에 보인다.
             (.milestone, "3억을 넘었습니다", "가족 총자산 3.0억", 21)
         ]

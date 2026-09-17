@@ -1033,7 +1033,7 @@ struct DashboardView: View {
 
     private var totals: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("가족 합계")
+            sectionHeader("자산 · 부채 나눠 보기")
             Rectangle().fill(Color.rule).frame(height: 1)
             totalRow("투자자산", rollup.investable)
             totalRow("총자산", rollup.assets, emphasized: true)

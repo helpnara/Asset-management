@@ -49,18 +49,25 @@ enum ChangeLogger {
         ).first
         if let recent, Date.now.timeIntervalSince(recent.at) < mergeWindow {
             var names = recent.summary
+                .replacingOccurrences(of: Self.changedPrefix, with: "")
+                // 옛 판이 적어 둔 줄도 이어 붙일 수 있게 한다 (152번 1-4 이전 꼴).
                 .replacingOccurrences(of: " 을(를) 고쳤습니다", with: "")
                 .components(separatedBy: " · ")
                 .filter { !$0.isEmpty }
             for label in labels where !names.contains(label) { names.append(label) }
-            recent.summary = names.joined(separator: " · ") + " 을(를) 고쳤습니다"
+            recent.summary = Self.changedPrefix + names.joined(separator: " · ")
             recent.at = .now
             return
         }
         record(.planValue, subject: "계획",
-               summary: labels.joined(separator: " · ") + " 을(를) 고쳤습니다",
+               summary: Self.changedPrefix + labels.joined(separator: " · "),
                in: context)
     }
+
+    /// **조사를 쓰지 않는다** (152번 1-4). `월 적립 · 연 기대수익률 을(를)
+    /// 고쳤습니다` 는 앞말에 따라 조사가 갈려 `을(를)` 로 적을 수밖에 없었고,
+    /// 그 괄호가 기계가 적은 티를 냈다. 항목을 뒤로 빼면 조사가 필요 없다.
+    static let changedPrefix = "고친 것 — "
 
     /// 이 시간 안의 계획 변경은 한 번으로 본다.
     private static let mergeWindow: TimeInterval = 180

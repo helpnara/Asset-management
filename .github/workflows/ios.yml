@@ -384,6 +384,12 @@ jobs:
           shoot 23-retrospective.png -skipOnboarding -seedSampleData -startTab more -startRetrospective
           # 도움말 · 용어집 (G1). 글이 전부라 잘리는 줄이 없는지 본다.
           shoot 24-help.png -skipOnboarding -seedSampleData -startTab more -startHelp
+          # **알림 한 화면** (152번 2-2). 주간 점검 · 목 · 실 · 감 · 월간 회고가
+          # 한 화면에 구역으로 섰는지 본다 — 셋이 두 화면에 흩어져 있던 것을 모았다.
+          shoot 27-notifications.png -skipOnboarding -seedSampleData -startTab more -startNotifications
+          # **구성원 편집 폼** (151번). 은퇴 목표가 연도 스테퍼로 서는지,
+          # 색 견본이 한 줄에 들어가는지 그림으로 본다.
+          shoot 28-member-edit.png -skipOnboarding -seedSampleData -startTab assets -startMemberEdit
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL

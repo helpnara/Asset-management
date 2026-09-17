@@ -16,6 +16,35 @@ struct MemberEditView: View {
 
     private let years = Array((1930...Calendar.current.component(.year, from: .now)).reversed())
 
+    /// 폼이 보여 주는 은퇴 목표 **연도** — 적어 둔 나이를 그대로 더한 값이다.
+    ///
+    /// `Member.retirementYear` 를 쓰지 않는 것에 이유가 있다. 그쪽은 이미 지난
+    /// 해를 올해로 **끌어올려** 돌려준다(과거로 은퇴시킬 수 없으니 궤적에는 그게
+    /// 맞다). 그 값을 폼에 그대로 물리면 내려도 올해에서 안 내려가는 스테퍼가
+    /// 된다 — 폼은 **적어 둔 것을 그대로** 보여 준다.
+    private var enteredRetirementYear: Int {
+        member.birthYear + member.targetRetirementAge
+    }
+
+    /// 은퇴 목표 연도. 저장은 나이로 한다 (151번 A-1).
+    private var retirementYear: Binding<Int> {
+        Binding(
+            get: { enteredRetirementYear },
+            // 생년보다 앞선 해로는 못 간다. 스테퍼의 범위가 이미 막지만
+            // 생년을 나중에 고치는 경우가 있어 여기서도 접는다.
+            set: { member.targetRetirementAge = max(0, $0 - member.birthYear) }
+        )
+    }
+
+    /// 올해부터 생년 + 90년까지. 적어 둔 값이 이미 그보다 앞서 있으면
+    /// 아래쪽을 거기까지 넓힌다 — 범위 밖 값이 들어간 스테퍼는 조작이 막힌다.
+    private var retirementYearRange: ClosedRange<Int> {
+        let thisYear = Calendar.current.component(.year, from: .now)
+        let lower = min(thisYear, enteredRetirementYear)
+        let upper = max(member.birthYear + 90, lower + 1)
+        return lower...upper
+    }
+
     /// 구성원 삭제는 이 앱에서 가장 크게 지우는 일이다 — 계좌와 종목이
     /// cascade 로 전부 딸려 간다. 몇 개가 사라지는지 세어서 적는다.
     private var memberDeleteWarning: String {
@@ -30,27 +59,48 @@ struct MemberEditView: View {
             Form {
                 Section {
                     TextField("이름 (아빠 · 엄마 · 아들 …)", text: $member.name)
-                    TextField("설명 (본인 · 2022년생 …)", text: $member.roleNote)
-                }
-
-                Section("생년월") {
-                    Picker("연", selection: $member.birthYear) {
-                        ForEach(years, id: \.self) { Text(verbatim: "\($0)년").tag($0) }
-                    }
-                    Picker("월", selection: $member.birthMonth) {
-                        ForEach(1...12, id: \.self) { Text("\($0)월").tag($0) }
-                    }
+                    // 힌트에 `2022년생` 이 있었는데 바로 아래가 생년월이라 겹쳤다 (151번).
+                    TextField("설명 (본인 · 첫째 …)", text: $member.roleNote)
                 }
 
                 Section {
-                    Picker("세적", selection: $member.taxResidency) {
+                    Picker("태어난 해", selection: $member.birthYear) {
+                        ForEach(years, id: \.self) { Text(verbatim: "\($0)년").tag($0) }
+                    }
+                    Picker("태어난 달", selection: $member.birthMonth) {
+                        ForEach(1...12, id: \.self) { Text("\($0)월").tag($0) }
+                    }
+                    // **시점은 연도로 받는다** (151번 A-1). 계획 탭 · 은퇴 후 소득 ·
+                    // 마일스톤이 전부 연도 스테퍼인데 여기만 나이였다. 바로 위가
+                    // `1990년` 인데 아래가 `65세` 라 읽는 사람이 둘을 섞었다.
+                    //
+                    // 저장하는 값은 그대로 **나이**다 (`targetRetirementAge`) —
+                    // 연도에서 생년을 빼서 적는다. 스키마를 건드리지 않으려는 것도
+                    // 있지만, 생년을 고치면 은퇴 연도가 따라 움직이는 것이 옳다.
+                    Stepper(value: retirementYear, in: retirementYearRange) {
+                        // Text("...\(정수)...") 는 로케일 포맷을 먹여 "2,055년" 이 된다.
+                        Text(verbatim: "은퇴 목표 \(enteredRetirementYear)년 (\(member.targetRetirementAge)세)")
+                    }
+                } header: {
+                    Text("나이")
+                } footer: {
+                    Text("가족 전체의 궤적은 **계획 탭의 은퇴 연도**를 쓰고, 이 사람의 궤적과 1페이지 카드는 **여기 적은 연도**를 씁니다.")
+                }
+
+                Section {
+                    // `세적` 은 세무 용어라 낯설다 (151번 A-2). 뜻은 그대로 두고
+                    // 말만 바꾼다 — 이 칸이 하는 일은 PFIC 경고 하나뿐이고,
+                    // 그것을 가르는 것은 국적이 아니라 **납세 의무**다.
+                    Picker("세금 신고하는 나라", selection: $member.taxResidency) {
                         ForEach(TaxResidency.allCases) { Text($0.label).tag($0) }
                     }
-                    Stepper("은퇴 목표 \(member.targetRetirementAge)세",
-                            value: $member.targetRetirementAge, in: 40...90)
+                } header: {
+                    Text("세금")
                 } footer: {
                     if member.taxResidency.isSubjectToPFIC {
-                        Text("미국 납세 의무가 있으면 한국 상장 ETF는 PFIC로 분류되어 세금이 불리합니다. 해당 종목에 경고를 표시합니다.")
+                        Text("국적이 아니라 **세금 신고 의무가 있는 나라**입니다. 미국이 들어가면 한국 상장 ETF는 PFIC로 분류되어 세금이 불리합니다 — 해당 종목에 경고를 표시합니다.")
+                    } else {
+                        Text("국적이 아니라 **세금 신고 의무가 있는 나라**입니다. 미국이 들어가면 한국 상장 ETF에 PFIC 경고가 붙습니다.")
                     }
                 }
 
@@ -74,24 +124,45 @@ struct MemberEditView: View {
                 }
 
                 Section {
-                    TextField("이 사람에게만 해당하는 메모", text: $member.note, axis: .vertical)
+                    TextField("자세한 내용", text: $member.note, axis: .vertical)
                         .lineLimit(1...4)
                 } header: {
-                    Text("주석")
+                    Text("메모")
                 } footer: {
                     Text("한도·재검토 시점처럼 그 사람에게만 걸리는 것을 적습니다. 1페이지 구성원 카드에 `※` 로 나갑니다.")
                 }
 
-                Section("표시 색") {
-                    Picker("색", selection: $member.colorIndex) {
+                Section {
+                    // **색은 색으로 고른다** (151번, 2026-09-17 사용자). 예전에는
+                    // `첫째 색 · 둘째 색` 이라는 이름을 붙여 고르게 했는데, 그 이름이
+                    // 뜻하는 것이 없어 무엇을 고르는지 알 수 없었다.
+                    HStack(spacing: 14) {
                         ForEach(0..<Color.memberPalette.count, id: \.self) { index in
-                            HStack {
-                                Circle().fill(Color.member(index)).frame(width: 14, height: 14)
-                                Text(["첫째 색", "둘째 색", "셋째 색", "넷째 색"][index])
+                            Button {
+                                member.colorIndex = index
+                            } label: {
+                                Circle()
+                                    .fill(Color.member(index))
+                                    .frame(width: Font.scaledLength(28),
+                                           height: Font.scaledLength(28))
+                                    .overlay {
+                                        Circle()
+                                            .strokeBorder(Color.ink,
+                                                          lineWidth: member.colorIndex == index ? 2.5 : 0)
+                                            .padding(-4)
+                                    }
                             }
-                            .tag(index)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(index + 1)번째 색")
+                            .accessibilityAddTraits(member.colorIndex == index ? [.isSelected] : [])
                         }
+                        Spacer(minLength: 0)
                     }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("표시 색")
+                } footer: {
+                    Text("궤적 · 회고 · 1페이지에서 이 사람을 가리키는 색입니다.")
                 }
                 if !isNew {
                     Section {
@@ -162,7 +233,7 @@ struct AccountEditView: View {
             Form {
                 Section {
                     TextField("계좌 이름", text: $account.name)
-                    TextField("기관 (증권사 · 은행 · 보험사)", text: $account.institution)
+                    TextField("기관 (○○증권 · ○○은행 …)", text: $account.institution)
                     Picker("종류", selection: $account.kind) {
                         ForEach(AccountKind.allCases) { Text($0.label).tag($0) }
                     }
@@ -222,7 +293,7 @@ struct AccountEditView: View {
                 // **만기** — 모델에는 2차부터 있었는데 적을 자리가 없었다
                 // (docs/08-feedback.md 28번). 1페이지 푸터와 할 일이 이걸 읽는다.
                 Section {
-                    Toggle("만기가 있는 계좌", isOn: hasMaturity)
+                    Toggle("만기가 있다", isOn: hasMaturity)
                     if account.maturesOn != nil {
                         DatePicker("만기일", selection: maturityDate, displayedComponents: .date)
                     }
@@ -233,7 +304,7 @@ struct AccountEditView: View {
                 }
 
                 Section {
-                    Toggle("이 계좌만 따로 정하기", isOn: hasOwnReturn)
+                    Toggle("따로 정한 수익률이 있다", isOn: hasOwnReturn)
                     if account.expectedReturnBP != nil {
                         PercentStepper(title: "연 기대수익률", basisPoints: ownReturnBP,
                                        range: 0...2_000, step: 25)
@@ -438,7 +509,7 @@ struct HoldingEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("목표 비중 정하기", isOn: Binding(
+                    Toggle("목표 비중이 있다", isOn: Binding(
                         get: { holding.targetWeightBP != nil },
                         set: { holding.targetWeightBP = $0 ? (holding.targetWeightBP ?? 1_000) : nil }
                     ))
@@ -564,7 +635,7 @@ struct HoldingEditView: View {
                 }
 
                 Section("메모") {
-                    TextField("※ 주석", text: $holding.note, axis: .vertical)
+                    TextField("자세한 내용", text: $holding.note, axis: .vertical)
                         .lineLimit(1...4)
                 }
 

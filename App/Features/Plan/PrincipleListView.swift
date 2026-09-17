@@ -15,6 +15,13 @@ struct PrincipleListView: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Principle.order) private var principles: [Principle]
     @State private var pendingDelete: IndexSet?
+    /// 고치는 것은 시트에서 한다 (152번 2-1). 목록에 입력칸을 늘어놓으면
+    /// **목록이 아니라 편집 폼**으로 보이고, 적지 않은 `부연 설명` ·
+    /// `점검 주기` 빈 칸이 열여섯 줄 내내 따라다녀 길이가 두 배가 된다.
+    /// 마일스톤 · 할 일 · 일기가 전부 "누르면 시트" 라 꼴도 여기만 달랐다.
+    @State private var editing: Principle?
+    /// 방금 만든 것 — 시트에서 `취소` 하면 지운다 (104번과 같은 꼴).
+    @State private var newIDs: Set<UUID> = []
 
     var body: some View {
         list
@@ -25,6 +32,11 @@ struct PrincipleListView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
             .overlay { emptyNote }
+            .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) { principle in
+                PrincipleEditView(principle: principle,
+                                  isNew: newIDs.contains(principle.id),
+                                  onDelete: { remove(principle) })
+            }
     }
 
     /// **툴바를 따로 뽑는다.** `.toolbar { ... }` 는 `ViewBuilder` 판과
@@ -41,26 +53,14 @@ struct PrincipleListView: View {
     private var list: some View {
         List {
             ForEach(principles) { principle in
-                let bind = principle.bindings
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Text(verbatim: "\(principle.order).")
-                            .font(.figure(13, weight: .semibold))
-                            .foregroundStyle(Color.faint)
-                        TextField("한 줄 제목", text: bind.title)
-                            .font(.scaled(14, weight: .medium))
-                    }
-                    TextField("부연 설명", text: bind.detail, axis: .vertical)
-                        .font(.scaled(12))
-                        .foregroundStyle(Color.bodyText)
-                        .lineLimit(1...4)
-                    TextField("점검 주기 (분기 1회 …)", text: bind.reviewNote)
-                        .font(.scaled(11))
-                        .foregroundStyle(Color.muted)
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editing = principle } label: { PrincipleRow(principle: principle) }
+                        .buttonStyle(.plain)
+                } else {
+                    PrincipleRow(principle: principle)
                 }
-                .padding(.vertical, 2)
-                // 줄 자체가 입력칸이라 여기도 잠가야 한다.
-                .disabled(!canManageHousehold)
             }
             .onDelete(perform: canManageHousehold
                       ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
@@ -115,8 +115,18 @@ struct PrincipleListView: View {
         }
     }
 
+    /// 만들자마자 시트를 연다 — 빈 줄만 하나 생기고 어디에 적는지 모르는 것이
+    /// 이 화면의 원래 문제였다.
     private func add() {
-        _ = Principle(context: context, order: principles.count + 1)
+        let principle = Principle(context: context, order: principles.count + 1)
+        newIDs.insert(principle.id)
+        editing = principle
+    }
+
+    /// 시트 안에서 지울 때. 번호를 다시 매긴다.
+    private func remove(_ principle: Principle) {
+        context.delete(principle)
+        renumber()
     }
 
     /// 아직 없는 기본 원칙들. 전부 있으면 버튼 자체가 사라진다.
@@ -148,6 +158,108 @@ struct PrincipleListView: View {
     private func renumber() {
         for (index, item) in principles.enumerated() where item.order != index + 1 {
             item.order = index + 1
+        }
+    }
+}
+
+/// 한 줄. 번호 · 제목, 적어 둔 것이 있으면 부연과 점검 주기까지 **작게** 곁들인다.
+/// 적지 않은 칸은 줄에 자리를 차지하지 않는다 (152번 2-1).
+///
+/// 관리 객체를 그리는 줄이라 `@ObservedObject` 로 받는다 — 시트에서 고치고
+/// 닫았을 때 목록이 그대로이던 것(150번)과 같은 이유다.
+private struct PrincipleRow: View {
+    @ObservedObject var principle: Principle
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(verbatim: "\(principle.order).")
+                .font(.figure(13, weight: .semibold))
+                .foregroundStyle(Color.faint)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(principle.title.isEmpty ? "이름 없음" : principle.title)
+                    .font(.scaled(14, weight: .medium))
+                    .foregroundStyle(principle.title.isEmpty ? Color.faint : Color.ink)
+                    .multilineTextAlignment(.leading)
+                if !principle.detail.isEmpty {
+                    Text(principle.detail)
+                        .font(.scaled(11.5))
+                        .foregroundStyle(Color.muted)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                }
+                if !principle.reviewNote.isEmpty {
+                    Text(principle.reviewNote)
+                        .font(.scaled(10.5))
+                        .foregroundStyle(Color.faint)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+    }
+}
+
+/// 원칙 하나를 고치는 시트 (152번 2-1). 다른 목록(마일스톤 · 할 일)과 같은 꼴이다.
+struct PrincipleEditView: View {
+    @ObservedObject var principle: Principle
+    /// 방금 만든 것인가 — 취소하면 지운다 (104번).
+    var isNew = false
+    var onDelete: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
+    @State private var snapshot: EditSnapshot?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("한 줄 제목 (하락을 두려워하지 마라 …)", text: $principle.title,
+                              axis: .vertical)
+                        .lineLimit(1...3)
+                } footer: {
+                    Text("1페이지에 이 문장이 그대로 실립니다. 앱이 문장을 다듬지 않습니다.")
+                }
+
+                Section("부연") {
+                    TextField("자세한 내용", text: $principle.detail, axis: .vertical)
+                        .lineLimit(1...5)
+                }
+
+                Section {
+                    TextField("점검 주기 (분기 1회 …)", text: $principle.reviewNote)
+                } header: {
+                    Text("점검 주기")
+                } footer: {
+                    Text("언제 돌아볼지를 스스로 적어 두는 칸입니다. 앱이 이 주기로 부르지는 않습니다.")
+                }
+
+                if !isNew {
+                    Section {
+                        DeleteButton("이 원칙을 삭제할까요?",
+                                     consequence: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.") {
+                            onDelete()
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            .navigationTitle(isNew ? "원칙 추가" : "운용 원칙")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") {
+                        if isNew { context.delete(principle) } else { snapshot?.restore(to: principle) }
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("완료") { dismiss() }.fontWeight(.semibold)
+                }
+            }
+            .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: principle) } }
         }
     }
 }

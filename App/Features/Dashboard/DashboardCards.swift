@@ -37,7 +37,7 @@ enum DashboardCard: String, CaseIterable, Identifiable {
         case .trajectory: return "순자산 궤적"
         case .diagnostics: return "자산 진단"
         case .members: return "구성원"
-        case .totals: return "가족 합계"
+        case .totals: return "자산 · 부채 나눠 보기"
         }
     }
 

@@ -123,7 +123,9 @@ struct FamilyShareSection: View {
             HStack {
                 Text("이력에 남을 이름")
                 Spacer(minLength: 12)
-                TextField(ActorName.current, text: $actorName)
+                // 힌트가 `관리자` 라 이름 칸인지 상태 표시인지 헷갈렸다 (152번 1-6).
+                // 사람 이름 꼴을 예로 든다.
+                TextField("아빠 · 엄마 …", text: $actorName)
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()

@@ -43,7 +43,7 @@ struct OnePagerPreviewView: View {
             }
         }
         .background(Color.ground)
-        .navigationTitle("한 장 미리보기")
+        .navigationTitle("1페이지 미리보기")
         .navigationBarTitleDisplayMode(.inline)
     }
 

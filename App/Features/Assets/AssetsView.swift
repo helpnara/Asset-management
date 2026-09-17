@@ -46,6 +46,8 @@ struct AssetsView: View {
     @State private var targetingAccount: Account?
     @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
+    /// 편집 중인가 — 구성원 순서 줄을 그때만 낸다 (152번 2-4).
+    @Environment(\.editMode) private var editMode
     @State private var route = AppRoute.shared
     /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
     /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
@@ -159,25 +161,28 @@ struct AssetsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     // 구성원을 더하고 지우는 것은 가구 전체에 걸리는 일이라
                     // 관리자만이다.
+                    //
+                    // **`+` 는 더하기 하나만 한다** (152번 2-4). 예전에는 메뉴를
+                    // 열어 `구성원 추가` 를 한 번 더 골라야 했고, 그 안에 있던
+                    // `구성원 순서` 때문에 순서를 바꾸는 길이 둘(`편집`, 이 메뉴)
+                    // 이었다. 순서는 왼쪽 `편집` 하나로 모은다.
                     if canManageHousehold {
-                        Menu {
-                            Button {
-                                addMember()
-                            } label: {
-                                Label("구성원 추가", systemImage: "person.badge.plus")
-                            }
-                            if members.count > 1 {
-                                Button {
-                                    isOrderingMembers = true
-                                } label: {
-                                    Label("구성원 순서", systemImage: "arrow.up.arrow.down")
-                                }
-                            }
+                        Button {
+                            addMember()
                         } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityLabel("구성원 추가")
                     }
                 }
+            }
+            // CI 가 구성원 편집 폼을 찍을 수 있게 하는 갈고리 (151번). 은퇴 연도
+            // 스테퍼 · 세금 나라 · 색 견본이 제대로 섰는지 그림으로 본다.
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-startMemberEdit"),
+                      let first = members.first else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                editingMember = first
             }
             .onChange(of: route.wantsNewMember, initial: true) { _, wants in
                 guard wants else { return }
@@ -287,6 +292,19 @@ struct AssetsView: View {
                     memberHeader(member)
                 }
             }
+
+            // **순서는 `편집` 안에 있다** (152번 2-4). `+` 메뉴에도 있고
+            // `편집` 에도 있어 길이 둘이었다 — 편집 중일 때만 여기 하나로 낸다.
+            if canManageHousehold && members.count > 1 && editMode?.wrappedValue.isEditing == true {
+                Section {
+                    Button {
+                        isOrderingMembers = true
+                    } label: {
+                        Label("구성원 순서 바꾸기", systemImage: "arrow.up.arrow.down")
+                            .font(.scaled(12.5))
+                    }
+                }
+            }
         }
         .listStyle(.insetGrouped)
     }
@@ -342,6 +360,27 @@ struct AssetsView: View {
         .textCase(nil)
     }
 
+    /// 계좌에 걸리는 일들 — `⋯` 버튼과 길게 누르기가 **같은 것**을 낸다.
+    @ViewBuilder
+    private func accountActions(_ account: Account) -> some View {
+        if mayEdit(account.owner) {
+            Button("계좌 편집") { editingAccount = account }
+        }
+        if account.canSetTargets {
+            Button("목표 비중") { targetingAccount = account }
+        }
+        // **다른 구성원에게** (113번). 끌어 놓기는 List 안에서 안 잡혀 메뉴로.
+        if mayEdit(account.owner) && members.filter({ mayEdit($0) }).count > 1 {
+            Button("다른 구성원에게 옮기기…") { movingAccount = account }
+        }
+    }
+
+    /// 낼 것이 하나도 없으면 `⋯` 를 그리지 않는다 — 눌러서 빈 메뉴가 뜨는 것은
+    /// 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+    private func hasAccountActions(_ account: Account) -> Bool {
+        mayEdit(account.owner) || account.canSetTargets
+    }
+
     @ViewBuilder
     private func accountRows(_ account: Account) -> some View {
         Button {
@@ -380,23 +419,28 @@ struct AssetsView: View {
                 Text(signedAmount(accountTotal(account).minorUnits, account.kind.isLiability))
                     .font(.figure(12.5, weight: .medium))
                     .foregroundStyle(account.kind.isLiability ? Color.loss : Color.ink)
+                // **보이는 손잡이** (152번 2-3). 계좌를 고치고 옮기는 길이
+                // 길게 누르기 안에만 있었다 — 알려 주지 않으면 발견되지 않는
+                // 길이고, 실제로 "옮기기가 작동 안 함"(4번) 이 그 오해였다.
+                // 길게 누르기는 그대로 두고 같은 메뉴를 버튼으로도 낸다.
+                if hasAccountActions(account) {
+                    Menu {
+                        accountActions(account)
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.scaled(12, weight: .semibold))
+                            .foregroundStyle(Color.faint)
+                            .frame(width: Font.scaledLength(24),
+                                   height: Font.scaledLength(24))
+                            .contentShape(Rectangle())
+                    }
+                }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // 계좌 자체를 고치는 길. 펼치기와 겹치지 않게 길게 눌러 연다.
-        .contextMenu {
-            if mayEdit(account.owner) {
-                Button("계좌 편집") { editingAccount = account }
-            }
-            if account.canSetTargets {
-                Button("목표 비중") { targetingAccount = account }
-            }
-            // **다른 구성원에게** (113번). 끌어 놓기는 List 안에서 안 잡혀 메뉴로.
-            if mayEdit(account.owner) && members.filter({ mayEdit($0) }).count > 1 {
-                Button("다른 구성원에게 옮기기…") { movingAccount = account }
-            }
-        }
+        // 길게 눌러도 같은 메뉴가 나온다.
+        .contextMenu { accountActions(account) }
 
         if isExpanded(account) || isNarrowing {
             ForEach(visibleHoldings(account)) { holding in
@@ -408,6 +452,7 @@ struct AssetsView: View {
                     }
                     // **다른 계좌로** (113번). 길게 누르면 메뉴.
                     .contextMenu {
+                        Button("종목 편집") { editingHolding = holding }
                         Button("다른 계좌로 옮기기…") { movingHolding = holding }
                     }
                 } else {
@@ -514,10 +559,16 @@ struct AssetsView: View {
     }
 
     /// 가족 안에서 이 사람이 차지하는 비중. 여기도 합이 100 이 되게 맞춘 값을 쓴다.
+    /// 이 사람이 **가족 전체 자산에서** 차지하는 몫 (152번 2-5).
+    ///
+    /// 바로 아래 계좌 줄의 `%` 는 **그 사람 안에서**의 몫이라 기준이 다르다.
+    /// 기준이 다른 것은 의도이고(2026-09-17 사용자), 같은 자리 같은 꼴이라
+    /// 읽는 쪽이 헷갈리던 것만 고친다 — 구성원 줄에만 `가족의` 를 붙인다.
+    /// 계좌 줄은 바로 위가 그 사람이라 기준이 자명해 그대로 둔다.
     private func familyShare(_ member: Member) -> String? {
         guard let slice = memberSlices.first(where: { $0.key == member.id.uuidString })
         else { return nil }
-        return "\(slice.actualPercent)%"
+        return "가족의 \(slice.actualPercent)%"
     }
 
     /// 한 번만 계산해서 여러 줄이 나눠 쓴다.
@@ -613,7 +664,10 @@ struct AssetsView: View {
     }
 
     private func addMember() {
-        let member = Member(context: context, name: "", colorIndex: members.count, sortIndex: members.count)
+        // 아직 안 쓴 색을 준다 (151번). 넷을 다 쓰고 있으면 순번대로 돌린다.
+        let used = Set(members.map(\.colorIndex))
+        let color = (0..<Color.memberPalette.count).first { !used.contains($0) } ?? members.count
+        let member = Member(context: context, name: "", colorIndex: color, sortIndex: members.count)
         newIDs.insert(member.id)
         editingMember = member
     }

@@ -36,9 +36,11 @@ struct MilestoneListView: View {
                 // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
                 // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
                 if canEdit {
-                    Button { editing = milestone } label: { row(milestone) }
+                    Button { editing = milestone } label: {
+                        MilestoneRow(milestone: milestone, owner: owner(of: milestone))
+                    }
                 } else {
-                    row(milestone)
+                    MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                 }
             }
             .onDelete(perform: canEdit
@@ -70,7 +72,20 @@ struct MilestoneListView: View {
         }
     }
 
-    private func row(_ milestone: UserMilestone) -> some View {
+    private func owner(of milestone: UserMilestone) -> Member? {
+        guard let id = milestone.memberID else { return nil }
+        return members.first { $0.id == id }
+    }
+}
+
+/// 한 줄 (150번). **관리 객체를 그리는 줄은 그 객체를 지켜본다** —
+/// 시트에서 고치고 닫았을 때 목록이 그대로이던 것을 고친 꼴이다
+/// (`DiaryRow` 에 이유를 적어 두었다).
+private struct MilestoneRow: View {
+    @ObservedObject var milestone: UserMilestone
+    var owner: Member?
+
+    var body: some View {
         HStack {
             Text(verbatim: "\(milestone.year)")
                 .font(.figure(14, weight: .semibold))
@@ -83,15 +98,8 @@ struct MilestoneListView: View {
                         .foregroundStyle(Color.ink)
                     // 누구의 일인가. 가족 전체면 배지를 달지 않는다 —
                     // 대부분이 가족 일이라 배지가 다 붙으면 소용없다.
-                    if let member = owner(of: milestone) {
-                        HStack(spacing: 3) {
-                            Circle()
-                                .fill(Color.member(member.colorIndex))
-                                .frame(width: 6, height: 6)
-                            Text(member.name.isEmpty ? "이름 없음" : member.name)
-                                .font(.scaled(10))
-                                .foregroundStyle(Color.muted)
-                        }
+                    if let owner {
+                        MilestoneOwnerBadge(member: owner)
                     }
                 }
                 if !milestone.note.isEmpty {
@@ -104,10 +112,20 @@ struct MilestoneListView: View {
             Spacer()
         }
     }
+}
 
-    private func owner(of milestone: UserMilestone) -> Member? {
-        guard let id = milestone.memberID else { return nil }
-        return members.first { $0.id == id }
+private struct MilestoneOwnerBadge: View {
+    @ObservedObject var member: Member
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Circle()
+                .fill(Color.member(member.colorIndex))
+                .frame(width: 6, height: 6)
+            Text(member.name.isEmpty ? "이름 없음" : member.name)
+                .font(.scaled(10))
+                .foregroundStyle(Color.muted)
+        }
     }
 }
 

@@ -69,6 +69,9 @@ struct SimulationView: View {
     @State private var prompt: NumericPrompt?
     @State private var promptText = ""
     @State private var outcome: SimulationOutcome?
+    /// 셈법 설명을 펼쳤나 (152번 2-7). 화면을 떠나면 다시 접힌다 —
+    /// 한 번 읽고 나면 자리를 차지하지 않는 것이 이 접기의 목적이다.
+    @State private var showsExplanation = false
     @State private var isCalculating = false
 
     /// 다시 계산해야 하는지 판단하는 키. 둘 다 값 타입이라 그대로 비교된다.
@@ -290,11 +293,30 @@ struct SimulationView: View {
 
                 // 무엇을 어떻게 센 숫자인지 한 문단. "70%면 괜찮은 건가" 에
                 // 답하려면 셈법이 보여야 한다 (68번).
-                Text(probabilityExplanation)
+                //
+                // **접어 둔다** (152번 2-7). 다섯 줄이 늘 펼쳐져 있어 손잡이가
+                // 화면 밖으로 밀려났다. 진단 화면의 `왜 이 기준인가` 와 같은 꼴로
+                // 두어, 한 번 읽고 나면 다시 자리를 차지하지 않게 한다.
+                Button {
+                    showsExplanation.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("어떻게 계산하나")
+                        Image(systemName: showsExplanation ? "chevron.up" : "chevron.down")
+                            .font(.scaled(9))
+                    }
                     .font(.scaled(11))
-                    .foregroundStyle(Color.muted)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(Color.dad)
+                }
+                .buttonStyle(.plain)
+
+                if showsExplanation {
+                    Text(probabilityExplanation)
+                        .font(.scaled(11))
+                        .foregroundStyle(Color.muted)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 // 은퇴 뒤 30년을 그릴 때만. "목표는 넘겼는데 바닥나는가" 는
                 // 다른 물음이라 따로 적는다 (68번).

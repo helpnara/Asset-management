@@ -33,10 +33,21 @@ struct ExportView: View {
     @State private var pending: BackupDocument?
     @State private var restoreProblem: String?
 
-    /// 데이터 전부 지우기 (G3). 확인 창에 **"전부 지우기" 를 직접 쳐야** 버튼이 산다.
-    @State private var isConfirmingWipe = false
-    @State private var wipePhrase = ""
-    private static let wipeKeyword = "전부 지우기"
+    /// 백업 각주 (152번 1-7). "사본이 이 아이폰 하나뿐" 은 iCloud 가 붙어
+    /// 있으면 **틀린 말**이다. 그렇다고 iCloud 가 백업을 대신하지도 않는다 —
+    /// 잘못 지운 것은 iCloud 로도 그대로 퍼진다. 저장 방식에 따라 다르게 적는다.
+    private var backupFootnote: String {
+        let common = "구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 할 일 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다."
+        let tail = "금액은 가리지 않고 그대로 나갑니다 — 백업이니까요."
+        switch Persistence.mode {
+        case .cloudKit:
+            return common + " iCloud 로 기기끼리 맞추고는 있지만, **잘못 지운 것은 iCloud 로도 똑같이 퍼집니다.** 앱을 업데이트하기 전이나 크게 손보기 전에 한 번씩 받아 파일 앱이나 메일로 보내 두세요. " + tail
+        case .localOnly:
+            return common + " **지금 이 기록의 사본은 이 기기 하나뿐입니다** — iCloud 에 붙지 못했습니다. 앱을 지우면 함께 사라지니 오늘 한 번 받아 두세요. " + tail
+        case .inMemory:
+            return common + " 지금은 체험 자료라 앱을 끄면 사라집니다. " + tail
+        }
+    }
 
     var body: some View {
         List {
@@ -61,7 +72,7 @@ struct ExportView: View {
                 // **뽑기 전에 눈으로 본다.** 한 장에 들어가는지는 렌더를 봐야
                 // 알 수 있고, 원격 세션에서는 CI 스크린샷이 이 화면을 찍는다.
                 NavigationLink(value: MoreView.Destination.onePagerPreview) {
-                    Label("한 장 미리보기", systemImage: "doc.text.magnifyingglass")
+                    Label("1페이지 미리보기", systemImage: "doc.text.magnifyingglass")
                 }
                 // 문서의 제목 · 기준 시점 · 맨 밑 한 줄. 최종 출력물의 속성이라
                 // 더보기 목록이 아니라 여기 산다 (2026-09-12 사용자, 134번).
@@ -105,7 +116,7 @@ struct ExportView: View {
             } header: {
                 Text("전체 백업")
             } footer: {
-                Text("구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 할 일 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다. 지금 이 기록의 사본은 이 아이폰 하나뿐이니, 앱을 업데이트하기 전에 한 번씩 받아 파일 앱이나 메일로 보내 두세요. 금액은 가리지 않고 그대로 나갑니다 — 백업이니까요.")
+                Text(backupFootnote)
             }
 
             // **되돌리기** (docs/08-feedback.md 40번).
@@ -122,20 +133,6 @@ struct ExportView: View {
                     Text("되돌리기")
                 } footer: {
                     Text("백업 파일을 골라 **이 기기의 기록을 통째로 갈아 끼웁니다.** 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 **먼저 지금 상태로 백업을 하나 만들어 두세요** — 위의 `전체 백업 만들기` 입니다.")
-                }
-
-                // **전부 지우기** (G3). 다시 시작하거나 남에게 넘길 때.
-                Section {
-                    Button(role: .destructive) {
-                        wipePhrase = ""
-                        isConfirmingWipe = true
-                    } label: {
-                        Label("데이터 전부 지우기", systemImage: "trash")
-                    }
-                } header: {
-                    Text("처음부터 다시")
-                } footer: {
-                    Text("구성원 · 계좌 · 종목 · 지난 기록 · 계획 · 일기까지 **전부** 지웁니다. iCloud 로 퍼져 가족의 기기에서도 사라지고, 되돌릴 수 없습니다. 가족 초대는 남습니다 — 끊으려면 더보기의 가족 에서 하세요. 지우기 전에 위의 `전체 백업 만들기` 를 먼저.")
                 }
             } else {
                 // 참가자 기기에는 되돌리기가 없다 (98번, A7). 있으면 관리자의
@@ -164,17 +161,6 @@ struct ExportView: View {
             Button("그만두기", role: .cancel) { pending = nil }
         } message: { document in
             Text(summary(of: document))
-        }
-        .alert("정말 전부 지울까요?", isPresented: $isConfirmingWipe) {
-            TextField("\(Self.wipeKeyword) 라고 입력", text: $wipePhrase)
-            Button("지우기", role: .destructive) {
-                guard wipePhrase.trimmingCharacters(in: .whitespaces) == Self.wipeKeyword else { return }
-                BackupDocument.wipeAll(in: context)
-            }
-            .disabled(wipePhrase.trimmingCharacters(in: .whitespaces) != Self.wipeKeyword)
-            Button("그만두기", role: .cancel) { wipePhrase = "" }
-        } message: {
-            Text("되돌릴 수 없습니다. 확인하려면 \"\(Self.wipeKeyword)\" 라고 입력하세요.")
         }
         .alert("이 파일은 읽을 수 없습니다",
                isPresented: Binding(get: { restoreProblem != nil },

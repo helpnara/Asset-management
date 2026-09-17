@@ -22,15 +22,7 @@ struct DiaryListView: View {
                 Button {
                     editing = entry
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(DiaryCard.dayText(entry.day))
-                            .font(.figure(11, weight: .medium))
-                            .foregroundStyle(Color.muted)
-                        row("목표", entry.goal)
-                        row("실적", entry.result)
-                        row("감사", entry.gratitude)
-                    }
-                    .padding(.vertical, 2)
+                    DiaryRow(entry: entry)
                 }
                 .buttonStyle(.plain)
             }
@@ -42,9 +34,35 @@ struct DiaryListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editing) { entry in DiaryEditView(entry: entry) }
     }
+}
+
+/// 한 줄 (150번).
+///
+/// **줄을 따로 뽑아 `@ObservedObject` 로 받는 것이 핵심이다.** 목록 안에서
+/// `Text(entry.goal)` 로 그냥 읽으면 그 줄은 이 객체를 **지켜보지 않는다** —
+/// `@Fetched` 는 목록에 드나드는 것(추가 · 삭제 · 정렬)에는 반응하지만, 이미
+/// 있는 객체의 칸이 바뀐 것으로는 배열이 달라지지 않아 SwiftUI 가 줄을 다시
+/// 그릴 까닭을 못 찾는다. 시트에서 고치고 `완료` 해도 목록의 글자는 그대로였다.
+///
+/// 같은 이유로 마일스톤 · 할 일 목록도 줄을 뽑아 두었다. 관리 객체를 그리는
+/// 목록에는 이 꼴을 쓴다.
+private struct DiaryRow: View {
+    @ObservedObject var entry: DiaryEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(DiaryCard.dayText(entry.day))
+                .font(.figure(11, weight: .medium))
+                .foregroundStyle(Color.muted)
+            line("목표", entry.goal)
+            line("실적", entry.result)
+            line("감사", entry.gratitude)
+        }
+        .padding(.vertical, 2)
+    }
 
     @ViewBuilder
-    private func row(_ label: String, _ text: String) -> some View {
+    private func line(_ label: String, _ text: String) -> some View {
         if !text.isEmpty {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(label)
