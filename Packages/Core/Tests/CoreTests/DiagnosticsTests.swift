@@ -353,12 +353,13 @@ struct DiagnosticsTests {
 @Suite("requiredNestEgg — 해마다 나가는 돈까지")
 struct RequiredNestEggTests {
 
-    private let krw = Currency.krw
+    /// 이 저장소의 테스트가 쓰는 꼴 — `Money(원, currency: .krw)`.
+    private func won(_ value: Int) -> Money { Money(value, currency: .krw) }
 
     @Test("월 생활비만 넣으면 연 생활비의 25배 (4%)")
     func monthlyOnly() {
         let need = Diagnostics.requiredNestEgg(
-            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
+            monthlySpending: won(3_000_000),
             withdrawalRate: Ratio(basisPoints: 400)
         )
         #expect(need?.minorUnits == 900_000_000)
@@ -367,8 +368,8 @@ struct RequiredNestEggTests {
     @Test("해마다 나가는 돈은 12로 나누지 않고 그대로 더한다")
     func withExtraAnnual() {
         let need = Diagnostics.requiredNestEgg(
-            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
-            extraAnnual: Money(minorUnits: 9_000_000, currency: krw),
+            monthlySpending: won(3_000_000),
+            extraAnnual: won(9_000_000),
             withdrawalRate: Ratio(basisPoints: 400)
         )
         // 파이썬 대조: (3_000_000 * 12 + 9_000_000) / 0.04 = 1_125_000_000
@@ -378,8 +379,8 @@ struct RequiredNestEggTests {
     @Test("인출률을 바꾸면 배수가 따라간다 — 25를 박지 않는 이유")
     func followsWithdrawalRate() {
         let need = Diagnostics.requiredNestEgg(
-            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
-            extraAnnual: Money(minorUnits: 9_000_000, currency: krw),
+            monthlySpending: won(3_000_000),
+            extraAnnual: won(9_000_000),
             withdrawalRate: Ratio(basisPoints: 350)
         )
         // 파이썬 대조: 45_000_000 / 0.035 = 1_285_714_285.71… → 은행가 반올림 1_285_714_286
@@ -389,8 +390,8 @@ struct RequiredNestEggTests {
     @Test("셋 다 0이면 계산하지 않는다")
     func nothingToCount() {
         let need = Diagnostics.requiredNestEgg(
-            monthlySpending: Money(minorUnits: 0, currency: krw),
-            extraAnnual: Money(minorUnits: 0, currency: krw),
+            monthlySpending: won(0),
+            extraAnnual: won(0),
             withdrawalRate: Ratio(basisPoints: 400)
         )
         #expect(need == nil)
