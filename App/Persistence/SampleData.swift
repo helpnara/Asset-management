@@ -135,6 +135,11 @@ enum SampleData {
 
         // 진단 기준 — 전부 예시 수치다. 실제 금액이 아니다.
         plan.monthlySpendingMinor = 4_000_000
+        // 해마다 한 번 나가는 돈 (154번). 체험 자료는 자동 계산을 켜 둔다 —
+        // 목표 금액 칸이 무엇으로 채워지는지 그림으로 보이게.
+        plan.annualHobbyMinor = 6_000_000
+        plan.annualMedicalMinor = 3_000_000
+        plan.targetIsAuto = true
         plan.monthlyIncomeMinor = 9_000_000
         plan.horizonYear = plan.retirementYear + 35
 

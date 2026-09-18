@@ -112,12 +112,32 @@ struct PlanView: View {
 
             Section {
                 if canManageHousehold {
+                    Toggle("4% 규칙으로 자동 계산", isOn: bind.targetIsAuto)
+                }
+                if plan.targetIsAuto {
+                    // **자동일 때는 고칠 수 없다** (154번 사용자 요청). 손으로 넣은
+                    // 값과 계산한 값이 섞이면 어느 쪽이 맞는지 알 수 없게 된다.
+                    LabeledContent("은퇴 목표 금액") {
+                        Text(plan.autoTargetAmount.map { Won.abbreviated($0, suffix: "원") } ?? "—")
+                            .font(.figure(15, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                    }
+                    // 수식은 **목표 금액 바로 아래 작은 글씨로**.
+                    Text(plan.autoTargetFormula)
+                        .font(.figure(10.5))
+                        .foregroundStyle(Color.faint)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                } else if canManageHousehold {
                     MoneyField(title: "은퇴 목표 금액", minorUnits: bind.targetAmountMinor)
                 } else {
                     readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
                 }
             } footer: {
-                Text("0으로 두면 목표선을 그리지 않습니다.")
+                if plan.targetIsAuto {
+                    Text("은퇴 뒤 한 해에 쓸 돈을 **인출률로 나눈** 값입니다. 쓸 돈은 아래 **은퇴 이후** 에서 넣고, 인출률은 더보기 → 자산 진단 → 진단 기준에서 정합니다. 스위치를 끄면 직접 넣을 수 있습니다.")
+                } else {
+                    Text("0으로 두면 목표선을 그리지 않습니다. 스위치를 켜면 은퇴 뒤 쓸 돈으로 계산해 넣습니다.")
+                }
             }
 
             Section {
@@ -201,6 +221,21 @@ struct PlanView: View {
         // 궤적 전체를 주 스레드에서 다시 계산하느라, 누른 것과 숫자가 바뀌는
         // 사이가 벌어졌다 — 안 되었나 싶어 또 누르게 되던 것이 이 때문이다.
         .task(id: input) { await project(input) }
+        // **자동 목표는 칸에 실제로 써 넣는다** (154번). 궤적 · 진단 · 1페이지 ·
+        // 시뮬레이션이 전부 `targetAmountMinor` 를 읽으므로, 계산만 하고 안 쓰면
+        // 다른 화면이 옛 숫자를 보여 준다. 값이 같으면 쓰지 않는다 — 안 그러면
+        // 화면을 열기만 해도 `마지막 수정` 이 찍힌다.
+        .onChange(of: autoTargetKey(plan), initial: true) { _, _ in
+            guard plan.targetIsAuto, let auto = plan.autoTargetAmount else { return }
+            if plan.targetAmountMinor != auto.minorUnits {
+                plan.targetAmountMinor = auto.minorUnits
+            }
+        }
+    }
+
+    /// 자동 목표에 들어가는 값들. 이 중 하나라도 달라지면 목표 금액을 다시 쓴다.
+    private func autoTargetKey(_ plan: Plan) -> String {
+        "\(plan.targetIsAuto)-\(plan.monthlySpendingMinor)-\(plan.annualHobbyMinor)-\(plan.annualMedicalMinor)-\(plan.withdrawalRateBP)"
     }
 
     /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 **취소**하므로,
@@ -250,18 +285,27 @@ struct PlanView: View {
         return Section {
             if canManageHousehold {
                 MoneyField(title: "은퇴 후 월 생활비", minorUnits: bind.monthlySpendingMinor)
+                // **해마다 한 번 크게 쓰는 돈** (154번). 월 생활비에 녹여 넣으라고
+                // 하면 12로 나누다 틀린다. 목표 금액 자동 계산이 이 둘을 쓴다.
+                MoneyField(title: "연 취미 · 여행", minorUnits: bind.annualHobbyMinor)
+                MoneyField(title: "연 병원비", minorUnits: bind.annualMedicalMinor)
                 Stepper(value: bind.horizonYear,
                         in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
                     Text(verbatim: "\(plan.horizonYear)년까지 본다")
                 }
             } else {
                 readOnlyMoney("은퇴 후 월 생활비", plan.monthlySpendingMinor)
+                readOnlyMoney("연 취미 · 여행", plan.annualHobbyMinor)
+                readOnlyMoney("연 병원비", plan.annualMedicalMinor)
                 readOnlyRow("보는 기간", "\(plan.horizonYear)년까지")
             }
         } header: {
             Text("은퇴 이후")
         } footer: {
-            Text("생활비를 넣으면 궤적이 은퇴에서 멈추지 않고 인출 구간까지 이어집니다. 0으로 두면 은퇴 시점에서 끝납니다. 오늘 돈 기준으로 적으세요 — 물가는 앱이 태웁니다.")
+            // **취미 · 병원비가 어디에 걸리고 어디에 안 걸리는지** 를 적는다.
+            // 목표 금액에는 들어가고 궤적의 인출에는 아직 안 들어간다 — 둘을
+            // 함께 올릴지는 따로 정하기로 했다 (154번 3).
+            Text("생활비를 넣으면 궤적이 은퇴에서 멈추지 않고 인출 구간까지 이어집니다. 0으로 두면 은퇴 시점에서 끝납니다. 오늘 돈 기준으로 적으세요 — 물가는 앱이 태웁니다.\n\n**연 취미 · 여행**과 **연 병원비**는 해마다 한 번 나가는 돈입니다. 지금은 위의 **은퇴 목표 금액** 계산에만 쓰이고, 궤적의 인출에는 월 생활비만 씁니다.")
         }
     }
 

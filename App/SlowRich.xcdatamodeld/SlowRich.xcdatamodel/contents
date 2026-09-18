@@ -153,6 +153,9 @@
         <attribute name="commodityReturnBP" attributeType="Integer 64" defaultValueString="300" usesScalarValueType="YES"/>
         <attribute name="targetAmountMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="monthlySpendingMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="annualHobbyMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="annualMedicalMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="targetIsAuto" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="withdrawalRateBP" attributeType="Integer 64" defaultValueString="400" usesScalarValueType="YES"/>
         <attribute name="monthlyIncomeMinor" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="savingsFloorBP" attributeType="Integer 64" defaultValueString="1000" usesScalarValueType="YES"/>

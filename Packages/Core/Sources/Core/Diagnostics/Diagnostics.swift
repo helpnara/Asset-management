@@ -137,6 +137,9 @@ public struct DiagnosticsInput: Sendable {
     // MARK: 계획
     /// 은퇴 후 한 달 생활비. 0이면 은퇴 필요 자금을 판단하지 않는다.
     public var monthlySpending: Money
+    /// 은퇴 뒤 **해마다** 나가는 돈 — 취미 · 여행 + 병원비 (154번).
+    /// 계획 탭의 목표 금액 자동 계산과 **같은 값을 같은 식으로** 쓴다.
+    public var extraAnnualSpending: Money = .zero(.krw)
     /// 인출률. 4% 규칙이면 400bp.
     public var withdrawalRate: Ratio
     /// 세후 월 소득. 0이면 저축률을 판단하지 않는다.
@@ -195,6 +198,7 @@ public struct DiagnosticsInput: Sendable {
         illiquid: Money,
         byCountry: [String: Money],
         monthlySpending: Money,
+        extraAnnualSpending: Money = .zero(.krw),
         withdrawalRate: Ratio,
         monthlyIncome: Money,
         driftingHoldings: Int = 0,
@@ -224,6 +228,7 @@ public struct DiagnosticsInput: Sendable {
         self.illiquid = illiquid
         self.byCountry = byCountry
         self.monthlySpending = monthlySpending
+        self.extraAnnualSpending = extraAnnualSpending
         self.withdrawalRate = withdrawalRate
         self.monthlyIncome = monthlyIncome
         self.driftingHoldings = driftingHoldings
@@ -293,11 +298,18 @@ public enum Diagnostics {
     /// 월세 적정성의 기본 상한. 연 월세가 매매가의 5% 이내면 적정.
     public static let defaultRentCap = Ratio(basisPoints: 500)
 
-    /// 은퇴 시점에 필요한 자산. 연 생활비 ÷ 인출률.
+    /// 은퇴 시점에 필요한 자산. **연 지출 ÷ 인출률**.
     /// 4%면 25배, 3.5%면 약 28.6배가 된다 — 25를 상수로 박지 않는 이유다.
-    public static func requiredNestEgg(monthlySpending: Money, withdrawalRate: Ratio) -> Money? {
-        guard !monthlySpending.isZero, withdrawalRate.basisPoints > 0 else { return nil }
-        let annual = Decimal(monthlySpending.minorUnits) * 12
+    ///
+    /// `extraAnnual` 은 달마다가 아니라 **해마다** 나가는 것들이다 (154번) —
+    /// 취미 · 여행, 병원비처럼 한 해에 한 번 크게 쓰는 돈. 월 생활비에 녹여
+    /// 넣으라고 하면 12로 나누다 틀리므로 칸을 따로 둔다.
+    public static func requiredNestEgg(monthlySpending: Money,
+                                       extraAnnual: Money? = nil,
+                                       withdrawalRate: Ratio) -> Money? {
+        let extra = extraAnnual.map { Decimal($0.minorUnits) } ?? 0
+        let annual = Decimal(monthlySpending.minorUnits) * 12 + extra
+        guard annual > 0, withdrawalRate.basisPoints > 0 else { return nil }
         return Money(
             minorUnits: Decimals.roundedInt(annual / withdrawalRate.fraction, rounding: .bankers),
             currency: monthlySpending.currency
@@ -308,6 +320,7 @@ public enum Diagnostics {
 
     private static func retirementTarget(_ input: DiagnosticsInput) -> Diagnosis {
         guard let required = requiredNestEgg(monthlySpending: input.monthlySpending,
+                                             extraAnnual: input.extraAnnualSpending,
                                              withdrawalRate: input.withdrawalRate) else {
             return Diagnosis(
                 kind: .retirementTarget,

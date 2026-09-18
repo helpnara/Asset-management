@@ -85,6 +85,10 @@ struct BackupDocument: Codable, Sendable {
         var realEstateReturnBP: Int
         var targetAmountMinor: Int
         var monthlySpendingMinor: Int
+        /// 154번. 옛 백업 파일에는 없으므로 기본값을 준다.
+        var annualHobbyMinor: Int = 0
+        var annualMedicalMinor: Int = 0
+        var targetIsAuto: Bool = false
         var withdrawalRateBP: Int
         var monthlyIncomeMinor: Int
         var savingsFloorBP: Int
@@ -346,6 +350,9 @@ extension BackupDocument {
                 realEstateReturnBP: plan.realEstateReturnBP,
                 targetAmountMinor: plan.targetAmountMinor,
                 monthlySpendingMinor: plan.monthlySpendingMinor,
+                annualHobbyMinor: plan.annualHobbyMinor,
+                annualMedicalMinor: plan.annualMedicalMinor,
+                targetIsAuto: plan.targetIsAuto,
                 withdrawalRateBP: plan.withdrawalRateBP,
                 monthlyIncomeMinor: plan.monthlyIncomeMinor,
                 savingsFloorBP: plan.savingsFloorBP,
@@ -755,6 +762,9 @@ extension BackupDocument {
         plan.realEstateReturnBP = data.realEstateReturnBP
         plan.targetAmountMinor = data.targetAmountMinor
         plan.monthlySpendingMinor = data.monthlySpendingMinor
+        plan.annualHobbyMinor = data.annualHobbyMinor
+        plan.annualMedicalMinor = data.annualMedicalMinor
+        plan.targetIsAuto = data.targetIsAuto
         plan.withdrawalRateBP = data.withdrawalRateBP
         plan.monthlyIncomeMinor = data.monthlyIncomeMinor
         plan.savingsFloorBP = data.savingsFloorBP

@@ -100,6 +100,7 @@ extension Plan {
         [startYear, retirementYear, horizonYear, monthlyContributionMinor,
          contributionGrowthBP, annualReturnBP, inflationBP, postRetirementReturnBP, lowYieldReturnBP,
          realEstateReturnBP, targetAmountMinor, monthlySpendingMinor,
+         annualHobbyMinor, annualMedicalMinor, targetIsAuto ? 1 : 0,
          withdrawalRateBP, monthlyIncomeMinor, savingsFloorBP, illiquidCapBP,
          usTargetBP, mixToleranceBP, driftToleranceBP,
          usesMemberContributions ? 1 : 0]
@@ -136,7 +137,8 @@ extension Plan {
     static let fieldLabels: [String] = [
         "시작 연도", "은퇴 연도", "지평선", "월 적립", "적립 증가율",
         "연 기대수익률", "물가상승률", "저금리 수익률", "부동산 상승률",
-        "목표 금액", "월 생활비", "인출률", "월 소득", "저축률 하한",
+        "목표 금액", "월 생활비", "연 취미 · 여행", "연 병원비", "목표 금액 자동 계산",
+        "인출률", "월 소득", "저축률 하한",
         "비유동 자산 상한", "미국 목표 비중", "지역 허용 오차", "비중 허용 오차",
         "구성원별 적립",
         // `|` 뒤의 글자 항목들. 같은 순서다.
@@ -171,6 +173,49 @@ extension Plan {
         if let updatedAt, now.timeIntervalSince(updatedAt) < 1 { return }
         updatedAt = now
     }
+    // MARK: - 은퇴 목표 금액 자동 계산 (154번)
+
+    /// 해마다 크게 나가는 돈 — 취미 · 여행 + 병원비. **달이 아니라 해**다.
+    var extraAnnualSpending: Money {
+        Money(minorUnits: annualHobbyMinor + annualMedicalMinor, currency: .krw)
+    }
+
+    /// 4% 규칙으로 센 은퇴 목표 금액. 넣을 것이 하나도 없으면 `nil`.
+    ///
+    /// **25 를 상수로 박지 않는다.** 이 앱에는 이미 인출률 기준(진단 기준 화면,
+    /// 기본 4%)이 있고 자산 진단이 그 값으로 필요 자금을 판정한다. 목표 금액만
+    /// 25 로 박으면 기준을 3.5% 로 바꾼 사람에게 **두 숫자가 어긋난다.**
+    /// 인출률의 역수를 쓰면 기본값에서는 ×25 와 똑같고, 기준을 바꾸면 따라간다.
+    var autoTargetAmount: Money? {
+        Diagnostics.requiredNestEgg(monthlySpending: monthlySpending,
+                                    extraAnnual: extraAnnualSpending,
+                                    withdrawalRate: withdrawalRate)
+    }
+
+    /// 목표 금액 아래 작은 글씨로 적는 수식 (154번).
+    /// `(월 300만 × 12 + 600만 + 300만) × 25 (인출률 4%)`
+    ///
+    /// 금액은 `Won` 으로 적는다 — **가리기를 켜 두면 여기도 가려져야** 한다.
+    var autoTargetFormula: String {
+        var parts = ["월 \(Won.compact(monthlySpending)) × 12"]
+        if annualHobbyMinor > 0 {
+            parts.append(Won.compact(Money(minorUnits: annualHobbyMinor, currency: .krw)))
+        }
+        if annualMedicalMinor > 0 {
+            parts.append(Won.compact(Money(minorUnits: annualMedicalMinor, currency: .krw)))
+        }
+        return "(\(parts.joined(separator: " + "))) × \(Plan.multipleText(withdrawalRateBP))"
+            + " (인출률 \(PercentFormatter.oneDecimal(withdrawalRate.fraction))%)"
+    }
+
+    /// 인출률의 역수 — 4% → `25`, 3.5% → `28.6`. 정수로 떨어지면 소수점을 안 적는다.
+    /// 정수 셈만 쓴다: 100,000 ÷ bp 가 곧 배수의 10배다.
+    static func multipleText(_ basisPoints: Int) -> String {
+        guard basisPoints > 0 else { return "—" }
+        let tenths = (100_000 + basisPoints / 2) / basisPoints
+        return tenths % 10 == 0 ? "\(tenths / 10)" : "\(tenths / 10).\(tenths % 10)"
+    }
+
     var monthlySpending: Money { Money(minorUnits: monthlySpendingMinor, currency: .krw) }
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }
@@ -446,6 +491,7 @@ extension Plan {
             illiquid: illiquid,
             byCountry: rollup.byCountry,
             monthlySpending: monthlySpending,
+            extraAnnualSpending: extraAnnualSpending,
             withdrawalRate: withdrawalRate,
             monthlyIncome: familyIncome,
             driftingHoldings: members.reduce(0) { $0 + $1.driftingHoldingCount(tolerance: driftTolerance) },

@@ -345,3 +345,54 @@ struct DiagnosticsTests {
         #expect(many.diagnoses.first { $0.kind == .targetWeights }?.status == .act)
     }
 }
+
+/// 은퇴 목표 금액 자동 계산 (docs/08-feedback.md 154번).
+///
+/// **기댓값은 파이썬으로 따로 계산해 대조했다** (CLAUDE.md 규칙).
+/// (300만 × 12 + 600만 + 300만) = 4,500만, ÷ 4% = 11억 2,500만.
+@Suite("requiredNestEgg — 해마다 나가는 돈까지")
+struct RequiredNestEggTests {
+
+    private let krw = Currency.krw
+
+    @Test("월 생활비만 넣으면 연 생활비의 25배 (4%)")
+    func monthlyOnly() {
+        let need = Diagnostics.requiredNestEgg(
+            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
+            withdrawalRate: Ratio(basisPoints: 400)
+        )
+        #expect(need?.minorUnits == 900_000_000)
+    }
+
+    @Test("해마다 나가는 돈은 12로 나누지 않고 그대로 더한다")
+    func withExtraAnnual() {
+        let need = Diagnostics.requiredNestEgg(
+            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
+            extraAnnual: Money(minorUnits: 9_000_000, currency: krw),
+            withdrawalRate: Ratio(basisPoints: 400)
+        )
+        // 파이썬 대조: (3_000_000 * 12 + 9_000_000) / 0.04 = 1_125_000_000
+        #expect(need?.minorUnits == 1_125_000_000)
+    }
+
+    @Test("인출률을 바꾸면 배수가 따라간다 — 25를 박지 않는 이유")
+    func followsWithdrawalRate() {
+        let need = Diagnostics.requiredNestEgg(
+            monthlySpending: Money(minorUnits: 3_000_000, currency: krw),
+            extraAnnual: Money(minorUnits: 9_000_000, currency: krw),
+            withdrawalRate: Ratio(basisPoints: 350)
+        )
+        // 파이썬 대조: 45_000_000 / 0.035 = 1_285_714_285.71… → 은행가 반올림 1_285_714_286
+        #expect(need?.minorUnits == 1_285_714_286)
+    }
+
+    @Test("셋 다 0이면 계산하지 않는다")
+    func nothingToCount() {
+        let need = Diagnostics.requiredNestEgg(
+            monthlySpending: Money(minorUnits: 0, currency: krw),
+            extraAnnual: Money(minorUnits: 0, currency: krw),
+            withdrawalRate: Ratio(basisPoints: 400)
+        )
+        #expect(need == nil)
+    }
+}

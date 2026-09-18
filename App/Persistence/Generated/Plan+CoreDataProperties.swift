@@ -79,6 +79,16 @@ extension Plan {
     /// 은퇴 후 한 달 생활비. 0이면 은퇴 필요 자금을 판단하지 않는다.
     @NSManaged var monthlySpendingMinor: Int
 
+    /// 은퇴 뒤 **한 해** 취미 · 여행. 목표 금액 자동 계산에 쓴다 (154번).
+    @NSManaged var annualHobbyMinor: Int
+
+    /// 은퇴 뒤 **한 해** 병원비. 목표 금액 자동 계산에 쓴다 (154번).
+    @NSManaged var annualMedicalMinor: Int
+
+    /// 은퇴 목표 금액을 4% 규칙으로 자동 계산하는가 (154번).
+    /// **기본은 꺼짐** — 이미 손으로 정해 둔 값을 업데이트가 덮으면 안 된다.
+    @NSManaged var targetIsAuto: Bool
+
     /// 인출률. 400 = 4% (4% 규칙).
     @NSManaged var withdrawalRateBP: Int
 

@@ -22,8 +22,10 @@ struct DiagnosticsCriteriaView: View {
                 } footer: {
                     if let required = Diagnostics.requiredNestEgg(
                         monthlySpending: plan.monthlySpending,
+                        extraAnnual: plan.extraAnnualSpending,
                         withdrawalRate: plan.withdrawalRate) {
-                        Text("필요 자금 \(Won.abbreviated(required, suffix: "원")) — 연 생활비를 인출률로 나눈 값입니다. 4%면 25배, 3.5%면 약 28.6배가 됩니다.")
+                        // 계획 탭의 목표 금액 자동 계산과 **같은 숫자**다 (154번).
+                        Text("필요 자금 \(Won.abbreviated(required, suffix: "원")) — 은퇴 뒤 한 해에 쓸 돈(월 생활비 × 12 + 연 취미 · 여행 + 연 병원비)을 인출률로 나눈 값입니다. 4%면 25배, 3.5%면 약 28.6배가 됩니다.")
                     } else {
                         Text("월 생활비를 넣으면 필요 자금을 계산합니다. 지금 쓰는 생활비에서 출퇴근·교육비를 빼고 의료비를 더하면 대략 맞습니다.")
                     }
