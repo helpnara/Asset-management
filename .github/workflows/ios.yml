@@ -364,8 +364,10 @@ jobs:
           shoot 09-history.png     -skipOnboarding -seedSampleData -startTab more -startHistory
           shoot 10-diagnostics.png -skipOnboarding -seedSampleData -startTab more -startDiagnostics
           shoot 11-todos.png       -skipOnboarding -seedSampleData -startTab more -startTodos
-          # 키보드가 올라온 상태. `완료` 버튼이 **하나만** 뜨는지 보는 컷이다 —
-          # 빌드 13 에서 필드 수만큼 네 개가 생겼다 (docs/08-feedback.md 2번).
+          # 키보드가 올라온 상태. 152번 3-1 부터 `만 · 억 · 완료` 는 iOS 가 얹어
+          # 주는 키보드 툴바가 아니라 **화면 안에 우리가 그리는 띠**다 — 키보드
+          # 바로 위에 한 줄로 붙어 있는지, `완료` 가 하나인지 보는 컷이다
+          # (빌드 13 에서는 필드 수만큼 네 개가 생겼다).
           shoot 12-plan-keyboard.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField
           shoot 13-principles.png  -skipOnboarding -seedSampleData -startTab more -startPrinciples
           # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).

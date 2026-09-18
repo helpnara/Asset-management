@@ -131,6 +131,8 @@ struct NationalPensionEstimatorView: View {
             }
             .navigationTitle("국민연금 얼마나 받을까")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
             }

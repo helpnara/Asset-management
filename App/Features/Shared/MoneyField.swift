@@ -20,6 +20,8 @@ struct MoneyField: View {
     var placeholder: String = "0"
 
     @FocusState private var isFocused: Bool
+    /// 이 칸을 띠가 알아보는 이름 (152번 3-1).
+    @State private var fieldID = UUID()
 
     private static let maxDigits = 15
 
@@ -75,20 +77,19 @@ struct MoneyField: View {
                 .font(.figure(17))
                 .foregroundStyle(Color.ink)
                 .focused($isFocused)
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        if isFocused {
-                            // `만` · `억` (93번, B3). 12 → 만 → 120,000.
-                            Button("만") { multiply(10_000) }
-                                .font(.scaled(14))
-                            Button("억") { multiply(100_000_000) }
-                                .font(.scaled(14))
-                            Spacer()
-                            Button("완료") { isFocused = false }
-                                .font(.scaled(15, weight: .semibold))
-                        }
+                // **띠는 화면이 그린다** (152번 3-1). 키보드 툴바는 iOS 가 얹어
+                // 주는 것이라 커서가 옮겨 다니면 떼어지고 글자 크기를 바꿔도
+                // 다시 그려지지 않는다 (144번). 커서가 오면 손잡이만 건넨다.
+                .onChange(of: isFocused, initial: true) { _, focused in
+                    if focused {
+                        MoneyKeyboard.shared.activate(
+                            .init(id: fieldID, multiply: multiply, focus: $isFocused)
+                        )
+                    } else {
+                        MoneyKeyboard.shared.resign(fieldID)
                     }
                 }
+                .onDisappear { MoneyKeyboard.shared.resign(fieldID) }
             Text("원")
                 .font(.scaled(13))
                 .foregroundStyle(Color.muted)

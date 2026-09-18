@@ -62,6 +62,8 @@ struct PastRecordsView: View {
                         perform: delete)
         .navigationTitle("지난 기록")
         .navigationBarTitleDisplayMode(.inline)
+        // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+        .moneyKeyboardBar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if canManageHousehold {
@@ -257,6 +259,8 @@ struct PastRecordEditView: View {
             }
             .navigationTitle(draft.isNew ? "지난 기록 추가" : "지난 기록")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("취소") { dismiss() }

@@ -135,6 +135,8 @@ struct DiagnosticsCriteriaView: View {
             }
             .navigationTitle("진단 기준")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") { dismiss() }.fontWeight(.semibold)

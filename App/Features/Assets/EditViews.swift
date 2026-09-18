@@ -181,6 +181,8 @@ struct MemberEditView: View {
             }
             .navigationTitle("구성원")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { cancel() }
@@ -339,6 +341,8 @@ struct AccountEditView: View {
             }
             .navigationTitle("계좌")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { cancel() }
@@ -656,6 +660,8 @@ struct HoldingEditView: View {
             }
             .navigationTitle("종목")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { cancel() }

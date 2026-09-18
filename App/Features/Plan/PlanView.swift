@@ -22,6 +22,11 @@ struct PlanView: View {
     @State private var editingIncome: IncomeStream?
     @State private var pendingIncomeDelete: IndexSet?
     @State private var pendingEventDelete: IndexSet?
+    /// 마지막으로 끝난 계산 (153번). 화면은 이 값을 그리기만 한다.
+    @State private var projected: ProjectionResult?
+    /// 굴리는 중인가. 숫자를 지우지 않고 흐리게 둔 채 `반영 중` 을 곁들인다 —
+    /// 빈칸이 되면 "고장났나" 로 읽힌다.
+    @State private var isProjecting = false
 
     var body: some View {
         NavigationStack {
@@ -56,6 +61,8 @@ struct PlanView: View {
             }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .sheet(item: $editingEvent, onDismiss: { newIDs.removeAll() }) {
                 CashEventEditView(event: $0, isNew: newIDs.contains($0.id))
             }
@@ -72,29 +79,45 @@ struct PlanView: View {
 
     private func form(_ plan: Plan) -> some View {
         let bind = plan.bindings
+        // 계산에 들어가는 값들을 **값 타입 하나로** 뽑는다 (153번). 이게 달라질
+        // 때만 다시 굴린다. `ProjectionInput` 은 `Hashable` 이라 `.task(id:)` 의
+        // 열쇠로 그대로 쓸 수 있고, `Sendable` 이라 주 스레드 밖으로 건네도 된다 —
+        // 관리 객체를 넘기지 않는다는 규칙(CLAUDE.md)을 그대로 지킨다.
+        let input = plan.projectionInput(from: currentBalance, cashEvents: cashEvents,
+                                         incomes: incomes, members: members)
         return Form {
             if !canManageHousehold {
                 Section { ReadOnlyNote(text: "계획의 가정은 관리자만 고칠 수 있습니다.") }
             }
-            // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
-            // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
+
+            // **보러 온 것을 맨 위에** (152번 2-6). 예전에는 수립일 · 마지막 수정이
+            // 맨 위였다 — 열자마자 보이는 것이 메타 정보였다. 요약은 잠그지 않는다:
+            // 참가자가 이 화면에서 가장 보고 싶은 것이다.
+            Section("이대로 가면") {
+                summary(plan)
+            }
+
+            Section("기간") {
+                if canManageHousehold {
+                    Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
+                        // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
+                        // 연도에는 자릿수 구분을 넣지 않는다.
+                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                    }
+                } else {
+                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
+                }
+                LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
+            }
+
             Section {
                 if canManageHousehold {
-                    DatePicker("최초 계획 수립일",
-                               selection: Binding(get: { plan.startedOn ?? .now },
-                                                  set: { plan.startedOn = $0 }),
-                               displayedComponents: .date)
+                    MoneyField(title: "은퇴 목표 금액", minorUnits: bind.targetAmountMinor)
                 } else {
-                    readOnlyRow("최초 계획 수립일",
-                                (plan.startedOn ?? .now).formatted(date: .numeric, time: .omitted))
-                }
-                LabeledContent("마지막 수정") {
-                    Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
-                        .font(.scaled(13))
-                        .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
+                    readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
                 }
             } footer: {
-                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 1페이지 · 백업 내보내기 → 1페이지 문서 설정**에서 고칩니다.")
+                Text("0으로 두면 목표선을 그리지 않습니다.")
             }
 
             Section {
@@ -146,38 +169,53 @@ struct PlanView: View {
                 Text("위 기대수익률은 **주식 · ETF 에만** 걸립니다. 투자 계좌 안에 있어도 채권·금·예수금은 여기 값으로 따로 굴리고, 전월세보증금과 받을 돈은 **자라지 않는 것으로** 봅니다. 계좌마다 다르면 자산 탭에서 그 계좌에 직접 적을 수 있습니다 — 그 값이 이깁니다.")
             }
 
-            Section("기간") {
-                if canManageHousehold {
-                    Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
-                        // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
-                        // 연도에는 자릿수 구분을 넣지 않는다.
-                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
-                    }
-                } else {
-                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
-                }
-                LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
-            }
-
-            Section {
-                if canManageHousehold {
-                    MoneyField(title: "은퇴 목표 금액", minorUnits: bind.targetAmountMinor)
-                } else {
-                    readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
-                }
-            } footer: {
-                Text("0으로 두면 목표선을 그리지 않습니다.")
-            }
-
             retirementSection(plan)
             incomeSection(plan)
             cashEventSection
 
-            // 요약은 잠그지 않는다 — 참가자가 이 화면에서 가장 보고 싶은 것이다.
-            Section("이대로 가면") {
-                summary(plan)
+            // 계획은 한 번 세우고 계속 다듬는 것이라 제목이 필요 없다.
+            // 언제 세웠고 언제 갱신했는지만 있으면 된다 (docs/08-feedback.md 21번).
+            // **맨 아래로 내렸다** (152번 2-6) — 자주 보는 값이 아니다.
+            Section {
+                if canManageHousehold {
+                    DatePicker("최초 계획 수립일",
+                               selection: Binding(get: { plan.startedOn ?? .now },
+                                                  set: { plan.startedOn = $0 }),
+                               displayedComponents: .date)
+                } else {
+                    readOnlyRow("최초 계획 수립일",
+                                (plan.startedOn ?? .now).formatted(date: .numeric, time: .omitted))
+                }
+                LabeledContent("마지막 수정") {
+                    Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
+                        .font(.scaled(13))
+                        .foregroundStyle(plan.updatedAt == nil ? Color.muted : Color.bodyText)
+                }
+            } header: {
+                Text("기록")
+            } footer: {
+                Text("수정할 때마다 자동으로 기록됩니다. 1페이지에 들어가는 제목·기준 시점·맨 밑 한 줄은 **더보기 → 내보내기 → 1페이지 문서 설정**에서 고칩니다.")
             }
         }
+        // **굴리는 것은 화면 그리기 밖에서** (153번). 손잡이를 돌릴 때마다
+        // 궤적 전체를 주 스레드에서 다시 계산하느라, 누른 것과 숫자가 바뀌는
+        // 사이가 벌어졌다 — 안 되었나 싶어 또 누르게 되던 것이 이 때문이다.
+        .task(id: input) { await project(input) }
+    }
+
+    /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 **취소**하므로,
+    /// 맨 앞의 기다림이 곧 연타 접기다 — 손잡이를 다섯 칸 돌려도 계산은 한 번이다.
+    private func project(_ input: ProjectionInput) async {
+        isProjecting = true
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+        // 값(`Sendable`)만 건넨다. 관리 객체는 이 경계를 넘지 않는다.
+        let result = await Task.detached(priority: .userInitiated) {
+            Projection.run(input)
+        }.value
+        guard !Task.isCancelled else { return }
+        projected = result
+        isProjecting = false
     }
 
     /// 구성원별 적립. 합계 하나로도 궤적은 똑같이 그려진다 — 나누는 이유는
@@ -337,33 +375,53 @@ struct PlanView: View {
 
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
-        let result = plan.projection(from: currentBalance, cashEvents: cashEvents, incomes: incomes, members: members)
         // **은퇴 시점의 값이다, 궤적의 끝이 아니다.** 은퇴 후 생활비를 넣으면
         // 궤적이 지평선(예: 92세)까지 이어지므로 `last` 는 30년 인출한 뒤의
         // 잔고다. 현황판·진단·1페이지·시뮬레이션은 전부 은퇴 시점을 읽는데
         // 이 화면만 끝값을 읽어 "2049년 예상" 이 다른 숫자였다 (51번).
-        if let end = result.point(inYear: plan.retirementYear) ?? result.last {
-            LabeledContent {
-                Text(Won.abbreviated(end.nominal, suffix: "원"))
-                    .font(.figure(15, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-            } label: {
-                Text(verbatim: "\(plan.retirementYear)년 예상")
-            }
-            LabeledContent("오늘 돈 기준") {
-                Text(Won.abbreviated(end.real, suffix: "원"))
-                    .font(.figure(13))
-                    .foregroundStyle(Color.muted)
-            }
-            if plan.targetAmountMinor > 0 {
-                LabeledContent("목표 달성률") {
-                    Text(achievement(end.nominal, plan.targetAmountMinor))
-                        .font(.figure(13, weight: .medium))
-                        .foregroundStyle(end.nominal.minorUnits >= plan.targetAmountMinor
-                                         ? Color.gain : Color.loss)
+        if let result = projected,
+           let end = result.point(inYear: plan.retirementYear) ?? result.last {
+            Group {
+                LabeledContent {
+                    Text(Won.abbreviated(end.nominal, suffix: "원"))
+                        .font(.figure(15, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                } label: {
+                    Text(verbatim: "\(plan.retirementYear)년 예상")
                 }
+                LabeledContent("오늘 돈 기준") {
+                    Text(Won.abbreviated(end.real, suffix: "원"))
+                        .font(.figure(13))
+                        .foregroundStyle(Color.muted)
+                }
+                if plan.targetAmountMinor > 0 {
+                    LabeledContent("목표 달성률") {
+                        Text(achievement(end.nominal, plan.targetAmountMinor))
+                            .font(.figure(13, weight: .medium))
+                            .foregroundStyle(end.nominal.minorUnits >= plan.targetAmountMinor
+                                             ? Color.gain : Color.loss)
+                    }
+                }
+                depletionRow(plan, result)
             }
-            depletionRow(plan, result)
+            // 새 값이 오기 전까지 **옛 값을 흐리게 남긴다**. 지우면 화면이
+            // 깜빡이고, 그 깜빡임이 "고장났나" 로 읽힌다.
+            .opacity(isProjecting ? 0.4 : 1)
+
+            if isProjecting { recalculatingRow }
+        } else {
+            // 첫 계산. 아직 보여 줄 옛 값이 없다.
+            recalculatingRow
+        }
+    }
+
+    private var recalculatingRow: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text("반영 중")
+                .font(.scaled(12))
+                .foregroundStyle(Color.muted)
+            Spacer(minLength: 0)
         }
     }
 

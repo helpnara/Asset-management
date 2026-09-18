@@ -55,6 +55,8 @@ struct CashEventEditView: View {
             }
             .navigationTitle("목돈 이벤트")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: event) } }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

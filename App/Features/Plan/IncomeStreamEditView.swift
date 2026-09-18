@@ -83,6 +83,8 @@ struct IncomeStreamEditView: View {
             }
             .navigationTitle("은퇴 후 소득")
             .navigationBarTitleDisplayMode(.inline)
+            // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
+            .moneyKeyboardBar()
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: stream) } }
             .onChange(of: hasEnd) { _, on in
                 stream.endYear = on ? max(stream.endYear, stream.startYear + 10) : 0
