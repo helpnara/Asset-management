@@ -46,8 +46,6 @@ struct AssetsView: View {
     @State private var targetingAccount: Account?
     @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
-    /// 편집 중인가 — 구성원 순서 줄을 그때만 낸다 (152번 2-4).
-    @Environment(\.editMode) private var editMode
     @State private var route = AppRoute.shared
     /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
     /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
@@ -293,16 +291,27 @@ struct AssetsView: View {
                 }
             }
 
-            // **순서는 `편집` 안에 있다** (152번 2-4). `+` 메뉴에도 있고
-            // `편집` 에도 있어 길이 둘이었다 — 편집 중일 때만 여기 하나로 낸다.
-            if canManageHousehold && members.count > 1 && editMode?.wrappedValue.isEditing == true {
+            // **순서 바꾸는 길은 하나다** (152번 2-4). 예전에는 `+` 메뉴에도
+            // 있고 `편집` 에도 있어 둘이었다.
+            //
+            // **편집 모드에 매달지 않는다** (빌드 82 사용자 확인). 처음에는
+            // `editMode` 가 켜졌을 때만 내놓았는데 줄이 아예 안 보였다 —
+            // `EditButton` 이 만지는 `editMode` 는 목록을 감싼 컨테이너의
+            // 환경값이라, **그 컨테이너를 만든 뷰 자신**(여기)에서 읽으면
+            // 바뀌어도 오지 않는다. 안에 있는 자식 뷰라야 보인다.
+            //
+            // 자식 뷰로 옮겨 다시 숨길 수도 있지만, 숨은 손잡이를 찾게 하는
+            // 것이 2-3 에서 고친 바로 그 문제였다. 목록 맨 끝에 조용히 둔다.
+            if canManageHousehold && members.count > 1 && !isNarrowing {
                 Section {
                     Button {
                         isOrderingMembers = true
                     } label: {
                         Label("구성원 순서 바꾸기", systemImage: "arrow.up.arrow.down")
-                            .font(.scaled(12.5))
+                            .font(.scaled(12))
+                            .foregroundStyle(Color.muted)
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
