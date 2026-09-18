@@ -34,6 +34,9 @@ struct SlowRichApp: App {
         // **저장을 켠다.** Core Data 는 스스로 저장하지 않는다 —
         // SwiftData 에서 갈아탈 때 조용히 사라진 것이다 (Autosave 참고).
         MainActor.assumeIsolated { Autosave.shared.start(container.viewContext) }
+        // **같은 숫자를 두 번 굴리지 않는다** (157번). 자료가 바뀔 때까지는
+        // 가족 전체 자산을 한 번만 셈한다.
+        MainActor.assumeIsolated { ValuationCache.shared.start() }
     }
 
     /// CI 스크린샷은 매 실행마다 환영 화면에 막히면 안 되므로 실행 인자로 건너뛴다.

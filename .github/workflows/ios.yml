@@ -369,6 +369,10 @@ jobs:
           # 바로 위에 한 줄로 붙어 있는지, `완료` 가 하나인지 보는 컷이다
           # (빌드 13 에서는 필드 수만큼 네 개가 생겼다).
           shoot 12-plan-keyboard.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField
+          # **`만` 을 누른 뒤** (156번). 커서가 있는 칸은 모델 값을 다시 읽지
+          # 않아서, 띠가 값을 바꿔도 칸에는 옛 글자가 남고 그것이 되쓰였다.
+          # 누른 뒤의 화면을 찍어야 글자가 실제로 바뀌는 것이 보인다.
+          shoot 29-money-multiply.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField -tapMoneyMultiply
           shoot 13-principles.png  -skipOnboarding -seedSampleData -startTab more -startPrinciples
           # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).
           shoot 14-account-targets.png -skipOnboarding -seedSampleData -startTab assets -startAccountTargets

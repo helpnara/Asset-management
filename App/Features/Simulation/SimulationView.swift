@@ -831,7 +831,7 @@ struct SimulationView: View {
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
     private var currentBalance: Money {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        ValuationCache.shared.familyRollUp(holdings).netWorth
     }
 
     /// 손잡이의 기준점. 궤적이 실제로 쓰는 값과 같아야 한다.

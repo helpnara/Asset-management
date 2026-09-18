@@ -24,7 +24,12 @@ final class MoneyKeyboard {
     struct Handle {
         let id: UUID
         /// `만` · `억` — 12 → 만 → 120,000.
-        let multiply: (Int) -> Void
+        ///
+        /// **칸이 바인딩만 잡아 만든다** (156번). 예전에는 `MoneyField` 라는
+        /// 구조체 값의 메서드를 통째로 건넸는데, 그러면 손잡이가 커서 들어온
+        /// 순간의 사본에 묶인다. 그리고 이 함수는 모델뿐 아니라 **칸의 글자까지**
+        /// 바꿔야 한다 — 커서가 있는 칸은 모델 값을 다시 읽지 않기 때문이다.
+        let multiply: @MainActor (Int) -> Void
         /// 숫자 키패드에는 return 키가 없다. 내리는 길을 띠가 낸다.
         let focus: FocusState<Bool>.Binding
     }

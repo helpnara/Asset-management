@@ -22,6 +22,9 @@ struct MemberTrajectoryView: View {
 
     /// 손잡이. nil 이면 지금 계획대로다.
     @State private var monthlyMinor: Int?
+    /// **마지막으로 끝난 궤적** (157번). 예전에는 계산 프로퍼티라 손잡이를
+    /// 끄는 동안 프레임마다 궤적 전체를 주 스레드에서 다시 굴렸다.
+    @State private var projected: ProjectionResult?
 
     private var plan: Plan? { plans.first }
 
@@ -35,6 +38,7 @@ struct MemberTrajectoryView: View {
             }
             .padding(16)
         }
+        .task(id: projectionInput) { await runProjection(projectionInput) }
         .background(Color.ground)
         .navigationTitle(member.name.isEmpty ? "구성원" : member.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -177,7 +181,7 @@ struct MemberTrajectoryView: View {
 
     private var plannedMonthly: Int {
         guard let plan else { return member.monthlyContributionMinor }
-        let family = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        let family = ValuationCache.shared.familyRollUp(holdings).netWorth
         return plan.memberMonthlyContributionMinor(member, familyTotal: family)
     }
 
@@ -201,8 +205,22 @@ struct MemberTrajectoryView: View {
     }
 
     /// 이 사람 몫만 굴린다. 수익률·물가 가정은 가구 공통이다.
-    private var projection: ProjectionResult? {
-        // 로드맵 분해 시트와 같은 계산이다 (85번).
-        plan?.memberProjection(member, balance: currentBalance, monthlyMinor: effectiveMonthly)
+    /// 화면은 마지막으로 끝난 결과를 그리기만 한다 (157번).
+    private var projection: ProjectionResult? { projected }
+
+    /// 굴리기 전의 값. 로드맵 분해 시트와 같은 계산이다 (85번).
+    private var projectionInput: ProjectionInput? {
+        plan?.memberProjectionInput(member, balance: currentBalance, monthlyMinor: effectiveMonthly)
+    }
+
+    /// 한 번 굴린다. 손잡이를 연달아 끌어도 `.task(id:)` 가 앞의 것을 취소하므로
+    /// 계산은 멈춘 자리에서 한 번이다.
+    private func runProjection(_ input: ProjectionInput?) async {
+        guard let input else { projected = nil; return }
+        let result = await Task.detached(priority: .userInitiated) {
+            Projection.run(input)
+        }.value
+        guard !Task.isCancelled else { return }
+        projected = result
     }
 }

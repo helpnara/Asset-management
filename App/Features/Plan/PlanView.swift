@@ -499,7 +499,7 @@ struct PlanView: View {
     private var currentYear: Int { Calendar.current.component(.year, from: .now) }
 
     private var currentBalance: Money {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw).netWorth
+        ValuationCache.shared.familyRollUp(holdings).netWorth
     }
 
     /// **여기서 잠근다.** 네 곳에서 쓰이므로 부르는 쪽마다 적으면 하나를

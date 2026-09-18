@@ -10,10 +10,13 @@ import SwiftUI
 /// 없는 화면에서 키패드가 탭 바를 덮은 채 빠져나갈 수 없다
 /// (docs/08-feedback.md 2번).
 ///
-/// **`완료` 는 포커스를 가진 필드만 내놓는다.** SwiftUI 는 화면 안의
-/// `placement: .keyboard` 툴바를 **전부 합쳐서** 한 줄에 늘어놓기 때문에,
-/// 부품마다 무조건 선언하면 필드 수만큼 `완료` 가 생긴다. 빌드 13 에서
-/// 계획 탭에 네 개가 떴다.
+/// **커서가 있는 동안에는 `draft` 가 칸의 글자다** (156번). 예전에는 칸이
+/// `minorUnits` 에서 곧바로 글자를 만들었는데, 사람이 치는 동안에는 UIKit 이
+/// 들고 있는 글자가 이긴다. 그래서 띠의 `만` 이 모델을 7,500,000 으로 바꿔도
+/// 칸에는 `750` 이 남고 **다음 세터가 그 750 을 모델에 되썼다** — 눌러도 아무
+/// 일이 안 일어나는 것처럼 보이던 것이 이 때문이다. 주간 점검은 이 문제를
+/// 먼저 겪고 `draft` 로 풀었고(`WeeklyReviewView.valueText`), 띠를 화면 안으로
+/// 옮길 때(152번 3-1) 그 장치만 안 따라왔다. 여기서 맞춘다.
 struct MoneyField: View {
     let title: String
     @Binding var minorUnits: Int
@@ -22,8 +25,16 @@ struct MoneyField: View {
     @FocusState private var isFocused: Bool
     /// 이 칸을 띠가 알아보는 이름 (152번 3-1).
     @State private var fieldID = UUID()
+    /// **커서가 있는 동안 칸이 보여 주는 글자.** 커서가 없으면 `nil` 이고,
+    /// 그때는 모델 값에서 글자를 만든다.
+    @State private var draft: String?
+    /// 눌러도 아무 일이 안 일어날 때 잠깐 뜨는 한 줄. 말 없는 가드는 고장과
+    /// 구별되지 않는다 (156번).
+    @State private var note: String?
 
     private static let maxDigits = 15
+    /// 원 단위 열다섯 자리. 그 위로는 만들지 않는다.
+    static let ceiling = 999_999_999_999_999
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
@@ -38,11 +49,24 @@ struct MoneyField: View {
                     .foregroundStyle(Color.dad)
                     .transition(.opacity)
             }
+            if let note {
+                Text(note)
+                    .font(.scaled(10.5, weight: .medium))
+                    .foregroundStyle(Color.loss)
+                    .transition(.opacity)
+            }
         }
         // 라벨 아무 데나 눌러도 입력이 시작되게 한다. 오른쪽 끝 숫자만 겨우
         // 겨냥하는 것보다 손이 편하다.
         .contentShape(Rectangle())
         .onTapGesture { isFocused = true }
+        // 한 줄짜리 알림은 스스로 사라진다. 지우는 버튼을 두면 그게 더 성가시다.
+        .task(id: note) {
+            guard note != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            note = nil
+        }
         .task {
             // CI 가 키보드 올라온 상태를 찍을 수 있게 하는 갈고리.
             // 이게 없으면 `완료` 버튼이 제대로 붙었는지 그림으로 확인할 방법이
@@ -63,6 +87,13 @@ struct MoneyField: View {
             // 사람이 쓸 때는 이 길로 오지 않는다.
             try? await Task.sleep(for: .milliseconds(1200))
             isFocused = true
+            // **`만` 을 눌러 본 컷** (156번). 이 버그는 "눌렀는데 아무 일도 안
+            // 일어난다" 라서, 띠가 붙어 있는 그림만으로는 확인할 수 없다.
+            // 누른 뒤의 화면을 찍어야 글자가 실제로 바뀌는 것이 보인다 —
+            // 원격 세션에서 이걸 확인할 수 있는 유일한 길이다.
+            guard ProcessInfo.processInfo.arguments.contains("-tapMoneyMultiply") else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            MoneyKeyboard.shared.active?.multiply(10_000)
         }
     }
 
@@ -80,12 +111,25 @@ struct MoneyField: View {
                 // **띠는 화면이 그린다** (152번 3-1). 키보드 툴바는 iOS 가 얹어
                 // 주는 것이라 커서가 옮겨 다니면 떼어지고 글자 크기를 바꿔도
                 // 다시 그려지지 않는다 (144번). 커서가 오면 손잡이만 건넨다.
+                //
+                // **손잡이는 값이 아니라 바인딩을 잡는다** (156번). 예전에는
+                // `multiply` 라는 구조체 값의 메서드를 통째로 잡아 둬서, 화면이
+                // 다시 그려져도 손잡이는 그때의 사본 그대로였다. `@Binding` 과
+                // `@State` 의 투영값은 다시 그려져도 같은 저장소를 가리키므로
+                // 이 둘만 잡으면 어긋날 자리가 없다.
                 .onChange(of: isFocused, initial: true) { _, focused in
                     if focused {
+                        draft = Self.display(minorUnits)
                         MoneyKeyboard.shared.activate(
-                            .init(id: fieldID, multiply: multiply, focus: $isFocused)
+                            .init(id: fieldID,
+                                  multiply: { [value = $minorUnits, text = $draft, note = $note] factor in
+                                      Self.multiply(factor, value: value, text: text, note: note)
+                                  },
+                                  focus: $isFocused)
                         )
                     } else {
+                        draft = nil
+                        note = nil
                         MoneyKeyboard.shared.resign(fieldID)
                     }
                 }
@@ -105,18 +149,52 @@ struct MoneyField: View {
         return true
     }
 
-    private func multiply(_ factor: Int) {
-        let next = minorUnits * factor
-        guard minorUnits > 0, next < 1_000_000_000_000_000 else { return }
-        minorUnits = next
+    private static func display(_ minorUnits: Int) -> String {
+        minorUnits == 0 ? "" : KoreanAmountFormatter.grouped(minorUnits)
+    }
+
+    /// `만` · `억` — 12 → 만 → 120,000.
+    ///
+    /// **곱셈이 가드보다 먼저 있으면 앱이 죽는다** (156번). 예전에는
+    /// `minorUnits * factor` 를 먼저 계산하고 나서 한도를 봤다 — 750억이 든
+    /// 칸에서 `억` 을 누르면 `Int` 를 넘겨 그 자리에서 트랩이었다. 넘침을
+    /// 물어보고, 넘치거나 한도를 지나면 **한도에서 멈추고 말해 준다.**
+    @MainActor
+    private static func multiply(_ factor: Int,
+                                 value: Binding<Int>,
+                                 text: Binding<String?>,
+                                 note: Binding<String?>) {
+        let current = value.wrappedValue
+        guard current > 0 else {
+            note.wrappedValue = "숫자를 먼저 넣으세요"
+            return
+        }
+        let (product, overflowed) = current.multipliedReportingOverflow(by: factor)
+        let next = (overflowed || product > ceiling) ? ceiling : product
+        guard next != current else {
+            note.wrappedValue = "더 크게는 못 넣습니다"
+            return
+        }
+        value.wrappedValue = next
+        // **글자도 함께 민다.** 이것이 156번의 고갱이다 — 모델만 바꾸면
+        // 커서가 있는 칸은 옛 글자를 그대로 들고 있다가 되쓴다.
+        text.wrappedValue = display(next)
+        note.wrappedValue = (next == product) ? nil : "한도까지만 올렸습니다"
     }
 
     private var text: Binding<String> {
         Binding(
-            get: { minorUnits == 0 ? "" : KoreanAmountFormatter.grouped(minorUnits) },
+            get: {
+                // 커서가 있는 동안에는 `draft` 가 칸의 글자다 (156번).
+                if isFocused, let draft { return draft }
+                return Self.display(minorUnits)
+            },
             set: { input in
                 let digits = String(input.filter(\.isNumber).prefix(Self.maxDigits))
-                minorUnits = Int(digits) ?? 0
+                let next = Int(digits) ?? 0
+                draft = Self.display(next)
+                guard minorUnits != next else { return }
+                minorUnits = next
             }
         )
     }

@@ -299,19 +299,26 @@ extension Plan {
     /// `through` 로 끝 해를 늘린다.
     func memberProjection(_ member: Member, balance: Money, monthlyMinor: Int,
                           through year: Int? = nil, calendar: Calendar = .current) -> ProjectionResult {
+        Projection.run(memberProjectionInput(member, balance: balance, monthlyMinor: monthlyMinor,
+                                             through: year, calendar: calendar),
+                       calendar: calendar)
+    }
+
+    /// 굴리기 전의 **값**. 관리 객체를 안 들고 있으므로 주 스레드 밖으로
+    /// 건넬 수 있고, `Hashable` 이라 `.task(id:)` 의 열쇠가 된다 (157번).
+    func memberProjectionInput(_ member: Member, balance: Money, monthlyMinor: Int,
+                               through year: Int? = nil,
+                               calendar: Calendar = .current) -> ProjectionInput {
         let now = calendar.startOfDay(for: .now)
         let endYear = max(member.retirementYear, year ?? member.retirementYear)
-        return Projection.run(
-            ProjectionInput(
-                startDate: now,
-                endDate: Plan.endDate(retirementYear: endYear, notBefore: now, calendar: calendar),
-                buckets: buckets(of: [member], total: balance),
-                monthlyContribution: Money(minorUnits: monthlyMinor, currency: .krw),
-                annualReturn: annualReturn,
-                annualContributionGrowth: contributionGrowth,
-                inflation: inflation
-            ),
-            calendar: calendar
+        return ProjectionInput(
+            startDate: now,
+            endDate: Plan.endDate(retirementYear: endYear, notBefore: now, calendar: calendar),
+            buckets: buckets(of: [member], total: balance),
+            monthlyContribution: Money(minorUnits: monthlyMinor, currency: .krw),
+            annualReturn: annualReturn,
+            annualContributionGrowth: contributionGrowth,
+            inflation: inflation
         )
     }
 

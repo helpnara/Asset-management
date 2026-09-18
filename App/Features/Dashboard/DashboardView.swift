@@ -30,6 +30,13 @@ struct DashboardView: View {
     @State private var completedToShow: ReviewSession?
     /// 로드맵 정거장을 누르면 그 시점의 분해 시트 (85번).
     @State private var selectedStop: RoadmapStrip.Stop?
+    /// **마지막으로 끝난 궤적 계산** (157번). 예전에는 `projection` 이 계산
+    /// 프로퍼티라, 본문에서 참조하는 자리마다 30년치를 처음부터 다시 굴렸다 —
+    /// 그런 자리가 아홉 군데였고, 계획선까지 더하면 한 번 그릴 때 열한 번이었다.
+    /// 스크롤 한 번, 값 하나 고칠 때마다 그만큼 돌았다.
+    @State private var projected: ProjectionResult?
+    /// 계획선도 같다. 여기 한 번만 굴린다.
+    @State private var planProjected: ProjectionResult?
     /// 기간은 궤적 차트가 들고 있다 — 구성원 궤적과 같은 값을 나눠 쓴다
     /// (docs/08-feedback.md 31번). 여기서는 범례를 그릴지 판단하려고 읽는다.
     @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .retirement
@@ -43,7 +50,7 @@ struct DashboardView: View {
     }
 
     private var rollup: Rollup {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
+        ValuationCache.shared.familyRollUp(holdings)
     }
 
     var body: some View {
@@ -88,6 +95,9 @@ struct DashboardView: View {
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()
+            }
+            .task(id: ProjectionKey(now: projectionInput, plan: planProjectionInput)) {
+                await runProjections(ProjectionKey(now: projectionInput, plan: planProjectionInput))
             }
             .task {
                 // 완료 화면은 11번 눌러야 도달하므로 CI 스크린샷이 찍을 수 없다.
@@ -533,7 +543,7 @@ struct DashboardView: View {
         }
     }
 
-    /// 바닥나는 해. 정거장으로 넣지 않고 **머리글 옆 경고**로 뺀다 —
+    /// 바닥나는 해. 정거장으로 넣지 않고 **머리글 아래 빨간 부제**로 뺀다 —
     /// 여섯 칸의 뼈대를 흔들지 않으면서, 일어난다면 가장 무거운 한 점이다.
     private var depletionYear: Int? {
         projection?.depletion.map { Calendar.current.component(.year, from: $0) }
@@ -546,9 +556,13 @@ struct DashboardView: View {
                 sectionHeader("전체 자산 로드맵",
                               trailing: plan.map { "\($0.yearsToRetirement)년 남음" } ?? "")
                 if let depletionYear {
+                    // **제목 바로 아래 빨간 부제** (158번). 예전에는 이 줄에만
+                    // 좌우 여백이 없어 화면 맨 왼쪽 끝에 닿아 있었다 — 위(제목)도
+                    // 아래(정거장 · 각주)도 20 인데 여기만 0 이었다.
                     Text("\(String(depletionYear))년에 바닥납니다")
                         .font(.scaled(11.5, weight: .medium))
                         .foregroundStyle(Color.loss)
+                        .padding(.horizontal, 20)
                         .padding(.bottom, 6)
                 }
                 RoadmapStrip(stops: roadmapStops) { selectedStop = $0 }
@@ -565,8 +579,43 @@ struct DashboardView: View {
 
     private var plan: Plan? { plans.first }
 
-    private var projection: ProjectionResult? {
-        plan?.projection(from: rollup.netWorth, cashEvents: cashEvents, incomes: incomes, members: members)
+    /// **굴리는 것은 화면 그리기 밖에서** (157번, 153번과 같은 규칙).
+    /// 화면은 마지막으로 끝난 결과를 그리기만 한다.
+    private var projection: ProjectionResult? { projected }
+
+    /// 궤적에 들어가는 값들을 `Sendable` 값 하나로. 이것이 달라질 때만 다시 굴린다.
+    private var projectionInput: ProjectionInput? {
+        plan?.projectionInput(from: rollup.netWorth, cashEvents: cashEvents,
+                              incomes: incomes, members: members)
+    }
+
+    /// 계획선의 입력. 출발점이 계획을 세운 뒤 **처음 적은 주**라 열쇠가 다르다.
+    private var planProjectionInput: ProjectionInput? {
+        guard let plan, let anchor = PlanTrack.anchor(plan: plan, snapshots: snapshots)
+        else { return nil }
+        return plan.projectionInput(from: anchor.balance, cashEvents: cashEvents,
+                                    incomes: incomes, members: members, asOf: anchor.date)
+    }
+
+    /// 둘을 한 열쇠로 묶는다. 하나만 바뀌어도 둘 다 다시 굴리지만, 둘은 거의
+    /// 늘 함께 바뀐다 — 열쇠를 나누면 `.task` 가 둘이 되고 순서가 엉킨다.
+    private struct ProjectionKey: Hashable {
+        var now: ProjectionInput?
+        var plan: ProjectionInput?
+    }
+
+    /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 **취소**하므로,
+    /// 연달아 고쳐도 계산은 마지막 것 한 번이다.
+    private func runProjections(_ key: ProjectionKey) async {
+        let now = key.now
+        let planned = key.plan
+        let results = await Task.detached(priority: .userInitiated) {
+            (now: now.map { Projection.run($0) },
+             plan: planned.map { Projection.run($0) })
+        }.value
+        guard !Task.isCancelled else { return }
+        projected = results.now
+        planProjected = results.plan
     }
 
     /// **1년에 한 번은 가정을 다시 본다** (docs/08-feedback.md 43번).
@@ -604,10 +653,7 @@ struct DashboardView: View {
 
     /// 계산은 `PlanTrack` 이 한다. **현황판 · 점검 완료 화면 · 1페이지가 같은
     /// 함수를 쓴다** — 37번에서 여기에만 붙였다가 나머지 둘을 빠뜨렸다.
-    private var planProjection: ProjectionResult? {
-        PlanTrack.projection(plan: plan, snapshots: snapshots, cashEvents: cashEvents,
-                             incomes: incomes, members: members)
-    }
+    private var planProjection: ProjectionResult? { planProjected }
 
     private var planGap: PlanTrack.Gap? {
         PlanTrack.gap(planProjection, actual: rollup.netWorth)
@@ -920,11 +966,12 @@ struct DashboardView: View {
     @ViewBuilder
     private var diagnosticsStrip: some View {
         if let plan = plans.first {
+            // **이미 굴려 둔 궤적을 쓴다** (157번). 예전에는 이 띠가 본문 안에서
+            // 30년치를 한 번 더 굴렸다 — 화면에 이미 같은 궤적이 있는데도.
             let result = Diagnostics.run(plan.diagnosticsInput(
                 rollup: rollup,
                 accounts: accounts,
-                projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
-                                            incomes: incomes, members: members),
+                projection: projection,
                 members: members
             ))
 

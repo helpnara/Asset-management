@@ -26,6 +26,10 @@ struct DiagnosticsView: View {
 
     @State private var expanded: Set<String> = []
     @State private var isEditingCriteria = false
+    /// **마지막으로 끝난 궤적** (157번). 예전에는 `content(plan)` 이 화면을
+    /// 그릴 때마다 30년치를 주 스레드에서 다시 굴렸다 — 기준을 한 칸 고칠
+    /// 때마다 화면이 굳던 것이 이 때문이다.
+    @State private var projected: ProjectionResult?
     // 진단 기준은 가구 하나에 한 벌이다 — 관리자만 바꾼다.
     @Environment(\.canManageHousehold) private var canManageHousehold
 
@@ -37,6 +41,7 @@ struct DiagnosticsView: View {
                 ProgressView().task { _ = Plan.current(in: context) }
             }
         }
+        .task(id: projectionInput) { await runProjection(projectionInput) }
         .background(Color.ground)
         .navigationTitle("자산 진단")
         .navigationBarTitleDisplayMode(.inline)
@@ -45,13 +50,31 @@ struct DiagnosticsView: View {
         }
     }
 
+    /// 궤적에 들어가는 값들을 `Sendable` 값 하나로. 달라질 때만 다시 굴린다.
+    private var projectionInput: ProjectionInput? {
+        plans.first?.projectionInput(from: rollup.netWorth, cashEvents: cashEvents,
+                                     incomes: incomes, members: members)
+    }
+
+    /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 취소한다.
+    private func runProjection(_ input: ProjectionInput?) async {
+        guard let input else { projected = nil; return }
+        let result = await Task.detached(priority: .userInitiated) {
+            Projection.run(input)
+        }.value
+        guard !Task.isCancelled else { return }
+        projected = result
+    }
+
     @ViewBuilder
     private func content(_ plan: Plan) -> some View {
+        // **궤적은 화면 그리기 밖에서** (157번). 아직 안 끝났으면 `projected`
+        // 가 `nil` 이고, 진단은 "은퇴 시점 예상" 한 줄만 `입력 필요` 로 뜬다 —
+        // 한 박자 뒤에 채워진다. 나머지 규칙은 궤적을 안 쓴다.
         let result = Diagnostics.run(plan.diagnosticsInput(
             rollup: rollup,
             accounts: accounts,
-            projection: plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
-                                        incomes: incomes, members: members),
+            projection: projected,
             members: members
         ))
 
@@ -292,6 +315,6 @@ struct DiagnosticsView: View {
     }
 
     private var rollup: Rollup {
-        Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
+        ValuationCache.shared.familyRollUp(holdings)
     }
 }
