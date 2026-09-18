@@ -4914,6 +4914,12 @@ B-2 · B-4 · B-5 문구 통일까지 한 묶음. 표시 색은 **`첫째 색 ·
 궤적의 인출은 월 생활비만 쓴다 — `은퇴 이후` 구역 각주에 그렇게 적어 두었다. 이걸 켜면
 자산 고갈 시점이 앞당겨지므로 사용자가 보고 정할 일이다.
 
-**Production 배포가 필요하다.** 칸이 셋 늘었으므로 `Actions → CloudKit 스키마` 로
-Development 에 밀어 넣고, 웹 콘솔에서 Deploy 를 눌러야 아이폰끼리 이 값이 오간다
-([06-testflight](06-testflight.md)).
+**Production 배포 완료 (2026-09-18 사용자).** `Actions → CloudKit 스키마 → apply`
+(`allow_real` 켬) 로 Development 에 넣고, 웹 콘솔에서 Deploy Schema Changes 로 Production
+승격까지 마쳤다 ([06-testflight](06-testflight.md)).
+
+**CI 스크린샷 확인 (2026-09-18).** `06-plan.png` — 순서가 `이대로 가면` → 기간 →
+`4% 규칙으로 자동 계산` + `은퇴 목표 금액 14억 2,500만원` + 수식 줄
+`(월 400만 × 12 + 600만 + 300만) × 25 (인출률 4.0%)` 로 섰다. 파이썬 대조값과 같다.
+`12-plan-keyboard.png` — `만 · 억 … 완료` 띠가 **키보드 바로 위에 한 줄로 붙어** 있다
+(예전에는 알약 둘이 글자 위에 떠 있었다).
