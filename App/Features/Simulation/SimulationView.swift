@@ -118,6 +118,7 @@ struct SimulationView: View {
                 headline(plan, current)
                 chartCard(plan, knobs: current, changed: current != Knobs(plan, members: members))
                 knobCard(plan, current)
+                resetRow(plan, current)
                 spreadCard
                 scenarioCard(current)
                 disclaimer
@@ -130,6 +131,37 @@ struct SimulationView: View {
             await recalculate(baseline: baseline, knobs: current)
         }
         .onAppear { if knobs == nil { knobs = Knobs(plan, members: members) } }
+        // **계획이 바뀌면 손잡이를 거기에 맞춘다** (155번).
+        //
+        // 예전에는 화면을 처음 만들 때 한 번만 가져왔다. 탭은 살아 있으므로
+        // 계획 탭에서 월 적립이나 기대수익률을 고치고 넘어오면 **손잡이는 옛
+        // 값을 들고 있었다** — 바꿔 보려고 온 사람이 무엇에서 출발했는지 모르는
+        // 채로 돌리게 된다.
+        //
+        // 계획이 **달라진 그 순간에만** 맞춘다. 계획이 그대로면 아무 일도
+        // 없으므로, 돌려 보던 값을 뺏지 않는다.
+        .onChange(of: Knobs(plan, members: members)) { _, planned in
+            knobs = planned
+        }
+    }
+
+    /// 손잡이가 계획과 다를 때만 뜨는 되돌리기 (155번). 예전에는 앱을 껐다
+    /// 켜는 것 말고 계획 값으로 돌아올 길이 없었다.
+    @ViewBuilder
+    private func resetRow(_ plan: Plan, _ current: Knobs) -> some View {
+        let planned = Knobs(plan, members: members)
+        if current != planned {
+            Button {
+                knobs = planned
+            } label: {
+                Label("계획 값으로 되돌리기", systemImage: "arrow.uturn.backward")
+                    .font(.scaled(12.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.dad)
+        }
     }
 
     // MARK: - 헤드라인

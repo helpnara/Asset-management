@@ -131,15 +131,15 @@ enum SampleData {
         plan.inflationBP = 200
         plan.postRetirementReturnBP = 500
         plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
-        plan.targetAmountMinor = 5_900_000_000
+        // **목표 금액은 손으로 심지 않는다** (154번). 화면이 열릴 때
+        // 월 생활비 · 취미 · 병원비로 계산해 덮어쓴다 — 여기 적어 두면
+        // 그림을 보는 사람이 그 값이 어디서 왔는지 헷갈린다.
 
         // 진단 기준 — 전부 예시 수치다. 실제 금액이 아니다.
         plan.monthlySpendingMinor = 4_000_000
-        // 해마다 한 번 나가는 돈 (154번). 체험 자료는 자동 계산을 켜 둔다 —
-        // 목표 금액 칸이 무엇으로 채워지는지 그림으로 보이게.
+        // 해마다 한 번 나가는 돈 (154번). 목표 금액은 이 셋으로 계산된다.
         plan.annualHobbyMinor = 6_000_000
         plan.annualMedicalMinor = 3_000_000
-        plan.targetIsAuto = true
         plan.monthlyIncomeMinor = 9_000_000
         plan.horizonYear = plan.retirementYear + 35
 

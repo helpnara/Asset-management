@@ -111,32 +111,26 @@ struct PlanView: View {
             }
 
             Section {
-                if canManageHousehold {
-                    Toggle("4% 규칙으로 자동 계산", isOn: bind.targetIsAuto)
+                // **목표 금액은 언제나 계산값이다** (154번, 2026-09-18 사용자).
+                // 처음에는 `자동 계산` 스위치를 뒀는데, 손으로 넣은 값과 계산한
+                // 값이 섞일 자리를 남겨 두는 것 자체가 군더더기였다 — 값의
+                // 출입구를 하나로 두는 145번과 같은 판단이다.
+                LabeledContent("은퇴 목표 금액") {
+                    Text(plan.autoTargetAmount.map { Won.abbreviated($0, suffix: "원") } ?? "—")
+                        .font(.figure(15, weight: .semibold))
+                        .foregroundStyle(plan.autoTargetAmount == nil ? Color.muted : Color.ink)
                 }
-                if plan.targetIsAuto {
-                    // **자동일 때는 고칠 수 없다** (154번 사용자 요청). 손으로 넣은
-                    // 값과 계산한 값이 섞이면 어느 쪽이 맞는지 알 수 없게 된다.
-                    LabeledContent("은퇴 목표 금액") {
-                        Text(plan.autoTargetAmount.map { Won.abbreviated($0, suffix: "원") } ?? "—")
-                            .font(.figure(15, weight: .semibold))
-                            .foregroundStyle(Color.ink)
-                    }
-                    // 수식은 **목표 금액 바로 아래 작은 글씨로**.
-                    Text(plan.autoTargetFormula)
-                        .font(.figure(10.5))
-                        .foregroundStyle(Color.faint)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                } else if canManageHousehold {
-                    MoneyField(title: "은퇴 목표 금액", minorUnits: bind.targetAmountMinor)
-                } else {
-                    readOnlyMoney("은퇴 목표 금액", plan.targetAmountMinor)
-                }
+                // 셈법은 **말로** 적는다. 금액을 적으면 가리기를 켠 사람에게
+                // 가려야 하고, 가리면 무슨 말인지 알 수 없게 된다 (13번).
+                Text(plan.autoTargetExplanation)
+                    .font(.scaled(10.5))
+                    .foregroundStyle(Color.faint)
+                    .fixedSize(horizontal: false, vertical: true)
             } footer: {
-                if plan.targetIsAuto {
-                    Text("은퇴 뒤 한 해에 쓸 돈을 **인출률로 나눈** 값입니다. 쓸 돈은 아래 **은퇴 이후** 에서 넣고, 인출률은 더보기 → 자산 진단 → 진단 기준에서 정합니다. 스위치를 끄면 직접 넣을 수 있습니다.")
+                if plan.autoTargetAmount == nil {
+                    Text("아래 **은퇴 이후** 에 월 생활비를 넣으면 목표 금액이 계산됩니다. 넣기 전까지는 목표선을 그리지 않습니다.")
                 } else {
-                    Text("0으로 두면 목표선을 그리지 않습니다. 스위치를 켜면 은퇴 뒤 쓸 돈으로 계산해 넣습니다.")
+                    Text("은퇴 뒤 한 해에 쓸 돈을 **인출률로 나눈** 값입니다. 쓸 돈은 아래 **은퇴 이후** 에서 넣고, 인출률은 더보기 → 자산 진단 → 진단 기준에서 정합니다.")
                 }
             }
 
@@ -221,21 +215,24 @@ struct PlanView: View {
         // 궤적 전체를 주 스레드에서 다시 계산하느라, 누른 것과 숫자가 바뀌는
         // 사이가 벌어졌다 — 안 되었나 싶어 또 누르게 되던 것이 이 때문이다.
         .task(id: input) { await project(input) }
-        // **자동 목표는 칸에 실제로 써 넣는다** (154번). 궤적 · 진단 · 1페이지 ·
+        // **계산한 목표를 칸에 실제로 써 넣는다** (154번). 궤적 · 진단 · 1페이지 ·
         // 시뮬레이션이 전부 `targetAmountMinor` 를 읽으므로, 계산만 하고 안 쓰면
         // 다른 화면이 옛 숫자를 보여 준다. 값이 같으면 쓰지 않는다 — 안 그러면
         // 화면을 열기만 해도 `마지막 수정` 이 찍힌다.
+        //
+        // 셈할 것이 없으면(월 생활비 0) **0 으로 비운다.** 옛 손입력 값을 남겨
+        // 두면 "목표는 계산값" 이라는 규칙과 화면이 어긋난다.
         .onChange(of: autoTargetKey(plan), initial: true) { _, _ in
-            guard plan.targetIsAuto, let auto = plan.autoTargetAmount else { return }
-            if plan.targetAmountMinor != auto.minorUnits {
-                plan.targetAmountMinor = auto.minorUnits
+            let next = plan.autoTargetAmount?.minorUnits ?? 0
+            if plan.targetAmountMinor != next {
+                plan.targetAmountMinor = next
             }
         }
     }
 
     /// 자동 목표에 들어가는 값들. 이 중 하나라도 달라지면 목표 금액을 다시 쓴다.
     private func autoTargetKey(_ plan: Plan) -> String {
-        "\(plan.targetIsAuto)-\(plan.monthlySpendingMinor)-\(plan.annualHobbyMinor)-\(plan.annualMedicalMinor)-\(plan.withdrawalRateBP)"
+        "\(plan.monthlySpendingMinor)-\(plan.annualHobbyMinor)-\(plan.annualMedicalMinor)-\(plan.withdrawalRateBP)"
     }
 
     /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 **취소**하므로,

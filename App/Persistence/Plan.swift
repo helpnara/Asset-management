@@ -192,20 +192,20 @@ extension Plan {
                                     withdrawalRate: withdrawalRate)
     }
 
-    /// 목표 금액 아래 작은 글씨로 적는 수식 (154번).
-    /// `(월 300만 × 12 + 600만 + 300만) × 25 (인출률 4%)`
+    /// 목표 금액 아래 작은 글씨로 적는 **셈법 설명** (154번 · 13번 사용자).
     ///
-    /// 금액은 `Won` 으로 적는다 — **가리기를 켜 두면 여기도 가려져야** 한다.
-    var autoTargetFormula: String {
-        var parts = ["월 \(Won.compact(monthlySpending)) × 12"]
-        if annualHobbyMinor > 0 {
-            parts.append(Won.compact(Money(minorUnits: annualHobbyMinor, currency: .krw)))
+    /// 처음에는 `(월 400만 × 12 + 600만 + 300만) × 25` 처럼 **금액을 넣은 수식**을
+    /// 적었는데, 그러면 금액 가리기를 켠 사람에게는 가려야 하고 — 가리고 나면
+    /// 무슨 말인지 알 수 없는 줄이 된다. **말로 적으면 가릴 것이 없다.**
+    var autoTargetExplanation: String {
+        let base = "(월 생활비 × 12개월 + 연 취미 · 여행 + 연 병원비)"
+        let multiple = Plan.multipleText(withdrawalRateBP)
+        // 기본값(4%)일 때는 사용자가 아는 이름으로 부른다.
+        if withdrawalRateBP == 400 {
+            return "4% 규칙에 따라 \(base) × 25 로 산출"
         }
-        if annualMedicalMinor > 0 {
-            parts.append(Won.compact(Money(minorUnits: annualMedicalMinor, currency: .krw)))
-        }
-        return "(\(parts.joined(separator: " + "))) × \(Plan.multipleText(withdrawalRateBP))"
-            + " (인출률 \(PercentFormatter.oneDecimal(withdrawalRate.fraction))%)"
+        let rate = PercentFormatter.oneDecimal(withdrawalRate.fraction)
+        return "인출률 \(rate)% 기준 \(base) × \(multiple) 로 산출"
     }
 
     /// 인출률의 역수 — 4% → `25`, 3.5% → `28.6`. 정수로 떨어지면 소수점을 안 적는다.
