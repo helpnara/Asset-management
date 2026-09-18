@@ -217,6 +217,20 @@ extension Plan {
     }
 
     var monthlySpending: Money { Money(minorUnits: monthlySpendingMinor, currency: .krw) }
+
+    /// **은퇴 뒤 달마다 실제로 꺼내 쓰는 돈** (154번 3, 2026-09-18 사용자).
+    ///
+    /// 월 생활비에 **해마다 나가는 돈을 열두 달로 나눠** 더한다. 목표 금액은
+    /// 이 돈의 25배(인출률의 역수)로 정해 놓고 궤적에서는 생활비만 꺼내 쓰면,
+    /// "9.9억이 필요하다" 면서 정작 9.9억을 안 쓰는 궤적이 된다 — 한 앱 안에서
+    /// 두 숫자가 서로 다른 말을 하게 된다.
+    ///
+    /// 나눗셈은 반올림한다. 버리면 한 해에 열한 원까지 새는데, 그 한 푼이
+    /// 목표와 인출을 어긋나게 하는 씨앗이다.
+    var monthlyRetirementSpending: Money {
+        let extra = annualHobbyMinor + annualMedicalMinor
+        return Money(minorUnits: monthlySpendingMinor + (extra + 6) / 12, currency: .krw)
+    }
     var monthlyIncome: Money { Money(minorUnits: monthlyIncomeMinor, currency: .krw) }
     var contributionGrowth: Ratio { Ratio(basisPoints: contributionGrowthBP) }
     var inflation: Ratio { Ratio(basisPoints: inflationBP) }
@@ -320,7 +334,7 @@ extension Plan {
         let retirement = Plan.endDate(retirementYear: retirementYear, notBefore: now, calendar: calendar)
         // 은퇴 후 생활비를 넣지 않았으면 은퇴 시점에서 멈춘다. 인출을 가정하지
         // 않는 궤적에 20년을 더 그려 봐야 그냥 계속 오르는 선일 뿐이다.
-        let horizon = monthlySpendingMinor > 0
+        let horizon = monthlyRetirementSpending.minorUnits > 0
             ? Plan.endDate(retirementYear: max(horizonYear, retirementYear),
                            notBefore: retirement, calendar: calendar)
             : retirement
@@ -340,7 +354,7 @@ extension Plan {
             targetAmount: targetAmountMinor > 0 ? targetAmount : nil,
             annualIncome: Money(minorUnits: monthlyIncomeMinor * 12, currency: .krw),
             retirementDate: retirement,
-            monthlyRetirementSpending: monthlySpending,
+            monthlyRetirementSpending: monthlyRetirementSpending,
             incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input),
             postRetirementReturn: postRetirementReturn
         )

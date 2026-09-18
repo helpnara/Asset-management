@@ -299,10 +299,10 @@ struct PlanView: View {
         } header: {
             Text("은퇴 이후")
         } footer: {
-            // **취미 · 병원비가 어디에 걸리고 어디에 안 걸리는지** 를 적는다.
-            // 목표 금액에는 들어가고 궤적의 인출에는 아직 안 들어간다 — 둘을
-            // 함께 올릴지는 따로 정하기로 했다 (154번 3).
-            Text("생활비를 넣으면 궤적이 은퇴에서 멈추지 않고 인출 구간까지 이어집니다. 0으로 두면 은퇴 시점에서 끝납니다. 오늘 돈 기준으로 적으세요 — 물가는 앱이 태웁니다.\n\n**연 취미 · 여행**과 **연 병원비**는 해마다 한 번 나가는 돈입니다. 지금은 위의 **은퇴 목표 금액** 계산에만 쓰이고, 궤적의 인출에는 월 생활비만 씁니다.")
+            // **셋이 한 몸으로 움직인다** (154번 3, 2026-09-18 사용자). 목표
+            // 금액도 이 셋으로 정하고, 궤적에서 꺼내 쓰는 것도 이 셋이다 —
+            // 한 앱 안에서 두 숫자가 다른 말을 하지 않게.
+            Text("여기 넣은 돈으로 **은퇴 목표 금액**이 정해지고, 궤적의 인출 구간도 이만큼씩 꺼내 씁니다. 셋 다 0이면 은퇴 시점에서 궤적이 끝납니다. 오늘 돈 기준으로 적으세요 — 물가는 앱이 태웁니다.\n\n**연 취미 · 여행**과 **연 병원비**는 해마다 한 번 나가는 돈입니다. 열두 달로 나눠 매달 꺼내는 것으로 봅니다.")
         }
     }
 
@@ -472,7 +472,7 @@ struct PlanView: View {
     /// 인출 자체를 가정하지 않으므로 이 줄도 나오지 않는다.
     @ViewBuilder
     private func depletionRow(_ plan: Plan, _ result: ProjectionResult) -> some View {
-        if plan.monthlySpendingMinor > 0 {
+        if plan.monthlyRetirementSpending.minorUnits > 0 {
             if let depletion = result.depletion {
                 let year = Calendar.current.component(.year, from: depletion)
                 LabeledContent("자산 고갈") {
