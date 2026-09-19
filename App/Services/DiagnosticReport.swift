@@ -60,6 +60,38 @@ enum DiagnosticReport {
         }
         lines.append("")
 
+        // **동기화 대조** (165번). 두 기기에서 이걸 복사해 나란히 놓으면 어느
+        // 엔티티의 어느 묶음이 갈렸는지 바로 보인다. 지문은 내용의 해시라
+        // 금액은 안 나간다. 시각은 UTC 가 아니라 이 기기 시간대로 적는다 —
+        // 사람이 읽는 줄이다.
+        lines.append("동기화 대조 — 지문은 내용의 해시, 금액 없음")
+        lines.append("마지막 저장: \(Autosave.shared.lastSaveAt.map { $0.formatted(date: .numeric, time: .standard) } ?? "이번 실행에서 없음")")
+        for row in DataFingerprint.rows(in: context) {
+            let latest = row.latest.map { $0.formatted(date: .numeric, time: .standard) } ?? "-"
+            lines.append("\(row.entity) \(row.count)건 · \(row.digest) · \(latest)")
+        }
+        if let plan = context.all(Plan.self,
+                                  sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)]).first {
+            let groups = DataFingerprint.planGroups(plan)
+                .map { "\($0.group) \($0.digest)" }.joined(separator: " · ")
+            lines.append("계획 묶음: \(groups)")
+            lines.append("계획 시각: 만든 \(plan.createdAt.formatted(date: .numeric, time: .standard)) · 고친 \(plan.updatedAt.map { $0.formatted(date: .numeric, time: .standard) } ?? "-")")
+        }
+        lines.append("")
+
+        // **동기화 실패 이력** (165번). 마지막 한 번이 성공이어도 그 앞의 실패는
+        // 남아 있어야 한다 — 실패한 레코드는 다음 성공에 실려 가지 않는다.
+        let failures = monitor.recentFailures
+        if failures.isEmpty {
+            lines.append("동기화 실패: 이번 실행에서 없음 (시도 \(monitor.history.count)건)")
+        } else {
+            lines.append("동기화 실패 \(failures.count)건 (이번 실행 시도 \(monitor.history.count)건):")
+            for failure in failures.prefix(10) {
+                lines.append("  \(failure.kind.label) \(failure.endedAt.formatted(date: .numeric, time: .standard)) — \(failure.failure ?? "이유 없음")")
+            }
+        }
+        lines.append("")
+
         // 알림
         let center = UNUserNotificationCenter.current()
         let auth = await ReviewNotifications.authorizationStatus()

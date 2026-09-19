@@ -33,6 +33,9 @@ final class Autosave {
     /// "저장되고 있다고 생각했는데 아니었다"가 이 앱에서 제일 위험한 상태라,
     /// 조용히 삼키지 않는다.
     private(set) var lastFailure: String?
+    /// 마지막으로 기기에 쓴 시각. "고쳤는데 안 올라간다" 를 풀 때 첫 질문이
+    /// "기기에는 썼나" 라서 내놓는다 (165번).
+    private(set) var lastSaveAt: Date?
 
     private var context: NSManagedObjectContext?
     private var pending: Task<Void, Never>?
@@ -83,6 +86,7 @@ final class Autosave {
         do {
             try context.save()
             lastFailure = nil
+            lastSaveAt = .now
         } catch {
             let ns = error as NSError
             lastFailure = "\(ns.domain) \(ns.code) "

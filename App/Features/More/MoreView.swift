@@ -471,13 +471,25 @@ struct SyncStatusSection: View {
                 // 봐야 "정말 백업되고 있나" 에 답할 수 있다.
                 attemptRow("마지막 내보내기", monitor.lastExport)
                 attemptRow("마지막 가져오기", monitor.lastImport)
-                if let failure = monitor.lastExport?.failure ?? monitor.lastSetup?.failure {
-                    // **길게 눌러 복사된다.** 이 글자가 맥 없는 이 저장소에서
-                    // 유일한 단서다. 복사할 수 없으면 옮겨 적다 틀린다.
-                    Text(failure)
-                        .font(.scaled(11))
-                        .foregroundStyle(Color.loss)
-                        .textSelection(.enabled)
+                if let at = autosave.lastSaveAt {
+                    LabeledContent("마지막 저장", value: at.formatted(date: .omitted, time: .shortened))
+                }
+                // **최근 실패는 전부 보인다** (165번). 예전에는 마지막 한 번만
+                // 보여서, 실패 뒤에 다른 기록이 성공하면 실패가 사라졌다.
+                // 길게 눌러 복사된다 — 맥 없는 이 저장소에서 유일한 단서다.
+                let failures = monitor.recentFailures
+                if !failures.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("최근 실패 \(failures.count)건 (이번 실행)")
+                            .font(.scaled(11, weight: .semibold))
+                            .foregroundStyle(Color.muted)
+                        ForEach(Array(failures.prefix(3).enumerated()), id: \.offset) { _, failure in
+                            Text("\(failure.kind.label) \(failure.endedAt.formatted(date: .omitted, time: .shortened)) — \(failure.failure ?? "이유 없음")")
+                                .font(.scaled(11))
+                                .foregroundStyle(Color.loss)
+                                .textSelection(.enabled)
+                        }
+                    }
                 }
             }
             // **못 붙었으면 왜 못 붙었는지 그대로 보여 준다.**

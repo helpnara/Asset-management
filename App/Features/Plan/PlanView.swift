@@ -27,6 +27,11 @@ struct PlanView: View {
     /// 굴리는 중인가. 숫자를 지우지 않고 흐리게 둔 채 `반영 중` 을 곁들인다 —
     /// 빈칸이 되면 "고장났나" 로 읽힌다.
     @State private var isProjecting = false
+    /// 수정 시각 · 변경 이력 도장을 **손을 멈춘 뒤 한 번**만 찍는다 (163번).
+    /// 예전에는 손잡이를 한 칸 누를 때마다 이력을 조회하고 썼다.
+    @State private var stamp: Task<Void, Never>?
+    /// 이번 묶음이 시작될 때의 지문. 끝에서 이것과 견줘 무엇을 고쳤는지 적는다.
+    @State private var stampFrom: String?
 
     var body: some View {
         NavigationStack {
@@ -53,13 +58,30 @@ struct PlanView: View {
             }
             // 계획의 어떤 값이든 달라지면 수정 시각을 찍는다. 화면을 열기만
             // 해서는 안 찍힌다 — 지문이 실제로 달라져야 한다.
-            .onChange(of: plans.first?.editFingerprint) { previous, current in
-                guard let previous, let current else { return }   // 첫 진입은 변경이 아니다
-                plans.first?.touch()
-                // 무엇을 고쳤는지도 남긴다 (docs/08-feedback.md 29번).
-                // **값은 안 남긴다** — 이력이 금액 목록이 되면 안 된다.
-                ChangeLogger.planChanged(labels: Plan.changedLabels(from: previous, to: current),
-                                         in: context)
+            .onChange(of: plans.first?.editFingerprint) { previous, _ in
+                guard let previous, let plan = plans.first else { return }   // 첫 진입은 변경이 아니다
+                // **이 기기에서 고친 것만 도장을 찍는다** (165번 ③). 다른 기기의
+                // 변경이 iCloud 로 들어와도 지문은 바뀌는데, 그건 이 기기가 고친
+                // 것이 아니다 — 그런데도 `마지막 수정` 을 찍고 이력에 "고쳤습니다"
+                // 를 남기고 있었다. 이력의 "누가" 가 틀리고, 되올리기가 한 번 더
+                // 생긴다. 방금 손으로 고친 값은 아직 저장 전이라 `hasChanges` 가
+                // 참이고, 밖에서 들어온 값은 저장소에서 온 것이라 거짓이다.
+                guard plan.hasChanges else { return }
+                // **손을 멈춘 뒤 한 번** (163번). 묶음의 처음 지문만 기억해 두면
+                // 끝에서 무엇을 고쳤는지 전부 나온다. 이력은 어차피 3분 창으로
+                // 합쳐지므로 결과는 같고, 누를 때마다 하던 조회와 쓰기만 사라진다.
+                if stampFrom == nil { stampFrom = previous }
+                stamp?.cancel()
+                stamp = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(1_500))
+                    guard !Task.isCancelled, let from = stampFrom else { return }
+                    stampFrom = nil
+                    plan.touch()
+                    // 무엇을 고쳤는지도 남긴다 (docs/08-feedback.md 29번).
+                    // **값은 안 남긴다** — 이력이 금액 목록이 되면 안 된다.
+                    ChangeLogger.planChanged(labels: Plan.changedLabels(from: from, to: plan.editFingerprint),
+                                             in: context)
+                }
             }
             .navigationTitle("계획")
             .navigationBarTitleDisplayMode(.inline)

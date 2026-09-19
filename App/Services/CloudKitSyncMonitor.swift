@@ -45,6 +45,15 @@ final class CloudKitSyncMonitor {
     private(set) var lastExport: Attempt?
     private(set) var lastSetup: Attempt?
 
+    /// **최근 시도 전부** (최근 것이 앞). 마지막 한 번만 들고 있으면 실패 뒤에
+    /// 다른 기록이 성공했을 때 **실패가 지워진다** (165번) — "마지막 내보내기:
+    /// 성공" 인 채로 계획 한 건이 영영 안 올라가고 있었다. 실패한 시도의
+    /// 이유(어느 레코드 타입이 왜)가 이 앱에서 유일한 단서다.
+    private(set) var history: [Attempt] = []
+    private static let historyLimit = 30
+
+    var recentFailures: [Attempt] { history.filter { !$0.succeeded } }
+
     /// 지금 돌고 있는 가져오기 수. 저장소마다 따로 도니 둘일 수 있다.
     /// 빈 화면이 "아직 없는 것" 인지 "아직 안 온 것" 인지 가르는 근거다
     /// (docs/08-feedback.md 53번).
@@ -97,6 +106,8 @@ final class CloudKitSyncMonitor {
     }
 
     private func record(_ attempt: Attempt) {
+        history.insert(attempt, at: 0)
+        if history.count > Self.historyLimit { history.removeLast() }
         switch attempt.kind {
         case .setup: lastSetup = attempt
         case .importing:

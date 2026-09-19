@@ -53,9 +53,31 @@ final class ValuationCache {
             forName: .NSManagedObjectContextObjectsDidChange,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] note in
+            // **자산이 바뀔 때만 비운다** (163번). 처음에는 어떤 변경이든 비웠는데,
+            // 계획 수익률 한 칸을 고쳐도 가족 자산을 통째로 다시 굴렸다.
+            // 알림에 실린 객체의 엔티티만 본다 — `objectID` 는 어느 스레드에서
+            // 읽어도 되고, 관리 객체 자체는 건드리지 않는다.
+            guard Self.touchesFamilyAssets(note) else { return }
             MainActor.assumeIsolated { self?.generation &+= 1 }
         }
+    }
+
+    /// 종목 · 계좌 · 구성원 — `position()` 이 타고 들어가는 셋.
+    nonisolated private static let assetEntities: Set<String> = ["Holding", "Account", "Member"]
+
+    nonisolated private static func touchesFamilyAssets(_ note: Notification) -> Bool {
+        // 통째로 무효화됐으면(저장소 교체 · 체험 모드 전환) 무조건 비운다.
+        if note.userInfo?[NSInvalidatedAllObjectsKey] != nil { return true }
+        let keys = [NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey,
+                    NSRefreshedObjectsKey, NSInvalidatedObjectsKey]
+        for key in keys {
+            guard let objects = note.userInfo?[key] as? Set<NSManagedObject> else { continue }
+            for object in objects where assetEntities.contains(object.objectID.entity.name ?? "") {
+                return true
+            }
+        }
+        return false
     }
 
     /// **가족 전체의 종목**을 굴린 결과. 일부만 추려 넣지 않는다 — 열쇠가

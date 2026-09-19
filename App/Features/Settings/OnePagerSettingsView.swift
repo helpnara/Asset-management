@@ -54,10 +54,11 @@ struct OnePagerSettingsView: View {
         }
         .navigationTitle("1페이지 문서 설정")
         .navigationBarTitleDisplayMode(.inline)
-        // 여기서 고친 것도 계획의 수정 시각에 남는다.
+        // 여기서 고친 것도 계획의 수정 시각에 남는다 — **이 기기에서 고쳤을 때만**
+        // (165번 ③). 밖에서 들어온 변경은 `hasChanges` 가 거짓이다.
         .onChange(of: plans.first?.editFingerprint) { previous, _ in
-            guard previous != nil else { return }
-            plans.first?.touch()
+            guard previous != nil, let plan = plans.first, plan.hasChanges else { return }
+            plan.touch()
         }
     }
 }

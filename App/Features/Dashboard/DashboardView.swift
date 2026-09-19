@@ -181,10 +181,18 @@ struct DashboardView: View {
         familyDidReviewThisWeek && (!canEdit || myPendingCount == 0)
     }
 
+    /// **계획 제목이다, 앱 이름이 아니다** (164번). 예전에는 글자가 박혀 있어
+    /// 1페이지 문서 설정에서 제목을 바꿔도 여기는 영영 그대로였다 — 설계 문서는
+    /// "사용자가 바꿀 수 있는 값" 이라고 적어 뒀는데 구현이 갈려 있었다.
+    private var planTitle: String {
+        let title = plan?.title ?? ""
+        return title.isEmpty ? "우리 가족 노후자금 준비" : title
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("느 린 부 자 의 기 록").eyebrowStyle()
-            Text("우리 가족 노후자금 준비")
+            Text(planTitle)
                 .font(.scaled(16, weight: .bold))
                 .foregroundStyle(Color.ink)
         }
