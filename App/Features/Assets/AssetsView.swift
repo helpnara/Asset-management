@@ -269,6 +269,8 @@ struct AssetsView: View {
                         Text(signedAmount(familyTotal, false))
                             .font(.figure(15, weight: .bold))
                             .foregroundStyle(Color.ink)
+                            .fixedSize()
+                            .layoutPriority(1)
                     }
                 }
             }
@@ -364,6 +366,8 @@ struct AssetsView: View {
             Text(signedAmount(total, false))
                 .font(.figure(12, weight: .semibold))
                 .foregroundStyle(Color.ink)
+                .fixedSize()
+                .layoutPriority(1)
             if let share = familyShare(member) {
                 Text(share)
                     .font(.figure(10))
@@ -422,10 +426,15 @@ struct AssetsView: View {
                 Text(account.name.isEmpty ? account.kind.label : account.name)
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+                // **메모(기관 · 주소)는 한 줄에서 접는다** (170번). 아무리 길어도
+                // 금액을 못 민다 — 금액이 우선순위를 갖는다.
                 if !account.institution.isEmpty {
                     Text(account.institution)
                         .font(.scaled(10))
                         .foregroundStyle(Color.faint)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 if account.kind.isLiability {
                     StatusBadge(text: "부채", foreground: .loss, background: Color.lossSoft)
@@ -448,6 +457,8 @@ struct AssetsView: View {
                 Text(signedAmount(accountTotal(account).minorUnits, account.kind.isLiability))
                     .font(.figure(12.5, weight: .medium))
                     .foregroundStyle(account.kind.isLiability ? Color.loss : Color.ink)
+                    .fixedSize()
+                    .layoutPriority(1)
                 // **보이는 손잡이** (152번 2-3). 계좌를 고치고 옮기는 길이
                 // 길게 누르기 안에만 있었다 — 알려 주지 않으면 발견되지 않는
                 // 길이고, 실제로 "옮기기가 작동 안 함"(4번) 이 그 오해였다.
@@ -639,6 +650,8 @@ struct AssetsView: View {
                 Text(signedAmount(holding.valueMinor, holding.account?.kind.isLiability ?? false))
                     .font(.figure(12.5))
                     .foregroundStyle((holding.account?.kind.isLiability ?? false) ? Color.loss : Color.ink)
+                    .fixedSize()
+                    .layoutPriority(1)
                 // **이번 주 증감** (91번, B6). 이번 주에 적힌 것만 — 지난주 값은
                 // 이번 주 처음 손댈 때 기준값으로 옮겨진다.
                 if let delta = holding.deltaThisWeekMinor {
@@ -686,10 +699,12 @@ struct AssetsView: View {
         account.sortedHoldings.map(\.value).total(in: .krw)
     }
 
-    /// 목록에서는 자릿수를 비교하는 게 목적이라 계좌 소계도 종목과 같은 원 단위로 적는다.
-    /// 부채는 부호로 구분한다 — 같은 4,500,000 이 자산인지 빚인지 헷갈리면 안 된다.
+    /// **목록은 `억 + 만` 축약이다** (170번, 설계 2.7). 훑어보는 화면이라 자릿수보다
+    /// 규모가 먼저고, 아홉 자리 원 단위는 긴 메모와 폭을 다투다 두 줄로 밀렸다.
+    /// 만 원 아래는 버린다 — 정확한 값은 편집 폼과 주간 점검에 원 단위로 있다.
+    /// 부채는 부호로 구분한다 — 같은 450만 이 자산인지 빚인지 헷갈리면 안 된다.
     private func signedAmount(_ minorUnits: Int, _ isLiability: Bool) -> String {
-        (isLiability ? "-" : "") + Won.grouped(minorUnits)
+        (isLiability ? "-" : "") + Won.abbreviated(Money(minorUnits: minorUnits, currency: .krw))
     }
 
     private func addMember() {
