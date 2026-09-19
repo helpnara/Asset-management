@@ -23,23 +23,9 @@ struct PercentStepper: View {
     var range: ClosedRange<Int> = 0...10_000
     var step: Int = 250
 
-    /// 누르는 동안의 값. `nil` 이면 모델 그대로다.
-    @State private var draft: Int?
-    @State private var commit: Task<Void, Never>?
-
-    private var shown: Int { draft ?? basisPoints }
-
     var body: some View {
-        Stepper(value: Binding(get: { shown }, set: { next in
-            draft = next
-            commit?.cancel()
-            commit = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(250))
-                guard !Task.isCancelled, let value = draft else { return }
-                basisPoints = value
-                draft = nil
-            }
-        }), in: range, step: step) {
+        // 미루는 쓰기는 `DeferredStepper` 하나가 한다 (169번). 여기는 퍼센트 글자만.
+        DeferredStepper(value: $basisPoints, range: range, step: step) { shown in
             HStack(spacing: 8) {
                 Text(title)
                 Spacer()
@@ -51,6 +37,5 @@ struct PercentStepper: View {
                     .foregroundStyle(Color.ink)
             }
         }
-        .reportsProgress("반영 중", when: draft != nil)
     }
 }

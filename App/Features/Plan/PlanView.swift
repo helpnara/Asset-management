@@ -377,9 +377,10 @@ struct PlanView: View {
                 // 하면 12로 나누다 틀린다. 목표 금액 자동 계산이 이 둘을 쓴다.
                 MoneyField(title: "연 취미 · 여행", minorUnits: bind.annualHobbyMinor)
                 MoneyField(title: "연 병원비", minorUnits: bind.annualMedicalMinor)
-                Stepper(value: bind.horizonYear,
-                        in: (plan.retirementYear + 1)...(plan.retirementYear + 50)) {
-                    Text(verbatim: "\(plan.horizonYear)년까지 본다")
+                // 모델에 직접 묶지 않는다 (169번 후속) — 궤적을 다시 굴리는 손잡이라 한 칸마다 멈칫거렸다.
+                DeferredStepper(value: bind.horizonYear,
+                                range: (plan.retirementYear + 1)...(plan.retirementYear + 50)) { shown in
+                    Text(verbatim: "\(shown)년까지 본다")
                 }
             } else {
                 readOnlyMoney("은퇴 후 월 생활비", plan.monthlySpendingMinor)

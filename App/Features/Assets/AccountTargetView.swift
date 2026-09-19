@@ -48,10 +48,11 @@ struct AccountTargetView: View {
                         if let slice { WeightLabel(slice: slice, hidesNoTarget: true) }
                         // 1%p 단위. 목표는 정수로만 적는다.
                         if canEdit {
-                            Stepper("", value: Binding(
+                            // 모델에 직접 묶지 않는다 (169번 후속). 쓰기는 손을 멈춘 뒤 한 번.
+                            DeferredStepper(value: Binding(
                                 get: { holding.targetWeightBP ?? 0 },
                                 set: { holding.targetWeightBP = $0 }
-                            ), in: 0...10_000, step: 100)
+                            ), range: 0...10_000, step: 100) { _ in EmptyView() }
                             .labelsHidden()
                         }
                     }

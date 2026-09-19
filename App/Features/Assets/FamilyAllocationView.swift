@@ -81,8 +81,10 @@ struct FamilyAllocationView: View {
                     Spacer(minLength: 6)
                     WeightLabel(slice: slice, hidesNoTarget: true)
                     if canManageHousehold {
-                        Stepper("", value: binding(dimension, key: key(for: slice, in: dimension)),
-                                in: 0...10_000, step: 100)
+                        // 모델에 직접 묶지 않는다 (169번 후속) — 한 칸마다 저장소가
+                        // 바뀌어 멈칫거렸다. 쓰기는 손을 멈춘 뒤 한 번.
+                        DeferredStepper(value: binding(dimension, key: key(for: slice, in: dimension)),
+                                        range: 0...10_000, step: 100) { _ in EmptyView() }
                             .labelsHidden()
                     }
                 }

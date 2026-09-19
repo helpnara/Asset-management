@@ -106,6 +106,10 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   붙이지 않는다. 일을 시작하면 `.reportsProgress("반영 중", when:)` 로 `Progress`
   목록에 올리고, 띠는 `RootView` 의 `StatusBand` 한 장이 그린다. 끼어드는
   아이콘과 붙었다 떨어지는 띠가 본문을 밀어 화면이 들썩였던 것이 이유다.
+- **`Stepper` 를 모델에 직접 묶지 않는다** (166 · 169번). `DeferredStepper`(퍼센트는
+  `PercentStepper`)를 쓴다 — 누르는 즉시 화면 값만 바꾸고 250ms 뒤 한 번 쓴다.
+  직접 묶으면 한 칸마다 저장소가 바뀌어 살아 있는 탭 전부가 다시 그려지고 그
+  자리에서 멈칫거린다. 세 번 같은 버그를 고쳤다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
 - **저장 계층은 Core Data다** (4차에서 SwiftData에서 옮겼다 — [09-family-sharing](docs/09-family-sharing.md)).
   SwiftData는 `CKShare` 공유를 못 해서, 가족 공유를 하려면 옮길 수밖에 없었다.
