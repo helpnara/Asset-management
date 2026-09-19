@@ -51,7 +51,7 @@ struct FamilyAllocationView: View {
                 }
                 .textCase(nil)
             } footer: {
-                Text("각자의 자산이 가족 안에서 차지하는 몫입니다. **목표를 두지 않습니다** — 누가 얼마를 버는지가 정하는 값이라 비율로 고를 수 있는 것이 아닙니다.")
+                Text("각자의 자산이 가족 안에서 차지하는 몫입니다. 목표를 두지 않습니다 — 누가 얼마를 버는지가 정하는 값이라 비율로 고를 수 있는 것이 아닙니다.")
             }
 
             dimensionSection(.region)

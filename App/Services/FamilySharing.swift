@@ -19,7 +19,7 @@ enum FamilySharingFailure: LocalizedError {
             return "공유를 만들지 못했습니다."
         case .timedOut:
             return "공유를 만드는 데 너무 오래 걸립니다. 더보기 → 동기화의 "
-                + "**마지막 내보내기**가 성공으로 돌아온 뒤 다시 시도하세요."
+                + "마지막 내보내기가 성공으로 돌아온 뒤 다시 시도하세요."
         }
     }
 }

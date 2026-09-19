@@ -37,7 +37,10 @@ struct DiagnosticsView: View {
     var body: some View {
         Group {
             if let plan = Plan.primary(plans) {
-                content(plan)
+                // **기준을 바꾸면 그 자리에서 다시 판정한다** (빌드 98 8번). `@Fetched`
+                // 는 속성만 바뀐 것을 안 알려 줘서, 시트에서 기준을 고치고 닫아도
+                // 이 화면은 옛 판정을 들고 있었다. 계획 객체를 직접 지켜본다.
+                PlanObserver(plan: plan) { content(plan) }
             } else {
                 MissingPlanView()
             }
@@ -323,3 +326,15 @@ struct DiagnosticsView: View {
         ValuationCache.shared.familyRollUp(holdings)
     }
 }
+
+/// 계획 객체의 속성 변화를 지켜보고 안의 내용을 다시 그린다. `@Fetched` 는
+/// 목록의 늘고 줆만 알려 주므로, 값 하나가 바뀐 것에 반응하려면 이것이 필요하다.
+private struct PlanObserver<Content: View>: View {
+    @ObservedObject var plan: Plan
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+    }
+}
+

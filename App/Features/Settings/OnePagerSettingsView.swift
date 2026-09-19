@@ -24,7 +24,7 @@ struct OnePagerSettingsView: View {
                 } header: {
                     Text("문서 제목")
                 } footer: {
-                    Text("1페이지 맨 위와 PDF 파일 이름에 쓰입니다. **앱 이름(`느린 부자의 기록`)과는 다른 값**입니다 — 이건 문서의 제목입니다.")
+                    Text("1페이지 맨 위와 PDF 파일 이름에 쓰입니다. 앱 이름(`느린 부자의 기록`)과는 다른 값입니다 — 이건 문서의 제목입니다.")
                 }
 
                 Section {

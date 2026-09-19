@@ -67,7 +67,7 @@ struct NationalPensionEstimatorView: View {
                 } header: {
                     Text("가입 기간과 소득")
                 } footer: {
-                    Text("공단 앱 '예상연금액 조회' 의 **총 예상가입기간(N개월)** 을 그대로 적으면 가장 가깝습니다 — 중간에 안 낸 달이 있으면 연도 폭보다 짧습니다. 월소득은 **오늘 돈 기준** 세전 기준소득월액이고, 상한 \(KoreanAmountFormatter.compact(Money(minorUnits: NationalPension.incomeCeilingMinor, currency: .krw))) 을 넘으면 상한으로 봅니다.")
+                    Text("공단 앱 '예상연금액 조회' 의 총 예상가입기간(N개월) 을 그대로 적으면 가장 가깝습니다 — 중간에 안 낸 달이 있으면 연도 폭보다 짧습니다. 월소득은 오늘 돈 기준 세전 기준소득월액이고, 상한 \(KoreanAmountFormatter.compact(Money(minorUnits: NationalPension.incomeCeilingMinor, currency: .krw))) 을 넘으면 상한으로 봅니다.")
                 }
 
                 Section {
@@ -126,7 +126,7 @@ struct NationalPensionEstimatorView: View {
                     }
                     .disabled(estimate == nil)
                 } footer: {
-                    Text("**세전 참고값입니다.** 공단 예상액과 개월 수를 맞추면 1~2% 안에 들어오지만, 소득 재평가·크레딧·조기·연기 수령은 반영하지 않습니다. 공단 앱에서 확인한 세후 값을 알게 되면 그 값으로 고치세요.")
+                    Text("세전 참고값입니다. 공단 예상액과 개월 수를 맞추면 1~2% 안에 들어오지만, 소득 재평가·크레딧·조기·연기 수령은 반영하지 않습니다. 공단 앱에서 확인한 세후 값을 알게 되면 그 값으로 고치세요.")
                 }
             }
             // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).

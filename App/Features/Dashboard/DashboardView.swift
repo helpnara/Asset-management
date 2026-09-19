@@ -102,8 +102,8 @@ struct DashboardView: View {
             .fullScreenCover(isPresented: $isReviewing) {
                 WeeklyReviewView()
             }
-            .task(id: ProjectionKey(now: projectionInput, plan: planProjectionInput)) {
-                await runProjections(ProjectionKey(now: projectionInput, plan: planProjectionInput))
+            .task(id: projectionKey) {
+                await runProjections(projectionKey)
             }
             .task {
                 // 완료 화면은 11번 눌러야 도달하므로 CI 스크린샷이 찍을 수 없다.
@@ -618,6 +618,15 @@ struct DashboardView: View {
     private struct ProjectionKey: Hashable {
         var now: ProjectionInput?
         var plan: ProjectionInput?
+        /// 진단 기준(허용 오차 · 미국 목표 · 끈 진단)은 궤적 입력에 안 들어가므로
+        /// 따로 넣는다. 안 그러면 기준을 바꿔도 진단 요약이 예전 것으로 남는다
+        /// (빌드 98 8번, 자산 진단 화면과 같은 결).
+        var criteria: String?
+    }
+
+    private var projectionKey: ProjectionKey {
+        ProjectionKey(now: projectionInput, plan: planProjectionInput,
+                      criteria: plan?.editFingerprint)
     }
 
     /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 **취소**하므로,

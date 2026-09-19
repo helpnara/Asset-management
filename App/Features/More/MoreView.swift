@@ -605,7 +605,7 @@ struct SyncStatusSection: View {
         case .cloudKit where accountStatus == .available:
             // 계정이 붙었다고 동기화가 되는 것은 아니다. 위의 **마지막
             // 내보내기**가 성공이어야 정말 올라간 것이다.
-            return "기록이 iCloud 개인 데이터베이스에 저장됩니다. 애플도 내용을 볼 수 없습니다. 실제로 올라갔는지는 위의 **마지막 내보내기**로 확인하세요 — 계정이 붙어 있어도 밀어 넣기가 실패할 수 있습니다."
+            return "기록이 iCloud 개인 데이터베이스에 저장됩니다. 애플도 내용을 볼 수 없습니다. 실제로 올라갔는지는 위의 마지막 내보내기로 확인하세요 — 계정이 붙어 있어도 밀어 넣기가 실패할 수 있습니다."
         case .cloudKit:
             return "설정 앱에서 iCloud에 로그인해야 동기화됩니다. 그전까지는 이 기기에만 저장됩니다."
         case .localOnly:

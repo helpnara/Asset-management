@@ -31,7 +31,7 @@ struct IncomeStreamEditView: View {
                     MoneyField(title: "월 수령액", minorUnits: $stream.monthlyAmountMinor)
                 } footer: {
                     // 여기를 액면가로 적으면 30년 뒤 계산이 통째로 틀린다.
-                    Text("**오늘 돈 기준**으로 적으세요. \"65세부터 월 150만원\"의 150만원은 지금 물가로 말한 것이지 그때의 액면가가 아닙니다.")
+                    Text("오늘 돈 기준으로 적으세요. \"65세부터 월 150만원\"의 150만원은 지금 물가로 말한 것이지 그때의 액면가가 아닙니다.")
                 }
 
                 Section {
