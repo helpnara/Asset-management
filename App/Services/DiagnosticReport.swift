@@ -70,12 +70,24 @@ enum DiagnosticReport {
             let latest = row.latest.map { $0.formatted(date: .numeric, time: .standard) } ?? "-"
             lines.append("\(row.entity) \(row.count)건 · \(row.digest) · \(latest)")
         }
-        if let plan = context.all(Plan.self,
-                                  sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)]).first {
+        let plans = context.all(Plan.self,
+                                sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)])
+        if let plan = plans.first {
             let groups = DataFingerprint.planGroups(plan)
                 .map { "\($0.group) \($0.digest)" }.joined(separator: " · ")
             lines.append("계획 묶음: \(groups)")
-            lines.append("계획 시각: 만든 \(plan.createdAt.formatted(date: .numeric, time: .standard)) · 고친 \(plan.updatedAt.map { $0.formatted(date: .numeric, time: .standard) } ?? "-")")
+            lines.append("계획 시각: 만든 \(plan.createdAt.formatted(date: .numeric, time: .standard)) · 고친 \(plan.updatedAt.map { $0.formatted(date: .numeric, time: .standard) } ?? "-") · id 꼬리 \(plan.id.uuidString.suffix(4))")
+        }
+        // **계획이 둘 이상이면 전부 적는다** (165번). 두 기기가 만든 시각이 같은
+        // 계획을 "첫 번째" 로 골라도 **같은 레코드라는 보장이 없다** — 백업
+        // 되돌리기는 시각을 그대로 베끼므로 동점이 생기고, 동점은 기기마다 다르게
+        // 풀린다. 레코드 id 꼬리가 같아야 같은 것이다.
+        if plans.count > 1 {
+            lines.append("계획 \(plans.count)개 — 화면은 1번을 쓴다:")
+            for (index, extra) in plans.enumerated() {
+                let words = DataFingerprint.planGroups(extra).first?.digest ?? "-"
+                lines.append("  \(index + 1). id 꼬리 \(extra.id.uuidString.suffix(4)) · 만든 \(extra.createdAt.formatted(date: .numeric, time: .standard)) · 고친 \(extra.updatedAt.map { $0.formatted(date: .numeric, time: .standard) } ?? "-") · 문서 글귀 \(words)")
+            }
         }
         lines.append("")
 
