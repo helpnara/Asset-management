@@ -768,25 +768,37 @@ struct MemberOrderView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(members) { member in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.member(member.colorIndex))
-                            .frame(width: 10, height: 10)
-                        Text(member.name.isEmpty ? "이름 없음" : member.name)
-                            .font(.scaled(13))
-                            .foregroundStyle(Color.ink)
-                        Text(member.roleNote)
-                            .font(.scaled(10))
-                            .foregroundStyle(Color.faint)
+                Section {
+                    ForEach(members) { member in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color.member(member.colorIndex))
+                                .frame(width: 10, height: 10)
+                            Text(member.name.isEmpty ? "이름 없음" : member.name)
+                                .font(.scaled(13))
+                                .foregroundStyle(Color.ink)
+                            Text(member.roleNote)
+                                .font(.scaled(10))
+                                .foregroundStyle(Color.faint)
+                            // **맨 위가 가족 대표다** (168번). 순서가 곧 대표라
+                            // 여기 표시가 "정하는 자리" 다. 따로 고르는 칸은 없다.
+                            if member.objectID == members.familyHead?.objectID {
+                                Spacer()
+                                Text("가족 대표")
+                                    .font(.scaled(10, weight: .semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
                     }
-                }
-                .onMove { offsets, destination in
-                    var items = members
-                    items.move(fromOffsets: offsets, toOffset: destination)
-                    for (position, member) in items.enumerated() {
-                        member.sortIndex = position
+                    .onMove { offsets, destination in
+                        var items = members
+                        items.move(fromOffsets: offsets, toOffset: destination)
+                        for (position, member) in items.enumerated() {
+                            member.sortIndex = position
+                        }
                     }
+                } footer: {
+                    Text("맨 위 사람이 가족 대표입니다. 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다.")
                 }
             }
             .environment(\.editMode, .constant(.active))

@@ -191,3 +191,16 @@ extension Holding {
         )
     }
 }
+
+extension Array where Element == Member {
+    /// **가족 대표** — 구성원 순서의 첫 사람 (docs/08-feedback.md 168번).
+    ///
+    /// 따로 저장하는 칸이 아니다. `자산 → 구성원 순서 바꾸기` 로 맨 위에 둔
+    /// 사람이 대표다 — 1페이지 로드맵의 나이(27번)가 처음부터 이 규칙이었고,
+    /// 계획 탭의 은퇴 목표 나이도 같은 규칙을 쓴다. 칸을 하나 더 두면 스키마
+    /// (3중 대조 + CloudKit 재배포)가 늘고, 정하는 자리가 둘이 된다.
+    var familyHead: Member? {
+        self.min { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+    }
+}
+

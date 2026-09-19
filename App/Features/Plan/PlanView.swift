@@ -124,7 +124,7 @@ struct PlanView: View {
                 summary(plan)
             }
 
-            Section("기간") {
+            Section {
                 if canManageHousehold {
                     Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
                         // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
@@ -135,6 +135,13 @@ struct PlanView: View {
                     readOnlyRow("은퇴 목표", "\(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
                 }
                 LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
+            } header: {
+                Text("기간")
+            } footer: {
+                // 나이가 누구 것인지, 바꾸려면 어디로 가는지를 그 자리에 적는다 (168번).
+                if let head = members.familyHead {
+                    Text("괄호의 나이는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name)) 기준으로 자동 설정됩니다. 대표를 바꾸려면 자산 탭 → 구성원 순서 바꾸기에서 맨 위에 두세요.")
+                }
             }
 
             Section {
@@ -587,9 +594,9 @@ struct PlanView: View {
     ///
     /// 구성원 폼(151번)과 1페이지 로드맵(27번)에는 있는데 계획 탭에만 없었다.
     /// 연도만 있으면 "그때 내가 몇 살인가" 를 머리로 계산해야 한다. 가장의
-    /// 정의는 1페이지와 같다 — 정렬 첫 구성원. 구성원이 없으면 아무것도 안 붙인다.
+    /// 정의는 1페이지와 같다 — `familyHead`. 구성원이 없으면 아무것도 안 붙인다.
     private func headAgeSuffix(inYear year: Int) -> String {
-        guard let head = members.first else { return "" }
+        guard let head = members.familyHead else { return "" }
         let age = year - head.birthYear
         return age >= 0 ? " (\(age)세)" : ""
     }

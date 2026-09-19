@@ -228,10 +228,11 @@ struct OnePagerView: View {
         .padding(.top, 12)
     }
 
-    /// 가장(첫 구성원)의 그 해 나이. 생일 달까지는 보지 않는다 — 로드맵은
-    /// 해 단위라 `2035년 51세` 면 충분하다.
+    /// 가장(`familyHead`, 구성원 순서의 첫 사람)의 그 해 나이. 생일 달까지는
+    /// 보지 않는다 — 로드맵은 해 단위라 `2035년 51세` 면 충분하다. 계획 탭의
+    /// 은퇴 목표 나이와 같은 사람이다 (168번).
     private func headAge(inYear year: Int) -> Int? {
-        guard let head = members.first else { return nil }
+        guard let head = members.familyHead else { return nil }
         let age = year - head.birthYear
         return age >= 0 ? age : nil
     }
