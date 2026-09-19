@@ -129,10 +129,10 @@ struct PlanView: View {
                     Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
                         // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
                         // 연도에는 자릿수 구분을 넣지 않는다.
-                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
                     }
                 } else {
-                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
+                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
                 }
                 LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
             }
@@ -583,6 +583,17 @@ struct PlanView: View {
     }
 
     /// 보기 전용일 때 입력칸 자리에 세우는 줄. 값은 그대로 읽힌다.
+    /// **연도 옆에 가장(첫 구성원)의 그 해 나이** — ` (52세)` (168번).
+    ///
+    /// 구성원 폼(151번)과 1페이지 로드맵(27번)에는 있는데 계획 탭에만 없었다.
+    /// 연도만 있으면 "그때 내가 몇 살인가" 를 머리로 계산해야 한다. 가장의
+    /// 정의는 1페이지와 같다 — 정렬 첫 구성원. 구성원이 없으면 아무것도 안 붙인다.
+    private func headAgeSuffix(inYear year: Int) -> String {
+        guard let head = members.first else { return "" }
+        let age = year - head.birthYear
+        return age >= 0 ? " (\(age)세)" : ""
+    }
+
     private func readOnlyRow(_ title: String, _ value: String) -> some View {
         LabeledContent(title) {
             Text(value)
