@@ -85,7 +85,10 @@ extension Plan {
               }) else { return nil }
         return us.targetBP
     }
-    var mixTolerance: Ratio { Ratio(basisPoints: mixToleranceBP) }
+    /// 국가 배분의 허용 오차. **목표 비중 허용 오차와 같은 값**이다 (173번) —
+    /// 사용자가 둘을 따로 둘 이유가 없다고 했다. `mixToleranceBP` 칸은 남아 있지만
+    /// 화면에서 고치지 않고 읽지도 않는다 (스키마는 안 건드린다).
+    var mixTolerance: Ratio { Ratio(basisPoints: driftToleranceBP) }
 
     /// 목표 비중 판정 기준. 퍼센트포인트 하나다.
     var driftTolerance: Allocation.Tolerance {

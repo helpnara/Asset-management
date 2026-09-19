@@ -10,6 +10,9 @@ import SwiftUI
 struct DiagnosticsCriteriaView: View {
     @ObservedObject var plan: Plan
     @Environment(\.dismiss) private var dismiss
+    /// 미국 목표 줄을 누르면 가족 자산 배분을 이 시트 안에서 민다 (171번).
+    /// `NavigationLink` 는 시트 안 `Form` 에서 눌러도 안 열렸다 (빌드 97 8번).
+    @State private var showsAllocation = false
 
     var body: some View {
         NavigationStack {
@@ -46,7 +49,7 @@ struct DiagnosticsCriteriaView: View {
                 } header: {
                     Text("부동산 비중")
                 } footer: {
-                    Text("부동산은 팔지 않으면 생활비로 쓸 수 없습니다. 비중이 크면 자산은 많은데 쓸 돈이 없는 노후가 됩니다. 기본은 **35%** 입니다.")
+                    Text.markdown("부동산은 팔지 않으면 생활비로 쓸 수 없습니다. 비중이 크면 자산은 많은데 쓸 돈이 없는 노후가 됩니다. 기본은 **35%** 입니다.")
                 }
 
                 Section {
@@ -56,26 +59,32 @@ struct DiagnosticsCriteriaView: View {
                         // **줄을 누르면 가족 자산 배분이 열린다** (171번). 원본은 거기
                         // 하나다 — 지역 목표는 한국 · 미국 · 그 외가 합쳐 100 이라
                         // 여기서 미국만 고칠 수 없다. 대신 찾아가는 길을 한 번으로.
-                        NavigationLink {
-                            FamilyAllocationView()
+                        Button {
+                            showsAllocation = true
                         } label: {
-                            LabeledContent("미국 목표 비중") {
+                            HStack {
+                                Text("미국 목표 비중")
+                                    .foregroundStyle(Color.ink)
+                                Spacer()
                                 Text("\(PercentFormatter.integer(Decimal(bp) / 10_000))% · 가족 자산 배분")
                                     .font(.figure(13))
                                     .foregroundStyle(Color.muted)
+                                Image(systemName: "chevron.right")
+                                    .font(.scaled(11, weight: .semibold))
+                                    .foregroundStyle(Color.faint)
                             }
                         }
+                        .buttonStyle(.plain)
                     } else {
                         percentRow("미국 목표 비중", $plan.usTargetBP, range: 0...10_000, step: 100)
                     }
-                    percentRow("허용 오차", $plan.mixToleranceBP, range: 100...2_000, step: 100)
+                    // 허용 오차는 아래 `목표 비중 허용 오차` 하나를 같이 쓴다 (173번).
                 } header: {
                     Text("국가 배분")
                 } footer: {
-                    // 삼항식은 `String` 이라 마크다운이 안 먹는다 — `LocalizedStringKey` 로.
-                    Text(LocalizedStringKey(plan.familyUSTargetBP != nil
-                         ? "미국 목표는 **가족 자산 배분의 지역 목표**입니다 — 한국 · 미국 · 그 외가 합쳐 100% 라 거기서 함께 정합니다. 줄을 누르면 그 화면이 열립니다. 목표에서 허용 오차만큼 벗어나도 조치로 보지 않습니다."
-                         : "투자자산 기준이고 **기본은 미국 50 · 한국 50**입니다. 가족 자산 배분에서 지역 목표를 적으면 그 값을 씁니다. 나머지가 전부 한국이라고 보지 않습니다 — 그 외 국가도 따로 셉니다. 목표에서 허용 오차만큼 벗어나도 조치로 보지 않습니다."))
+                    Text.markdown(plan.familyUSTargetBP != nil
+                         ? "미국 목표는 **가족 자산 배분의 지역 목표** 입니다 — 한국 · 미국 · 그 외가 합쳐 100% 라 거기서 함께 정합니다. 줄을 누르면 그 화면이 열립니다. 허용 오차는 아래 **목표 비중 허용 오차** 를 같이 씁니다."
+                         : "투자자산 기준이고 **기본은 미국 50 · 한국 50** 입니다. 가족 자산 배분에서 지역 목표를 적으면 그 값을 씁니다. 나머지가 전부 한국이라고 보지 않습니다 — 그 외 국가도 따로 셉니다. 허용 오차는 아래 **목표 비중 허용 오차** 를 같이 씁니다.")
                 }
 
                 // 계좌 안 종목이 목표에서 얼마나 벗어나면 말해 줄지
@@ -146,6 +155,7 @@ struct DiagnosticsCriteriaView: View {
             // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
             .readableWidth()
             .navigationTitle("진단 기준")
+            .navigationDestination(isPresented: $showsAllocation) { FamilyAllocationView() }
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
             .moneyKeyboardBar()
