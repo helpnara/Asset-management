@@ -549,6 +549,34 @@ extension Plan {
         )
     }
 
+    /// **가족 대표의 은퇴 목표를 계획의 은퇴 연도로 삼는다** (168번). 바뀌었으면 `true`.
+    ///
+    /// 계획의 은퇴 연도와 대표의 은퇴 목표(구성원 폼의 `생년 + 나이`)는 **같은
+    /// 값이어야 한다** — 사용자 결정. 대표가 바뀌거나(구성원 순서), 대표의 나이가
+    /// 바뀌면(구성원 폼) 여기로 따라온다. 이미 지난 해는 올해로 끌어올린다
+    /// (`Member.retirementYear`). 보는 기간이 은퇴보다 앞서면 35년 뒤로 민다 —
+    /// 새 계획의 기본과 같다.
+    @discardableResult
+    func adoptRetirementYear(fromHeadOf members: [Member]) -> Bool {
+        guard let head = members.familyHead else { return false }
+        let year = head.retirementYear
+        guard year != retirementYear else { return false }
+        retirementYear = year
+        if horizonYear <= year { horizonYear = year + 35 }
+        touch()
+        return true
+    }
+
+    /// 계획 탭에서 은퇴 목표를 바꾸면 **대표의 은퇴 나이도 같이** 바뀐다 (168번).
+    /// 반대 방향은 `adoptRetirementYear`. 대표가 없으면 계획만 바뀐다.
+    func setRetirementYear(_ year: Int, headOf members: [Member]) {
+        if let head = members.familyHead {
+            head.targetRetirementAge = max(0, year - head.birthYear)
+        }
+        retirementYear = year
+        if horizonYear <= year { horizonYear = year + 35 }
+    }
+
     /// **화면이 쓸 순서로 정렬한다** — 어느 기기에서 돌려도 같은 순서다 (167번).
     ///
     /// 만든 시각이 이른 것이 앞이다. **만든 시각이 같으면 가장 최근에 고친

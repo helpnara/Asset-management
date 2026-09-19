@@ -44,6 +44,13 @@ struct PlanView: View {
             }
             // 넓은 화면에서 라벨과 금액이 화면 양 끝으로 벌어지지 않게 (161번).
             .readableWidth()
+            // **대표의 은퇴 목표가 계획의 은퇴 연도다** (168번). 대표가 바뀌거나
+            // 대표의 생년 · 은퇴 나이가 바뀌면(구성원 폼 · 다른 기기) 계획이
+            // 따라온다. 참가자 기기는 계획을 못 고치므로 관리자만.
+            .task(id: headStamp) {
+                guard canManageHousehold, let plan = Plan.primary(plans) else { return }
+                plan.adoptRetirementYear(fromHeadOf: members)
+            }
             .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
                             message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") { offsets in
                 for index in offsets where incomes.indices.contains(index) {
@@ -126,7 +133,11 @@ struct PlanView: View {
 
             Section {
                 if canManageHousehold {
-                    Stepper(value: bind.retirementYear, in: currentYear...(currentYear + 60)) {
+                    // **대표의 은퇴 나이와 한 몸이다** (168번). 여기서 올리면 대표의
+                    // 나이가 같이 오르고, 구성원 폼에서 고치면 여기로 따라온다.
+                    Stepper(value: Binding(get: { plan.retirementYear },
+                                           set: { plan.setRetirementYear($0, headOf: members) }),
+                            in: min(currentYear, plan.retirementYear)...max(currentYear + 60, plan.retirementYear + 1)) {
                         // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
                         // 연도에는 자릿수 구분을 넣지 않는다.
                         Text(verbatim: "은퇴 목표 \(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
@@ -138,9 +149,9 @@ struct PlanView: View {
             } header: {
                 Text("기간")
             } footer: {
-                // 나이가 누구 것인지, 바꾸려면 어디로 가는지를 그 자리에 적는다 (168번).
+                // 누구의 은퇴 목표인지, 바꾸면 무엇이 따라 바뀌는지를 그 자리에 적는다 (168번).
                 if let head = members.familyHead {
-                    Text("괄호의 나이는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name)) 기준으로 자동 설정됩니다. 대표는 자산 탭에서 `대표` 띠지가 붙은 사람이고, 바꾸려면 구성원 순서 바꾸기에서 맨 위에 두세요.")
+                    Text("은퇴 목표는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name))의 은퇴 목표 연도 · 나이와 같습니다. 여기서 바꾸면 대표의 은퇴 나이도 같이 바뀌고, 구성원 폼에서 바꾸면 여기로 따라옵니다. 대표는 자산 탭에서 `대표` 띠지가 붙은 사람이고, 바꾸려면 구성원 순서 바꾸기에서 맨 위에 두세요.")
                 }
             }
 
@@ -590,6 +601,12 @@ struct PlanView: View {
     }
 
     /// 보기 전용일 때 입력칸 자리에 세우는 줄. 값은 그대로 읽힌다.
+    /// 대표가 누구이고 생년 · 은퇴 나이가 무엇인지를 한 줄로. 이것이 바뀔 때만
+    /// 계획의 은퇴 연도를 다시 맞춘다.
+    private var headStamp: String? {
+        members.familyHead.map { "\($0.objectID.uriRepresentation().absoluteString)-\($0.birthYear)-\($0.targetRetirementAge)" }
+    }
+
     /// **연도 옆에 가장(첫 구성원)의 그 해 나이** — ` (52세)` (168번).
     ///
     /// 구성원 폼(151번)과 1페이지 로드맵(27번)에는 있는데 계획 탭에만 없었다.

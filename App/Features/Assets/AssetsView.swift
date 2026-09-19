@@ -326,7 +326,7 @@ struct AssetsView: View {
                         .buttonStyle(.plain)
                     }
                 } footer: {
-                    Text("맨 위 구성원이 가족 대표입니다 (`대표` 띠지). 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다." + (canManageHousehold ? " 대표를 바꾸려면 순서를 바꿔 맨 위에 두세요." : ""))
+                    Text("맨 위 구성원이 가족 대표입니다 (`대표` 띠지). 계획 탭의 은퇴 목표가 이 사람의 은퇴 목표(연도 · 나이)를 따르고, 1페이지 로드맵의 나이도 이 사람 기준입니다." + (canManageHousehold ? " 대표를 바꾸려면 순서를 바꿔 맨 위에 두세요." : ""))
                 }
             }
         }
@@ -820,7 +820,7 @@ struct MemberOrderView: View {
                         apply()
                     }
                 } footer: {
-                    Text("맨 위 사람이 가족 대표입니다 — 자산 탭 이름 옆에 `대표` 띠지가 붙고, 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다.")
+                    Text("맨 위 사람이 가족 대표입니다 — 자산 탭 이름 옆에 `대표` 띠지가 붙고, 계획 탭의 은퇴 목표가 이 사람의 은퇴 목표(연도 · 나이)로 자동 설정됩니다. 1페이지 로드맵의 나이도 이 사람 기준입니다.")
                 }
             }
             .environment(\.editMode, .constant(.active))
@@ -848,6 +848,8 @@ struct MemberOrderView: View {
         for (position, member) in order.enumerated() where member.sortIndex != position {
             member.sortIndex = position
         }
+        // 대표가 바뀌면 계획의 은퇴 목표도 새 대표의 것으로 (168번).
+        Plan.primary(context.all(Plan.self))?.adoptRetirementYear(fromHeadOf: order)
         guard context.hasChanges else { return }
         try? context.save()
     }

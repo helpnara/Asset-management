@@ -32,8 +32,21 @@ struct MemberEditView: View {
             get: { enteredRetirementYear },
             // 생년보다 앞선 해로는 못 간다. 스테퍼의 범위가 이미 막지만
             // 생년을 나중에 고치는 경우가 있어 여기서도 접는다.
-            set: { member.targetRetirementAge = max(0, $0 - member.birthYear) }
+            set: {
+                member.targetRetirementAge = max(0, $0 - member.birthYear)
+                // **가족 대표면 계획의 은퇴 연도가 따라온다** (168번).
+                if isFamilyHead {
+                    Plan.primary(context.all(Plan.self))?
+                        .adoptRetirementYear(fromHeadOf: context.all(Member.self))
+                }
+            }
         )
+    }
+
+    /// 이 사람이 가족 대표(구성원 순서의 맨 위)인가. 계획 탭의 은퇴 목표가
+    /// 이 사람의 것을 따른다.
+    private var isFamilyHead: Bool {
+        context.all(Member.self).familyHead?.objectID == member.objectID
     }
 
     /// 올해부터 생년 + 90년까지. 적어 둔 값이 이미 그보다 앞서 있으면
@@ -84,7 +97,9 @@ struct MemberEditView: View {
                 } header: {
                     Text("나이")
                 } footer: {
-                    Text("가족 전체의 궤적은 **계획 탭의 은퇴 연도**를 쓰고, 이 사람의 궤적과 1페이지 카드는 **여기 적은 연도**를 씁니다.")
+                    Text(isFamilyHead
+                         ? "이 사람은 **가족 대표**입니다. 여기 적은 은퇴 목표가 **계획 탭의 은퇴 목표**(가족 전체의 궤적)가 됩니다."
+                         : "가족 전체의 궤적은 **계획 탭의 은퇴 연도**(가족 대표의 것)를 쓰고, 이 사람의 궤적과 1페이지 카드는 **여기 적은 연도**를 씁니다.")
                 }
 
                 Section {
