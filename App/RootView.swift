@@ -81,6 +81,18 @@ struct RootView: View {
         return latest > AppUpdate.currentBuild ? latest : nil
     }
 
+    /// **계획의 은퇴 연도를 가족 대표의 것으로 맞춘다** (168번). 앱이 뜰 때와
+    /// 가져오기가 끝난 뒤. 다른 기기에서 대표나 대표의 나이를 바꿨을 때 이
+    /// 기기의 계획 탭을 열지 않아도 현황판 · 1페이지가 새 값으로 그려지게.
+    /// 관리자 기기에서만 — 참가자는 계획을 못 고친다.
+    private func syncHeadRetirement() {
+        guard !trial.isActive, !sharing.state.isParticipant else { return }
+        let context = Persistence.viewContext
+        guard let plan = Plan.primary(context.all(Plan.self)),
+              plan.adoptRetirementYear(fromHeadOf: context.all(Member.self)) else { return }
+        try? context.save()
+    }
+
     /// **손 안 댄 계획을 치운다** (167번). 가져오기가 끝난 뒤 한 번.
     ///
     /// 첫 실행이 가져오기 전에 만든 빈 계획은 값이 전부 기본값이라 지워도
@@ -125,6 +137,7 @@ struct RootView: View {
             .task {
                 sharing.refreshState()
                 recordBuild()
+                syncHeadRetirement()
             }
             .task {
                 try? await Task.sleep(for: .seconds(20))
@@ -136,6 +149,7 @@ struct RootView: View {
                 if finished {
                     sharing.refreshState()
                     pruneUntouchedPlans()
+                    syncHeadRetirement()
                     // 같은 주 기록이 둘이면 하나로 (96번). 가져온 뒤라야 둘 다 보인다.
                     WeekDedup.run(in: context)
                     recordBuild()

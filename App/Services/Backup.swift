@@ -694,6 +694,10 @@ extension BackupDocument {
             entry.createdAt = data.createdAt
         }
 
+        // 되돌린 계획의 은퇴 연도도 대표의 것이어야 한다 (168번). 옛 백업은
+        // 둘이 따로였을 수 있다.
+        Plan.primary(context.all(Plan.self))?.adoptRetirementYear(fromHeadOf: context.all(Member.self))
+
         // Autosave 를 거치지 않는 저장이라 매달기·저장소 배정을 직접 부른다 (④).
         Household.attachNew(in: context)
         try? context.save()

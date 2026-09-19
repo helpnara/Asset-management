@@ -647,6 +647,9 @@ extension Plan {
             return existing
         }
         // Core Data 는 만드는 순간 컨텍스트에 들어간다 — `insert` 를 따로 안 부른다.
-        return Plan(context: context)
+        let plan = Plan(context: context)
+        // 구성원이 먼저 있었으면 은퇴 연도는 대표의 것이다 (168번).
+        plan.adoptRetirementYear(fromHeadOf: context.all(Member.self))
+        return plan
     }
 }

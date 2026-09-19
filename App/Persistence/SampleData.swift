@@ -130,7 +130,8 @@ enum SampleData {
         plan.contributionGrowthBP = 300
         plan.inflationBP = 200
         plan.postRetirementReturnBP = 500
-        plan.retirementYear = Calendar.current.component(.year, from: .now) + 23
+        // 은퇴 연도는 대표(아빠, 1984년생 · 65세)의 것이다 (168번). 손으로 적지 않는다.
+        plan.adoptRetirementYear(fromHeadOf: [dad, mom, son, daughter])
         // **목표 금액은 손으로 심지 않는다** (154번). 화면이 열릴 때
         // 월 생활비 · 취미 · 병원비로 계산해 덮어쓴다 — 여기 적어 두면
         // 그림을 보는 사람이 그 값이 어디서 왔는지 헷갈린다.

@@ -213,6 +213,12 @@ struct MemberEditView: View {
                 if snapshot == nil { snapshot = EditSnapshot(of: member) }
             }
             .onDisappear { logChange() }
+            // 대표의 생년이 바뀌면 은퇴 연도(생년 + 나이)도 바뀐다 — 계획이 따라온다 (168번).
+            .onChange(of: member.birthYear) { _, _ in
+                guard isFamilyHead else { return }
+                Plan.primary(context.all(Plan.self))?
+                    .adoptRetirementYear(fromHeadOf: context.all(Member.self))
+            }
         }
     }
 
