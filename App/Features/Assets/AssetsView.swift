@@ -333,6 +333,11 @@ struct AssetsView: View {
                     Text(member.name.isEmpty ? "이름 없음" : member.name)
                         .font(.scaled(12, weight: .bold))
                         .foregroundStyle(Color.ink)
+                    // **맨 위 사람이 가족 대표다** (168번). 순서가 곧 대표라 이
+                    // 띠지가 "누가 대표인지" 를 보여 주는 자리다.
+                    if member.objectID == members.familyHead?.objectID {
+                        HeadBadge()
+                    }
                     Text("\(member.age)세")
                         .font(.scaled(10))
                         .foregroundStyle(Color.faint)
@@ -783,10 +788,7 @@ struct MemberOrderView: View {
                             // **맨 위가 가족 대표다** (168번). 순서가 곧 대표라
                             // 여기 표시가 "정하는 자리" 다. 따로 고르는 칸은 없다.
                             if member.objectID == members.familyHead?.objectID {
-                                Spacer()
-                                Text("가족 대표")
-                                    .font(.scaled(10, weight: .semibold))
-                                    .foregroundStyle(Color.accentColor)
+                                HeadBadge()
                             }
                         }
                     }
@@ -798,7 +800,7 @@ struct MemberOrderView: View {
                         }
                     }
                 } footer: {
-                    Text("맨 위 사람이 가족 대표입니다. 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다.")
+                    Text("맨 위 사람이 가족 대표입니다 — 자산 탭 이름 옆에 `대표` 띠지가 붙고, 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다.")
                 }
             }
             .environment(\.editMode, .constant(.active))

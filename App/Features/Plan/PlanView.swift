@@ -140,7 +140,7 @@ struct PlanView: View {
             } footer: {
                 // 나이가 누구 것인지, 바꾸려면 어디로 가는지를 그 자리에 적는다 (168번).
                 if let head = members.familyHead {
-                    Text("괄호의 나이는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name)) 기준으로 자동 설정됩니다. 대표를 바꾸려면 자산 탭 → 구성원 순서 바꾸기에서 맨 위에 두세요.")
+                    Text("괄호의 나이는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name)) 기준으로 자동 설정됩니다. 대표는 자산 탭에서 `대표` 띠지가 붙은 사람이고, 바꾸려면 구성원 순서 바꾸기에서 맨 위에 두세요.")
                 }
             }
 
