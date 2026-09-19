@@ -129,12 +129,20 @@ struct MoneyField: View {
                                   focus: $isFocused)
                         )
                     } else {
+                        // **손 뗄 때 한 번 저장한다** (169번 C1). 글자마다 저장하면
+                        // 살아 있는 다섯 탭이 글자마다 다시 그렸다. 만 · 억은
+                        // 누르는 순간 저장한다 — 그건 한 번의 뜻이다 (156번).
+                        commitDraft()
                         draft = nil
                         note = nil
                         MoneyKeyboard.shared.resign(fieldID)
                     }
                 }
-                .onDisappear { MoneyKeyboard.shared.resign(fieldID) }
+                .onDisappear {
+                    // 커서가 있는 채로 화면이 닫히면 적던 값을 잃지 않게.
+                    if isFocused { commitDraft() }
+                    MoneyKeyboard.shared.resign(fieldID)
+                }
             Text("원")
                 .font(.scaled(13))
                 .foregroundStyle(Color.muted)
@@ -148,6 +156,15 @@ struct MoneyField: View {
               !didAutoFocus else { return false }
         didAutoFocus = true
         return true
+    }
+
+    /// 적어 둔 글자를 모델에 쓴다. 같으면 아무 일도 안 한다.
+    private func commitDraft() {
+        guard let draft else { return }
+        let digits = String(draft.filter(\.isNumber).prefix(Self.maxDigits))
+        let next = min(Int(digits) ?? 0, Self.ceiling)
+        guard minorUnits != next else { return }
+        minorUnits = next
     }
 
     private static func display(_ minorUnits: Int) -> String {
@@ -193,9 +210,8 @@ struct MoneyField: View {
                 let digits = String(input.filter(\.isNumber).prefix(Self.maxDigits))
                 // 자릿수를 잘라도 `Int` 로 못 옮기는 글자가 올 수 있다 (붙여넣기).
                 let next = min(Int(digits) ?? 0, Self.ceiling)
+                // 커서가 있는 동안은 글자만 움직인다. 저장은 손 뗄 때 (169번).
                 draft = Self.display(next)
-                guard minorUnits != next else { return }
-                minorUnits = next
             }
         )
     }

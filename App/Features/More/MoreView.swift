@@ -57,6 +57,9 @@ struct MoreView: View {
         return arguments[index + 1]
     }()
 
+    /// 공유 존으로 옮기는 중인지 — 아래 띠에 올린다 (169번).
+    @State private var sharing = FamilySharing.shared
+
     var body: some View {
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
@@ -201,6 +204,7 @@ struct MoreView: View {
             .readableWidth()
             .syncRefreshable(note: $refreshNote)
             .navigationTitle("더보기")
+            .reportsProgress("공유 존으로 옮기는 중", when: sharing.isMoving)
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: route.wantsDiagnostics, initial: true) { _, wants in
                 guard wants else { return }

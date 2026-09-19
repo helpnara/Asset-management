@@ -14,8 +14,9 @@ import SwiftUI
 /// 250ms 동안 손이 안 오면 그때 한 번 모델에 쓴다. 금액 칸(`MoneyField`)이
 /// 156번에서 배운 것과 같은 꼴이다.
 ///
-/// 아직 안 쓴 값이 있는 동안은 숫자 옆에 작은 회전 아이콘이 돈다 — "눌렀다"
-/// 는 것이 그 자리에서 보여야 다시 안 누른다.
+/// 아직 안 쓴 값이 있는 동안은 **아래 띠**에 `반영 중` 이 켜진다 (169번). 예전에는
+/// 숫자 옆에 회전 아이콘을 끼웠는데, 아이콘이 끼어들며 숫자를 옆으로 밀어
+/// 줄이 들썩였다. 띠는 본문을 안 건드린다.
 struct PercentStepper: View {
     let title: String
     @Binding var basisPoints: Int
@@ -42,9 +43,6 @@ struct PercentStepper: View {
             HStack(spacing: 8) {
                 Text(title)
                 Spacer()
-                if draft != nil {
-                    ProgressView().controlSize(.mini)
-                }
                 // 1%p 단위로 움직이면 정수로 적는다 (docs/08-feedback.md 18번).
                 Text(step % 100 == 0
                      ? "\(PercentFormatter.integer(Decimal(shown) / 10_000))%"
@@ -53,5 +51,6 @@ struct PercentStepper: View {
                     .foregroundStyle(Color.ink)
             }
         }
+        .reportsProgress("반영 중", when: draft != nil)
     }
 }

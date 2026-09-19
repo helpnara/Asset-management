@@ -260,24 +260,9 @@ struct RootView: View {
         }
     }
 
+    /// 앱 수준 알림 — 아래 진행 띠와 같은 부품이다 (169번). 자리만 위.
     private func noticeBar(icon: String, text: String, spinning: Bool) -> some View {
-        HStack(spacing: 8) {
-            if spinning {
-                ProgressView().controlSize(.mini)
-            } else {
-                Image(systemName: icon)
-                    .font(.scaled(11, weight: .medium))
-            }
-            Text(text)
-                .font(.scaled(11, weight: .medium))
-                .lineLimit(2)
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(Color.ink)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background(Color.alertSoft)
+        StatusBand(text: text, spinning: spinning, icon: icon)
     }
 
     /// 가로면 사이드바, 세로면 지금까지의 탭 (161번).
@@ -303,23 +288,29 @@ struct RootView: View {
 
     private var tabContent: some View {
         TabView(selection: $route.selectedTab) {
+            // **진행 상황 띠는 여기 한 장** (169번). 화면은 `.reportsProgress` 만 붙인다.
             DashboardView()
+                .statusBand()
                 .tabItem { Label("현황판", systemImage: "chart.bar") }
                 .tag(Tab.dashboard)
 
             AssetsView()
+                .statusBand()
                 .tabItem { Label("자산", systemImage: "list.bullet") }
                 .tag(Tab.assets)
 
             PlanView()
+                .statusBand()
                 .tabItem { Label("계획", systemImage: "calendar") }
                 .tag(Tab.plan)
 
             SimulationView()
+                .statusBand()
                 .tabItem { Label("시뮬레이션", systemImage: "slider.horizontal.3") }
                 .tag(Tab.simulation)
 
             MoreView()
+                .statusBand()
                 .tabItem { Label("더보기", systemImage: "ellipsis") }
                 .tag(Tab.more)
         }
@@ -354,6 +345,7 @@ struct RootView: View {
             set: { route.showReview = $0 }
         )) {
             WeeklyReviewView()
+                .statusBand()
         }
         .alert("이번 주 기록 완료",
                isPresented: Binding(

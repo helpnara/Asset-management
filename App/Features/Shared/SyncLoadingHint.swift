@@ -27,8 +27,8 @@ struct SyncLoadingHint: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // 진행은 위 · 아래 띠가 보인다 (160 · 169번). 여기는 설명만.
             HStack(spacing: 10) {
-                ProgressView().controlSize(.small)
                 Text(sharing.state.isParticipant
                      ? "관리자가 공유한 기록을 받아오는 중"
                      : "iCloud 에서 기록을 받아오는 중")

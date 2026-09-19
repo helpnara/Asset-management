@@ -48,13 +48,9 @@ struct WelcomeView: View {
             // 먼저 뜨므로, 여기서 말해 주지 않으면 "처음부터 다시 적으라는
             // 건가" 로 읽힌다. 처음 쓰는 사람에게는 잠깐 떴다 사라진다.
             if isImporting {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.mini)
-                    Text("iCloud 에서 기존 기록을 받아오는 중입니다")
-                        .font(.scaled(12, weight: .medium))
-                        .foregroundStyle(Color.bodyText)
-                }
-                .padding(.bottom, 14)
+                // 앱의 다른 자리와 같은 띠 (169번).
+                StatusBand(text: "iCloud 에서 기존 기록을 받아오는 중입니다")
+                    .padding(.bottom, 14)
             }
 
             VStack(spacing: 10) {

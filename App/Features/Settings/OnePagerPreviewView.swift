@@ -26,6 +26,9 @@ struct OnePagerPreviewView: View {
     private let paperHeight: CGFloat = 842
     /// 잰 종이 높이 (줄이기 전). 안내 문구와 2배 그림의 높이가 이걸 쓴다.
     @State private var measuredHeight: CGFloat = 0
+    /// **종이는 본문 밖에서 한 번 만든다** (169번 B2). 궤적 셋과 구성원마다 하나를
+    /// 굴리는 일이라, 본문에 두면 확대 · 상태 변화마다 통째로 다시 만들었다.
+    @State private var built: OnePagerView?
 
     /// **종이를 2배로 그려 넣는다** (139번). 확대는 `UIScrollView` 의 변환이라
     /// 그려 둔 것을 늘리는 것이다 — 1배로 그리면 4배에서 흐릿하다. 2배면
@@ -42,15 +45,30 @@ struct OnePagerPreviewView: View {
                 page(scale: renderScale)
             }
         }
+        .reportsProgress("그리는 중", when: built == nil || measuredHeight == 0)
+        // 재료가 바뀔 때만 다시 만든다.
+        .task(id: buildStamp) {
+            built = OnePagerBuilder.make(plan: Plan.primary(plans), members: members, holdings: holdings,
+                                         cashEvents: cashEvents, incomes: incomes,
+                                         principles: principles, todos: todos, snapshots: snapshots)
+        }
         .background(Color.ground)
         .navigationTitle("1페이지 미리보기")
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// 계획 · 구성원 · 종목 · 기록이 바뀌면 종이를 다시 만든다.
+    private var buildStamp: String {
+        [Plan.primary(plans)?.editFingerprint ?? "",
+         "\(members.count)", "\(holdings.count)", "\(cashEvents.count)", "\(incomes.count)",
+         "\(principles.count)", "\(todos.count)", "\(snapshots.count)",
+         "\(holdings.reduce(0) { $0 &+ $1.valueMinor })"].joined(separator: "|")
+    }
+
+    @ViewBuilder
     private func page(scale: CGFloat) -> some View {
-        OnePagerBuilder.make(plan: Plan.primary(plans), members: members, holdings: holdings,
-                             cashEvents: cashEvents, incomes: incomes,
-                             principles: principles, todos: todos, snapshots: snapshots)
+        if let built {
+            built
             // **제 크기로만 선다.** 바깥이 높이를 제안해도 안 받는다 — 확대(137)에서
             // 바깥 frame 이 "잰 높이 × 배율" 을 제안하자 종이가 그 높이로 늘어나고,
             // 그걸 다시 재서 또 늘어나는 되먹임이 iPad(배율 > 1)에서 앱을 멈췄다.
@@ -78,6 +96,9 @@ struct OnePagerPreviewView: View {
             .frame(width: paperWidth * scale,
                    height: measuredHeight > 0 ? measuredHeight * scale : nil,
                    alignment: .topLeading)
+        } else {
+            Color.clear.frame(width: paperWidth * scale, height: paperHeight * scale)
+        }
     }
 
     private func caption(pageHeight: CGFloat) -> some View {
@@ -96,7 +117,7 @@ struct OnePagerPreviewView: View {
     }
 
     private func fitText(pageHeight: CGFloat, overflows: Bool) -> String {
-        guard pageHeight > 0 else { return "그리는 중…" }
+        guard pageHeight > 0 else { return " " }
         let filled = Int((pageHeight / paperHeight * 100).rounded())
         if overflows {
             return "한 장을 \(Int((pageHeight - paperHeight).rounded()))pt 넘습니다 (\(filled)%)"

@@ -55,13 +55,11 @@ struct ExportView: View {
                 Button {
                     render()
                 } label: {
-                    HStack {
-                        Label("1페이지 PDF 만들기", systemImage: "doc.richtext")
-                        Spacer()
-                        if isRendering { ProgressView().controlSize(.small) }
-                    }
+                    Label("1페이지 PDF 만들기", systemImage: "doc.richtext")
                 }
                 .disabled(isRendering || members.isEmpty)
+                // 진행은 아래 띠 (169번). 버튼 안 아이콘은 줄을 밀었다.
+                .reportsProgress("PDF 만드는 중", when: isRendering)
 
                 if let rendered {
                     ShareLink(item: rendered, preview: SharePreview(rendered.name)) {

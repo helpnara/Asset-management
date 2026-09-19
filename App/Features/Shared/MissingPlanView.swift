@@ -19,14 +19,9 @@ struct MissingPlanView: View {
     @State private var waitExpired = false
 
     var body: some View {
-        VStack(spacing: 10) {
-            ProgressView()
-            if !maySeed {
-                Text("iCloud 에서 계획을 받아오는 중…")
-                    .font(.scaled(12.5))
-                    .foregroundStyle(Color.muted)
-            }
-        }
+        // 본문은 비워 두고 진행은 아래 띠가 보인다 (169번).
+        Color.clear
+        .reportsProgress("iCloud 에서 계획을 받아오는 중", when: !maySeed)
         .task {
             try? await Task.sleep(for: .seconds(20))
             waitExpired = true

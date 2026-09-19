@@ -43,7 +43,7 @@ struct DiagnosticsView: View {
             }
         }
         .task(id: projectionInput) { await runProjection(projectionInput) }
-        .recalculatingBar(isProjecting)
+        .reportsProgress("반영 중", when: isProjecting)
         .readableWidth()
         .background(Color.ground)
         .navigationTitle("자산 진단")

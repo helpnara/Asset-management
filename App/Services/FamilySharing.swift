@@ -134,6 +134,8 @@ final class FamilySharing {
 
     /// 기존 기록을 뿌리에 매단 결과. 소유자 기기에서 한 번 보이고 만다.
     var lastAdoption: String?
+    /// 공유 존으로 옮기는 중인가 — 아래 띠가 읽는다 (169번).
+    var isMoving = false
 
     /// 마지막으로 판정한 역할. **앱을 켜자마자** 화면이 맞는 역할로 뜨게 한다 —
     /// 공유 조회는 백그라운드라 한 박자 늦는데, 그 사이 참가자 기기에
@@ -245,7 +247,8 @@ final class FamilySharing {
             lastAdoption = "iCloud 로 열리지 않아 옮길 수 없습니다."
             return
         }
-        lastAdoption = "공유 존으로 옮기는 중…"
+        lastAdoption = nil
+        isMoving = true
         let carried = UncheckedBox(container)
         DispatchQueue.global(qos: .userInitiated).async {
             let container = carried.value
@@ -255,13 +258,19 @@ final class FamilySharing {
                 guard let household = context.all(Household.self, sortedBy: byAge).first,
                       let share = try? container.fetchShares(matching: [household.objectID])[household.objectID]
                 else {
-                    Task { @MainActor in FamilySharing.shared.lastAdoption = "저장된 공유가 없어 옮길 수 없습니다." }
+                    Task { @MainActor in
+                        FamilySharing.shared.lastAdoption = "저장된 공유가 없어 옮길 수 없습니다."
+                        FamilySharing.shared.isMoving = false
+                    }
                     return
                 }
                 let outside = Self.unshared(in: context, container: container)
                 let count = outside.count
                 guard count > 0 else {
-                    Task { @MainActor in FamilySharing.shared.lastAdoption = "공유 존 밖에 남은 기록이 없습니다." }
+                    Task { @MainActor in
+                        FamilySharing.shared.lastAdoption = "공유 존 밖에 남은 기록이 없습니다."
+                        FamilySharing.shared.isMoving = false
+                    }
                     return
                 }
                 // 부른 스레드를 붙잡는 호출이라 여기(백그라운드)서만 부른다.
@@ -269,6 +278,7 @@ final class FamilySharing {
                     let text = error.map { CloudKitErrorText.describe($0) }
                     Task { @MainActor in
                         let sharing = FamilySharing.shared
+                        sharing.isMoving = false
                         if let text {
                             sharing.lastAdoption = "기록 \(count)건을 공유 존으로 옮기지 못했습니다\n" + text
                         } else {

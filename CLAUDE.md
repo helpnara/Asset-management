@@ -102,6 +102,10 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   사람에 띠지를 붙였다. 정하는 자리가 둘이 되면 서로 어긋나고, 스키마가 늘면
   3중 대조와 CloudKit 재배포가 따라온다. 검토한 결과는 `docs/08-feedback.md` 의
   해당 항목에 "있던 것 / 한 것" 표로 남긴다.
+- **진행 상황 표시는 띠 하나다** (169번). 화면에 `ProgressView` 를 끼우거나 제 띠를
+  붙이지 않는다. 일을 시작하면 `.reportsProgress("반영 중", when:)` 로 `Progress`
+  목록에 올리고, 띠는 `RootView` 의 `StatusBand` 한 장이 그린다. 끼어드는
+  아이콘과 붙었다 떨어지는 띠가 본문을 밀어 화면이 들썩였던 것이 이유다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
 - **저장 계층은 Core Data다** (4차에서 SwiftData에서 옮겼다 — [09-family-sharing](docs/09-family-sharing.md)).
   SwiftData는 `CKShare` 공유를 못 해서, 가족 공유를 하려면 옮길 수밖에 없었다.

@@ -101,7 +101,7 @@ struct PlanView: View {
             .moneyKeyboardBar()
             // 계산 중임을 스크롤과 무관하게 보인다 (166번). 맨 위 요약의
             // `반영 중` 은 수익률 구역까지 내려가면 안 보였다.
-            .recalculatingBar(isProjecting)
+            .reportsProgress("반영 중", when: isProjecting)
             .sheet(item: $editingEvent, onDismiss: { newIDs.removeAll() }) {
                 CashEventEditView(event: $0, isNew: newIDs.contains($0.id))
             }
@@ -563,21 +563,17 @@ struct PlanView: View {
             // 새 값이 오기 전까지 **옛 값을 흐리게 남긴다**. 지우면 화면이
             // 깜빡이고, 그 깜빡임이 "고장났나" 로 읽힌다.
             .opacity(isProjecting ? 0.4 : 1)
-
-            if isProjecting { recalculatingRow }
         } else {
-            // 첫 계산. 아직 보여 줄 옛 값이 없다.
+            // 첫 계산. 아직 보여 줄 옛 값이 없다 — 진행은 아래 띠가 보인다 (169번).
             recalculatingRow
         }
     }
 
     private var recalculatingRow: some View {
-        HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
-            Text("반영 중")
-                .font(.scaled(12))
-                .foregroundStyle(Color.muted)
-            Spacer(minLength: 0)
+        LabeledContent("예상") {
+            Text("—")
+                .font(.figure(15, weight: .semibold))
+                .foregroundStyle(Color.faint)
         }
     }
 

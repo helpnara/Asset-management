@@ -109,7 +109,7 @@ struct SimulationView: View {
             }
             .readableWidth()
             // 머리글의 작은 아이콘은 손잡이까지 내려가면 안 보인다 (166번).
-            .recalculatingBar(isCalculating)
+            .reportsProgress("반영 중", when: isCalculating)
             .background(Color.ground)
             .navigationTitle("시뮬레이션")
             .navigationBarTitleDisplayMode(.inline)
@@ -185,9 +185,6 @@ struct SimulationView: View {
                 Text(outcome.map { Won.abbreviated($0.expected, suffix: "원") } ?? "—")
                     .font(.figure(26, weight: .bold))
                     .foregroundStyle(Color.ink)
-                if isCalculating {
-                    ProgressView().controlSize(.mini)
-                }
             }
 
             if let outcome, outcome.delta.minorUnits != 0 {

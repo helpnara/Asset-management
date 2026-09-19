@@ -81,6 +81,10 @@ struct ReviewCompleteView: View {
         }
     }
 
+    /// 계획선 대비. **본문 밖에서 한 번** 굴린다 (169번 B1) — 예전에는 계산
+    /// 속성이라 화면이 다시 그려질 때마다 궤적을 굴렸다. 재료가 바뀌면 다시.
+    @State private var planGap: PlanTrack.Gap?
+
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -93,6 +97,7 @@ struct ReviewCompleteView: View {
             }
         }
         .background(Color.canvas)
+        .task(id: gapStamp) { planGap = computePlanGap() }
         .navigationTitle("점검 완료")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -152,11 +157,18 @@ struct ReviewCompleteView: View {
 
     /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
     /// **그때 기준**으로 맞게 나온다 — 화면의 다른 숫자와 같은 규칙이다.
-    private var planGap: PlanTrack.Gap? {
+    private func computePlanGap() -> PlanTrack.Gap? {
         let projection = PlanTrack.projection(plan: Plan.primary(driftPlans), snapshots: snapshots,
                                               cashEvents: cashEvents, incomes: incomes,
                                               members: driftMembers)
         return PlanTrack.gap(projection, actual: total, at: session.weekAnchor)
+    }
+
+    /// 계획 · 스냅샷 · 목돈 · 수입 · 구성원이 바뀌면 다시 굴린다.
+    private var gapStamp: String {
+        [Plan.primary(driftPlans)?.editFingerprint ?? "",
+         "\(snapshots.count)", "\(cashEvents.count)", "\(incomes.count)", "\(driftMembers.count)",
+         "\(session.totalValueMinor)", "\(session.weekAnchor.timeIntervalSince1970)"].joined(separator: "|")
     }
 
     /// 이 점검 주에 넘긴 선들. 지난 점검을 열어 봐도 그 주의 것이 나온다.
