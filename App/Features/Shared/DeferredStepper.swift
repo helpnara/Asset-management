@@ -17,6 +17,10 @@ struct DeferredStepper<Label: View>: View {
     var range: ClosedRange<Int>
     var step: Int = 1
     var delay: Duration = .milliseconds(250)
+    /// 초안이 생기거나 사라질 때 부모에게 알린다 (169번 후속). 손잡이 밖의 라벨
+    /// (`75/40%` 같은 비중 표기)이 모델이 아니라 초안을 그리게 하려는 것이다 —
+    /// 모델이 따라오기 전까지 화면이 안 움직이면 "안 눌린다" 로 읽힌다.
+    var onDraft: ((Int?) -> Void)? = nil
     /// 지금 보이는 값(누르는 동안은 `draft`)을 받아 그린다.
     @ViewBuilder var label: (Int) -> Label
 
@@ -33,11 +37,18 @@ struct DeferredStepper<Label: View>: View {
                 try? await Task.sleep(for: delay)
                 guard !Task.isCancelled, let pending = draft else { return }
                 value = pending
-                draft = nil
+                // **모델이 따라온 것을 보고서야 초안을 내린다.** 바로 내리면 다음
+                // 누름이 아직 옛 값을 든 바인딩에서 출발해 한 칸이 사라진다 —
+                // 빌드 97 에서 두 번째 누름부터 안 먹던 것이 그것이다.
+                if value == pending { draft = nil }
             }
         }), in: range, step: step) {
             label(shown)
         }
+        .onChange(of: value) { _, latest in
+            if let draft, draft == latest { self.draft = nil }
+        }
+        .onChange(of: draft) { _, latest in onDraft?(latest) }
         .reportsProgress("반영 중", when: draft != nil)
     }
 }

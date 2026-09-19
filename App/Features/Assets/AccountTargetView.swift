@@ -25,8 +25,11 @@ struct AccountTargetView: View {
         Plan.primary(plans)?.driftTolerance ?? Allocation.Tolerance()
     }
 
+    /// 손잡이의 초안 — 종목 이름별 목표 bp (169번 후속).
+    @State private var drafts: [String: Int] = [:]
+
     private var slices: [Allocation.Slice] {
-        account.holdingSlices(tolerance: tolerance)
+        account.holdingSlices(tolerance: tolerance, overrides: drafts)
     }
 
     var body: some View {
@@ -52,7 +55,11 @@ struct AccountTargetView: View {
                             DeferredStepper(value: Binding(
                                 get: { holding.targetWeightBP ?? 0 },
                                 set: { holding.targetWeightBP = $0 }
-                            ), range: 0...10_000, step: 100) { _ in EmptyView() }
+                            ), range: 0...10_000, step: 100,
+                            onDraft: { draft in
+                                let label = holding.weightLabel
+                                if let draft { drafts[label] = draft } else { drafts.removeValue(forKey: label) }
+                            }) { _ in EmptyView() }
                             .labelsHidden()
                         }
                     }

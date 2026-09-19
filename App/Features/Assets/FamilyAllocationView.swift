@@ -16,6 +16,10 @@ struct FamilyAllocationView: View {
     @Fetched private var targets: [FamilyTarget]
     /// 비중은 종목 값에서 나온다 — 종목을 직접 감시해야 고친 값이 바로 보인다 (72번).
     @Fetched private var holdings: [Holding]
+
+    /// 손잡이의 초안 — `차원|키` 별 목표 bp (169번 후속). 비중 라벨이 모델 대신
+    /// 이것을 그려 누르는 즉시 움직인다.
+    @State private var drafts: [String: Int] = [:]
     @Environment(\.managedObjectContext) private var context
     // 가족 전체의 목표 비중은 가구 하나에 한 벌이다.
     @Environment(\.canManageHousehold) private var canManageHousehold
@@ -70,8 +74,13 @@ struct FamilyAllocationView: View {
 
     @ViewBuilder
     private func dimensionSection(_ dimension: FamilyTarget.Dimension) -> some View {
+        let prefix = "\(dimension)|"
+        let overrides = Dictionary(uniqueKeysWithValues: drafts
+            .filter { $0.key.hasPrefix(prefix) }
+            .map { (String($0.key.dropFirst(prefix.count)), $0.value) })
         let slices = FamilyAllocation.slices(members, dimension: dimension,
-                                             targets: targets, tolerance: tolerance)
+                                             targets: targets, tolerance: tolerance,
+                                             overrides: overrides)
         Section {
             ForEach(slices) { slice in
                 HStack(spacing: 8) {
@@ -83,8 +92,13 @@ struct FamilyAllocationView: View {
                     if canManageHousehold {
                         // 모델에 직접 묶지 않는다 (169번 후속) — 한 칸마다 저장소가
                         // 바뀌어 멈칫거렸다. 쓰기는 손을 멈춘 뒤 한 번.
-                        DeferredStepper(value: binding(dimension, key: key(for: slice, in: dimension)),
-                                        range: 0...10_000, step: 100) { _ in EmptyView() }
+                        let key = key(for: slice, in: dimension)
+                        DeferredStepper(value: binding(dimension, key: key),
+                                        range: 0...10_000, step: 100,
+                                        onDraft: { draft in
+                                            let id = "\(dimension)|\(key)"
+                                            if let draft { drafts[id] = draft } else { drafts.removeValue(forKey: id) }
+                                        }) { _ in EmptyView() }
                             .labelsHidden()
                     }
                 }

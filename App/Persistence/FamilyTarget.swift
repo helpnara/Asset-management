@@ -72,9 +72,16 @@ extension Account {
     ///
     /// 계좌마다 투자 목적과 규모가 다르므로 계좌를 넘어 합치지 않는다 —
     /// 같은 종목이 IRP·연금저축·ISA 에 흩어져 있어도 각 계좌 안에서 따로 잰다.
-    func holdingSlices(tolerance: Allocation.Tolerance) -> [Allocation.Slice] {
+    /// `overrides` 는 화면이 아직 모델에 안 쓴 초안 — 라벨(종목 이름)별 목표 bp
+    /// (169번 후속). 손잡이를 누르는 동안 비중 표기가 초안을 따라 움직이게.
+    func holdingSlices(tolerance: Allocation.Tolerance,
+                       overrides: [String: Int] = [:]) -> [Allocation.Slice] {
         guard weighsHoldings else { return [] }
-        return Allocation.slices(allocationEntries, tolerance: tolerance)
+        let entries = allocationEntries.map { entry -> Allocation.Entry in
+            guard let bp = overrides[entry.label] else { return entry }
+            return Allocation.Entry(key: entry.key, label: entry.label, amount: entry.amount, targetBP: bp)
+        }
+        return Allocation.slices(entries, tolerance: tolerance)
     }
 
     /// 적어 둔 목표의 합. **100%(10,000)여야 한다** — 계좌 안 종목 비중의 합이
@@ -259,14 +266,17 @@ enum FamilyAllocation {
     }
 
     /// 지역·자산군 한 축을 잰다. 목표는 `targets` 에서 가져온다.
+    /// `overrides` 는 화면이 아직 모델에 안 쓴 초안 — 키별 목표 bp (169번 후속).
     static func slices(_ members: [Member],
                        dimension: FamilyTarget.Dimension,
                        targets: [FamilyTarget],
-                       tolerance: Allocation.Tolerance) -> [Allocation.Slice] {
+                       tolerance: Allocation.Tolerance,
+                       overrides: [String: Int] = [:]) -> [Allocation.Slice] {
         var targetByKey: [String: Int] = [:]
         for target in targets where target.dimension == dimension {
             targetByKey[target.key, default: 0] += target.targetBP
         }
+        for (key, bp) in overrides { targetByKey[key] = bp }
 
         // 목표는 한 축에 한 번만 붙인다. 종목마다 붙이면 합쳐지면서 몇 배가 된다.
         var attached = Set<String>()
