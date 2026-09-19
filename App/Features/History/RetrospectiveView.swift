@@ -35,7 +35,7 @@ struct RetrospectiveView: View {
 
     private var summary: Retrospective.Summary {
         Retrospective.summarize(period: period, snapshots: snapshots, sessions: sessions,
-                                members: members, plan: plans.first, cashEvents: cashEvents,
+                                members: members, plan: Plan.primary(plans), cashEvents: cashEvents,
                                 incomes: incomes, diary: diary, logs: logs)
     }
 

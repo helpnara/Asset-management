@@ -355,7 +355,7 @@ struct WeeklyReviewView: View {
     /// 이 종목이 **자기 계좌 안에서** 목표에서 얼마나 벗어났나
     /// (docs/08-feedback.md 15번).
     private func driftSlice(_ holding: Holding) -> Allocation.Slice? {
-        holding.driftSlice(tolerance: plans.first?.driftTolerance ?? Allocation.Tolerance())
+        holding.driftSlice(tolerance: Plan.primary(plans)?.driftTolerance ?? Allocation.Tolerance())
     }
 
     private func visitedCount(_ member: Member) -> Int {
@@ -713,7 +713,7 @@ struct WeeklyReviewView: View {
         Celebrations.check(previousTotal: session.previousTotalValueMinor,
                            newTotal: rollup.netWorth.minorUnits,
                            firstTotal: snapshots.first.map(\.netWorthMinor),
-                           targetMinor: plans.first?.targetAmountMinor ?? 0,
+                           targetMinor: Plan.primary(plans)?.targetAmountMinor ?? 0,
                            streak: streakAfter, in: context)
 
         // **종목마다 그 주의 값을 남긴다** (A3). 종목별 궤적·되돌리기의 재료.
@@ -721,7 +721,7 @@ struct WeeklyReviewView: View {
 
         // **그 주의 진단 판정을 남긴다** (A9). 진단은 늘 현재 값으로만 계산하므로
         // 여기 남기지 않으면 "몇 주째 조치인가" 를 영영 알 수 없다.
-        if let plan = plans.first {
+        if let plan = Plan.primary(plans) {
             let projection = plan.projection(from: rollup.netWorth, cashEvents: cashEvents,
                                              incomes: incomes, members: members)
             let result = Diagnostics.run(plan.diagnosticsInput(

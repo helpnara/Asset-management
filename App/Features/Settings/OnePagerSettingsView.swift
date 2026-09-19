@@ -16,7 +16,7 @@ struct OnePagerSettingsView: View {
             if !canManageHousehold {
                 Section { ReadOnlyNote(text: "1페이지 문서는 관리자만 고칠 수 있습니다.") }
             }
-            if let plan = plans.first {
+            if let plan = Plan.primary(plans) {
                 let bind = plan.bindings
                 Section {
                     TextField("우리 가족 노후자금 준비", text: bind.title)
@@ -56,8 +56,8 @@ struct OnePagerSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         // 여기서 고친 것도 계획의 수정 시각에 남는다 — **이 기기에서 고쳤을 때만**
         // (165번 ③). 밖에서 들어온 변경은 `hasChanges` 가 거짓이다.
-        .onChange(of: plans.first?.editFingerprint) { previous, _ in
-            guard previous != nil, let plan = plans.first, plan.hasChanges else { return }
+        .onChange(of: Plan.primary(plans)?.editFingerprint) { previous, _ in
+            guard previous != nil, let plan = Plan.primary(plans), plan.hasChanges else { return }
             plan.touch()
         }
     }

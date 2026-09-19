@@ -590,7 +590,7 @@ struct DashboardView: View {
 
     // MARK: - 궤적
 
-    private var plan: Plan? { plans.first }
+    private var plan: Plan? { Plan.primary(plans) }
 
     /// **굴리는 것은 화면 그리기 밖에서** (157번, 153번과 같은 규칙).
     /// 화면은 마지막으로 끝난 결과를 그리기만 한다.

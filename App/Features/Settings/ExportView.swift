@@ -223,7 +223,7 @@ struct ExportView: View {
         isRendering = true
         defer { isRendering = false }
 
-        let plan = plans.first
+        let plan = Plan.primary(plans)
         // 미리보기와 **같은 함수**로 만든다. 따로 만들면 조용히 어긋난다.
         let page = OnePagerBuilder.make(plan: plan, members: members, holdings: holdings,
                                         cashEvents: cashEvents, incomes: incomes,

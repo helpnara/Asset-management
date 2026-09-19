@@ -22,7 +22,7 @@ struct AccountTargetView: View {
     private var canEdit: Bool { environment.mayEdit(account.owner) }
 
     private var tolerance: Allocation.Tolerance {
-        plans.first?.driftTolerance ?? Allocation.Tolerance()
+        Plan.primary(plans)?.driftTolerance ?? Allocation.Tolerance()
     }
 
     private var slices: [Allocation.Slice] {
@@ -110,7 +110,7 @@ struct AccountTargetView: View {
     /// docs/08-feedback.md 51번). 여기만 따로 셈하던 때는 부채를 빼지 않은
     /// 자산으로 비중을 내서 두 화면의 "이 사람 몫" 이 달랐다.
     private func ownerMonthlyContribution(_ owner: Member) -> Int {
-        guard let plan = plans.first else {
+        guard let plan = Plan.primary(plans) else {
             return owner.monthlyContributionMinor + owner.employerMatchMinor
         }
         let family = Money(minorUnits: members.reduce(0) { $0 + $1.netTotalMinor }, currency: .krw)

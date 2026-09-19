@@ -70,8 +70,8 @@ enum DiagnosticReport {
             let latest = row.latest.map { $0.formatted(date: .numeric, time: .standard) } ?? "-"
             lines.append("\(row.entity) \(row.count)건 · \(row.digest) · \(latest)")
         }
-        let plans = context.all(Plan.self,
-                                sortedBy: [NSSortDescriptor(key: "createdAt", ascending: true)])
+        // 화면과 같은 순서다 (`Plan.ordered`, 167번). 1번이 화면이 쓰는 계획이다.
+        let plans = Plan.ordered(context.all(Plan.self))
         if let plan = plans.first {
             let groups = DataFingerprint.planGroups(plan)
                 .map { "\($0.group) \($0.digest)" }.joined(separator: " · ")

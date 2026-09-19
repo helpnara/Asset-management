@@ -13,7 +13,7 @@ struct ReviewCompleteView: View {
 
     /// 목표에서 벗어난 종목 수. 가족 전체를 센다.
     private var driftCount: Int {
-        let tolerance = driftPlans.first?.driftTolerance ?? Allocation.Tolerance()
+        let tolerance = Plan.primary(driftPlans)?.driftTolerance ?? Allocation.Tolerance()
         return driftMembers.reduce(0) { $0 + $1.driftingHoldingCount(tolerance: tolerance) }
     }
 
@@ -153,7 +153,7 @@ struct ReviewCompleteView: View {
     /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
     /// **그때 기준**으로 맞게 나온다 — 화면의 다른 숫자와 같은 규칙이다.
     private var planGap: PlanTrack.Gap? {
-        let projection = PlanTrack.projection(plan: driftPlans.first, snapshots: snapshots,
+        let projection = PlanTrack.projection(plan: Plan.primary(driftPlans), snapshots: snapshots,
                                               cashEvents: cashEvents, incomes: incomes,
                                               members: driftMembers)
         return PlanTrack.gap(projection, actual: total, at: session.weekAnchor)

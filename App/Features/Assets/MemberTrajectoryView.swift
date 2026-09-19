@@ -27,7 +27,7 @@ struct MemberTrajectoryView: View {
     @State private var projected: ProjectionResult?
     @State private var isProjecting = false
 
-    private var plan: Plan? { plans.first }
+    private var plan: Plan? { Plan.primary(plans) }
 
     var body: some View {
         ScrollView {

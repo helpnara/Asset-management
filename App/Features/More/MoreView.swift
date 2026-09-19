@@ -30,6 +30,7 @@ struct MoreView: View {
         case principles
         case notifications
         case editGrants
+        case planCleanup
         case diagnostics
         case todos
         case milestones
@@ -221,6 +222,7 @@ struct MoreView: View {
                 case .history: PastRecordsView()
                 case .notifications: NotificationSettingsView()
                 case .editGrants: EditGrantsView()
+                case .planCleanup: PlanCleanupView()
                 case .diagnostics: DiagnosticsView()
                 case .todos: TodoListView()
                 case .milestones: MilestoneListView()

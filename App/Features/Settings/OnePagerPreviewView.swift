@@ -48,7 +48,7 @@ struct OnePagerPreviewView: View {
     }
 
     private func page(scale: CGFloat) -> some View {
-        OnePagerBuilder.make(plan: plans.first, members: members, holdings: holdings,
+        OnePagerBuilder.make(plan: Plan.primary(plans), members: members, holdings: holdings,
                              cashEvents: cashEvents, incomes: incomes,
                              principles: principles, todos: todos, snapshots: snapshots)
             // **제 크기로만 선다.** 바깥이 높이를 제안해도 안 받는다 — 확대(137)에서

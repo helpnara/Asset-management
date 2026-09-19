@@ -21,7 +21,7 @@ struct FamilyAllocationView: View {
     @Environment(\.canManageHousehold) private var canManageHousehold
 
     private var tolerance: Allocation.Tolerance {
-        plans.first?.driftTolerance ?? Allocation.Tolerance()
+        Plan.primary(plans)?.driftTolerance ?? Allocation.Tolerance()
     }
 
     var body: some View {
@@ -97,7 +97,7 @@ struct FamilyAllocationView: View {
         } footer: {
             // 미국 목표는 여기가 원본이다 (A4). 진단의 "국가 배분" 이 이 값을 읽는다.
             Text(dimension == .region
-                 ? dimension.footnote + " 여기 적은 미국 목표를 자산 진단의 국가 배분이 씁니다 — 안 적으면 미국 \(PercentFormatter.integer(Decimal(plans.first?.usTargetBP ?? 5_000) / 10_000))% 가 기본입니다."
+                 ? dimension.footnote + " 여기 적은 미국 목표를 자산 진단의 국가 배분이 씁니다 — 안 적으면 미국 \(PercentFormatter.integer(Decimal(Plan.primary(plans)?.usTargetBP ?? 5_000) / 10_000))% 가 기본입니다."
                  : dimension.footnote)
         }
     }

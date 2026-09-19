@@ -48,6 +48,28 @@ struct FamilyShareSection: View {
 
     private var familySection: some View {
         Section {
+            // **계획이 둘 이상이다** (167번). 백업 되돌리기가 같은 계획을 한 벌 더
+            // 만들거나, 새 기기의 첫 실행이 가져오기 전에 빈 계획을 만들면 이렇게
+            // 된다. 기기마다 다른 것을 보고 고치게 되므로 하나만 남긴다 — 어느
+            // 것이 맞는지는 사람이 고른다. 참가자 기기는 공유 존을 못 지우므로
+            // 관리자 기기에서만 내놓는다.
+            if plans.count > 1 && !sharing.state.isParticipant {
+                NavigationLink(value: MoreView.Destination.planCleanup) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("계획이 \(plans.count)개입니다")
+                                .foregroundStyle(Color.loss)
+                            Spacer()
+                            Text("정리")
+                                .foregroundStyle(Color.muted)
+                        }
+                        Text("기기마다 다른 계획을 보고 있을 수 있습니다. 하나만 남기세요.")
+                            .font(.scaled(11))
+                            .foregroundStyle(Color.muted)
+                    }
+                }
+            }
+
             // 초대를 받아들인 기기는 참가자다 — 역할 미리보기가 뭐라고 하든.
             // 참가자 쪽에서 "가족 초대" 를 내놓으면 공유가 둘이 된다.
             if canManageHousehold && !sharing.didAcceptInvitation && !sharing.state.isParticipant {
@@ -233,7 +255,7 @@ struct FamilyShareSection: View {
 
     /// 상대가 초대 화면에서 볼 이름. 계획 제목이 곧 이 가족의 이름이다.
     private var title: String {
-        plans.first?.title ?? "우리 가족"
+        Plan.primary(plans)?.title ?? "우리 가족"
     }
 
 }

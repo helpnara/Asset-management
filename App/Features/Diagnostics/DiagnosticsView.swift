@@ -36,10 +36,10 @@ struct DiagnosticsView: View {
 
     var body: some View {
         Group {
-            if let plan = plans.first {
+            if let plan = Plan.primary(plans) {
                 content(plan)
             } else {
-                ProgressView().task { _ = Plan.current(in: context) }
+                MissingPlanView()
             }
         }
         .task(id: projectionInput) { await runProjection(projectionInput) }
@@ -49,13 +49,13 @@ struct DiagnosticsView: View {
         .navigationTitle("자산 진단")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isEditingCriteria) {
-            if let plan = plans.first { DiagnosticsCriteriaView(plan: plan) }
+            if let plan = Plan.primary(plans) { DiagnosticsCriteriaView(plan: plan) }
         }
     }
 
     /// 궤적에 들어가는 값들을 `Sendable` 값 하나로. 달라질 때만 다시 굴린다.
     private var projectionInput: ProjectionInput? {
-        plans.first?.projectionInput(from: rollup.netWorth, cashEvents: cashEvents,
+        Plan.primary(plans)?.projectionInput(from: rollup.netWorth, cashEvents: cashEvents,
                                      incomes: incomes, members: members)
     }
 

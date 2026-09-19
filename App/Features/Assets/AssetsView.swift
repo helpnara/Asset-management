@@ -515,7 +515,7 @@ struct AssetsView: View {
 
     /// 이 종목이 **자기 계좌 안에서** 어느 상태인가 (docs/08-feedback.md 15번).
     private func driftSlice(_ holding: Holding) -> Allocation.Slice? {
-        holding.driftSlice(tolerance: plans.first?.driftTolerance ?? Allocation.Tolerance())
+        holding.driftSlice(tolerance: Plan.primary(plans)?.driftTolerance ?? Allocation.Tolerance())
     }
 
     /// 이 계좌가 주인의 자산에서 차지하는 몫.

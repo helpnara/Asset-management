@@ -101,10 +101,10 @@ struct SimulationView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let plan = plans.first {
+                if let plan = Plan.primary(plans) {
                     content(plan)
                 } else {
-                    ProgressView().task { _ = Plan.current(in: context) }
+                    MissingPlanView()
                 }
             }
             .readableWidth()
@@ -606,7 +606,7 @@ struct SimulationView: View {
                     scenarioRow(scenario, current: knobs)
                 }
                 // **나란히 견주기** (102번, D2). 둘 이상이면 표로 — 지금 설정도 한 줄.
-                if scenarios.count >= 2, let plan = plans.first {
+                if scenarios.count >= 2, let plan = Plan.primary(plans) {
                     compareTable(plan, current: knobs)
                 }
             }

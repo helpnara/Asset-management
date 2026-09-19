@@ -81,6 +81,23 @@ struct RootView: View {
         return latest > AppUpdate.currentBuild ? latest : nil
     }
 
+    /// **손 안 댄 계획을 치운다** (167번). 가져오기가 끝난 뒤 한 번.
+    ///
+    /// 첫 실행이 가져오기 전에 만든 빈 계획은 값이 전부 기본값이라 지워도
+    /// 잃는 것이 없다. 고친 적 있는 계획끼리는 여기서 안 건드린다 — 그건
+    /// `더보기 → 가족 → 계획 정리` 에서 사람이 고른다. 참가자 기기는 공유
+    /// 존의 계획을 못 지우므로 관리자 기기에서만 한다.
+    private func pruneUntouchedPlans() {
+        guard !trial.isActive, !sharing.state.isParticipant else { return }
+        let context = Persistence.viewContext
+        let pruned = Plan.pruneUntouchedDuplicates(in: context)
+        guard pruned > 0 else { return }
+        ChangeLogger.record(.other, subject: "계획 정리",
+                            summary: "손대지 않은 빈 계획 \(pruned)개를 지웠습니다",
+                            in: context)
+        try? context.save()
+    }
+
     /// **가로로 누운 넓은 화면이면 왼쪽에 메뉴를 세운다** (161번).
     ///
     /// 아이폰은 가로로 눕혀도 좁은 등급이라 여기 걸리지 않는다 — 아래 탭
@@ -118,6 +135,7 @@ struct RootView: View {
             .onChange(of: monitor.hasFinishedImport) { _, finished in
                 if finished {
                     sharing.refreshState()
+                    pruneUntouchedPlans()
                     // 같은 주 기록이 둘이면 하나로 (96번). 가져온 뒤라야 둘 다 보인다.
                     WeekDedup.run(in: context)
                     recordBuild()

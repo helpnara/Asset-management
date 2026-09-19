@@ -336,7 +336,7 @@ extension BackupDocument {
                 )
             }
 
-        let plan = context.all(Plan.self).first.map { plan in
+        let plan = Plan.primary(context.all(Plan.self)).map { plan in
             PlanData(
                 id: plan.id, title: plan.title,
                 startedOn: plan.startedOn, asOfNote: plan.asOfNote,

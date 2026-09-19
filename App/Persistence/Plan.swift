@@ -549,19 +549,73 @@ extension Plan {
         )
     }
 
+    /// **화면이 쓸 순서로 정렬한다** — 어느 기기에서 돌려도 같은 순서다 (167번).
+    ///
+    /// 만든 시각이 이른 것이 앞이다. **만든 시각이 같으면 가장 최근에 고친
+    /// 것이 앞이다.** 백업 되돌리기는 `id` 와 만든 시각을 그대로 베끼므로
+    /// 같은 계획이 두 객체가 될 수 있는데, 그때 `createdAt` 만으로 정렬하면
+    /// 동점이고 동점은 기기마다 다르게 풀린다 — 아이폰은 하나, 아이패드는
+    /// 다른 하나를 "첫 번째" 로 골라 서로 다른 계획을 고치고 있었다. 고친
+    /// 시각은 두 기기가 같은 값을 받으므로 동점을 같은 쪽으로 푼다.
+    static func ordered(_ plans: [Plan]) -> [Plan] {
+        plans.sorted { a, b in
+            if a.createdAt != b.createdAt { return a.createdAt < b.createdAt }
+            let ua = a.updatedAt ?? .distantPast
+            let ub = b.updatedAt ?? .distantPast
+            if ua != ub { return ua > ub }
+            if a.id != b.id { return a.id.uuidString < b.id.uuidString }
+            // 여기까지 같으면 사실상 같은 계획이다. 그래도 순서는 고정한다.
+            return a.objectID.uriRepresentation().absoluteString
+                < b.objectID.uriRepresentation().absoluteString
+        }
+    }
+
+    /// 화면이 쓰는 계획 하나. **모든 화면이 이것을 읽는다** — `plans.first` 가
+    /// 아니라. 정렬 규칙은 `ordered(_:)` 하나다.
+    static func primary(_ plans: [Plan]) -> Plan? {
+        ordered(plans).first
+    }
+
+    /// 사람이 고친 적이 있나. `touch()` 가 찍는 `updatedAt` 이 기준이다 —
+    /// 앱이 스스로 만든 계획은 값이 전부 기본값이고 이것이 비어 있다.
+    var isUntouched: Bool { updatedAt == nil }
+
+    /// **손 안 댄 계획을 치운다.** 치운 수를 돌려준다 (167번).
+    ///
+    /// 계획이 둘 이상인데 그중 하나는 사람이 한 번도 고치지 않았다면, 그것은
+    /// 첫 실행이 가져오기보다 먼저 만든 빈 껍데기다 — 아이패드가 9/11 에
+    /// 그렇게 하나 만들었다. 값이 전부 기본값이므로 지워도 잃는 것이 없다.
+    /// 고친 적 있는 것끼리는 여기서 안 건드린다 — 어느 것이 맞는지는 사람이
+    /// 고른다 (`PlanCleanupView`).
+    static func pruneUntouchedDuplicates(in context: NSManagedObjectContext) -> Int {
+        let plans = ordered(context.all(Plan.self))
+        guard plans.count > 1, plans.contains(where: { !$0.isUntouched }) else { return 0 }
+        var pruned = 0
+        for plan in plans where plan.isUntouched {
+            context.delete(plan)
+            pruned += 1
+        }
+        return pruned
+    }
+
     /// 저장소에 하나뿐인 계획을 꺼내고, 없으면 만든다.
     ///
-    /// 둘 이상이면 **가장 오래된 가구의 가장 오래된 계획**이다. 정렬 없는
-    /// `.first` 는 순서를 보장하지 않아서, 참가자 기기에 잠깐 가구가 둘일 때
-    /// 부를 때마다 다른 계획을 줄 수 있다.
+    /// 둘 이상이면 **가장 오래된 가구의 계획 중 `ordered` 의 첫 번째**다.
+    /// 화면의 `primary` 와 같은 규칙이어야 저장이 매다는 계획과 화면이 보는
+    /// 계획이 같다. 정렬 없는 `.first` 는 순서를 보장하지 않아서, 참가자
+    /// 기기에 잠깐 가구가 둘일 때 부를 때마다 다른 계획을 줄 수 있다.
+    ///
+    /// **만드는 것은 마지막 수단이다.** iCloud 에서 아직 안 왔을 뿐인데
+    /// 여기서 만들면 계획이 둘이 된다 — 화면은 `MissingPlanView` 로 가져오기가
+    /// 끝나기를 기다린 뒤에 부른다.
     static func current(in context: NSManagedObjectContext) -> Plan {
         let byAge = [NSSortDescriptor(key: "createdAt", ascending: true)]
         if let household = context.all(Household.self, sortedBy: byAge).first,
            let plans = household.plans as? Set<Plan>,
-           let existing = plans.min(by: { $0.createdAt < $1.createdAt }) {
+           let existing = primary(Array(plans)) {
             return existing
         }
-        if let existing = context.all(Plan.self, sortedBy: byAge).first {
+        if let existing = primary(context.all(Plan.self)) {
             return existing
         }
         // Core Data 는 만드는 순간 컨텍스트에 들어간다 — `insert` 를 따로 안 부른다.

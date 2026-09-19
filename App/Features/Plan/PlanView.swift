@@ -36,10 +36,10 @@ struct PlanView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let plan = plans.first {
+                if let plan = Plan.primary(plans) {
                     form(plan)
                 } else {
-                    ProgressView().task { _ = Plan.current(in: context) }
+                    MissingPlanView()
                 }
             }
             // 넓은 화면에서 라벨과 금액이 화면 양 끝으로 벌어지지 않게 (161번).
@@ -58,8 +58,8 @@ struct PlanView: View {
             }
             // 계획의 어떤 값이든 달라지면 수정 시각을 찍는다. 화면을 열기만
             // 해서는 안 찍힌다 — 지문이 실제로 달라져야 한다.
-            .onChange(of: plans.first?.editFingerprint) { previous, _ in
-                guard let previous, let plan = plans.first else { return }   // 첫 진입은 변경이 아니다
+            .onChange(of: Plan.primary(plans)?.editFingerprint) { previous, _ in
+                guard let previous, let plan = Plan.primary(plans) else { return }   // 첫 진입은 변경이 아니다
                 // **이 기기에서 고친 것만 도장을 찍는다** (165번 ③). 다른 기기의
                 // 변경이 iCloud 로 들어와도 지문은 바뀌는데, 그건 이 기기가 고친
                 // 것이 아니다 — 그런데도 `마지막 수정` 을 찍고 이력에 "고쳤습니다"
