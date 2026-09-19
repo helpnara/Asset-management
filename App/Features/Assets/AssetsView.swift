@@ -184,6 +184,12 @@ struct AssetsView: View {
                 try? await Task.sleep(for: .milliseconds(400))
                 editingMember = first
             }
+            // 구성원 순서 시트 — `대표` 띠지가 맨 위 사람에게 서는지 (168번).
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-startMemberOrder") else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                isOrderingMembers = true
+            }
             .onChange(of: route.wantsNewMember, initial: true) { _, wants in
                 guard wants else { return }
                 route.wantsNewMember = false
@@ -776,12 +782,22 @@ struct AssetsView: View {
 struct MemberOrderView: View {
     let members: [Member]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
+
+    /// **이 화면이 직접 들고 있는 순서** (168번 6번 후속).
+    ///
+    /// 예전에는 부모가 넘긴 `members` 를 그대로 그리고 `onMove` 에서 `sortIndex`
+    /// 만 바꿨다. 그러면 새 순서가 부모의 `@Fetched` 를 거쳐 시트로 되돌아와야
+    /// 줄이 옮겨 가는데, 시트가 떠 있는 동안 그 갱신이 오지 않으면 끌어 놓은
+    /// 줄이 제자리로 튕기고 띠지도 안 옮겨 간다 — 기기에서 그렇게 보였다.
+    /// 순서는 여기서 움직이고, 저장소에는 그때그때 적고 곧바로 저장한다.
+    @State private var order: [Member] = []
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(members) { member in
+                    ForEach(order) { member in
                         HStack(spacing: 8) {
                             Circle()
                                 .fill(Color.member(member.colorIndex))
@@ -794,31 +810,46 @@ struct MemberOrderView: View {
                                 .foregroundStyle(Color.faint)
                             // **맨 위가 가족 대표다** (168번). 순서가 곧 대표라
                             // 여기 표시가 "정하는 자리" 다. 따로 고르는 칸은 없다.
-                            if member.objectID == members.familyHead?.objectID {
+                            if member.objectID == order.first?.objectID {
                                 HeadBadge()
                             }
                         }
                     }
                     .onMove { offsets, destination in
-                        var items = members
-                        items.move(fromOffsets: offsets, toOffset: destination)
-                        for (position, member) in items.enumerated() {
-                            member.sortIndex = position
-                        }
+                        order.move(fromOffsets: offsets, toOffset: destination)
+                        apply()
                     }
                 } footer: {
                     Text("맨 위 사람이 가족 대표입니다 — 자산 탭 이름 옆에 `대표` 띠지가 붙고, 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다.")
                 }
             }
             .environment(\.editMode, .constant(.active))
+            .onAppear {
+                if order.isEmpty { order = members }
+            }
             .navigationTitle("구성원 순서")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("완료") { dismiss() }.fontWeight(.semibold)
+                    Button("완료") {
+                        apply()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
                 }
             }
         }
+    }
+
+    /// 화면의 순서를 `sortIndex` 에 적고 **바로 저장한다.** 자동 저장(400ms)을
+    /// 기다리지 않는 이유는, 시트를 닫는 순간 자산 탭과 계획 탭이 새 대표를
+    /// 읽어야 하기 때문이다 — 저장 전이면 두 화면이 옛 대표를 한 번 더 그린다.
+    private func apply() {
+        for (position, member) in order.enumerated() where member.sortIndex != position {
+            member.sortIndex = position
+        }
+        guard context.hasChanges else { return }
+        try? context.save()
     }
 }
 

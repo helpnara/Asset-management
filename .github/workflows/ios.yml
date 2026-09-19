@@ -396,6 +396,8 @@ jobs:
           # **구성원 편집 폼** (151번). 은퇴 목표가 연도 스테퍼로 서는지,
           # 색 견본이 한 줄에 들어가는지 그림으로 본다.
           shoot 28-member-edit.png -skipOnboarding -seedSampleData -startTab assets -startMemberEdit
+          # **구성원 순서 시트** (168번). 맨 위 사람에게 `대표` 띠지가 서는지.
+          shoot 30-member-order.png -skipOnboarding -seedSampleData -startTab assets -startMemberOrder
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL
