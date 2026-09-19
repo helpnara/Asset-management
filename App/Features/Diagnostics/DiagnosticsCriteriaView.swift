@@ -53,10 +53,17 @@ struct DiagnosticsCriteriaView: View {
                     // 미국 목표는 한 군데다 (A4). 가족 자산 배분에 적혀 있으면 그것을
                     // 읽고 여기서는 안 고친다 — 두 화면이 다른 값을 말하지 않게.
                     if let bp = plan.familyUSTargetBP {
-                        LabeledContent("미국 목표 비중") {
-                            Text("\(PercentFormatter.integer(Decimal(bp) / 10_000))% · 가족 자산 배분")
-                                .font(.figure(13))
-                                .foregroundStyle(Color.muted)
+                        // **줄을 누르면 가족 자산 배분이 열린다** (171번). 원본은 거기
+                        // 하나다 — 지역 목표는 한국 · 미국 · 그 외가 합쳐 100 이라
+                        // 여기서 미국만 고칠 수 없다. 대신 찾아가는 길을 한 번으로.
+                        NavigationLink {
+                            FamilyAllocationView()
+                        } label: {
+                            LabeledContent("미국 목표 비중") {
+                                Text("\(PercentFormatter.integer(Decimal(bp) / 10_000))% · 가족 자산 배분")
+                                    .font(.figure(13))
+                                    .foregroundStyle(Color.muted)
+                            }
                         }
                     } else {
                         percentRow("미국 목표 비중", $plan.usTargetBP, range: 0...10_000, step: 100)
@@ -67,7 +74,7 @@ struct DiagnosticsCriteriaView: View {
                 } footer: {
                     // 삼항식은 `String` 이라 마크다운이 안 먹는다 — `LocalizedStringKey` 로.
                     Text(LocalizedStringKey(plan.familyUSTargetBP != nil
-                         ? "미국 목표는 자산 탭 → 가족 총자산 → 가족 자산 배분의 지역 목표를 씁니다. 거기서 고치세요. 목표에서 허용 오차만큼 벗어나도 조치로 보지 않습니다."
+                         ? "미국 목표는 **가족 자산 배분의 지역 목표**입니다 — 한국 · 미국 · 그 외가 합쳐 100% 라 거기서 함께 정합니다. 줄을 누르면 그 화면이 열립니다. 목표에서 허용 오차만큼 벗어나도 조치로 보지 않습니다."
                          : "투자자산 기준이고 **기본은 미국 50 · 한국 50**입니다. 가족 자산 배분에서 지역 목표를 적으면 그 값을 씁니다. 나머지가 전부 한국이라고 보지 않습니다 — 그 외 국가도 따로 셉니다. 목표에서 허용 오차만큼 벗어나도 조치로 보지 않습니다."))
                 }
 
