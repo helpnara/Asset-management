@@ -50,6 +50,20 @@ struct RootView: View {
         return !sharing.state.isResolved || !monitor.hasFinishedImport
     }
 
+    /// **iCloud 에서 자료가 오고 있나** (160번).
+    ///
+    /// 기기를 새로 깔거나 앱을 다시 설치하면 자료가 **한 번에 오지 않는다.**
+    /// 구성원만 먼저 오고 계좌·종목·기록이 뒤따르는 동안, 예전에는 아무 말도
+    /// 없어서 "내 기록이 어디 갔지?" 가 됐다. 빈 화면일 때만 뜨던 안내
+    /// (`SyncLoadingHint`, 53번)는 **일부만 온 동안에는 안 보였다.**
+    ///
+    /// 그래서 띠는 자료가 있든 없든, 어느 탭에 있든 뜬다. 가져오기가 끝나면
+    /// 스스로 사라진다.
+    private var isImporting: Bool {
+        guard Persistence.mode == .cloudKit, !trial.isActive else { return false }
+        return monitor.importsInFlight > 0 || !monitor.hasFinishedImport
+    }
+
     /// 참가자였는데 공유가 사라졌다 — 가져오기가 끝난 뒤에도 그렇다면 진짜다 (79번).
     private var isShareLost: Bool {
         sharing.state.shareLost && monitor.hasFinishedImport
@@ -131,6 +145,10 @@ struct RootView: View {
     private var notices: some View {
         if trial.isActive {
             trialBar
+        } else if isImporting {
+            noticeBar(icon: "icloud.and.arrow.down",
+                      text: "iCloud 에서 기록을 받아오는 중 — 화면이 곧 채워집니다",
+                      spinning: true)
         } else if isRolePending {
             noticeBar(icon: "icloud", text: "iCloud 에서 역할을 확인하는 중 — 잠시 뒤 편집이 열립니다",
                       spinning: true)

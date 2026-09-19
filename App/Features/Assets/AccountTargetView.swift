@@ -135,9 +135,10 @@ struct AccountTargetView: View {
         let ownerTotal = owner.assetTotalMinor
         let monthly = ownerMonthlyContribution(owner)
         guard monthly > 0, ownerTotal > 0, account.totalMinor > 0 else { return [] }
-        // `Decimals` 는 Core 내부 타입이라 여기서 못 쓴다. 정수로 계산한다 —
-        // 원 단위라 나눗셈 한 번의 버림은 1원이고, 어차피 어림잡는 값이다.
-        let forThisAccount = monthly * account.totalMinor / ownerTotal
+        // 정수로 계산한다 — 원 단위라 나눗셈 한 번의 버림은 1원이고, 어차피
+        // 어림잡는 값이다. **금액 × 금액이라 중간값이 쉽게 넘친다** (159번) —
+        // 월 적립과 계좌 자산을 그냥 곱하면 10²⁰ 도 나온다.
+        let forThisAccount = SafeMath.share(monthly, times: account.totalMinor, over: ownerTotal)
         guard forThisAccount > 0 else { return [] }
         return Allocation.contributionSplit(
             slices,

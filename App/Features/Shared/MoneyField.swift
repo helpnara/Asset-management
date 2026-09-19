@@ -32,9 +32,10 @@ struct MoneyField: View {
     /// 구별되지 않는다 (156번).
     @State private var note: String?
 
-    private static let maxDigits = 15
-    /// 원 단위 열다섯 자리. 그 위로는 만들지 않는다.
-    static let ceiling = 999_999_999_999_999
+    private static let maxDigits = 13
+    /// **1조 원.** 예전에는 1,000조였는데, 그 값이 목표 금액(× 25)과 23년
+    /// 복리를 거치면 `Int` 밖으로 나가 앱이 켜지지 않았다 (159번).
+    static let ceiling = MoneyLimits.maxMinorUnits
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
@@ -169,8 +170,7 @@ struct MoneyField: View {
             note.wrappedValue = "숫자를 먼저 넣으세요"
             return
         }
-        let (product, overflowed) = current.multipliedReportingOverflow(by: factor)
-        let next = (overflowed || product > ceiling) ? ceiling : product
+        let (next, hitLimit) = SafeMath.multiplyClamping(current, by: factor, limit: ceiling)
         guard next != current else {
             note.wrappedValue = "더 크게는 못 넣습니다"
             return
@@ -179,7 +179,7 @@ struct MoneyField: View {
         // **글자도 함께 민다.** 이것이 156번의 고갱이다 — 모델만 바꾸면
         // 커서가 있는 칸은 옛 글자를 그대로 들고 있다가 되쓴다.
         text.wrappedValue = display(next)
-        note.wrappedValue = (next == product) ? nil : "한도까지만 올렸습니다"
+        note.wrappedValue = hitLimit ? "한도까지만 올렸습니다" : nil
     }
 
     private var text: Binding<String> {
@@ -191,7 +191,8 @@ struct MoneyField: View {
             },
             set: { input in
                 let digits = String(input.filter(\.isNumber).prefix(Self.maxDigits))
-                let next = Int(digits) ?? 0
+                // 자릿수를 잘라도 `Int` 로 못 옮기는 글자가 올 수 있다 (붙여넣기).
+                let next = min(Int(digits) ?? 0, Self.ceiling)
                 draft = Self.display(next)
                 guard minorUnits != next else { return }
                 minorUnits = next

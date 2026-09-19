@@ -346,12 +346,19 @@ struct TrajectoryChart: View {
     /// 축 눈금 글자. 눈금은 대개 딱 떨어지는 값이라 `60.0억` 이 아니라 `60억` 이다.
     /// 소수가 필요할 때만 한 자리를 붙인다.
     private func axisLabel(_ raw: Double) -> String {
-        let value = Int(raw)
+        // **여기서 앱이 죽었다** (159번, 2026-09-19). `raw` 는 우리가 만든 값이
+        // 아니라 Charts 가 도메인에서 뽑아 건네주는 것이라, 자료에 터무니없이
+        // 큰 금액이 하나 들어가면 `Int` 범위를 넘는다. `Int(raw)` 는 그때
+        // 그 자리에서 트랩이고, 현황판이 첫 화면이라 **값을 고칠 기회조차
+        // 없었다.** 이상한 자료는 이상한 눈금으로 보여 줘야지 멈추면 안 된다.
+        let value = SafeMath.clampedInt(raw)
         let eok = 100_000_000
         guard value >= eok else {
             return Won.compact(Money(minorUnits: value, currency: .krw))
         }
-        let tenths = (value * 10 + eok / 2) / eok
+        // **나누기를 먼저.** `value * 10` 도 같은 이유로 넘친다.
+        // (value + 0.5억) / 0.1억 은 value/1억 을 소수 첫째 자리에서 반올림한 것과 같다.
+        let tenths = (value + eok / 20) / (eok / 10)
         let text = tenths % 10 == 0 ? "\(tenths / 10)억" : "\(tenths / 10).\(tenths % 10)억"
         return AmountPrivacy.mask(text)
     }

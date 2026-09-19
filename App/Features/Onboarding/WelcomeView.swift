@@ -14,6 +14,14 @@ struct WelcomeView: View {
     @State private var isAsking = false
     @State private var didAsk = false
 
+    @State private var monitor = CloudKitSyncMonitor.shared
+
+    /// 받아오는 중인가 (160번). RootView 의 띠와 같은 판단이다.
+    private var isImporting: Bool {
+        guard Persistence.mode == .cloudKit else { return false }
+        return monitor.importsInFlight > 0 || !monitor.hasFinishedImport
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("느 린 부 자 의 기 록")
@@ -35,6 +43,19 @@ struct WelcomeView: View {
             .padding(.top, 30)
 
             Spacer(minLength: 20)
+
+            // **새로 깔았는데 iCloud 에 기록이 있는 경우** (160번). 환영 화면이
+            // 먼저 뜨므로, 여기서 말해 주지 않으면 "처음부터 다시 적으라는
+            // 건가" 로 읽힌다. 처음 쓰는 사람에게는 잠깐 떴다 사라진다.
+            if isImporting {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Text("iCloud 에서 기존 기록을 받아오는 중입니다")
+                        .font(.scaled(12, weight: .medium))
+                        .foregroundStyle(Color.bodyText)
+                }
+                .padding(.bottom, 14)
+            }
 
             VStack(spacing: 10) {
                 Button {

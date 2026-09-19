@@ -375,7 +375,10 @@ struct OnePagerView: View {
                     Spacer(minLength: 0)
                     Rectangle()
                         .fill(Paper.ink.opacity(0.75))
-                        .frame(height: max(1, 26 * CGFloat(bar.minor) / CGFloat(maxValue)))
+                        // maxValue 가 0 이면 NaN 높이가 된다 — 레이아웃이 깨진다 (159번).
+                        .frame(height: maxValue > 0
+                               ? max(1, 26 * CGFloat(bar.minor) / CGFloat(maxValue))
+                               : 1)
                     Text(verbatim: "\(bar.year % 100)")
                         .font(.figure(5.5))
                         .foregroundStyle(Paper.faint)

@@ -72,7 +72,8 @@ public enum MonteCarlo {
         let base = input.base
         let currency = base.startingBalance.currency
         let months = calendar.dateComponents([.month], from: base.startDate, to: base.endDate).month ?? 0
-        guard months > 0, input.paths > 0 else {
+        // 굴릴 수 없는 입력이면 궤적과 같은 판단으로 돌아선다 (159번).
+        guard months > 0, input.paths > 0, base.isWithinSafeRange else {
             return MonteCarloResult(bands: [], successProbability: nil, survivalProbability: nil, paths: 0)
         }
 

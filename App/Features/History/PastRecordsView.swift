@@ -123,11 +123,12 @@ struct PastRecordsView: View {
             var assigned = 0
             for (index, line) in lines.enumerated() {
                 let isLast = index == lines.count - 1
-                // 정수로만 센다 (ADR-0003). 한 번에 곱하면 넘칠 수 있어 비중을 먼저.
-                let shareBP = line.valueMinor * 10_000 / oldTotal
+                // 정수로만 센다 (ADR-0003). 비중을 먼저 내도 곱셈이 먼저 넘칠 수
+                // 있어 `SafeMath.share` 를 쓴다 (159번).
+                let shareBP = SafeMath.share(line.valueMinor, times: 10_000, over: oldTotal)
                 let scaled = isLast
                     ? draft.netWorthMinor - assigned
-                    : draft.netWorthMinor * shareBP / 10_000
+                    : SafeMath.share(draft.netWorthMinor, times: shareBP, over: 10_000)
                 line.valueMinor = scaled
                 assigned += scaled
             }
@@ -205,8 +206,8 @@ struct PastRecordEditView: View {
 
     private func scaled(_ value: Int) -> Int {
         guard originalTotal != 0, draft.netWorthMinor != originalTotal else { return value }
-        let shareBP = value * 10_000 / originalTotal
-        return draft.netWorthMinor * shareBP / 10_000
+        let shareBP = SafeMath.share(value, times: 10_000, over: originalTotal)
+        return SafeMath.share(draft.netWorthMinor, times: shareBP, over: 10_000)
     }
 
     private var scaleNote: String {

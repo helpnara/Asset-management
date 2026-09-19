@@ -60,6 +60,9 @@ struct WeeklyReviewView: View {
     /// 불리는데, 그때 앞 줄의 글자가 딸려 들어가면 안 된다.
     private struct Draft { var id: UUID; var text: String }
     @State private var draft: Draft?
+    /// 한도까지만 올렸다고 알리는 띠 (159번). 아무 일도 안 일어난 것처럼
+    /// 보이면 고장과 구별되지 않는다.
+    @State private var limitNote = false
     /// 포커스를 받은 순간의 값. 자리표시로 보이고, 친 것을 다 지우면 이리로 돌아간다.
     @State private var focusOriginal = 0
 
@@ -451,7 +454,22 @@ struct WeeklyReviewView: View {
     private var isCompactAccessory: Bool { typeSize >= .xxLarge }
 
     private var accessoryBar: some View {
-        accessory
+        VStack(spacing: 6) {
+            // 한도까지만 올렸다는 한 줄 (159번). 스스로 사라진다.
+            if limitNote {
+                Text("한도까지만 올렸습니다")
+                    .font(.scaled(11, weight: .medium))
+                    .foregroundStyle(Color.loss)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            accessory
+        }
+        .task(id: limitNote) {
+            guard limitNote else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            limitNote = false
+        }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
@@ -569,11 +587,17 @@ struct WeeklyReviewView: View {
     /// 키보드 위 `만` · `억` (93번, B3). 12 → 만 → 120,000.
     private func multiplyFocused(by factor: Int) {
         guard let focusedID, let holding = queue.first(where: { $0.id == focusedID }) else { return }
-        let next = holding.valueMinor * factor
-        guard holding.valueMinor > 0, next < 1_000_000_000_000_000 else { return }
+        guard holding.valueMinor > 0 else { return }
+        // **곱하기 전에 묻는다** (159번). 예전에는 가드보다 먼저 곱해서,
+        // 값이 큰 칸에서 `억` 을 누르면 `Int` 를 넘어 그 자리에서 죽었다.
+        // 156번에서 `MoneyField` 만 고치고 여기를 빠뜨렸다 — 같은 버튼인데.
+        let (next, hitLimit) = SafeMath.multiplyClamping(holding.valueMinor, by: factor,
+                                                         limit: MoneyLimits.maxMinorUnits)
+        guard next != holding.valueMinor else { return }
         holding.rollBaselineIfNewWeek()
         holding.valueMinor = next
         draft = Draft(id: holding.id, text: Won.grouped(next))
+        if hitLimit { limitNote = true }
     }
 
     /// 기준값은 이번 주 처음 손대기 직전의 값이라 늘 "지난주" 다 (91번).

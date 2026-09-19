@@ -60,8 +60,13 @@ struct SimulationView: View {
             case .year: raw = decimal
             case .percent: raw = decimal * 100
             }
+            // **자르기 전에 죽으면 안 된다** (159번). 자릿수를 길게 치면
+            // `Int(...)` 가 범위를 넘어 그 자리에서 트랩이었다 — 아래 `min/max`
+            // 는 그 뒤에야 불린다.
             let number = (raw as NSDecimalNumber).doubleValue
-            let snapped = Int((number / Double(step)).rounded()) * step
+            let steps = SafeMath.clampedInt((number / Double(step)).rounded())
+            let (snapped, overflowed) = steps.multipliedReportingOverflow(by: step)
+            guard !overflowed else { return number > 0 ? range.upperBound : range.lowerBound }
             return min(max(snapped, range.lowerBound), range.upperBound)
         }
     }

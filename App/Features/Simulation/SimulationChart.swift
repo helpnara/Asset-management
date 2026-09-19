@@ -198,7 +198,8 @@ struct SimulationChart: View {
     }
 
     private func tickLabel(_ logValue: Double) -> String {
-        let amount = Int(pow(10, logValue).rounded())
+        // 축 눈금은 Charts 가 건네주는 값이다. 범위를 넘으면 죽지 말고 자른다 (159번).
+        let amount = SafeMath.clampedInt(pow(10, logValue).rounded())
         if amount >= 100_000_000 { return AmountPrivacy.mask("\(amount / 100_000_000)억") }
         if amount >= 10_000 { return AmountPrivacy.mask("\(amount / 10_000)만") }
         return AmountPrivacy.mask("\(amount)")

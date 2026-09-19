@@ -111,6 +111,20 @@ public struct ProjectionInput: Sendable, Hashable {
     /// 은퇴 후 소득. 생활비에서 이만큼을 뺀 나머지를 자산에서 꺼낸다.
     public var incomes: [IncomeStreamInput]
 
+    /// **이 입력을 굴려도 되나** (159번). 금액 한 칸이라도 한계를 넘으면
+    /// 굴리지 않는다 — `Money` 는 넘치면 즉시 실패하고, 그 실패는 화면이
+    /// 아니라 앱을 멈춘다. 멈추기 전에 돌아선다.
+    public var isWithinSafeRange: Bool {
+        var amounts = buckets.map(\.amount.minorUnits)
+        amounts.append(monthlyContribution.minorUnits)
+        amounts.append(monthlyRetirementSpending.minorUnits)
+        amounts.append(annualIncome.minorUnits)
+        if let targetAmount { amounts.append(targetAmount.minorUnits) }
+        amounts.append(contentsOf: cashEvents.map(\.amount.minorUnits))
+        amounts.append(contentsOf: incomes.map(\.monthlyAmount.minorUnits))
+        return amounts.allSatisfy(MoneyLimits.isWithinRange)
+    }
+
     /// 모든 덩어리의 합. 화면이 읽는 "지금 얼마" 는 여전히 이 값이다.
     public var startingBalance: Money {
         guard let first = buckets.first else { return .zero(.krw) }
@@ -309,6 +323,13 @@ public struct ProjectionResult: Sendable, Hashable {
     /// 은퇴 후 생활비를 넣지 않으면 인출 자체를 하지 않으므로 언제나 nil 이다.
     public let depletion: Date?
 
+    /// **입력이 이 앱이 다룰 수 있는 범위를 넘었다** (159번).
+    ///
+    /// 금액 한 칸이 1조를 넘으면 굴리지 않는다. 굴리면 23년 복리에서 `Int` 를
+    /// 넘고, `Money` 는 넘치면 즉시 실패하도록 짜여 있다 — 그 설계는 옳으니
+    /// **앞에서 멈춘다.** 화면은 이 깃발을 보고 "값이 너무 큽니다" 를 띄운다.
+    public var isOutOfRange = false
+
     public var first: ProjectionPoint? { points.first }
     public var last: ProjectionPoint? { points.last }
 
@@ -333,6 +354,13 @@ public enum Projection {
     /// "생활비 − 연금"을 뺄 수 있고, 그전에 추정하면 틀린 숫자를 크게 보여주게 된다.
     /// 그래서 `endDate` 를 은퇴 시점으로 두고 거기서 멈춘다.
     public static func run(_ input: ProjectionInput, calendar: Calendar = .current) -> ProjectionResult {
+        // **굴릴 수 없는 입력이면 돌아선다** (159번). 예전에는 그냥 굴리다가
+        // 복리가 `Int` 를 넘는 순간 앱이 멈췄고, 그 자료가 저장돼 있으면
+        // 켤 때마다 멈춰 고칠 기회조차 없었다.
+        guard input.isWithinSafeRange else {
+            return ProjectionResult(points: [], years: [], milestones: [],
+                                    depletion: nil, isOutOfRange: true)
+        }
         let base = input.startingBalance.currency
         let months = calendar.dateComponents([.month], from: input.startDate, to: input.endDate).month ?? 0
         guard months > 0 else {

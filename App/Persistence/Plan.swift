@@ -288,10 +288,10 @@ extension Plan {
         let mine = member.netTotalMinor
         guard familyTotal.minorUnits > 0, mine > 0 else { return 0 }
         // 정수로만 센다 (ADR-0003 — 금액에 Double 을 쓰지 않는다).
-        // 한 번에 곱하면 자릿수가 커져 넘칠 수 있으므로 **비중을 먼저** 낸다.
-        // `Decimals` 는 `Core` 안에만 있어 여기서 못 쓴다.
-        let shareBP = mine * 10_000 / familyTotal.minorUnits
-        return monthlyContributionMinor * shareBP / 10_000
+        // **비중을 먼저** 내도 `mine × 10,000` 이 먼저 넘칠 수 있다 (159번).
+        // `SafeMath.share` 가 넘칠 때만 `Decimal` 로 돌아간다.
+        let shareBP = SafeMath.share(mine, times: 10_000, over: familyTotal.minorUnits)
+        return SafeMath.share(monthlyContributionMinor, times: shareBP, over: 10_000)
     }
 
     /// **한 사람 몫의 궤적.** 구성원 궤적 화면과 로드맵 분해 시트가 같은 계산을
@@ -359,7 +359,8 @@ extension Plan {
             inflation: inflation,
             cashEvents: pending,
             targetAmount: targetAmountMinor > 0 ? targetAmount : nil,
-            annualIncome: Money(minorUnits: monthlyIncomeMinor * 12, currency: .krw),
+            annualIncome: Money(minorUnits: SafeMath.share(monthlyIncomeMinor, times: 12, over: 1),
+                                currency: .krw),
             retirementDate: retirement,
             monthlyRetirementSpending: monthlyRetirementSpending,
             incomes: incomes.sorted { $0.sortIndex < $1.sortIndex }.map(\.input),
@@ -504,7 +505,9 @@ extension Plan {
         // **세 든 집** — 전월세보증금 계좌의 매매가·월세. 둘 이상이면 합으로 본다.
         let homes = accounts.filter { $0.kind == .leaseDeposit && !$0.isArchived }
         let homePrice = Money(minorUnits: homes.reduce(0) { $0 + $1.purchasePriceMinor }, currency: .krw)
-        let annualRent = Money(minorUnits: homes.reduce(0) { $0 + $1.monthlyRentMinor } * 12, currency: .krw)
+        let monthlyRent = homes.reduce(0) { $0 + $1.monthlyRentMinor }
+        let annualRent = Money(minorUnits: SafeMath.share(monthlyRent, times: 12, over: 1),
+                               currency: .krw)
 
         return DiagnosticsInput(
             netWorth: rollup.netWorth,

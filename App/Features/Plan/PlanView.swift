@@ -416,6 +416,30 @@ struct PlanView: View {
 
     @ViewBuilder
     private func summary(_ plan: Plan) -> some View {
+        // **다룰 수 없는 값이 들어 있으면 그렇다고 말한다** (159번). 조용히
+        // 빈 화면을 보여 주면 "고장났나" 가 되고, 굴리면 앱이 멈춘다.
+        if projected?.isOutOfRange == true {
+            outOfRangeRow
+        } else {
+            projectedSummary(plan)
+        }
+    }
+
+    private var outOfRangeRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("금액이 너무 커서 계산할 수 없습니다")
+                .font(.scaled(13, weight: .medium))
+                .foregroundStyle(Color.loss)
+            Text("한 칸에 넣을 수 있는 금액은 1조 원까지입니다. 아래 칸들을 살펴 잘못 들어간 값을 고쳐 주세요.")
+                .font(.scaled(11.5))
+                .foregroundStyle(Color.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func projectedSummary(_ plan: Plan) -> some View {
         // **은퇴 시점의 값이다, 궤적의 끝이 아니다.** 은퇴 후 생활비를 넣으면
         // 궤적이 지평선(예: 92세)까지 이어지므로 `last` 는 30년 인출한 뒤의
         // 잔고다. 현황판·진단·1페이지·시뮬레이션은 전부 은퇴 시점을 읽는데
