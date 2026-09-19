@@ -20,6 +20,9 @@ struct PlanView: View {
     /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
     @State private var newIDs: Set<UUID> = []
     @State private var editingIncome: IncomeStream?
+    /// 계획 탭에서 여는 **가족 대표의 구성원 폼** (168번). 은퇴 목표는 거기서 고친다.
+    @State private var editingHead: Member?
+    @State private var isOrderingMembers = false
     @State private var pendingIncomeDelete: IndexSet?
     @State private var pendingEventDelete: IndexSet?
     /// 마지막으로 끝난 계산 (153번). 화면은 이 값을 그리기만 한다.
@@ -51,6 +54,8 @@ struct PlanView: View {
                 guard canManageHousehold, let plan = Plan.primary(plans) else { return }
                 plan.adoptRetirementYear(fromHeadOf: members)
             }
+            .sheet(item: $editingHead) { MemberEditView(member: $0) }
+            .sheet(isPresented: $isOrderingMembers) { MemberOrderView(members: members) }
             .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
                             message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") { offsets in
                 for index in offsets where incomes.indices.contains(index) {
@@ -132,18 +137,59 @@ struct PlanView: View {
             }
 
             Section {
-                if canManageHousehold {
-                    // **대표의 은퇴 나이와 한 몸이다** (168번). 여기서 올리면 대표의
-                    // 나이가 같이 오르고, 구성원 폼에서 고치면 여기로 따라온다.
+                // **은퇴 목표는 가족 대표의 구성원 폼에서 고친다** (168번, 사용자 결정).
+                // 여기 손잡이를 두면 고치는 자리가 둘이 된다. 이 줄은 대표의 폼으로
+                // 바로 가는 문이고, 그 아래는 대표를 바꾸는 문이다.
+                if let head = members.familyHead {
+                    if canManageHousehold {
+                        Button {
+                            editingHead = head
+                        } label: {
+                            HStack {
+                                Text("은퇴 목표")
+                                    .foregroundStyle(Color.ink)
+                                Spacer()
+                                Text(verbatim: "\(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
+                                    .font(.figure(15, weight: .medium))
+                                    .foregroundStyle(Color.bodyText)
+                                Image(systemName: "chevron.right")
+                                    .font(.scaled(11, weight: .semibold))
+                                    .foregroundStyle(Color.faint)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        if members.count > 1 {
+                            Button {
+                                isOrderingMembers = true
+                            } label: {
+                                HStack {
+                                    Text("대표 바꾸기")
+                                        .foregroundStyle(Color.ink)
+                                    Spacer()
+                                    HStack(spacing: 6) {
+                                        Text(head.name.isEmpty ? "이름 없음" : head.name)
+                                            .foregroundStyle(Color.muted)
+                                        HeadBadge()
+                                    }
+                                    Image(systemName: "chevron.right")
+                                        .font(.scaled(11, weight: .semibold))
+                                        .foregroundStyle(Color.faint)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } else {
+                        readOnlyRow("은퇴 목표", "\(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
+                    }
+                } else if canManageHousehold {
+                    // 구성원이 아직 없으면 계획에 직접 적는다 — 따라올 대표가 없다.
                     Stepper(value: Binding(get: { plan.retirementYear },
                                            set: { plan.setRetirementYear($0, headOf: members) }),
                             in: min(currentYear, plan.retirementYear)...max(currentYear + 60, plan.retirementYear + 1)) {
-                        // Text("...\(정수)...") 는 로케일 숫자 포맷을 적용해 "2,049년" 이 된다.
-                        // 연도에는 자릿수 구분을 넣지 않는다.
-                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
+                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
                     }
                 } else {
-                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년\(headAgeSuffix(inYear: plan.retirementYear))")
+                    readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
                 }
                 LabeledContent("남은 기간", value: "\(plan.yearsToRetirement)년")
             } header: {
@@ -151,7 +197,7 @@ struct PlanView: View {
             } footer: {
                 // 누구의 은퇴 목표인지, 바꾸면 무엇이 따라 바뀌는지를 그 자리에 적는다 (168번).
                 if let head = members.familyHead {
-                    Text("은퇴 목표는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name))의 은퇴 목표 연도 · 나이와 같습니다. 여기서 바꾸면 대표의 은퇴 나이도 같이 바뀌고, 구성원 폼에서 바꾸면 여기로 따라옵니다. 대표는 자산 탭에서 `대표` 띠지가 붙은 사람이고, 바꾸려면 구성원 순서 바꾸기에서 맨 위에 두세요.")
+                    Text("은퇴 목표는 가족 대표(\(head.name.isEmpty ? "구성원 순서의 첫 사람" : head.name))의 은퇴 목표 연도 · 나이입니다. 줄을 누르면 대표의 구성원 폼이 열리고, 거기서 고치면 계획 · 자산 · 1페이지가 함께 바뀝니다. 대표는 구성원 순서의 맨 위 사람입니다.")
                 }
             }
 
