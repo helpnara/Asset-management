@@ -32,7 +32,7 @@ enum TodoNotifications {
             self.items = items.compactMap { item in
                 guard !item.isDone, let due = item.dueDate else { return nil }
                 return Item(id: item.id,
-                            title: item.title.isEmpty ? "할 일" : item.title,
+                            title: item.title.isEmpty ? "챙길 것" : item.title,
                             dueDate: due,
                             repeatsYearly: item.repeatsYearly)
             }
@@ -75,21 +75,29 @@ enum TodoNotifications {
                 due = next
             }
 
-            let content = UNMutableNotificationContent()
-            content.title = "오늘까지 — \(item.title)"
-            content.body = "더보기 → 유의사항 · 할 일에서 확인하세요."
-            content.sound = .default
+            // **30일 전에 한 번, 당일에 한 번** (172번). 만기(28번)와 같은 규칙 —
+            // 당일에 알아도 할 수 있는 것이 없는 일이 많다.
+            let early = calendar.date(byAdding: .day, value: -30, to: due) ?? due
+            let fires: [(Date, String, String)] = early > .now
+                ? [(early, "-early", "30일 뒤까지 — \(item.title)"), (due, "", "오늘까지 — \(item.title)")]
+                : [(due, "", "오늘까지 — \(item.title)")]
+            for (fireDate, suffix, title) in fires {
+                let content = UNMutableNotificationContent()
+                content.title = title
+                content.body = "더보기 → 챙길 것에서 확인하세요."
+                content.sound = .default
 
-            var components = calendar.dateComponents([.year, .month, .day], from: due)
-            components.hour = 9
-            components.minute = 0
+                var components = calendar.dateComponents([.year, .month, .day], from: fireDate)
+                components.hour = 9
+                components.minute = 0
 
-            let request = UNNotificationRequest(
-                identifier: prefix + item.id.uuidString,
-                content: content,
-                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            )
-            try? await center.add(request)
+                let request = UNNotificationRequest(
+                    identifier: prefix + item.id.uuidString + suffix,
+                    content: content,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                )
+                try? await center.add(request)
+            }
         }
 
         for item in input.maturities {

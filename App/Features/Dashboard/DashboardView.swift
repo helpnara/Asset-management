@@ -24,6 +24,7 @@ struct DashboardView: View {
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var diary: [DiaryEntry]
     @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
     @Fetched(sort: \Principle.order) private var principles: [Principle]
+    @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
     /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
     @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
@@ -136,6 +137,8 @@ struct DashboardView: View {
             sectionHeader("이번 주 점검", trailing: "토요일 \(Self.shortDate.string(from: reviewDay))")
             weeklyBar
             planReviewNudge
+        case .todos:
+            todosCard
         case .attribution:
             attribution
         case .monthly:
@@ -1070,6 +1073,54 @@ struct DashboardView: View {
                         Image(systemName: "chevron.right")
                             .font(.scaled(11, weight: .semibold))
                             .foregroundStyle(Color.faint)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// **챙길 것** (172번). 30일 안에 날짜가 오는 것과 지난 것만 — 없으면 카드도 없다.
+    /// 누르면 더보기의 목록으로 간다.
+    @ViewBuilder
+    private var todosCard: some View {
+        let due = todos
+            .filter { !$0.isDone && ($0.daysRemaining ?? .max) <= 30 }
+            .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+        if !due.isEmpty {
+            let overdue = due.filter { ($0.daysRemaining ?? 0) < 0 }.count
+            Button {
+                AppRoute.shared.wantsTodos = true
+                AppRoute.shared.selectedTab = RootView.Tab.more
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    sectionHeader("챙길 것",
+                                  trailing: overdue > 0
+                                    ? "30일 안 \(due.count - overdue) · 지난 것 \(overdue)"
+                                    : "30일 안 \(due.count)")
+                    Rectangle().fill(Color.rule).frame(height: 1)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(due.prefix(3)) { item in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(item.title.isEmpty ? "이름 없음" : item.title)
+                                    .font(.scaled(13.5, weight: .medium))
+                                    .foregroundStyle(Color.ink)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(item.dueText)
+                                    .font(.figure(11))
+                                    .foregroundStyle((item.daysRemaining ?? 0) < 0 ? Color.loss : Color.muted)
+                                    .fixedSize()
+                            }
+                        }
+                        if due.count > 3 {
+                            Text("외 \(due.count - 3)건")
+                                .font(.scaled(11))
+                                .foregroundStyle(Color.faint)
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)

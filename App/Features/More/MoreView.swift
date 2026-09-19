@@ -60,6 +60,17 @@ struct MoreView: View {
     /// 공유 존으로 옮기는 중인지 — 아래 띠에 올린다 (169번).
     @State private var sharing = FamilySharing.shared
 
+    /// 챙길 것 줄의 꼬리 — `2건 · 가장 가까운 102일 남음` (172번).
+    @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    private var todoSummary: String? {
+        let open = todos.filter { !$0.isDone }
+        guard !open.isEmpty else { return nil }
+        let nearest = open.compactMap(\.daysRemaining).min()
+        guard let nearest else { return "\(open.count)건" }
+        let when = nearest < 0 ? "\(-nearest)일 지남" : (nearest == 0 ? "오늘" : "\(nearest)일 남음")
+        return "\(open.count)건 · \(when)"
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
@@ -98,7 +109,15 @@ struct MoreView: View {
                         Label("내 마일스톤", systemImage: "flag")
                     }
                     NavigationLink(value: Destination.todos) {
-                        Label("유의사항 · 할 일", systemImage: "note.text")
+                        HStack {
+                            Label("챙길 것", systemImage: "checklist")
+                            Spacer()
+                            if let summary = todoSummary {
+                                Text(summary)
+                                    .font(.figure(11))
+                                    .foregroundStyle(Color.muted)
+                            }
+                        }
                     }
                 }
 
@@ -220,6 +239,11 @@ struct MoreView: View {
                 guard wants else { return }
                 route.wantsPrinciples = false
                 if path.last != .principles { path.append(.principles) }
+            }
+            .onChange(of: route.wantsTodos, initial: true) { _, wants in
+                guard wants else { return }
+                route.wantsTodos = false
+                if path.last != .todos { path.append(.todos) }
             }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {

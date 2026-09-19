@@ -17,7 +17,7 @@ extension UserMilestone {
     }
 }
 
-/// 유의사항 · 할 일.
+/// 챙길 것 (172번 — 예전 이름 `유의사항 · 할 일`).
 ///
 /// 1페이지 아래쪽의 `※ 주석` 과 `연간 한도` 메모가 여기로 온다.
 /// 기한이 있으면 그날 아침에 한 번 부른다 — 매주 점검과 섞이지 않게 따로 건다.
@@ -43,9 +43,12 @@ enum TodoCategory: String, Codable, Sendable, CaseIterable, Identifiable {
         case .tax: return "세금 · 규제"
         case .limit: return "연간 한도"
         case .deadline: return "기한"
-        case .note: return "메모"
+        case .note: return "기타"
         }
     }
+
+    /// 꼬리표로 보일 것. `기타` 는 안 붙인다 — 붙일 말이 없다.
+    var showsTag: Bool { self != .note }
 
     var symbol: String {
         switch self {
@@ -73,6 +76,31 @@ extension TodoItem {
     }
 
     var isOverdue: Bool { (daysRemaining ?? 1) < 0 && !isDone }
+
+    /// **시간으로 묶는다** (172번). 분류(세금 · 한도 …)로 묶으면 "언제까지" 가
+    /// 안 보였다. 챙길 것은 언제가 먼저다.
+    enum Bucket: String, CaseIterable, Identifiable {
+        case overdue = "지난 것"
+        case soon = "30일 안"
+        case later = "그 뒤"
+        case undated = "날짜 없음"
+        var id: String { rawValue }
+    }
+
+    var bucket: Bucket {
+        guard let days = daysRemaining else { return .undated }
+        if days < 0 { return .overdue }
+        if days <= 30 { return .soon }
+        return .later
+    }
+
+    /// `3일 지남` · `오늘까지` · `102일 남음`. 날짜가 없으면 빈 글.
+    var dueText: String {
+        guard let days = daysRemaining else { return "" }
+        if days < 0 { return "\(-days)일 지남" }
+        if days == 0 { return "오늘까지" }
+        return "\(days)일 남음"
+    }
 }
 
 

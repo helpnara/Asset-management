@@ -480,7 +480,7 @@ struct AccountEditView: View {
                                                    to: Calendar.current.startOfDay(for: date)).day ?? 0
         if days < 0 { return "만기가 \(-days)일 지났습니다. 연장했다면 날짜를 새로 적어 주세요." }
         if days == 0 { return "오늘이 만기입니다." }
-        return "\(days)일 남았습니다. 90일 안으로 들어오면 할 일 목록에 함께 뜹니다."
+        return "\(days)일 남았습니다. 90일 안으로 들어오면 챙길 것 목록에 함께 뜹니다."
     }
 
     /// 계좌마다 수익률을 따로 적을 수 있어야 한다 — 예금은 상품마다 금리가 다르다.

@@ -37,7 +37,7 @@ struct ExportView: View {
     /// 있으면 **틀린 말**이다. 그렇다고 iCloud 가 백업을 대신하지도 않는다 —
     /// 잘못 지운 것은 iCloud 로도 그대로 퍼진다. 저장 방식에 따라 다르게 적는다.
     private var backupFootnote: String {
-        let common = "구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 할 일 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다."
+        let common = "구성원 · 계좌 · 종목 · 계획 · 목돈 · 연금 · 챙길 것 · 마일스톤 · 주간 기록까지 **전부** 한 파일에 담습니다."
         let tail = "금액은 가리지 않고 그대로 나갑니다 — 백업이니까요."
         switch Persistence.mode {
         case .cloudKit:

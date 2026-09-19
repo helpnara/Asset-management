@@ -2,15 +2,22 @@ import Core
 import CoreData
 import SwiftUI
 
-/// 유의사항 · 할 일. 1페이지 아래쪽의 `※ 주석` 이 여기로 온다.
+/// **챙길 것** (172번 — 예전 이름 `유의사항 · 할 일`). 1페이지 아래쪽의 `※ 주석` 이
+/// 여기로 온다.
 ///
 /// 규칙 점검(자산 진단)이 **숫자로 판정하는 것**이라면, 여기는 **숫자로 판정할 수
 /// 없는 것**이다. "연금저축 5월까지 채우기", "전세 만기 전에 알아보기" 같은 것들.
+///
+/// **원칙과 갈라 선다.** 원칙(운용 원칙)은 지킬 것이고 날짜가 없다. 여기는
+/// 챙길 것이고 언제까지가 있다. 날짜 없는 메모가 사실은 원칙이면 밀어서
+/// 원칙으로 보낸다. 목록은 분류가 아니라 **시간으로** 묶는다 — 지난 것 ·
+/// 30일 안 · 그 뒤 · 날짜 없음.
 struct TodoListView: View {
     @Environment(\.managedObjectContext) private var context
     @Environment(\.canEdit) private var canEdit
     @Fetched(sort: \TodoItem.sortIndex) private var items: [TodoItem]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
+    @Fetched(sort: \Principle.order) private var principles: [Principle]
     @State private var editing: TodoItem?
     /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
     @State private var newIDs: Set<UUID> = []
@@ -67,11 +74,31 @@ struct TodoListView: View {
                 }
             }
 
-            ForEach(TodoCategory.allCases) { category in
-                let group = open.filter { $0.category == category }
+            ForEach(TodoItem.Bucket.allCases) { bucket in
+                let group = open.filter { $0.bucket == bucket }
+                    .sorted { ($0.dueDate ?? .distantFuture, $0.sortIndex) < ($1.dueDate ?? .distantFuture, $1.sortIndex) }
                 if !group.isEmpty {
-                    Section(category.label) {
-                        ForEach(group) { todoRow($0) }
+                    Section {
+                        ForEach(group) { item in
+                            todoRow(item)
+                                // 날짜 없는 것이 사실은 원칙이면 그리로 (172번).
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    if canEdit && bucket == .undated {
+                                        Button { moveToPrinciple(item) } label: {
+                                            Label("원칙으로", systemImage: "list.number")
+                                        }
+                                        .tint(Color.gain)
+                                    }
+                                }
+                        }
+                    } header: {
+                        Text(bucket.rawValue)
+                    } footer: {
+                        if bucket == .undated {
+                            Text("날짜가 없으면 알림을 걸지 않습니다. 지킬 원칙이면 오른쪽으로 밀어 운용 원칙으로 옮기세요.")
+                        } else if bucket == .soon {
+                            Text("날짜 30일 전과 당일 아침 9시에 알립니다. 현황판에도 뜹니다.")
+                        }
                     }
                 }
             }
@@ -90,7 +117,7 @@ struct TodoListView: View {
                 }
             }
         }
-        .navigationTitle("유의사항 · 할 일")
+        .navigationTitle("챙길 것")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -150,6 +177,14 @@ struct TodoListView: View {
         return "\(day) — \(days)일 남았습니다"
     }
 
+    /// 날짜 없는 메모를 운용 원칙으로 보낸다. 글은 그대로, 여기서는 빠진다.
+    private func moveToPrinciple(_ item: TodoItem) {
+        let order = (principles.map(\.order).max() ?? 0) + 1
+        _ = Principle(context: context, order: order, title: item.title, detail: item.detail)
+        ChangeLogger.record(.other, subject: "원칙으로 옮김", summary: item.title, in: context)
+        context.delete(item)
+    }
+
     private func todoRow(_ item: TodoItem) -> some View {
         TodoRow(item: item, canEdit: canEdit,
                 onToggle: {
@@ -204,20 +239,22 @@ private struct TodoRow: View {
                 .foregroundStyle(item.isDone ? Color.faint : Color.ink)
                 .strikethrough(item.isDone, color: Color.faint)
                 .multilineTextAlignment(.leading)
-            if let days = item.daysRemaining, !item.isDone {
-                Text(deadlineText(days))
-                    .font(.figure(10.5))
-                    .foregroundStyle(days < 0 ? Color.loss
-                                     : (days <= 14 ? Color.dad : Color.faint))
+            // 분류는 꼬리표로만 (172번). 묶음은 시간이 한다.
+            if item.category.showsTag || (item.daysRemaining != nil && !item.isDone) {
+                HStack(spacing: 6) {
+                    if item.category.showsTag {
+                        StatusBadge(text: item.category.label)
+                    }
+                    if let days = item.daysRemaining, !item.isDone {
+                        Text(item.dueText)
+                            .font(.figure(10.5))
+                            .foregroundStyle(days < 0 ? Color.loss
+                                             : (days <= 14 ? Color.dad : Color.faint))
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func deadlineText(_ days: Int) -> String {
-        if days < 0 { return "\(-days)일 지남" }
-        if days == 0 { return "오늘까지" }
-        return "\(days)일 남음"
     }
 }
 
@@ -246,7 +283,7 @@ struct TodoEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("할 일 (연금저축 5월까지 채우기 …)", text: $item.title)
+                    TextField("챙길 것 (연금저축 5월까지 채우기 …)", text: $item.title)
                     Picker("분류", selection: $item.category) {
                         ForEach(TodoCategory.allCases) {
                             Label($0.label, systemImage: $0.symbol).tag($0)
@@ -262,8 +299,8 @@ struct TodoEditView: View {
                     }
                 } footer: {
                     Text(hasDue
-                         ? "기한 당일 아침 9시에 한 번 알립니다. 주간 점검 알림과 따로 걸립니다."
-                         : "기한 없는 메모입니다. 알림을 걸지 않습니다.")
+                         ? "날짜 30일 전과 당일 아침 9시에 알립니다. 주간 점검 알림과 따로 걸립니다."
+                         : "날짜 없는 메모입니다. 알림을 걸지 않습니다. 지킬 원칙이라면 운용 원칙에 두세요.")
                 }
 
                 Section("메모") {
@@ -273,7 +310,7 @@ struct TodoEditView: View {
 
                 if !isNew {
                     Section {
-                        DeleteButton("\(item.title.isEmpty ? "이 할 일" : item.title) 을(를) 삭제할까요?",
+                        DeleteButton("\(item.title.isEmpty ? "이 항목" : item.title) 을(를) 삭제할까요?",
                                      consequence: "되돌릴 수 없습니다.") {
                             context.delete(item)
                             dismiss()
@@ -281,7 +318,7 @@ struct TodoEditView: View {
                     }
                 }
             }
-            .navigationTitle("할 일")
+            .navigationTitle("챙길 것")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: item) } }
             .onChange(of: hasDue) { _, on in

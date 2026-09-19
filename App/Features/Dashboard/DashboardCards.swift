@@ -12,6 +12,8 @@ enum DashboardCard: String, CaseIterable, Identifiable {
     case principle
     case diary
     case weekly
+    /// 30일 안에 챙길 것 · 지난 것 (172번). 없으면 안 뜬다.
+    case todos
     case roadmap
     case hero
     case attribution
@@ -30,6 +32,7 @@ enum DashboardCard: String, CaseIterable, Identifiable {
         case .diary: return "오늘의 목 · 실 · 감"
         case .hero: return "가족 총자산"
         case .weekly: return "이번 주 점검"
+        case .todos: return "챙길 것"
         case .attribution: return "얼마 넣어서 얼마 자랐나"
         case .monthly: return "지난달 회고"
         case .roadmap: return "전체 자산 로드맵"

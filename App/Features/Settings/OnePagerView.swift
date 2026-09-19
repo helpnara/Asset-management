@@ -447,17 +447,20 @@ struct OnePagerView: View {
                         }
                     }
                 }
-                if !todos.isEmpty {
-                    blockTitle("유의 사항")
+                // **날짜 있는 것만** 싣는다 (172번). 날짜 없는 메모는 원칙으로 갔다.
+                let dated = todos.filter { !$0.isDone && $0.dueDate != nil }
+                    .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+                if !dated.isEmpty {
+                    blockTitle("챙길 것")
                         .padding(.top, 4)
-                    ForEach(todos.filter { !$0.isDone }.sorted { $0.sortIndex < $1.sortIndex }) { todo in
+                    ForEach(dated) { todo in
                         HStack(alignment: .top, spacing: 3) {
                             Text(todo.title)
                                 .font(.system(size: 7))
                                 .foregroundStyle(Paper.bodyText)
                             Spacer()
                             if let due = todo.dueDate {
-                                Text(dateText(due))
+                                Text("\(dateText(due)) · \(todo.dueText)")
                                     .font(.figure(6.5))
                                     .foregroundStyle(Paper.muted)
                             }
