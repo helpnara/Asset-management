@@ -304,16 +304,23 @@ struct AssetsView: View {
             //
             // 자식 뷰로 옮겨 다시 숨길 수도 있지만, 숨은 손잡이를 찾게 하는
             // 것이 2-3 에서 고친 바로 그 문제였다. 목록 맨 끝에 조용히 둔다.
-            if canManageHousehold && members.count > 1 && !isNarrowing {
+            //
+            // **띠지의 뜻은 그 자리에 적는다** (168번, 사용자 요청). 참가자
+            // 기기에는 순서 버튼이 없어도 `대표` 띠지는 보이므로 설명은 남긴다.
+            if members.count > 1 && !isNarrowing {
                 Section {
-                    Button {
-                        isOrderingMembers = true
-                    } label: {
-                        Label("구성원 순서 바꾸기", systemImage: "arrow.up.arrow.down")
-                            .font(.scaled(12))
-                            .foregroundStyle(Color.muted)
+                    if canManageHousehold {
+                        Button {
+                            isOrderingMembers = true
+                        } label: {
+                            Label("구성원 순서 바꾸기", systemImage: "arrow.up.arrow.down")
+                                .font(.scaled(12))
+                                .foregroundStyle(Color.muted)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                } footer: {
+                    Text("맨 위 구성원이 가족 대표입니다 (`대표` 띠지). 계획 탭의 은퇴 목표 나이와 1페이지 로드맵의 나이가 이 사람 기준으로 자동 설정됩니다." + (canManageHousehold ? " 대표를 바꾸려면 순서를 바꿔 맨 위에 두세요." : ""))
                 }
             }
         }
