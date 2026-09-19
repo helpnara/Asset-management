@@ -197,6 +197,7 @@ struct MoreView: View {
                 notificationsDenied = await ReviewNotifications.authorizationStatus() == .denied
             }
             }
+            .readableWidth()
             .syncRefreshable(note: $refreshNote)
             .navigationTitle("더보기")
             .navigationBarTitleDisplayMode(.inline)

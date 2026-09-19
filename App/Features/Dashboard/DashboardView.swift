@@ -88,6 +88,8 @@ struct DashboardView: View {
                                      members: members, rollup: rollup)
                 }
             }
+            // 넓은 화면에서 카드가 끝에서 끝까지 늘어나지 않게 (161번).
+            .readableWidth()
             // 앱의 한 가지 바탕 (35번). 예전에는 여기만 `canvas` 라
             // 다른 탭과 검정이 달랐다.
             .background(Color.ground)

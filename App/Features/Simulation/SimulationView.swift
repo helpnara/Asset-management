@@ -107,6 +107,7 @@ struct SimulationView: View {
                     ProgressView().task { _ = Plan.current(in: context) }
                 }
             }
+            .readableWidth()
             .background(Color.ground)
             .navigationTitle("시뮬레이션")
             .navigationBarTitleDisplayMode(.inline)

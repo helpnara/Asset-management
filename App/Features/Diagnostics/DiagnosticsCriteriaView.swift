@@ -135,6 +135,8 @@ struct DiagnosticsCriteriaView: View {
                 guard !previous.isEmpty else { return }
                 plan.touch()
             }
+            // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+            .readableWidth()
             .navigationTitle("진단 기준")
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).

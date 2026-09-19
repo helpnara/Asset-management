@@ -17,6 +17,10 @@ struct RootView: View {
     @State private var isEndingTrial = false
     /// 새 판 알림창 (143번). 띠는 늘 보이고, 창은 새 빌드마다 한 번.
     @State private var showsUpdateAlert = false
+    /// 화면이 가로로 누웠나 (161번). 아이패드는 **세로도 "넓은" 등급**이라
+    /// 너비 등급만으로는 가로/세로를 가를 수 없다 — 실제 크기를 재서 가른다.
+    @State private var isLandscape = false
+    @Environment(\.horizontalSizeClass) private var widthClass
 
 
     @Fetched private var holdings: [Holding]
@@ -77,8 +81,26 @@ struct RootView: View {
         return latest > AppUpdate.currentBuild ? latest : nil
     }
 
+    /// **가로로 누운 넓은 화면이면 왼쪽에 메뉴를 세운다** (161번).
+    ///
+    /// 아이폰은 가로로 눕혀도 좁은 등급이라 여기 걸리지 않는다 — 아래 탭
+    /// 그대로다. 아이패드 세로도 그대로다 (사용자 결정).
+    private var usesSidebar: Bool {
+        isLandscape && widthClass == .regular
+    }
+
     var body: some View {
         tabs
+            // 크기만 잰다. `GeometryReader` 로 본문을 감싸면 안전 영역 계산이
+            // 헝클어지므로 배경에 숨겨 둔다.
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: proxy.size, initial: true) { _, size in
+                            isLandscape = size.width > size.height
+                        }
+                }
+            }
             .familyRole(role, participantID: sharing.state.participantID)
             .safeAreaInset(edge: .top, spacing: 0) { notices }
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
@@ -226,7 +248,28 @@ struct RootView: View {
         .background(Color.alertSoft)
     }
 
+    /// 가로면 사이드바, 세로면 지금까지의 탭 (161번).
+    ///
+    /// **`.sidebarAdaptable` 은 iOS 18 부터다.** 배포 타깃(17)은 그대로 두고
+    /// 되는 기기에서만 켠다 — 17 기기는 지금과 똑같이 동작한다.
+    ///
+    /// **대가 하나.** 스타일이 바뀌면 `TabView` 가 통째로 다시 만들어져
+    /// 화면 안의 스크롤 위치 같은 것이 처음으로 돌아간다. 고른 탭은
+    /// `AppRoute` 가 들고 있으므로 유지된다.
+    @ViewBuilder
     private var tabs: some View {
+        if #available(iOS 18.0, *) {
+            if usesSidebar {
+                tabContent.tabViewStyle(.sidebarAdaptable)
+            } else {
+                tabContent
+            }
+        } else {
+            tabContent
+        }
+    }
+
+    private var tabContent: some View {
         TabView(selection: $route.selectedTab) {
             DashboardView()
                 .tabItem { Label("현황판", systemImage: "chart.bar") }

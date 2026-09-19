@@ -149,6 +149,8 @@ struct WeeklyReviewView: View {
             }
             .background(Color.canvas)
             .safeAreaInset(edge: .top, spacing: 0) { progressBar }
+            // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+            .readableWidth()
             .navigationTitle("주간 점검")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

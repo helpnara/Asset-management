@@ -129,6 +129,8 @@ struct NationalPensionEstimatorView: View {
                     Text("**세전 참고값입니다.** 공단 예상액과 개월 수를 맞추면 1~2% 안에 들어오지만, 소득 재평가·크레딧·조기·연기 수령은 반영하지 않습니다. 공단 앱에서 확인한 세후 값을 알게 되면 그 값으로 고치세요.")
                 }
             }
+            // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+            .readableWidth()
             .navigationTitle("국민연금 얼마나 받을까")
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).

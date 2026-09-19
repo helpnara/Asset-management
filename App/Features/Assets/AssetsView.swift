@@ -132,6 +132,8 @@ struct AssetsView: View {
                         .searchable(text: $query, prompt: "종목 · 계좌 · 기관")
                 }
             }
+            // 넓은 화면에서 한 줄이 끝에서 끝까지 늘어나지 않게 (161번).
+            .readableWidth()
             .navigationTitle("자산")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

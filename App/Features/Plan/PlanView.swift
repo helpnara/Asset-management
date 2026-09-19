@@ -37,6 +37,8 @@ struct PlanView: View {
                     ProgressView().task { _ = Plan.current(in: context) }
                 }
             }
+            // 넓은 화면에서 라벨과 금액이 화면 양 끝으로 벌어지지 않게 (161번).
+            .readableWidth()
             .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
                             message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") { offsets in
                 for index in offsets where incomes.indices.contains(index) {

@@ -87,6 +87,8 @@ struct AccountTargetView: View {
                 }
             }
         }
+        // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+        .readableWidth()
         .navigationTitle(account.weightLabel)
         .navigationBarTitleDisplayMode(.inline)
         .overlay {

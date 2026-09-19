@@ -60,6 +60,8 @@ struct PastRecordsView: View {
         .confirmsDelete($pendingDelete, title: "지난 기록을 삭제할까요?",
                         message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.",
                         perform: delete)
+        // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+        .readableWidth()
         .navigationTitle("지난 기록")
         .navigationBarTitleDisplayMode(.inline)
         // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
@@ -258,6 +260,8 @@ struct PastRecordEditView: View {
                     }
                 }
             }
+            // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
+            .readableWidth()
             .navigationTitle(draft.isNew ? "지난 기록 추가" : "지난 기록")
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
