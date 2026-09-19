@@ -166,17 +166,7 @@ struct DiagnosticsCriteriaView: View {
 
     private func percentRow(_ title: String, _ value: Binding<Int>,
                             range: ClosedRange<Int>, step: Int) -> some View {
-        Stepper(value: value, in: range, step: step) {
-            HStack {
-                Text(title)
-                Spacer()
-                // 1%p 단위로 움직이는 값에 소수점을 붙이면 `35.0%` 가 된다.
-                Text(step % 100 == 0
-                     ? "\(PercentFormatter.integer(Decimal(value.wrappedValue) / 10_000))%"
-                     : "\(PercentFormatter.oneDecimal(Decimal(value.wrappedValue) / 10_000))%")
-                    .font(.figure(14, weight: .medium))
-                    .foregroundStyle(Color.ink)
-            }
-        }
+        // 계획 탭 · 계좌 편집과 같은 부품이다 (166번) — 누르는 즉시 숫자만.
+        PercentStepper(title: title, basisPoints: value, range: range, step: step)
     }
 }

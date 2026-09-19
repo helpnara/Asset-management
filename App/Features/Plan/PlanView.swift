@@ -87,6 +87,9 @@ struct PlanView: View {
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
             .moneyKeyboardBar()
+            // 계산 중임을 스크롤과 무관하게 보인다 (166번). 맨 위 요약의
+            // `반영 중` 은 수익률 구역까지 내려가면 안 보였다.
+            .recalculatingBar(isProjecting)
             .sheet(item: $editingEvent, onDismiss: { newIDs.removeAll() }) {
                 CashEventEditView(event: $0, isNew: newIDs.contains($0.id))
             }
@@ -560,15 +563,8 @@ struct PlanView: View {
     private func percentRow(_ title: String, _ value: Binding<Int>,
                             range: ClosedRange<Int>, step: Int) -> some View {
         if canManageHousehold {
-            Stepper(value: value, in: range, step: step) {
-                HStack {
-                    Text(title)
-                    Spacer()
-                    Text(percentText(value.wrappedValue, step: step))
-                        .font(.figure(14, weight: .medium))
-                        .foregroundStyle(Color.ink)
-                }
-            }
+            // 누르는 즉시 숫자만, 모델에는 손 멈춘 뒤 (166번).
+            PercentStepper(title: title, basisPoints: value, range: range, step: step)
         } else {
             readOnlyRow(title, percentText(value.wrappedValue, step: step))
         }

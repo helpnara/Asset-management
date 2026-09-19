@@ -25,6 +25,7 @@ struct MemberTrajectoryView: View {
     /// **마지막으로 끝난 궤적** (157번). 예전에는 계산 프로퍼티라 손잡이를
     /// 끄는 동안 프레임마다 궤적 전체를 주 스레드에서 다시 굴렸다.
     @State private var projected: ProjectionResult?
+    @State private var isProjecting = false
 
     private var plan: Plan? { plans.first }
 
@@ -39,6 +40,7 @@ struct MemberTrajectoryView: View {
             .padding(16)
         }
         .task(id: projectionInput) { await runProjection(projectionInput) }
+        .recalculatingBar(isProjecting)
         .background(Color.ground)
         .navigationTitle(member.name.isEmpty ? "구성원" : member.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -216,11 +218,13 @@ struct MemberTrajectoryView: View {
     /// 한 번 굴린다. 손잡이를 연달아 끌어도 `.task(id:)` 가 앞의 것을 취소하므로
     /// 계산은 멈춘 자리에서 한 번이다.
     private func runProjection(_ input: ProjectionInput?) async {
-        guard let input else { projected = nil; return }
+        guard let input else { projected = nil; isProjecting = false; return }
+        isProjecting = true
         let result = await Task.detached(priority: .userInitiated) {
             Projection.run(input)
         }.value
         guard !Task.isCancelled else { return }
         projected = result
+        isProjecting = false
     }
 }

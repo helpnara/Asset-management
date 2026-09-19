@@ -108,6 +108,8 @@ struct SimulationView: View {
                 }
             }
             .readableWidth()
+            // 머리글의 작은 아이콘은 손잡이까지 내려가면 안 보인다 (166번).
+            .recalculatingBar(isCalculating)
             .background(Color.ground)
             .navigationTitle("시뮬레이션")
             .navigationBarTitleDisplayMode(.inline)

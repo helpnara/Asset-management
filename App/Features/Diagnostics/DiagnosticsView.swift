@@ -30,6 +30,7 @@ struct DiagnosticsView: View {
     /// 그릴 때마다 30년치를 주 스레드에서 다시 굴렸다 — 기준을 한 칸 고칠
     /// 때마다 화면이 굳던 것이 이 때문이다.
     @State private var projected: ProjectionResult?
+    @State private var isProjecting = false
     // 진단 기준은 가구 하나에 한 벌이다 — 관리자만 바꾼다.
     @Environment(\.canManageHousehold) private var canManageHousehold
 
@@ -42,6 +43,7 @@ struct DiagnosticsView: View {
             }
         }
         .task(id: projectionInput) { await runProjection(projectionInput) }
+        .recalculatingBar(isProjecting)
         .readableWidth()
         .background(Color.ground)
         .navigationTitle("자산 진단")
@@ -59,12 +61,14 @@ struct DiagnosticsView: View {
 
     /// 한 번 굴린다. `.task(id:)` 가 값이 또 달라지면 이 작업을 취소한다.
     private func runProjection(_ input: ProjectionInput?) async {
-        guard let input else { projected = nil; return }
+        guard let input else { projected = nil; isProjecting = false; return }
+        isProjecting = true
         let result = await Task.detached(priority: .userInitiated) {
             Projection.run(input)
         }.value
         guard !Task.isCancelled else { return }
         projected = result
+        isProjecting = false
     }
 
     @ViewBuilder

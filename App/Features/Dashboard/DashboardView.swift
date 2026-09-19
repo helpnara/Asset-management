@@ -37,6 +37,9 @@ struct DashboardView: View {
     @State private var projected: ProjectionResult?
     /// 계획선도 같다. 여기 한 번만 굴린다.
     @State private var planProjected: ProjectionResult?
+    /// 진단 요약도 본문 밖에서 (166번). 계획 한 칸이 바뀔 때마다 — 이 탭이
+    /// 화면에 없어도 — 본문 안에서 여섯 규칙을 다시 돌리고 있었다.
+    @State private var diagnosis: DiagnosticsResult?
     /// 기간은 궤적 차트가 들고 있다 — 구성원 궤적과 같은 값을 나눠 쓴다
     /// (docs/08-feedback.md 31번). 여기서는 범례를 그릴지 판단하려고 읽는다.
     @AppStorage(TrajectoryChart.spanKey) private var chartSpan: TrajectoryChart.Span = .retirement
@@ -626,6 +629,12 @@ struct DashboardView: View {
         guard !Task.isCancelled else { return }
         projected = results.now
         planProjected = results.plan
+        // 진단은 관리 객체를 읽으므로 주 스레드에서 — 다만 **입력이 바뀔 때
+        // 한 번**이지, 그릴 때마다가 아니다.
+        diagnosis = plan.map {
+            Diagnostics.run($0.diagnosticsInput(rollup: rollup, accounts: accounts,
+                                                projection: results.now, members: members))
+        }
     }
 
     /// **1년에 한 번은 가정을 다시 본다** (docs/08-feedback.md 43번).
@@ -975,15 +984,9 @@ struct DashboardView: View {
     /// 여기서는 "할 일이 있는가"만 답한다.
     @ViewBuilder
     private var diagnosticsStrip: some View {
-        if let plan = plans.first {
-            // **이미 굴려 둔 궤적을 쓴다** (157번). 예전에는 이 띠가 본문 안에서
-            // 30년치를 한 번 더 굴렸다 — 화면에 이미 같은 궤적이 있는데도.
-            let result = Diagnostics.run(plan.diagnosticsInput(
-                rollup: rollup,
-                accounts: accounts,
-                projection: projection,
-                members: members
-            ))
+        // **굴려 둔 결과를 그리기만 한다** (157 · 166번). 궤적도 진단도
+        // 본문 밖에서 한 번씩만 돈다.
+        if let result = diagnosis {
 
             Button {
                 AppRoute.shared.wantsDiagnostics = true
