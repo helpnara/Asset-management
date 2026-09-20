@@ -372,7 +372,9 @@ jobs:
           # **`만` 을 누른 뒤** (156번). 커서가 있는 칸은 모델 값을 다시 읽지
           # 않아서, 띠가 값을 바꿔도 칸에는 옛 글자가 남고 그것이 되쓰였다.
           # 누른 뒤의 화면을 찍어야 글자가 실제로 바뀌는 것이 보인다.
-          shoot 29-money-multiply.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField -tapMoneyMultiply
+          # `-typeMoneyDraft` 는 `125` 를 친 채로 누른다 (175번) — 1,250,000 이
+          # 나와야 하고, 저장값 × 만이 나오면 그 버그다.
+          shoot 29-money-multiply.png -skipOnboarding -seedSampleData -startTab plan -focusMoneyField -tapMoneyMultiply -typeMoneyDraft
           shoot 13-principles.png  -skipOnboarding -seedSampleData -startTab more -startPrinciples
           # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).
           shoot 14-account-targets.png -skipOnboarding -seedSampleData -startTab assets -startAccountTargets

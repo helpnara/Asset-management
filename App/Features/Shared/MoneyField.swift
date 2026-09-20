@@ -44,8 +44,8 @@ struct MoneyField: View {
             // 치다 0 하나 더 붙는 오타를 치는 순간 알아챈다. 입력 중에만 —
             // 목록마다 한 줄씩 늘어나면 화면이 무거워진다. 입력 칸이므로
             // 금액 가리기를 거치지 않는다 (`Won` 이 아니라 `KoreanAmountFormatter`).
-            if isFocused && minorUnits >= 10_000 {
-                Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: minorUnits, currency: .krw), suffix: "원"))
+            if isFocused && currentValue >= 10_000 {
+                Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: currentValue, currency: .krw), suffix: "원"))
                     .font(.figure(11, weight: .medium))
                     .foregroundStyle(Color.dad)
                     .transition(.opacity)
@@ -94,6 +94,10 @@ struct MoneyField: View {
             // 원격 세션에서 이걸 확인할 수 있는 유일한 길이다.
             guard ProcessInfo.processInfo.arguments.contains("-tapMoneyMultiply") else { return }
             try? await Task.sleep(for: .milliseconds(600))
+            // **친 글자 위에서 누른다** (175번). 저장된 값이 아니라 지금 칸에 있는
+            // `125` 가 곱해져야 한다. 이 갈고리가 없으면 CI 는 저장값 × 만을 찍어
+            // 버그가 있어도 그럴듯해 보인다.
+            if ProcessInfo.processInfo.arguments.contains("-typeMoneyDraft") { draft = "125" }
             MoneyKeyboard.shared.active?.multiply(10_000)
         }
     }
@@ -160,11 +164,22 @@ struct MoneyField: View {
 
     /// 적어 둔 글자를 모델에 쓴다. 같으면 아무 일도 안 한다.
     private func commitDraft() {
-        guard let draft else { return }
-        let digits = String(draft.filter(\.isNumber).prefix(Self.maxDigits))
-        let next = min(Int(digits) ?? 0, Self.ceiling)
+        guard let next = Self.parse(draft) else { return }
         guard minorUnits != next else { return }
         minorUnits = next
+    }
+
+    /// 친 글자를 값으로. 커서가 없으면(`nil`) 값이 없다.
+    private static func parse(_ draft: String?) -> Int? {
+        guard let draft else { return nil }
+        let digits = String(draft.filter(\.isNumber).prefix(maxDigits))
+        return min(Int(digits) ?? 0, ceiling)
+    }
+
+    /// **지금 칸에 있는 값.** 커서가 있으면 친 글자, 없으면 모델. 저장은 손 뗄 때지만
+    /// (169번) 읽는 값과 만 · 억은 **지금 것**을 봐야 한다 (175번).
+    private var currentValue: Int {
+        isFocused ? (Self.parse(draft) ?? minorUnits) : minorUnits
     }
 
     private static func display(_ minorUnits: Int) -> String {
@@ -177,12 +192,17 @@ struct MoneyField: View {
     /// `minorUnits * factor` 를 먼저 계산하고 나서 한도를 봤다 — 750억이 든
     /// 칸에서 `억` 을 누르면 `Int` 를 넘겨 그 자리에서 트랩이었다. 넘침을
     /// 물어보고, 넘치거나 한도를 지나면 **한도에서 멈추고 말해 준다.**
+    ///
+    /// **출발점은 모델이 아니라 친 글자다** (175번). 169번부터 치는 동안은
+    /// `draft` 만 움직이고 모델은 손 뗄 때 쓴다. 그런데 여기가 모델을 읽어서,
+    /// 1,250,000 이 저장된 칸에 `125` 를 치고 `만` 을 누르면 125만이 아니라
+    /// **125억**이 됐다 — 옛 저장값 × 만. 칸에 보이는 글자가 곱해져야 한다.
     @MainActor
     private static func multiply(_ factor: Int,
                                  value: Binding<Int>,
                                  text: Binding<String?>,
                                  note: Binding<String?>) {
-        let current = value.wrappedValue
+        let current = parse(text.wrappedValue) ?? value.wrappedValue
         guard current > 0 else {
             note.wrappedValue = "숫자를 먼저 넣으세요"
             return
