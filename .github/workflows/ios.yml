@@ -400,9 +400,9 @@ jobs:
           shoot 28-member-edit.png -skipOnboarding -seedSampleData -startTab assets -startMemberEdit
           # **구성원 순서 시트** (168번). 맨 위 사람에게 `대표` 띠지가 서는지.
           shoot 30-member-order.png -skipOnboarding -seedSampleData -startTab assets -startMemberOrder
-          # **종목 순서 시트** (177번). 계좌 안 종목을 끌어 옮기는 자리가
-          # 목록 안이 아니라 시트로 옮겨 왔다. 줄과 `완료` 가 서는지 본다.
-          shoot 31-holding-order.png -skipOnboarding -seedSampleData -startTab assets -startHoldingOrder
+          # **종목 순서 바꾸기** (179번). `편집` 을 켠 자산 탭 — 종목 줄에 끌기
+          # 손잡이가 서고 머리글의 버튼이 `완료` 로 바뀌는지 본다.
+          shoot 31-holding-order.png -skipOnboarding -seedSampleData -startTab assets -startHoldingReorder
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL
