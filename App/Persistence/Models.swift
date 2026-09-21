@@ -85,7 +85,11 @@ extension Member {
 
     var sortedAccounts: [Account] {
         // Core Data 의 일대다는 `NSSet?` 이다. 여기 한 곳에서만 푼다.
-        (accounts as? Set<Account> ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+        // **지운 것은 빼고 준다** (178번). `context.delete` 와 저장 사이의 한
+        // 박자 동안 관계에는 그 객체가 남아 있고, 값은 이미 비어 있다 —
+        // 화면이 그 사이에 그리면 이름도 금액도 없는 줄이 반짝 스쳤다.
+        (accounts as? Set<Account> ?? []).filter { !$0.isDeleted }
+            .sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
     }
 }
 
@@ -96,7 +100,9 @@ extension Account {
     }
 
     var sortedHoldings: [Holding] {
-        (holdings as? Set<Holding> ?? []).sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+        // 지운 것은 빼고 준다 (178번). 위 `sortedAccounts` 와 같은 이유다.
+        (holdings as? Set<Holding> ?? []).filter { !$0.isDeleted }
+            .sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
     }
 }
 

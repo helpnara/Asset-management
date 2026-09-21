@@ -242,7 +242,8 @@ struct AssetsView: View {
                                 titleVisibility: .visible,
                                 presenting: pendingHoldingDelete) { request in
                 Button("삭제", role: .destructive) {
-                    delete(request.offsets, from: request.account)
+                    // 한 번의 움직임으로 사라지게 (178번).
+                    withAnimation { delete(request.offsets, from: request.account) }
                     pendingHoldingDelete = nil
                 }
                 Button("취소", role: .cancel) { pendingHoldingDelete = nil }
@@ -797,6 +798,10 @@ struct AssetsView: View {
             )
             context.delete(holding)
         }
+        // **지우면 그 자리에서 저장한다** (178번). 자동 저장(400ms)을 기다리면
+        // 그동안 목록·합계가 지워진 객체를 한 번 더 읽는다 — 빈 줄이 반짝이고
+        // 금액이 두 번 움직이는 것이 그 때문이었다.
+        try? context.save()
     }
 
 }
