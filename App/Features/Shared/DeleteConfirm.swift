@@ -76,7 +76,12 @@ private struct SwipeToDelete: ViewModifier {
         content
             // 전부 밀어도 바로 지워지지 않게 한다 — 되돌릴 수 없는 일이다 (16번).
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                // **색을 못 박는다** (181번). 앱 전체의 `tint` 가 `Color.ink`
+                // (어두운 화면에서는 흰색)이고, 미는 버튼은 그 색을 바탕으로
+                // 쓴다 — 흰 바탕에 흰 글씨라 `삭제` 가 안 보였다. 지우는
+                // 버튼은 언제나 빨강이다.
                 Button("삭제", role: .destructive) { isConfirming = true }
+                    .tint(Color.loss)
             }
             .confirmationDialog(title, isPresented: $isConfirming, titleVisibility: .visible) {
                 Button("삭제", role: .destructive) { withAnimation { perform() } }
