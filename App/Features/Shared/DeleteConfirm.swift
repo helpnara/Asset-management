@@ -79,8 +79,19 @@ extension View {
             // **색을 못 박는다** (181번). 앱 전체의 `tint` 가 `Color.ink`
             // (어두운 화면에서는 흰색)이고 미는 버튼은 그 색을 바탕으로 쓴다 —
             // 흰 바탕에 흰 글씨라 `삭제` 가 안 보였다.
-            Button("삭제", role: .destructive, action: action)
-                .tint(Color.loss)
+            Button("삭제", role: .destructive) {
+                // **밀린 줄이 다 닫힌 뒤에 띄운다** (182번 후속). 버튼을 누르면
+                // 목록이 밀린 줄을 도로 닫는데(≈0.3초), 그 사이에 확인 창을
+                // 띄우면 창을 올리느라 화면이 한 번 다시 재어지고 **닫히는 중인
+                // 줄 아래**가 밀렸다 돌아온다. 화면 몸체를 안 돌게 한 뒤에도
+                // 그 흔들림이 남았던 이유다. 닫힘이 끝난 뒤에 띄우면 창은 가만히
+                // 있는 목록 위에 뜬다.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    action()
+                }
+            }
+            .tint(Color.loss)
         }
     }
 
