@@ -23,11 +23,11 @@ struct PrincipleListView: View {
     @State private var newIDs: Set<UUID> = []
 
     /// 지우기를 기다리는 원칙 (181번).
-    @State private var pendingDelete: Principle?
+    @State private var pendingDelete = PendingDelete<Principle>()
 
     var body: some View {
         list
-            .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
+            .confirmsDelete(pendingDelete, title: "이 원칙을 삭제할까요?",
                             message: { _ in "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다." },
                             perform: remove)
             .navigationTitle("운용 원칙")
@@ -61,7 +61,7 @@ struct PrincipleListView: View {
                     Button { editing = principle } label: { PrincipleRow(principle: principle) }
                         .buttonStyle(.plain)
                         // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
-                        .swipeDelete { pendingDelete = principle }
+                        .swipeDelete { pendingDelete.item = principle }
                 } else {
                     PrincipleRow(principle: principle)
                 }

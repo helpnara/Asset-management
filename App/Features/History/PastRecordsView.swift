@@ -20,7 +20,7 @@ struct PastRecordsView: View {
 
     @Environment(\.managedObjectContext) private var context
     /// 지우기를 기다리는 기록 (181번).
-    @State private var pendingDelete: Snapshot?
+    @State private var pendingDelete = PendingDelete<Snapshot>()
     // 지난 기록을 고치는 것은 궤적의 과거를 고치는 일이라 관리자만이다.
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
@@ -46,7 +46,7 @@ struct PastRecordsView: View {
                 if canManageHousehold {
                     Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
                         // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
-                        .swipeDelete { pendingDelete = snapshot }
+                        .swipeDelete { pendingDelete.item = snapshot }
                 } else {
                     row(snapshot)
                 }
@@ -58,7 +58,7 @@ struct PastRecordsView: View {
                     .foregroundStyle(Color.faint)
             }
         }
-        .confirmsDelete($pendingDelete, title: "지난 기록을 삭제할까요?",
+        .confirmsDelete(pendingDelete, title: "지난 기록을 삭제할까요?",
                         message: { _ in "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다." },
                         perform: delete)
         // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).

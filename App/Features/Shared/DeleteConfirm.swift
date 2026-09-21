@@ -45,18 +45,31 @@ extension DeleteButton where Label == Text {
 /// 띄우느라 그 자리에서 지우지 않으므로, 걷혔던 줄이 도로 들어왔다가 확인 뒤에
 /// 다시 나간다 — "뭔가 생겼다 없어진다" 가 그것이었다.
 ///
-/// **확인 창은 줄이 아니라 화면이 들고 있는다** (181번). 처음에는 줄마다
-/// `@State` 와 확인 창을 들려 줬는데, 미는 사이에 줄이 다시 그려지면 그 상태가
-/// 날아가 **창이 떴다 사라졌다.** 지울 대상은 화면이 `@State` 로 담고, 확인
-/// 창은 화면에 한 장만 둔다.
+/// **확인 창은 줄이 아니라 화면이 들고 있는다** (181번). 줄마다 `@State` 와
+/// 확인 창을 들려 줬더니 미는 사이에 줄이 다시 그려지면 그 상태가 날아가
+/// **창이 떴다 사라졌다.**
+///
+/// **그런데 화면의 `@State` 로 들면 목록 전체가 다시 그려진다** (182번).
+/// 미는 버튼을 누르는 순간 값이 바뀌고, 화면 몸체가 다시 돌아 목록에 새 나무를
+/// 건넨다 — 그때 밀린 줄은 아직 닫히는 중이라, 그 **아래 줄이 사라졌다
+/// 돌아오는** 것이 보였다. 그래서 지울 대상은 화면이 **읽지 않는 그릇**에
+/// 담고(`PendingDelete`), 확인 창을 그리는 작은 뷰만 그 값을 읽는다. 값이 바뀌어도
+/// 다시 그려지는 것은 그 작은 뷰뿐이다.
 ///
 /// ```swift
-/// @State private var pendingDelete: Item?
+/// @State private var pendingDelete = PendingDelete<Item>()
 /// ...
-/// row(item).swipeDelete { pendingDelete = item }
+/// row(item).swipeDelete { pendingDelete.item = item }
 /// ...
-/// .confirmsDelete($pendingDelete, title: "이것을 삭제할까요?") { delete($0) }
+/// .confirmsDelete(pendingDelete, title: "이것을 삭제할까요?") { delete($0) }
 /// ```
+@Observable
+@MainActor
+final class PendingDelete<Item> {
+    var item: Item?
+    init() {}
+}
+
 extension View {
     /// 줄에 붙이는 밀기 버튼. **줄 자체에 붙인다** — `Group` 으로 감싸고 그 위에
     /// 붙이면 미는 동작이 조용히 사라진다 (181번).
@@ -71,23 +84,39 @@ extension View {
         }
     }
 
-    /// 화면에 한 장. 담긴 것이 있으면 확인 창을 띄운다.
-    func confirmsDelete<Item>(_ pending: Binding<Item?>,
+    /// 화면에 한 장. 그릇에 담긴 것이 있으면 확인 창을 띄운다. 부르는 화면은
+    /// 그릇을 만들어 건네기만 하고 **안을 읽지 않는다** (182번).
+    func confirmsDelete<Item>(_ pending: PendingDelete<Item>,
                               title: String,
                               message: @escaping (Item) -> String = { _ in "되돌릴 수 없습니다." },
                               perform: @escaping (Item) -> Void) -> some View {
-        confirmationDialog(title,
-                           isPresented: Binding(get: { pending.wrappedValue != nil },
-                                                set: { if !$0 { pending.wrappedValue = nil } }),
-                           titleVisibility: .visible,
-                           presenting: pending.wrappedValue) { item in
-            Button("삭제", role: .destructive) {
-                withAnimation { perform(item) }
-                pending.wrappedValue = nil
-            }
-            Button("취소", role: .cancel) { pending.wrappedValue = nil }
-        } message: { item in
-            Text(message(item))
+        background {
+            DeleteDialogHost(pending: pending, title: title, message: message, perform: perform)
         }
+    }
+}
+
+/// 확인 창 하나만 그리는 작은 뷰. 그릇의 값을 읽는 유일한 자리다.
+private struct DeleteDialogHost<Item>: View {
+    let pending: PendingDelete<Item>
+    let title: String
+    let message: (Item) -> String
+    let perform: (Item) -> Void
+
+    var body: some View {
+        Color.clear
+            .confirmationDialog(title,
+                                isPresented: Binding(get: { pending.item != nil },
+                                                     set: { if !$0 { pending.item = nil } }),
+                                titleVisibility: .visible,
+                                presenting: pending.item) { item in
+                Button("삭제", role: .destructive) {
+                    withAnimation { perform(item) }
+                    pending.item = nil
+                }
+                Button("취소", role: .cancel) { pending.item = nil }
+            } message: { item in
+                Text(message(item))
+            }
     }
 }

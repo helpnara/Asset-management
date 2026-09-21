@@ -20,8 +20,8 @@ struct PlanView: View {
     /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
     @State private var newIDs: Set<UUID> = []
     /// 지우기를 기다리는 것 (181번). 확인 창은 화면에 한 장씩이다.
-    @State private var pendingIncomeDelete: IncomeStream?
-    @State private var pendingEventDelete: CashEvent?
+    @State private var pendingIncomeDelete = PendingDelete<IncomeStream>()
+    @State private var pendingEventDelete = PendingDelete<CashEvent>()
     @State private var editingIncome: IncomeStream?
     /// 계획 탭에서 여는 **가족 대표의 구성원 폼** (168번). 은퇴 목표는 거기서 고친다.
     @State private var editingHead: Member?
@@ -55,11 +55,11 @@ struct PlanView: View {
                 guard canManageHousehold, let plan = Plan.primary(plans) else { return }
                 plan.adoptRetirementYear(fromHeadOf: members)
             }
-            .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
+            .confirmsDelete(pendingIncomeDelete, title: "이 수입을 삭제할까요?",
                             message: { _ in "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다." }) {
                 context.delete($0)
             }
-            .confirmsDelete($pendingEventDelete, title: "이 목돈 이벤트를 삭제할까요?",
+            .confirmsDelete(pendingEventDelete, title: "이 목돈 이벤트를 삭제할까요?",
                             message: { _ in "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다." }) {
                 context.delete($0)
             }
@@ -403,7 +403,7 @@ struct PlanView: View {
                 if canManageHousehold {
                     Button { editingIncome = stream } label: { incomeRow(stream) }
                         // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
-                        .swipeDelete { pendingIncomeDelete = stream }
+                        .swipeDelete { pendingIncomeDelete.item = stream }
                 } else {
                     incomeRow(stream)
                 }
@@ -456,7 +456,7 @@ struct PlanView: View {
                 if canManageHousehold {
                     Button { editingEvent = event } label: { cashEventRow(event) }
                         // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
-                        .swipeDelete { pendingEventDelete = event }
+                        .swipeDelete { pendingEventDelete.item = event }
                 } else {
                     cashEventRow(event)
                 }

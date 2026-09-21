@@ -14,7 +14,7 @@ import SwiftUI
 struct MilestoneListView: View {
     @Environment(\.managedObjectContext) private var context
     /// 지우기를 기다리는 마일스톤 (181번).
-    @State private var pendingDelete: UserMilestone?
+    @State private var pendingDelete = PendingDelete<UserMilestone>()
     @Environment(\.canEdit) private var canEdit
     @Fetched(sort: \UserMilestone.year) private var milestones: [UserMilestone]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
@@ -41,13 +41,13 @@ struct MilestoneListView: View {
                         MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                     }
                     // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
-                    .swipeDelete { pendingDelete = milestone }
+                    .swipeDelete { pendingDelete.item = milestone }
                 } else {
                     MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                 }
             }
         }
-        .confirmsDelete($pendingDelete, title: "이 마일스톤을 삭제할까요?") { context.delete($0) }
+        .confirmsDelete(pendingDelete, title: "이 마일스톤을 삭제할까요?") { context.delete($0) }
         .navigationTitle("내 마일스톤")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

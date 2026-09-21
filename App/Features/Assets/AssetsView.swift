@@ -51,7 +51,7 @@ struct AssetsView: View {
     /// 잡혀 서로 어긋난다. 우리가 켜고, 우리가 목록에 건넨다.
     @State private var isReordering = false
     /// 지우기를 기다리는 종목 (181번). 확인 창은 화면에 한 장이다.
-    @State private var pendingHoldingDelete: Holding?
+    @State private var pendingHoldingDelete = PendingDelete<Holding>()
     /// **편집 중에는 화면이 순서의 주인이다** (179번). 계좌 id → 종목 id 차례.
     ///
     /// 빌드 102 이전에는 `onMove` 가 `sortIndex` 만 바꿨다. 새 차례는 관계를
@@ -273,7 +273,7 @@ struct AssetsView: View {
                     move(account, to: member)
                 }
             }
-            .confirmsDelete($pendingHoldingDelete, title: "종목을 삭제할까요?",
+            .confirmsDelete(pendingHoldingDelete, title: "종목을 삭제할까요?",
                             message: { "\($0.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다." }) { holding in
                 delete(holding)
             }
@@ -537,7 +537,7 @@ struct AssetsView: View {
                     }
                     // **밀어 지우기** (180 · 181번). 줄 자체에 붙이고, 확인 창은
                     // 화면이 한 장 들고 있는다.
-                    .swipeDelete { pendingHoldingDelete = holding }
+                    .swipeDelete { pendingHoldingDelete.item = holding }
                 } else {
                     // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                     holdingRow(holding)
