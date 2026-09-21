@@ -13,6 +13,8 @@ import SwiftUI
 /// 궤적의 세로 눈금으로 간다. 누구의 일인지도 고를 수 있다 (32번).
 struct MilestoneListView: View {
     @Environment(\.managedObjectContext) private var context
+    /// 지우기를 기다리는 마일스톤 (181번).
+    @State private var pendingDelete: UserMilestone?
     @Environment(\.canEdit) private var canEdit
     @Fetched(sort: \UserMilestone.year) private var milestones: [UserMilestone]
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
@@ -38,14 +40,14 @@ struct MilestoneListView: View {
                     Button { editing = milestone } label: {
                         MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                     }
-                    // 밀어 지우기는 줄마다 (180번). 줄 자체에 붙인다 (181번).
-                    .swipeToDelete(title: "이 마일스톤을 삭제할까요?",
-                                   message: "되돌릴 수 없습니다.") { context.delete(milestone) }
+                    // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
+                    .swipeDelete { pendingDelete = milestone }
                 } else {
                     MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                 }
             }
         }
+        .confirmsDelete($pendingDelete, title: "이 마일스톤을 삭제할까요?") { context.delete($0) }
         .navigationTitle("내 마일스톤")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -42,52 +42,52 @@ extension DeleteButton where Label == Text {
 ///
 /// `.onDelete` 를 쓰면 안 된다. 그것은 사용자가 밀어 `삭제` 를 누르는 순간
 /// **목록이 먼저 줄을 걷어내고** 자료가 따라오기를 기다린다. 우리는 확인 창을
-/// 띄우느라 그 자리에서 지우지 않으므로, **걷혔던 줄이 도로 들어왔다가**
-/// 확인 뒤에 다시 나간다 — 기기에서 "뭔가 생겼다 없어진다" 로 보이던 것이
-/// 이것이다 (빌드 102 · 103 에서 두 번 딴 데를 고쳤다).
+/// 띄우느라 그 자리에서 지우지 않으므로, 걷혔던 줄이 도로 들어왔다가 확인 뒤에
+/// 다시 나간다 — "뭔가 생겼다 없어진다" 가 그것이었다.
 ///
-/// `swipeActions` 의 버튼은 줄을 건드리지 않는다. 누르면 우리 확인 창이 뜨고,
-/// `삭제` 를 눌러 자료가 바뀔 때 비로소 줄이 한 번 나간다.
+/// **확인 창은 줄이 아니라 화면이 들고 있는다** (181번). 처음에는 줄마다
+/// `@State` 와 확인 창을 들려 줬는데, 미는 사이에 줄이 다시 그려지면 그 상태가
+/// 날아가 **창이 떴다 사라졌다.** 지울 대상은 화면이 `@State` 로 담고, 확인
+/// 창은 화면에 한 장만 둔다.
 ///
 /// ```swift
-/// ForEach(items) { item in
-///     row(item).swipeToDelete(title: "이 종목을 삭제할까요?") { delete(item) }
-/// }
+/// @State private var pendingDelete: Item?
+/// ...
+/// row(item).swipeDelete { pendingDelete = item }
+/// ...
+/// .confirmsDelete($pendingDelete, title: "이것을 삭제할까요?") { delete($0) }
 /// ```
-/// **줄 자체에 붙인다** (181번). `Group` 으로 감싸고 그 위에 붙였더니 미는
-/// 동작이 **아예 사라졌다** — `swipeActions` 는 목록이 줄로 아는 뷰에 직접
-/// 붙어야 한다. 그래서 고칠 권한이 없으면 아예 안 붙이는 쪽을 부르는 자리에서
-/// 정한다 (`if` 의 바깥가지에는 이 부품을 안 쓴다). 인자로 끄지 않는다.
 extension View {
-    func swipeToDelete(title: String,
-                       message: String? = nil,
-                       perform: @escaping () -> Void) -> some View {
-        modifier(SwipeToDelete(title: title, message: message, perform: perform))
+    /// 줄에 붙이는 밀기 버튼. **줄 자체에 붙인다** — `Group` 으로 감싸고 그 위에
+    /// 붙이면 미는 동작이 조용히 사라진다 (181번).
+    func swipeDelete(_ action: @escaping () -> Void) -> some View {
+        // 전부 밀어도 바로 지워지지 않게 한다 — 되돌릴 수 없는 일이다 (16번).
+        swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            // **색을 못 박는다** (181번). 앱 전체의 `tint` 가 `Color.ink`
+            // (어두운 화면에서는 흰색)이고 미는 버튼은 그 색을 바탕으로 쓴다 —
+            // 흰 바탕에 흰 글씨라 `삭제` 가 안 보였다.
+            Button("삭제", role: .destructive, action: action)
+                .tint(Color.loss)
+        }
     }
-}
 
-private struct SwipeToDelete: ViewModifier {
-    let title: String
-    let message: String?
-    let perform: () -> Void
-    @State private var isConfirming = false
-
-    func body(content: Content) -> some View {
-        content
-            // 전부 밀어도 바로 지워지지 않게 한다 — 되돌릴 수 없는 일이다 (16번).
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                // **색을 못 박는다** (181번). 앱 전체의 `tint` 가 `Color.ink`
-                // (어두운 화면에서는 흰색)이고, 미는 버튼은 그 색을 바탕으로
-                // 쓴다 — 흰 바탕에 흰 글씨라 `삭제` 가 안 보였다. 지우는
-                // 버튼은 언제나 빨강이다.
-                Button("삭제", role: .destructive) { isConfirming = true }
-                    .tint(Color.loss)
+    /// 화면에 한 장. 담긴 것이 있으면 확인 창을 띄운다.
+    func confirmsDelete<Item>(_ pending: Binding<Item?>,
+                              title: String,
+                              message: @escaping (Item) -> String = { _ in "되돌릴 수 없습니다." },
+                              perform: @escaping (Item) -> Void) -> some View {
+        confirmationDialog(title,
+                           isPresented: Binding(get: { pending.wrappedValue != nil },
+                                                set: { if !$0 { pending.wrappedValue = nil } }),
+                           titleVisibility: .visible,
+                           presenting: pending.wrappedValue) { item in
+            Button("삭제", role: .destructive) {
+                withAnimation { perform(item) }
+                pending.wrappedValue = nil
             }
-            .confirmationDialog(title, isPresented: $isConfirming, titleVisibility: .visible) {
-                Button("삭제", role: .destructive) { withAnimation { perform() } }
-                Button("취소", role: .cancel) {}
-            } message: {
-                if let message { Text(message) }
-            }
+            Button("취소", role: .cancel) { pending.wrappedValue = nil }
+        } message: { item in
+            Text(message(item))
+        }
     }
 }

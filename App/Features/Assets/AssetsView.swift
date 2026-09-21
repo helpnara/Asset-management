@@ -50,6 +50,8 @@ struct AssetsView: View {
     /// `NavigationStack` 이 내주기 때문이다 — 여기서 그 값을 읽으면 바깥 것이
     /// 잡혀 서로 어긋난다. 우리가 켜고, 우리가 목록에 건넨다.
     @State private var isReordering = false
+    /// 지우기를 기다리는 종목 (181번). 확인 창은 화면에 한 장이다.
+    @State private var pendingHoldingDelete: Holding?
     /// **편집 중에는 화면이 순서의 주인이다** (179번). 계좌 id → 종목 id 차례.
     ///
     /// 빌드 102 이전에는 `onMove` 가 `sortIndex` 만 바꿨다. 새 차례는 관계를
@@ -270,6 +272,10 @@ struct AssetsView: View {
                                 current: account.owner?.id) { member, _ in
                     move(account, to: member)
                 }
+            }
+            .confirmsDelete($pendingHoldingDelete, title: "종목을 삭제할까요?",
+                            message: { "\($0.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다." }) { holding in
+                delete(holding)
             }
             .navigationDestination(isPresented: $showFamilyAllocation) {
                 FamilyAllocationView()
@@ -529,17 +535,9 @@ struct AssetsView: View {
                         Button("종목 편집") { editingHolding = holding }
                         Button("다른 계좌로 옮기기…") { movingHolding = holding }
                     }
-                    // **밀어 지우기는 줄마다** (180번). 예전에는 `onDelete` 였는데,
-                    // 그것은 미는 순간 목록이 줄을 먼저 걷어내고 자료를 기다린다 —
-                    // 확인 창을 띄우는 동안 걷혔던 줄이 도로 들어왔다 나갔다.
-                    //
-                    // **줄 자체에 붙인다** (181번). `Group` 으로 감싸고 그 위에
-                    // 붙였더니 미는 동작이 아예 사라졌다 — `swipeActions` 는
-                    // 목록이 줄로 아는 뷰에 직접 붙어야 한다.
-                    .swipeToDelete(title: "종목을 삭제할까요?",
-                                   message: "\(holding.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
-                        delete(holding, from: account)
-                    }
+                    // **밀어 지우기** (180 · 181번). 줄 자체에 붙이고, 확인 창은
+                    // 화면이 한 장 들고 있는다.
+                    .swipeDelete { pendingHoldingDelete = holding }
                 } else {
                     // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                     holdingRow(holding)
@@ -823,16 +821,17 @@ struct AssetsView: View {
         try? context.save()
     }
 
-    private func delete(_ holding: Holding, from account: Account) {
-        let owner = account.owner?.name ?? ""
+    private func delete(_ holding: Holding) {
+        let account = holding.account
+        let owner = account?.owner?.name ?? ""
         let name = holding.name.isEmpty ? "이름 없음" : holding.name
         ChangeLogger.structureChanged(
-            [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
+            [owner, account?.weightLabel ?? "", name].filter { !$0.isEmpty }.joined(separator: " · "),
             "종목을 삭제했습니다", in: context
         )
         context.delete(holding)
         // 지운 줄은 화면이 들고 있던 차례에서도 빼 준다 (179번 초안).
-        reorderDrafts[account.id]?.removeAll { $0 == holding.id }
+        if let id = account?.id { reorderDrafts[id]?.removeAll { $0 == holding.id } }
         // **지우면 그 자리에서 저장한다** (178번). 자동 저장(400ms)을 기다리면
         // 그동안 목록·합계가 지워진 객체를 한 번 더 읽는다 — 빈 줄이 반짝이고
         // 금액이 두 번 움직이는 것이 그 때문이었다.
