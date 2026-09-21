@@ -46,6 +46,8 @@ struct AssetsView: View {
     @State private var targetingAccount: Account?
     @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
+    /// 종목 순서를 바꾸는 시트의 대상 계좌 (177번).
+    @State private var orderingAccount: Account?
     @State private var route = AppRoute.shared
     /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
     /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
@@ -197,6 +199,14 @@ struct AssetsView: View {
             }
             .sheet(isPresented: $isOrderingMembers) {
                 MemberOrderView(members: members)
+            }
+            .sheet(item: $orderingAccount) { HoldingOrderView(account: $0) }
+            // 종목 순서 시트 — 끌어 놓은 줄이 그 자리에 머무는지 (177번).
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-startHoldingOrder") else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                orderingAccount = members.flatMap(\.sortedAccounts)
+                    .first { $0.sortedHoldings.count > 1 }
             }
             .sheet(item: $editingMember, onDismiss: { newIDs.removeAll() }) {
                 MemberEditView(member: $0, isNew: newIDs.contains($0.id))
@@ -403,6 +413,12 @@ struct AssetsView: View {
             Button("목표 비중") { targetingAccount = account }
         }
         // **다른 구성원에게** (113번). 끌어 놓기는 List 안에서 안 잡혀 메뉴로.
+        // **순서는 시트에서** (177번). 목록 안 제자리 끌기는 구성원에서 이미
+        // 한 번 실패한 길이다 — 섹션이 겹겹인 목록에서는 끌어 놓은 줄이 부모의
+        // 갱신을 기다리다 제자리로 튕긴다 (168번 6). 같은 해법을 쓴다.
+        if mayEdit(account.owner) && account.sortedHoldings.count > 1 {
+            Button("종목 순서") { orderingAccount = account }
+        }
         if mayEdit(account.owner) && members.filter({ mayEdit($0) }).count > 1 {
             Button("다른 구성원에게 옮기기…") { movingAccount = account }
         }
@@ -413,6 +429,8 @@ struct AssetsView: View {
     private func hasAccountActions(_ account: Account) -> Bool {
         mayEdit(account.owner) || account.canSetTargets
     }
+
+
 
     @ViewBuilder
     private func accountRows(_ account: Account) -> some View {
@@ -506,9 +524,6 @@ struct AssetsView: View {
             // 지우기·끌기를 잠근다 — 엉뚱한 종목이 지워진다.
             .onDelete(perform: mayEdit(account.owner) && !isNarrowing && sort == .manual ? { (offsets: IndexSet) in
                 pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: offsets)
-            } : nil)
-            .onMove(perform: mayEdit(account.owner) && !isNarrowing && sort == .manual ? { (offsets: IndexSet, destination: Int) in
-                move(offsets, to: destination, in: account)
             } : nil)
 
             // 버튼이 하나도 없으면 줄 자체를 안 만든다 — 빈 HStack 도 목록의
@@ -784,13 +799,6 @@ struct AssetsView: View {
         }
     }
 
-    private func move(_ offsets: IndexSet, to destination: Int, in account: Account) {
-        var items = account.sortedHoldings
-        items.move(fromOffsets: offsets, toOffset: destination)
-        for (position, holding) in items.enumerated() {
-            holding.sortIndex = position
-        }
-    }
 }
 
 /// 구성원 순서. 목록이 섹션으로 나뉘어 있어 제자리 드래그가 어려우므로 따로 뺐다.
@@ -865,6 +873,78 @@ struct MemberOrderView: View {
         }
         // 대표가 바뀌면 계획의 은퇴 목표도 새 대표의 것으로 (168번).
         Plan.primary(context.all(Plan.self))?.adoptRetirementYear(fromHeadOf: order)
+        guard context.hasChanges else { return }
+        try? context.save()
+    }
+}
+
+/// **계좌 안 종목 순서** (docs/08-feedback.md 177번).
+///
+/// 목록 안에서 바로 끌던 것을 여기로 옮겼다. 자산 탭의 목록은 구성원 → 계좌 →
+/// 종목으로 겹쳐 있고, 한 구역 안에 계좌 줄 · 종목 줄 · 버튼 줄이 섞여 있다.
+/// 그 안에서 `onMove` 로 `sortIndex` 만 바꾸면, 새 순서가 부모의 `@Fetched` 를
+/// 거쳐 돌아와야 줄이 옮겨 간다 — 그 갱신이 제때 안 오면 **끌어 놓은 줄이
+/// 제자리로 튕긴다.** 구성원 순서에서 이미 겪고 시트로 푼 문제다 (168번 6).
+///
+/// 여기서는 순서를 이 화면이 직접 들고, 옮길 때마다 저장소에 적고 곧바로
+/// 저장한다. 저장이 끝나야 자산 탭 · 주간 점검 · 1페이지가 같은 순서를 읽는다.
+struct HoldingOrderView: View {
+    let account: Account
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
+
+    @State private var order: [Holding] = []
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(order) { holding in
+                        HStack(spacing: 8) {
+                            Text(holding.name.isEmpty ? "이름 없음" : holding.name)
+                                .font(.scaled(13))
+                                .foregroundStyle(Color.ink)
+                            Spacer(minLength: 8)
+                            Text(Won.abbreviated(Money(minorUnits: holding.valueMinor, currency: .krw)))
+                                .font(.figure(12))
+                                .foregroundStyle(Color.faint)
+                                .fixedSize()
+                        }
+                    }
+                    .onMove { offsets, destination in
+                        order.move(fromOffsets: offsets, toOffset: destination)
+                        apply()
+                    }
+                } header: {
+                    Text(account.name.isEmpty ? account.kind.label : account.name)
+                } footer: {
+                    Text("여기 순서대로 자산 탭에 보이고, 주간 점검도 이 순서로 묻습니다. 증권사 앱에서 보이는 차례와 맞춰 두면 옮겨 적기 편합니다.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .onAppear {
+                if order.isEmpty { order = account.sortedHoldings }
+            }
+            .navigationTitle("종목 순서")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("완료") {
+                        apply()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    /// 화면의 순서를 `sortIndex` 에 적고 바로 저장한다. 자동 저장(400ms)을
+    /// 기다리면 시트를 닫는 순간 자산 탭이 옛 순서를 한 번 더 그린다.
+    private func apply() {
+        for (position, holding) in order.enumerated() where holding.sortIndex != position {
+            holding.sortIndex = position
+        }
         guard context.hasChanges else { return }
         try? context.save()
     }
