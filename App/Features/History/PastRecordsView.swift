@@ -39,20 +39,18 @@ struct PastRecordsView: View {
             }
 
             ForEach(snapshots) { snapshot in
-                Group {
-                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                    if canManageHousehold {
-                        Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
-                    } else {
-                        row(snapshot)
-                    }
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
+                        // 밀어 지우기는 줄마다 (180번). 줄 자체에 붙인다 (181번).
+                        .swipeToDelete(title: "지난 기록을 삭제할까요?",
+                                       message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.") {
+                            delete(snapshot)
+                        }
+                } else {
+                    row(snapshot)
                 }
-                // 밀어 지우기는 줄마다 (180번). `onDelete` 는 확인 창을 띄우는
-                // 동안 줄이 걷혔다 돌아온다.
-                .swipeToDelete(title: "지난 기록을 삭제할까요?",
-                               message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.",
-                               enabled: canManageHousehold) { delete(snapshot) }
             }
 
             Section {

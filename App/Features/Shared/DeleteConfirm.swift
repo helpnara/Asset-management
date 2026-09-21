@@ -54,20 +54,21 @@ extension DeleteButton where Label == Text {
 ///     row(item).swipeToDelete(title: "이 종목을 삭제할까요?") { delete(item) }
 /// }
 /// ```
+/// **줄 자체에 붙인다** (181번). `Group` 으로 감싸고 그 위에 붙였더니 미는
+/// 동작이 **아예 사라졌다** — `swipeActions` 는 목록이 줄로 아는 뷰에 직접
+/// 붙어야 한다. 그래서 고칠 권한이 없으면 아예 안 붙이는 쪽을 부르는 자리에서
+/// 정한다 (`if` 의 바깥가지에는 이 부품을 안 쓴다). 인자로 끄지 않는다.
 extension View {
     func swipeToDelete(title: String,
                        message: String? = nil,
-                       enabled: Bool = true,
                        perform: @escaping () -> Void) -> some View {
-        modifier(SwipeToDelete(title: title, message: message,
-                               enabled: enabled, perform: perform))
+        modifier(SwipeToDelete(title: title, message: message, perform: perform))
     }
 }
 
 private struct SwipeToDelete: ViewModifier {
     let title: String
     let message: String?
-    let enabled: Bool
     let perform: () -> Void
     @State private var isConfirming = false
 
@@ -75,9 +76,7 @@ private struct SwipeToDelete: ViewModifier {
         content
             // 전부 밀어도 바로 지워지지 않게 한다 — 되돌릴 수 없는 일이다 (16번).
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if enabled {
-                    Button("삭제", role: .destructive) { isConfirming = true }
-                }
+                Button("삭제", role: .destructive) { isConfirming = true }
             }
             .confirmationDialog(title, isPresented: $isConfirming, titleVisibility: .visible) {
                 Button("삭제", role: .destructive) { withAnimation { perform() } }

@@ -49,20 +49,19 @@ struct PrincipleListView: View {
     private var list: some View {
         List {
             ForEach(principles) { principle in
-                Group {
-                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                    if canManageHousehold {
-                        Button { editing = principle } label: { PrincipleRow(principle: principle) }
-                            .buttonStyle(.plain)
-                    } else {
-                        PrincipleRow(principle: principle)
-                    }
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editing = principle } label: { PrincipleRow(principle: principle) }
+                        .buttonStyle(.plain)
+                        // 밀어 지우기는 줄마다 (180번). 줄 자체에 붙인다 (181번).
+                        .swipeToDelete(title: "이 원칙을 삭제할까요?",
+                                       message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.") {
+                            remove(principle)
+                        }
+                } else {
+                    PrincipleRow(principle: principle)
                 }
-                // 밀어 지우기는 줄마다 (180번).
-                .swipeToDelete(title: "이 원칙을 삭제할까요?",
-                               message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
-                               enabled: canManageHousehold) { remove(principle) }
             }
             .onMove(perform: canManageHousehold
                     ? { (offsets: IndexSet, destination: Int) in

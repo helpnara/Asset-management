@@ -387,19 +387,18 @@ struct PlanView: View {
     private func incomeSection(_ plan: Plan) -> some View {
         Section {
             ForEach(incomes) { stream in
-                Group {
-                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                    if canManageHousehold {
-                        Button { editingIncome = stream } label: { incomeRow(stream) }
-                    } else {
-                        incomeRow(stream)
-                    }
+                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                if canManageHousehold {
+                    Button { editingIncome = stream } label: { incomeRow(stream) }
+                        // 밀어 지우기는 줄마다 (180번). 줄 자체에 붙인다 (181번).
+                        .swipeToDelete(title: "이 수입을 삭제할까요?",
+                                       message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") {
+                            context.delete(stream)
+                        }
+                } else {
+                    incomeRow(stream)
                 }
-                // 밀어 지우기는 줄마다 (180번).
-                .swipeToDelete(title: "이 수입을 삭제할까요?",
-                               message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.",
-                               enabled: canManageHousehold) { context.delete(stream) }
             }
 
             if canManageHousehold {
@@ -446,17 +445,16 @@ struct PlanView: View {
     private var cashEventSection: some View {
         Section {
             ForEach(cashEvents) { event in
-                Group {
-                    if canManageHousehold {
-                        Button { editingEvent = event } label: { cashEventRow(event) }
-                    } else {
-                        cashEventRow(event)
-                    }
+                if canManageHousehold {
+                    Button { editingEvent = event } label: { cashEventRow(event) }
+                        // 밀어 지우기는 줄마다 (180번). 줄 자체에 붙인다 (181번).
+                        .swipeToDelete(title: "이 목돈 이벤트를 삭제할까요?",
+                                       message: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") {
+                            context.delete(event)
+                        }
+                } else {
+                    cashEventRow(event)
                 }
-                // 밀어 지우기는 줄마다 (180번).
-                .swipeToDelete(title: "이 목돈 이벤트를 삭제할까요?",
-                               message: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.",
-                               enabled: canManageHousehold) { context.delete(event) }
             }
 
             if canManageHousehold {

@@ -151,7 +151,10 @@ struct AssetsView: View {
                         .searchable(text: $query, prompt: "종목 · 계좌 · 기관")
                         // 목록에 편집 모드를 우리가 건넨다 (179번). 위 주석대로
                         // `EditButton` 의 환경값은 여기서 읽을 수 없다.
-                        .environment(\.editMode, .constant(isReordering ? .active : .inactive))
+                        //
+                        // **켤 때만 건넨다** (181번). 끌 때까지 `.inactive` 를 심어
+                        // 두면 목록이 제 상태를 못 쓴다.
+                        .modifier(ReorderMode(isOn: isReordering))
                 }
             }
             // 넓은 화면에서 한 줄이 끝에서 끝까지 늘어나지 않게 (161번).
@@ -515,30 +518,31 @@ struct AssetsView: View {
 
         if isExpanded(account) || isNarrowing {
             ForEach(visibleHoldings(account)) { holding in
-                Group {
-                    if mayEdit(account.owner) {
-                        Button {
-                            editingHolding = holding
-                        } label: {
-                            holdingRow(holding)
-                        }
-                        // **다른 계좌로** (113번). 길게 누르면 메뉴.
-                        .contextMenu {
-                            Button("종목 편집") { editingHolding = holding }
-                            Button("다른 계좌로 옮기기…") { movingHolding = holding }
-                        }
-                    } else {
-                        // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
+                if mayEdit(account.owner) {
+                    Button {
+                        editingHolding = holding
+                    } label: {
                         holdingRow(holding)
                     }
-                }
-                // **밀어 지우기는 줄마다** (180번). 예전에는 `onDelete` 였는데,
-                // 그것은 미는 순간 목록이 줄을 먼저 걷어내고 자료를 기다린다 —
-                // 확인 창을 띄우는 동안 걷혔던 줄이 도로 들어왔다 나갔다.
-                .swipeToDelete(title: "종목을 삭제할까요?",
-                               message: "\(holding.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.",
-                               enabled: mayEdit(account.owner)) {
-                    delete(holding, from: account)
+                    // **다른 계좌로** (113번). 길게 누르면 메뉴.
+                    .contextMenu {
+                        Button("종목 편집") { editingHolding = holding }
+                        Button("다른 계좌로 옮기기…") { movingHolding = holding }
+                    }
+                    // **밀어 지우기는 줄마다** (180번). 예전에는 `onDelete` 였는데,
+                    // 그것은 미는 순간 목록이 줄을 먼저 걷어내고 자료를 기다린다 —
+                    // 확인 창을 띄우는 동안 걷혔던 줄이 도로 들어왔다 나갔다.
+                    //
+                    // **줄 자체에 붙인다** (181번). `Group` 으로 감싸고 그 위에
+                    // 붙였더니 미는 동작이 아예 사라졌다 — `swipeActions` 는
+                    // 목록이 줄로 아는 뷰에 직접 붙어야 한다.
+                    .swipeToDelete(title: "종목을 삭제할까요?",
+                                   message: "\(holding.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.") {
+                        delete(holding, from: account)
+                    }
+                } else {
+                    // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
+                    holdingRow(holding)
                 }
             }
             // 순서는 `편집` 을 켠 동안만 바꾼다 (179번).
@@ -835,6 +839,19 @@ struct AssetsView: View {
         try? context.save()
     }
 
+}
+
+/// 순서를 바꾸는 동안에만 목록을 편집 모드로 둔다 (181번).
+private struct ReorderMode: ViewModifier {
+    let isOn: Bool
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content.environment(\.editMode, .constant(.active))
+        } else {
+            content
+        }
+    }
 }
 
 /// 구성원 순서. 목록이 섹션으로 나뉘어 있어 제자리 드래그가 어려우므로 따로 뺐다.
