@@ -24,7 +24,6 @@ struct PastRecordsView: View {
     @Fetched(sort: \Snapshot.weekAnchor, order: .reverse) private var snapshots: [Snapshot]
     @Fetched private var sessions: [ReviewSession]
 
-    @State private var pendingDelete: IndexSet?
     @State private var editing: PastRecordDraft?
 
     var body: some View {
@@ -40,16 +39,21 @@ struct PastRecordsView: View {
             }
 
             ForEach(snapshots) { snapshot in
-                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                if canManageHousehold {
-                    Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
-                } else {
-                    row(snapshot)
+                Group {
+                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                    if canManageHousehold {
+                        Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
+                    } else {
+                        row(snapshot)
+                    }
                 }
+                // 밀어 지우기는 줄마다 (180번). `onDelete` 는 확인 창을 띄우는
+                // 동안 줄이 걷혔다 돌아온다.
+                .swipeToDelete(title: "지난 기록을 삭제할까요?",
+                               message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.",
+                               enabled: canManageHousehold) { delete(snapshot) }
             }
-            .onDelete(perform: canManageHousehold
-                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
 
             Section {
                 Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.")
@@ -57,9 +61,6 @@ struct PastRecordsView: View {
                     .foregroundStyle(Color.faint)
             }
         }
-        .confirmsDelete($pendingDelete, title: "지난 기록을 삭제할까요?",
-                        message: "궤적의 '실제 기록' 선에서 그 점이 사라집니다. 되돌릴 수 없습니다.",
-                        perform: delete)
         // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
         .readableWidth()
         .navigationTitle("지난 기록")
@@ -157,13 +158,11 @@ struct PastRecordsView: View {
             .netWorthMinor ?? 0
     }
 
-    private func delete(_ offsets: IndexSet) {
-        for index in offsets where snapshots.indices.contains(index) {
-            let anchor = snapshots[index].weekAnchor
-            context.delete(snapshots[index])
-            for session in sessions where session.weekAnchor == anchor && session.isTotalOnly {
-                context.delete(session)
-            }
+    private func delete(_ snapshot: Snapshot) {
+        let anchor = snapshot.weekAnchor
+        context.delete(snapshot)
+        for session in sessions where session.weekAnchor == anchor && session.isTotalOnly {
+            context.delete(session)
         }
     }
 }

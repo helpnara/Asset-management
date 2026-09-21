@@ -19,7 +19,6 @@ struct MilestoneListView: View {
     @State private var editing: UserMilestone?
     /// 방금 만든 것의 id — 편집 시트의 `취소` 가 지운다 (104번).
     @State private var newIDs: Set<UUID> = []
-    @State private var pendingDelete: IndexSet?
 
     var body: some View {
         List {
@@ -33,23 +32,21 @@ struct MilestoneListView: View {
             }
 
             ForEach(milestones) { milestone in
-                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                if canEdit {
-                    Button { editing = milestone } label: {
+                Group {
+                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                    if canEdit {
+                        Button { editing = milestone } label: {
+                            MilestoneRow(milestone: milestone, owner: owner(of: milestone))
+                        }
+                    } else {
                         MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                     }
-                } else {
-                    MilestoneRow(milestone: milestone, owner: owner(of: milestone))
                 }
-            }
-            .onDelete(perform: canEdit
-                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
-        }
-        .confirmsDelete($pendingDelete, title: "이 마일스톤을 삭제할까요?",
-                        message: "되돌릴 수 없습니다.") { offsets in
-            for index in offsets where milestones.indices.contains(index) {
-                context.delete(milestones[index])
+                // 밀어 지우기는 줄마다 (180번).
+                .swipeToDelete(title: "이 마일스톤을 삭제할까요?",
+                               message: "되돌릴 수 없습니다.",
+                               enabled: canEdit) { context.delete(milestone) }
             }
         }
         .navigationTitle("내 마일스톤")

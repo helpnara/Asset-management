@@ -44,7 +44,6 @@ struct AssetsView: View {
     @State private var movingHolding: Holding?
     @State private var movingAccount: Account?
     @State private var targetingAccount: Account?
-    @State private var pendingHoldingDelete: HoldingDeleteRequest?
     @State private var isOrderingMembers = false
     /// **순서를 바꾸는 중** (179번). `편집` 버튼이 켜고 끈다. `EditButton` 을
     /// 쓰지 않는 것은, 그것이 읽는 `editMode` 를 이 화면 **안쪽의**
@@ -268,22 +267,6 @@ struct AssetsView: View {
                                 current: account.owner?.id) { member, _ in
                     move(account, to: member)
                 }
-            }
-            // 밀어 지우기도 확인을 거친다. 여기서 지우는 것은 그 종목에 적어 온
-            // 평가액 전부라 되돌릴 방법이 없다 (docs/08-feedback.md 16번).
-            .confirmationDialog("종목을 삭제할까요?",
-                                isPresented: Binding(get: { pendingHoldingDelete != nil },
-                                                     set: { if !$0 { pendingHoldingDelete = nil } }),
-                                titleVisibility: .visible,
-                                presenting: pendingHoldingDelete) { request in
-                Button("삭제", role: .destructive) {
-                    // 한 번의 움직임으로 사라지게 (178번).
-                    withAnimation { delete(request.offsets, from: request.account) }
-                    pendingHoldingDelete = nil
-                }
-                Button("취소", role: .cancel) { pendingHoldingDelete = nil }
-            } message: { request in
-                Text("\(request.names) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.")
             }
             .navigationDestination(isPresented: $showFamilyAllocation) {
                 FamilyAllocationView()
@@ -532,29 +515,32 @@ struct AssetsView: View {
 
         if isExpanded(account) || isNarrowing {
             ForEach(visibleHoldings(account)) { holding in
-                if mayEdit(account.owner) {
-                    Button {
-                        editingHolding = holding
-                    } label: {
+                Group {
+                    if mayEdit(account.owner) {
+                        Button {
+                            editingHolding = holding
+                        } label: {
+                            holdingRow(holding)
+                        }
+                        // **다른 계좌로** (113번). 길게 누르면 메뉴.
+                        .contextMenu {
+                            Button("종목 편집") { editingHolding = holding }
+                            Button("다른 계좌로 옮기기…") { movingHolding = holding }
+                        }
+                    } else {
+                        // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
                         holdingRow(holding)
                     }
-                    // **다른 계좌로** (113번). 길게 누르면 메뉴.
-                    .contextMenu {
-                        Button("종목 편집") { editingHolding = holding }
-                        Button("다른 계좌로 옮기기…") { movingHolding = holding }
-                    }
-                } else {
-                    // 눌러도 열 것이 없으면 누를 수 있게 두지 않는다.
-                    holdingRow(holding)
+                }
+                // **밀어 지우기는 줄마다** (180번). 예전에는 `onDelete` 였는데,
+                // 그것은 미는 순간 목록이 줄을 먼저 걷어내고 자료를 기다린다 —
+                // 확인 창을 띄우는 동안 걷혔던 줄이 도로 들어왔다 나갔다.
+                .swipeToDelete(title: "종목을 삭제할까요?",
+                               message: "\(holding.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다.",
+                               enabled: mayEdit(account.owner)) {
+                    delete(holding, from: account)
                 }
             }
-            // 삼항 안의 클로저에는 타입을 적는다. `$0` 로 두면 `nil` 쪽 때문에
-            // 추론할 근거가 없어 컴파일러가 막는다.
-            // 좁혀 보거나 정렬을 바꾼 상태에서는 위치가 원래 순서와 달라 밀어
-            // 지우기·끌기를 잠근다 — 엉뚱한 종목이 지워진다.
-            .onDelete(perform: mayEdit(account.owner) && !isNarrowing && sort == .manual ? { (offsets: IndexSet) in
-                pendingHoldingDelete = HoldingDeleteRequest(account: account, offsets: offsets)
-            } : nil)
             // 순서는 `편집` 을 켠 동안만 바꾼다 (179번).
             .onMove(perform: isReordering && mayEdit(account.owner) && !isNarrowing && sort == .manual
                     ? { (offsets: IndexSet, destination: Int) in
@@ -833,18 +819,16 @@ struct AssetsView: View {
         try? context.save()
     }
 
-    private func delete(_ offsets: IndexSet, from account: Account) {
-        let items = account.sortedHoldings
-        for index in offsets where items.indices.contains(index) {
-            let holding = items[index]
-            let owner = account.owner?.name ?? ""
-            let name = holding.name.isEmpty ? "이름 없음" : holding.name
-            ChangeLogger.structureChanged(
-                [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
-                "종목을 삭제했습니다", in: context
-            )
-            context.delete(holding)
-        }
+    private func delete(_ holding: Holding, from account: Account) {
+        let owner = account.owner?.name ?? ""
+        let name = holding.name.isEmpty ? "이름 없음" : holding.name
+        ChangeLogger.structureChanged(
+            [owner, account.weightLabel, name].filter { !$0.isEmpty }.joined(separator: " · "),
+            "종목을 삭제했습니다", in: context
+        )
+        context.delete(holding)
+        // 지운 줄은 화면이 들고 있던 차례에서도 빼 준다 (179번 초안).
+        reorderDrafts[account.id]?.removeAll { $0 == holding.id }
         // **지우면 그 자리에서 저장한다** (178번). 자동 저장(400ms)을 기다리면
         // 그동안 목록·합계가 지워진 객체를 한 번 더 읽는다 — 빈 줄이 반짝이고
         // 금액이 두 번 움직이는 것이 그 때문이었다.
@@ -930,19 +914,6 @@ struct MemberOrderView: View {
     }
 }
 
-/// 밀어 지우려는 종목들. 확인 창이 이름을 읽어 "무엇이 사라지는지" 를 적는다.
-struct HoldingDeleteRequest: Identifiable {
-    let account: Account
-    let offsets: IndexSet
-
-    var id: String { "\(account.id)-\(offsets.map(String.init).joined(separator: ","))" }
-
-    var names: String {
-        let holdings = account.sortedHoldings
-        let picked = offsets.compactMap { holdings.indices.contains($0) ? holdings[$0] : nil }
-        return picked.map(\.weightLabel).joined(separator: " · ")
-    }
-}
 
 
 /// 옮길 곳을 고르는 시트 (113번). 종목이면 계좌를, 계좌면 구성원을 고른다.

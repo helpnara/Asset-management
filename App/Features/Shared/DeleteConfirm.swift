@@ -38,33 +38,52 @@ extension DeleteButton where Label == Text {
     }
 }
 
-/// 목록에서 밀어 지우기(`onDelete`) 를 확인 뒤로 미룬다.
+/// **밀어서 지우기 — 줄은 확인 뒤에만 사라진다** (180번).
 ///
-/// `onDelete` 는 확인 창을 띄울 자리가 없다. 지울 위치를 붙잡아 두었다가
-/// 사용자가 확인하면 그때 실제로 지운다.
+/// `.onDelete` 를 쓰면 안 된다. 그것은 사용자가 밀어 `삭제` 를 누르는 순간
+/// **목록이 먼저 줄을 걷어내고** 자료가 따라오기를 기다린다. 우리는 확인 창을
+/// 띄우느라 그 자리에서 지우지 않으므로, **걷혔던 줄이 도로 들어왔다가**
+/// 확인 뒤에 다시 나간다 — 기기에서 "뭔가 생겼다 없어진다" 로 보이던 것이
+/// 이것이다 (빌드 102 · 103 에서 두 번 딴 데를 고쳤다).
+///
+/// `swipeActions` 의 버튼은 줄을 건드리지 않는다. 누르면 우리 확인 창이 뜨고,
+/// `삭제` 를 눌러 자료가 바뀔 때 비로소 줄이 한 번 나간다.
 ///
 /// ```swift
-/// @State private var pendingDelete: IndexSet?
-/// ...
-/// .onDelete { pendingDelete = $0 }
-/// .confirmsDelete($pendingDelete, title: "지난 기록을 삭제할까요?") { offsets in ... }
+/// ForEach(items) { item in
+///     row(item).swipeToDelete(title: "이 종목을 삭제할까요?") { delete(item) }
+/// }
 /// ```
 extension View {
-    func confirmsDelete(_ pending: Binding<IndexSet?>,
-                        title: String,
-                        message: String? = nil,
-                        perform: @escaping (IndexSet) -> Void) -> some View {
-        confirmationDialog(title, isPresented: Binding(
-            get: { pending.wrappedValue != nil },
-            set: { if !$0 { pending.wrappedValue = nil } }
-        ), titleVisibility: .visible) {
-            Button("삭제", role: .destructive) {
-                if let offsets = pending.wrappedValue { perform(offsets) }
-                pending.wrappedValue = nil
+    func swipeToDelete(title: String,
+                       message: String? = nil,
+                       enabled: Bool = true,
+                       perform: @escaping () -> Void) -> some View {
+        modifier(SwipeToDelete(title: title, message: message,
+                               enabled: enabled, perform: perform))
+    }
+}
+
+private struct SwipeToDelete: ViewModifier {
+    let title: String
+    let message: String?
+    let enabled: Bool
+    let perform: () -> Void
+    @State private var isConfirming = false
+
+    func body(content: Content) -> some View {
+        content
+            // 전부 밀어도 바로 지워지지 않게 한다 — 되돌릴 수 없는 일이다 (16번).
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if enabled {
+                    Button("삭제", role: .destructive) { isConfirming = true }
+                }
             }
-            Button("취소", role: .cancel) { pending.wrappedValue = nil }
-        } message: {
-            if let message { Text(message) }
-        }
+            .confirmationDialog(title, isPresented: $isConfirming, titleVisibility: .visible) {
+                Button("삭제", role: .destructive) { withAnimation { perform() } }
+                Button("취소", role: .cancel) {}
+            } message: {
+                if let message { Text(message) }
+            }
     }
 }

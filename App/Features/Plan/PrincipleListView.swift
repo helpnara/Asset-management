@@ -14,7 +14,6 @@ struct PrincipleListView: View {
     // 원칙은 1페이지에 실려 가족 밖으로도 나가는 문서다 — 관리자만 고친다.
     @Environment(\.canManageHousehold) private var canManageHousehold
     @Fetched(sort: \Principle.order) private var principles: [Principle]
-    @State private var pendingDelete: IndexSet?
     /// 고치는 것은 시트에서 한다 (152번 2-1). 목록에 입력칸을 늘어놓으면
     /// **목록이 아니라 편집 폼**으로 보이고, 적지 않은 `부연 설명` ·
     /// `점검 주기` 빈 칸이 열여섯 줄 내내 따라다녀 길이가 두 배가 된다.
@@ -25,9 +24,6 @@ struct PrincipleListView: View {
 
     var body: some View {
         list
-            .confirmsDelete($pendingDelete, title: "이 원칙을 삭제할까요?",
-                            message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
-                            perform: delete)
             .navigationTitle("운용 원칙")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
@@ -53,17 +49,21 @@ struct PrincipleListView: View {
     private var list: some View {
         List {
             ForEach(principles) { principle in
-                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                if canManageHousehold {
-                    Button { editing = principle } label: { PrincipleRow(principle: principle) }
-                        .buttonStyle(.plain)
-                } else {
-                    PrincipleRow(principle: principle)
+                Group {
+                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                    if canManageHousehold {
+                        Button { editing = principle } label: { PrincipleRow(principle: principle) }
+                            .buttonStyle(.plain)
+                    } else {
+                        PrincipleRow(principle: principle)
+                    }
                 }
+                // 밀어 지우기는 줄마다 (180번).
+                .swipeToDelete(title: "이 원칙을 삭제할까요?",
+                               message: "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다.",
+                               enabled: canManageHousehold) { remove(principle) }
             }
-            .onDelete(perform: canManageHousehold
-                      ? { (offsets: IndexSet) in pendingDelete = offsets } : nil)
             .onMove(perform: canManageHousehold
                     ? { (offsets: IndexSet, destination: Int) in
                         move(offsets, to: destination)
@@ -141,11 +141,6 @@ struct PrincipleListView: View {
             order += 1
             _ = Principle(context: context, order: order, title: title)
         }
-    }
-
-    private func delete(_ offsets: IndexSet) {
-        for index in offsets { context.delete(principles[index]) }
-        renumber()
     }
 
     private func move(_ offsets: IndexSet, to destination: Int) {

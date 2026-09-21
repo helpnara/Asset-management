@@ -23,8 +23,6 @@ struct PlanView: View {
     /// 계획 탭에서 여는 **가족 대표의 구성원 폼** (168번). 은퇴 목표는 거기서 고친다.
     @State private var editingHead: Member?
     @State private var isOrderingMembers = false
-    @State private var pendingIncomeDelete: IndexSet?
-    @State private var pendingEventDelete: IndexSet?
     /// 마지막으로 끝난 계산 (153번). 화면은 이 값을 그리기만 한다.
     @State private var projected: ProjectionResult?
     /// 굴리는 중인가. 숫자를 지우지 않고 흐리게 둔 채 `반영 중` 을 곁들인다 —
@@ -56,18 +54,6 @@ struct PlanView: View {
             }
             .sheet(item: $editingHead) { MemberEditView(member: $0) }
             .sheet(isPresented: $isOrderingMembers) { MemberOrderView(members: members) }
-            .confirmsDelete($pendingIncomeDelete, title: "이 수입을 삭제할까요?",
-                            message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.") { offsets in
-                for index in offsets where incomes.indices.contains(index) {
-                    context.delete(incomes[index])
-                }
-            }
-            .confirmsDelete($pendingEventDelete, title: "이 목돈 이벤트를 삭제할까요?",
-                            message: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.") { offsets in
-                for index in offsets where cashEvents.indices.contains(index) {
-                    context.delete(cashEvents[index])
-                }
-            }
             // 계획의 어떤 값이든 달라지면 수정 시각을 찍는다. 화면을 열기만
             // 해서는 안 찍힌다 — 지문이 실제로 달라져야 한다.
             .onChange(of: Plan.primary(plans)?.editFingerprint) { previous, _ in
@@ -401,16 +387,20 @@ struct PlanView: View {
     private func incomeSection(_ plan: Plan) -> some View {
         Section {
             ForEach(incomes) { stream in
-                // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
-                // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
-                if canManageHousehold {
-                    Button { editingIncome = stream } label: { incomeRow(stream) }
-                } else {
-                    incomeRow(stream)
+                Group {
+                    // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
+                    // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
+                    if canManageHousehold {
+                        Button { editingIncome = stream } label: { incomeRow(stream) }
+                    } else {
+                        incomeRow(stream)
+                    }
                 }
+                // 밀어 지우기는 줄마다 (180번).
+                .swipeToDelete(title: "이 수입을 삭제할까요?",
+                               message: "은퇴 후 궤적에서 이 수입이 빠집니다. 되돌릴 수 없습니다.",
+                               enabled: canManageHousehold) { context.delete(stream) }
             }
-            .onDelete(perform: canManageHousehold
-                      ? { (offsets: IndexSet) in pendingIncomeDelete = offsets } : nil)
 
             if canManageHousehold {
                 Button {
@@ -456,14 +446,18 @@ struct PlanView: View {
     private var cashEventSection: some View {
         Section {
             ForEach(cashEvents) { event in
-                if canManageHousehold {
-                    Button { editingEvent = event } label: { cashEventRow(event) }
-                } else {
-                    cashEventRow(event)
+                Group {
+                    if canManageHousehold {
+                        Button { editingEvent = event } label: { cashEventRow(event) }
+                    } else {
+                        cashEventRow(event)
+                    }
                 }
+                // 밀어 지우기는 줄마다 (180번).
+                .swipeToDelete(title: "이 목돈 이벤트를 삭제할까요?",
+                               message: "궤적에서 이 목돈이 빠집니다. 되돌릴 수 없습니다.",
+                               enabled: canManageHousehold) { context.delete(event) }
             }
-            .onDelete(perform: canManageHousehold
-                      ? { (offsets: IndexSet) in pendingEventDelete = offsets } : nil)
 
             if canManageHousehold {
                 Button {
