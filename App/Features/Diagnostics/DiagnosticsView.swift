@@ -89,7 +89,7 @@ struct DiagnosticsView: View {
         ScrollView {
             VStack(spacing: 12) {
                 summary(result)
-                ForEach(result.sorted) { card($0) }
+                ForEach(result.sorted) { card($0, plan: plan) }
                 criteriaButton
                 disclaimer
             }
@@ -156,7 +156,7 @@ struct DiagnosticsView: View {
 
     // MARK: - 진단 카드
 
-    private func card(_ diagnosis: Diagnosis) -> some View {
+    private func card(_ diagnosis: Diagnosis, plan: Plan) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline) {
                 Text(diagnosis.title)
@@ -192,6 +192,26 @@ struct DiagnosticsView: View {
                 .foregroundStyle(Color.muted)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // **정하는 자리로 가는 길** (176번). 채우는 순서는 이 진단의 답을
+            // 만드는 값인데, 정하는 곳은 진단 기준이다. 답이 보이는 여기서
+            // 지금 순서를 한 줄로 보이고 그 자리로 보낸다 — 정하는 자리를
+            // 둘로 만들지는 않는다 (171 에서 정한 규칙).
+            if diagnosis.kind == .taxAdvantagedOrder {
+                HStack(spacing: 6) {
+                    Text("채우는 순서: " + plan.contributionOrder.map(\.label).joined(separator: " → "))
+                        .font(.scaled(11))
+                        .foregroundStyle(Color.faint)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    if canManageHousehold {
+                        Button("순서 바꾸기") { isEditingCriteria = true }
+                            .font(.scaled(11, weight: .medium))
+                            .foregroundStyle(Color.dad)
+                            .buttonStyle(.plain)
+                    }
+                }
+            }
 
             // 이유는 접어 둔다. 매주 볼 화면에 매번 펼쳐 두면 읽히지 않는다.
             Button {

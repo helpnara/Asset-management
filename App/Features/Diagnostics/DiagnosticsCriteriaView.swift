@@ -99,33 +99,17 @@ struct DiagnosticsCriteriaView: View {
                     Text("계좌 안 종목이 목표에서 이만큼 벗어나면 초과·부족으로 알립니다. 기본 ±3%p — 목표 20%인 종목은 17~23% 안이면 조용합니다. 좁게 잡을수록 자주 알립니다.")
                 }
 
+                // **한 주제는 한 구역** (176번). 예전에는 이 화면에 세제혜택 계좌가
+                // 두 구역으로 갈라져 있었다 — 여기 안내 한 줄, 맨 아래 채우는 순서.
+                // 그 사이에 `볼 규칙` 일곱 줄이 끼어 맨 아래 것이 외따로 떠 보였고,
+                // 세법 고지도 두 번 적혀 있었다. 하나로 합친다.
                 Section {
                     Text("계좌별 연간 한도와 올해 납입액은 자산 탭에서 계좌를 열어 넣습니다. IRP · 연금저축 · ISA 계좌에만 나타납니다.")
                         .font(.scaled(12))
                         .foregroundStyle(Color.muted)
-                } header: {
-                    Text("세제혜택 계좌")
-                } footer: {
-                    Text("이 앱은 세법을 따라가지 않습니다. 한도가 바뀌면 직접 고치세요 — 앱에 숫자를 박아 두면 세법이 바뀐 뒤 조용히 틀린 조언을 하게 됩니다.")
-                }
-                // **어떤 규칙을 볼지도 사용자가 정한다** (docs/08-feedback.md 47번).
-                // 쓰지 않는 규칙이 늘 `조치` 로 떠 있으면 나머지 여섯까지 같이
-                // 무시하게 된다 — 그게 진단 화면이 죽는 방식이다.
-                Section {
-                    ForEach(DiagnosisKind.allCases) { kind in
-                        Toggle(kind.title, isOn: binding(for: kind))
-                            .font(.scaled(14))
-                    }
-                } header: {
-                    Text("볼 규칙")
-                } footer: {
-                    Text("끈 규칙은 진단 화면과 현황판 요약에서 빠집니다. 나중에 다시 켜면 그대로 돌아옵니다 — 기준값은 지워지지 않습니다.")
-                }
-
-                // 세제혜택 계좌를 채우는 순서. 예전에는 상수였고 주석에
-                // "설정에서 고칠 수 있어야 한다" 고 적혀 있었다 (47번).
-                if plan.enabledDiagnoses.contains(.taxAdvantagedOrder) {
-                    Section {
+                    // 채우는 순서. 예전에는 상수였고 주석에 "설정에서 고칠 수
+                    // 있어야 한다" 고 적혀 있었다 (47번). 진단을 끄면 함께 숨는다.
+                    if plan.enabledDiagnoses.contains(.taxAdvantagedOrder) {
                         ForEach(plan.contributionOrder, id: \.self) { kind in
                             HStack {
                                 Text(kind.label)
@@ -140,11 +124,26 @@ struct DiagnosticsCriteriaView: View {
                             order.move(fromOffsets: offsets, toOffset: destination)
                             plan.contributionOrder = order
                         }
-                    } header: {
-                        Text("세제혜택 계좌 채우는 순서")
-                    } footer: {
-                        Text("끌어서 순서를 바꿉니다. 진단이 \"다음 적립은 어디로\" 를 이 순서로 답합니다. 앱은 세법을 따라가지 않습니다 — 세제가 바뀌면 여기서 직접 고치세요.")
                     }
+                } header: {
+                    Text("세제혜택 계좌")
+                } footer: {
+                    Text(plan.enabledDiagnoses.contains(.taxAdvantagedOrder)
+                         ? "끌어서 채우는 순서를 바꿉니다. 진단이 \"다음 적립은 어디로\" 를 이 순서로 답합니다. 이 앱은 세법을 따라가지 않습니다 — 한도도 순서도 바뀌면 직접 고치세요."
+                         : "이 앱은 세법을 따라가지 않습니다. 한도가 바뀌면 직접 고치세요 — 앱에 숫자를 박아 두면 세법이 바뀐 뒤 조용히 틀린 조언을 하게 됩니다.")
+                }
+                // **어떤 규칙을 볼지도 사용자가 정한다** (docs/08-feedback.md 47번).
+                // 쓰지 않는 규칙이 늘 `조치` 로 떠 있으면 나머지 여섯까지 같이
+                // 무시하게 된다 — 그게 진단 화면이 죽는 방식이다.
+                Section {
+                    ForEach(DiagnosisKind.allCases) { kind in
+                        Toggle(kind.title, isOn: binding(for: kind))
+                            .font(.scaled(14))
+                    }
+                } header: {
+                    Text("볼 규칙")
+                } footer: {
+                    Text("끈 규칙은 진단 화면과 현황판 요약에서 빠집니다. 나중에 다시 켜면 그대로 돌아옵니다 — 기준값은 지워지지 않습니다.")
                 }
 
             }
