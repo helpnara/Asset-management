@@ -74,4 +74,9 @@ extension Holding {
     /// 상대 화면에 조용히 안 보인다. 옵셔널인 것은 CloudKit 제약이다.
     @NSManaged var household: Household?
 
+    /// 이 종목을 왜 샀고 생각이 어떻게 바뀌었나 (186번). 최신이 위로 읽힌다.
+    /// 종목을 지우면 함께 지운다 (`Cascade`) — **판 종목은 지우지 말고
+    /// `정리 완료` 로 둔다.** 그러면 이유가 그대로 남는다.
+    @NSManaged var notes: NSSet?
+
 }

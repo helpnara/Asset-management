@@ -63,9 +63,13 @@ enum SampleData {
 
         // 아빠 — 일반 위탁 · 연금보험 · 전월세보증금 · 마이너스통장
         let dadBrokerage = account("종합계좌", "증권사 A", .general, dad, 0, context)
-        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 48_200_000, dadBrokerage, 0, context, targetBP: 4_000)
+        holding("해외 ETF A", .equity, .etf, "US", .accumulating, .weekly, 48_200_000, dadBrokerage, 0, context, targetBP: 4_000,
+                reasons: [(4, "미국 시장 전체를 담는 축. 종목을 고르지 않기로 한 원칙의 자리다. 운용보수 0.03%."),
+                          (96, "은퇴까지 20년이라 주식 비중을 높게 가져간다. 이것을 기둥으로 두고 나머지를 붙인다.")])
         holding("해외 ETF B", .equity, .etf, "US", .accumulating, .weekly, 26_400_000, dadBrokerage, 1, context, targetBP: 4_000)
-        holding("국내 대형주", .equity, .stock, "KR", .frozen, .weekly, 9_100_000, dadBrokerage, 2, context, targetBP: 2_000)
+        holding("국내 대형주", .equity, .stock, "KR", .frozen, .weekly, 9_100_000, dadBrokerage, 2, context, targetBP: 2_000,
+                reasons: [(11, "개별주는 더 안 늘리기로 했다. 지금 있는 것만 두고 신규 자금은 ETF 로 — 동결로 바꾼 이유다."),
+                          (210, "배당이 오래 늘어 왔고 아는 회사라 샀다.")])
 
         let dadInsurance = account("연금보험", "보험사 B", .insurance, dad, 1, context)
         holding("해지환급금", .insurance, .other, "KR", .accumulating, .monthly, 19_800_000, dadInsurance, 0, context)
@@ -76,7 +80,8 @@ enum SampleData {
         let dadPension = account("연금저축", "증권사 A", .pensionSavings, dad, 2, context)
         dadPension.annualLimitMinor = 6_000_000
         dadPension.annualContributionMinor = 6_000_000
-        holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context, targetBP: 10_000)
+        holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context, targetBP: 10_000,
+                reasons: [(60, "연금 계좌는 손이 덜 가야 오래 간다. 은퇴 연도에 맞춰 알아서 채권을 늘려 주는 쪽으로.")])
 
         let dadIRP = account("IRP", "증권사 A", .irp, dad, 3, context)
         dadIRP.annualLimitMinor = 3_000_000
@@ -301,7 +306,8 @@ enum SampleData {
                                 _ instrumentType: InstrumentType, _ country: String,
                                 _ status: HoldingStatus, _ cadence: EntryCadence,
                                 _ valueMinor: Int, _ account: Account, _ sortIndex: Int,
-                                _ context: NSManagedObjectContext, targetBP: Int? = nil) {
+                                _ context: NSManagedObjectContext, targetBP: Int? = nil,
+                                reasons: [(Int, String)] = []) {
         let holding = Holding(context: context, name: name, assetClass: assetClass, instrumentType: instrumentType,
                               listingCountryCode: country, status: status, cadence: cadence,
                               valueMinor: valueMinor, account: account, sortIndex: sortIndex)
@@ -311,5 +317,14 @@ enum SampleData {
             ? valueMinor - valueMinor / 40      // 이번 주 상승
             : valueMinor + valueMinor / 60      // 이번 주 하락
         holding.lastEnteredAt = Calendar.current.date(byAdding: .day, value: -7, to: .now)
+        // 왜 샀나 (186번). 체험 자료에도 넣어 둔다 — 빈 구역만 보면 이 칸이
+        // 무엇을 담는 자리인지 알 수 없다. `(며칠 전, 적은 말)` 로 준다.
+        for (daysAgo, body) in reasons {
+            let note = HoldingNote(context: context)
+            note.body = body
+            note.actor = "아빠"
+            note.holding = holding
+            note.at = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+        }
     }
 }

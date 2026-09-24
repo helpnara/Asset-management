@@ -45,6 +45,9 @@ extension Household {
 
     @NSManaged var holdings: NSSet?
 
+    /// 종목을 왜 샀나 (186번). 종목마다 줄이 쌓인다.
+    @NSManaged var holdingNotes: NSSet?
+
     /// 종목별 주간 값 (A3). 점검을 끝낼 때 종목마다 한 줄씩 쌓인다.
     @NSManaged var holdingRecords: NSSet?
 

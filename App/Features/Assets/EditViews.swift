@@ -527,6 +527,10 @@ struct HoldingEditView: View {
     /// 열었을 때의 이름. 쓰임은 `MemberEditView` 와 같다.
     @State private var nameOnOpen: String?
 
+    /// 지울 이유 한 줄을 담아 두는 그릇 (186번). **화면 몸체가 안 읽는 그릇**
+    /// 이라야 목록이 통째로 다시 안 그려진다 (182번).
+    @State private var pendingNoteDelete = PendingDelete<HoldingNote>()
+
     /// **값은 주간 점검에서만 적는다** (145번). 여기서 고칠 수 있는 것은 둘뿐이다 —
     /// 한 번도 적힌 적 없는 종목의 **첫 값**, 그리고 점검 큐에 오지 않는 `고정` 주기.
     /// 열 때 정한다: 첫 값을 치는 순간 `lastEnteredAt` 이 찍히는데, 그때 칸이
@@ -663,10 +667,9 @@ struct HoldingEditView: View {
                     }
                 }
 
-                Section("메모") {
-                    TextField("자세한 내용", text: $holding.note, axis: .vertical)
-                        .lineLimit(1...4)
-                }
+                // 왜 샀나 (186번). 예전 `메모` 한 칸을 대신한다 — 줄이 쌓이고,
+                // 가장 최근 줄이 자산 탭과 주간 점검에 한 줄로 나간다.
+                HoldingReasonSection(holding: holding, pendingDelete: pendingNoteDelete)
 
                 // 종목별 지난 값 (A3). 새 종목에는 있을 수 없다.
                 if !isNew { HoldingHistorySection(holding: holding) }
@@ -685,6 +688,13 @@ struct HoldingEditView: View {
             }
             // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
             .readableWidth()
+            // 이유 한 줄 지우기. **창은 화면이 든다** — 줄마다 들려 주면
+            // 떴다 사라지고 그냥 지워진다 (181번).
+            .confirmsDelete(pendingNoteDelete,
+                            title: "이 줄을 지울까요?",
+                            message: { _ in "적어 둔 이유 한 줄이 사라집니다. 되돌릴 수 없습니다." }) { note in
+                context.delete(note)
+            }
             .navigationTitle("종목")
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).

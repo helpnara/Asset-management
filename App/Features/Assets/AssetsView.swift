@@ -242,6 +242,13 @@ struct AssetsView: View {
                 }
                 isReordering = true
             }
+            // 왜 샀나 — 종목 편집 시트의 이력 구역이 찍히게 (186번).
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-startHoldingReason") else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                editingHolding = members.flatMap(\.sortedAccounts).flatMap(\.sortedHoldings)
+                    .first { !$0.sortedNotes.isEmpty }
+            }
             // 편집을 마치면 화면이 들고 있던 차례를 놓는다 — 그때부터는 저장된
             // 것을 읽는다. 들고 있던 것과 저장된 것은 이미 같다.
             .onChange(of: isReordering) { _, on in
@@ -682,6 +689,16 @@ struct AssetsView: View {
                 Text("\(holding.instrumentType.label) · \(holding.listingCountryCode) · \(holding.cadence.label)")
                     .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
+                // **왜 샀나 — 가장 최근 줄** (186번). 적어 두고 다시 못 보던
+                // 것을 여기로 꺼낸다. 아무리 길어도 한 줄에서 접는다 (170번) —
+                // 금액이 폭을 먼저 가져간다.
+                if let reason = holding.latestNoteLine {
+                    Text(reason)
+                        .font(.scaled(9.5))
+                        .foregroundStyle(Color.muted)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {

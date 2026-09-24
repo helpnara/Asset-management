@@ -54,7 +54,7 @@ enum DiagnosticReport {
         // 기록 (건수만)
         let sessions = context.all(ReviewSession.self)
         lines.append("구성원 \(context.all(Member.self).count) · 계좌 \(context.all(Account.self).count) · 종목 \(context.all(Holding.self).count) · 계획 \(context.all(Plan.self).count)")
-        lines.append("점검 \(sessions.filter(\.isComplete).count)주 (기록 \(sessions.count)) · 스냅샷 \(context.all(Snapshot.self).count) · 종목별 값 \(context.all(HoldingRecord.self).count)줄 · 이력 \(context.all(ChangeLog.self).count)줄 · 일기 \(context.all(DiaryEntry.self).count)일")
+        lines.append("점검 \(sessions.filter(\.isComplete).count)주 (기록 \(sessions.count)) · 스냅샷 \(context.all(Snapshot.self).count) · 종목별 값 \(context.all(HoldingRecord.self).count)줄 · 종목 이유 \(context.all(HoldingNote.self).count)줄 · 이력 \(context.all(ChangeLog.self).count)줄 · 일기 \(context.all(DiaryEntry.self).count)일")
         if let last = sessions.filter(\.isComplete).max(by: { $0.weekAnchor < $1.weekAnchor }) {
             lines.append("마지막 점검 주: \(last.weekAnchor.formatted(date: .abbreviated, time: .omitted))")
         }

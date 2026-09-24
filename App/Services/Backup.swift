@@ -166,6 +166,16 @@ struct BackupDocument: Codable, Sendable {
         var accountID: UUID?
         var sortIndex: Int
         var createdAt: Date
+        /// 왜 샀나 — 쌓인 줄 (186번). **옛 백업 파일에는 이 칸이 없으므로
+        /// 옵셔널이라야 읽힌다.** 없으면 `note` 만 들어 있는 옛 판이다.
+        var notes: [HoldingNoteData]?
+    }
+
+    struct HoldingNoteData: Codable, Sendable {
+        var id: UUID
+        var at: Date
+        var body: String
+        var actor: String
     }
 
     struct CashEventData: Codable, Sendable {
@@ -328,7 +338,11 @@ extension BackupDocument {
                                     targetWeightBP: holding.targetWeightBP,
                                     accountID: holding.accountID ?? account.id,
                                     sortIndex: holding.sortIndex,
-                                    createdAt: holding.createdAt
+                                    createdAt: holding.createdAt,
+                                    notes: holding.sortedNotes.map {
+                                        HoldingNoteData(id: $0.id, at: $0.at,
+                                                        body: $0.body, actor: $0.actor)
+                                    }
                                 )
                             }
                         )
@@ -504,6 +518,8 @@ extension BackupDocument {
         deleteAll(Member.self, in: context)
         deleteAll(Account.self, in: context)
         deleteAll(Holding.self, in: context)
+        // 종목에 딸려 지워지지만(Cascade), 뿌리가 끊긴 줄이 남을 수 있어 명시한다.
+        deleteAll(HoldingNote.self, in: context)
         deleteAll(Snapshot.self, in: context)
         deleteAll(SnapshotLine.self, in: context)
         deleteAll(ReviewSession.self, in: context)
@@ -574,6 +590,14 @@ extension BackupDocument {
                     holding.note = holdingData.note
                     holding.targetWeightBP = holdingData.targetWeightBP
                     holding.createdAt = holdingData.createdAt
+                    for noteData in holdingData.notes ?? [] {
+                        let note = HoldingNote(context: context)
+                        note.id = noteData.id
+                        note.at = noteData.at
+                        note.body = noteData.body
+                        note.actor = noteData.actor
+                        note.holding = holding
+                    }
                 }
             }
         }
@@ -728,6 +752,8 @@ extension BackupDocument {
         deleteAll(Member.self, in: context)
         deleteAll(Account.self, in: context)
         deleteAll(Holding.self, in: context)
+        // 종목에 딸려 지워지지만(Cascade), 뿌리가 끊긴 줄이 남을 수 있어 명시한다.
+        deleteAll(HoldingNote.self, in: context)
         deleteAll(Snapshot.self, in: context)
         deleteAll(SnapshotLine.self, in: context)
         deleteAll(ReviewSession.self, in: context)

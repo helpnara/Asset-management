@@ -387,6 +387,16 @@ struct WeeklyReviewView: View {
                 Text("\(baselineLabel(holding)) \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.scaled(9.5))
                     .foregroundStyle(Color.faint)
+                // **왜 샀나 — 지금 적고 있는 줄에서만** (186번). 숫자를 적는
+                // 그 순간이 "이 이유가 아직 맞나" 를 묻게 되는 자리다.
+                // 모든 줄에 붙이면 줄마다 한 칸씩 높아져 3분 안에 끝내기가
+                // 어려워진다 — `읽는 값`(80번)과 같은 이유로 활성 행만.
+                if isActive, let reason = holding.latestNoteLine {
+                    Text(reason)
+                        .font(.scaled(9.5))
+                        .foregroundStyle(Color.muted)
+                        .lineLimit(2)
+                }
             }
 
             Spacer(minLength: 8)
