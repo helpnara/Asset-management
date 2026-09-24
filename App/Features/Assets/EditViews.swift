@@ -538,8 +538,14 @@ struct HoldingEditView: View {
     @State private var valueEditableAtOpen: Bool?
     private var canEditValue: Bool { (valueEditableAtOpen ?? true) || holding.cadence == .fixed }
 
+    /// CI 스크린샷이 `왜 샀나` 구역을 찍으러 내려갈 자리 (186 · 187번).
+    /// 시트 맨 위만 찍혀서 정작 새 구역이 안 보이던 것을 고친다 — **원격
+    /// 세션에서 화면을 보는 유일한 창이 이 사진들**이다.
+    private static let reasonAnchor = "reason"
+
     var body: some View {
         NavigationStack {
+            ScrollViewReader { scroll in
             Form {
                 Section {
                     Toggle("목표 비중이 있다", isOn: Binding(
@@ -670,6 +676,7 @@ struct HoldingEditView: View {
                 // 왜 샀나 (186번). 예전 `메모` 한 칸을 대신한다 — 줄이 쌓이고,
                 // 가장 최근 줄이 자산 탭과 주간 점검에 한 줄로 나간다.
                 HoldingReasonSection(holding: holding, pendingDelete: pendingNoteDelete)
+                    .id(Self.reasonAnchor)
 
                 // 종목별 지난 값 (A3). 새 종목에는 있을 수 없다.
                 if !isNew { HoldingHistorySection(holding: holding) }
@@ -690,6 +697,11 @@ struct HoldingEditView: View {
             .readableWidth()
             // 이유 한 줄 지우기. **창은 화면이 든다** — 줄마다 들려 주면
             // 떴다 사라지고 그냥 지워진다 (181번).
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-startHoldingReason") else { return }
+                try? await Task.sleep(for: .milliseconds(700))
+                scroll.scrollTo(Self.reasonAnchor, anchor: .top)
+            }
             .confirmsDelete(pendingNoteDelete,
                             title: "이 줄을 지울까요?",
                             message: { _ in "적어 둔 이유 한 줄이 사라집니다. 되돌릴 수 없습니다." }) { note in
@@ -714,6 +726,7 @@ struct HoldingEditView: View {
                 if valueEditableAtOpen == nil { valueEditableAtOpen = isNew || holding.lastEnteredAt == nil }
             }
             .onDisappear { logChange() }
+            }
         }
     }
 
