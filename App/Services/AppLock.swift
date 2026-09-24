@@ -131,7 +131,7 @@ final class AppLock {
         case .passcodeNotSet:
             return "기기에 암호가 설정돼 있지 않아 본인 확인을 할 수 없습니다."
         case .biometryNotAvailable:
-            return "\(biometryLabel) 를 쓸 수 없습니다. 설정 → 느린 부자의 기록 에서 권한을 확인해 주세요."
+            return "\(biometryLabel) 를 쓸 수 없습니다. 설정 → 느린 부자 에서 권한을 확인해 주세요."
         case .authenticationFailed:
             return "확인하지 못했습니다. 다시 시도해 주세요."
         default:

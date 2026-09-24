@@ -297,7 +297,7 @@ struct RetrospectiveCard: View {
     private var signature: some View {
         HStack {
             Spacer()
-            Text("느린 부자의 기록")
+            Text("느린 부자")
                 .font(.scaled(9, weight: .medium))
                 .foregroundStyle(muted)
         }

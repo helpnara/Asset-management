@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 |---|---|
-| App name | 느린 부자의 기록 (Slow Rich Journal) |
+| App name | 느린 부자 (Slow Rich) |
 | Bundle ID | com.helpnara.slowrich |
 | Platform | iPhone · iPad |
 | Price | Free, no ads, no in-app purchases |
@@ -20,7 +20,7 @@
 ## 한 문단 소개 (English)
 
 ```
-Slow Rich Journal turns retirement planning into a weekly habit. Every Saturday,
+Slow Rich turns retirement planning into a weekly habit. Every Saturday,
 the family writes down their asset balances by hand — the app deliberately does
 not fetch quotes or connect to banks — and those numbers are drawn as a single
 trajectory against the plan line, all the way past retirement to age 100.
@@ -52,7 +52,7 @@ something needs action — with the reasoning behind each rule one tap away.
 
 ## 한국어 (뜻 맞추기용)
 
-느린 부자의 기록은 노후 준비를 매주의 습관으로 만드는 앱입니다. 매주 토요일
+느린 부자은 노후 준비를 매주의 습관으로 만드는 앱입니다. 매주 토요일
 가족이 자산을 직접 적습니다 — 시세도 은행 연동도 일부러 하지 않습니다 — 그
 숫자가 계획선과 함께 은퇴를 지나 100세까지 하나의 궤적으로 그려집니다.
 가족 넷이 CloudKit 공유로 한 계획을 봅니다. 서버 · 분석 · 광고가 없고 자료는

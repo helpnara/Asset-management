@@ -17,7 +17,7 @@ enum SupportContact {
         components.scheme = "mailto"
         components.path = email
         components.queryItems = [
-            URLQueryItem(name: "subject", value: "느린 부자의 기록 \(version) 문의"),
+            URLQueryItem(name: "subject", value: "느린 부자 \(version) 문의"),
             URLQueryItem(name: "body", value: "\n\n— 앱 \(version) · iOS \(ProcessInfo.processInfo.operatingSystemVersionString)"),
         ]
         return components.url

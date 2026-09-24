@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "docs" / "privacy-policy.md"
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "_site")
 
-APP_NAME = "느린 부자의 기록"
+APP_NAME = "느린 부자"
 SUPPORT_EMAIL = "kyunglagkwon@gmail.com"
 ISSUES_URL = "https://github.com/helpnara/Asset-management/issues"
 

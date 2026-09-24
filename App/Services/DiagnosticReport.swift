@@ -17,7 +17,7 @@ enum DiagnosticReport {
     static func build(in context: NSManagedObjectContext) async -> String {
         var lines: [String] = []
         let device = UIDevice.current
-        lines.append("느린 부자의 기록 \(MoreView.versionText)")
+        lines.append("느린 부자 \(MoreView.versionText)")
         lines.append("iOS \(device.systemVersion) · \(device.model) · \(Locale.current.identifier) · \(TimeZone.current.identifier)")
         lines.append("찍은 때: \(Date.now.formatted(date: .abbreviated, time: .shortened))")
         lines.append("")

@@ -515,7 +515,7 @@ struct OnePagerView: View {
                     .foregroundStyle(Paper.faint)
                 Spacer(minLength: 6)
                 // 남에게 건네는 종이에 앱 이름 한 줄 (docs/10 §3-5).
-                Text("느린 부자의 기록")
+                Text("느린 부자")
                     .font(.system(size: 6, weight: .medium))
                     .foregroundStyle(Paper.muted)
             }
