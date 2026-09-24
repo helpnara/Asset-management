@@ -325,7 +325,7 @@ struct DiagnosticsView: View {
     }
 
     private var disclaimer: some View {
-        Text("여기 기준은 널리 쓰이는 원칙일 뿐 정답이 아니고, 전부 직접 고칠 수 있습니다. 이 앱은 세법을 따라가지 않습니다 — 계좌 한도는 직접 확인해 넣으세요. 투자 권유가 아닙니다.")
+        Text("여기 기준은 널리 쓰이는 원칙일 뿐 정답이 아니고, 전부 직접 고칠 수 있습니다. 이 앱은 세법을 따라가지 않습니다 — 계좌 한도는 직접 확인해 넣으세요. 금액은 모두 세전입니다. 투자 권유가 아닙니다.")
             .font(.scaled(10.5))
             .foregroundStyle(Color.faint)
             .lineSpacing(3)

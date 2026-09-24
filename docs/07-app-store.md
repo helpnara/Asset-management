@@ -267,23 +267,56 @@ App Store Connect → 버전 → **App 심사 정보**
 | 연락처 | 이름·전화·이메일 |
 | 메모 | 아래 참고 |
 
-**심사자 메모에 적을 것** (영어로):
+**심사자 메모에 적을 것** (영어로). **한국어 전용 앱**이라 심사자가 화면을
+못 읽을 수 있다 — 그래서 **어디를 누르면 되는지**를 먼저 적는다. 빈 화면을 보고
+"기능이 없다"(4.2)로 반려되는 것이 이 앱의 가장 큰 위험이다.
 
 ```
-This app has no backend and makes no network requests. All financial figures
-are entered manually by the user in Korean won; the app does not fetch quotes,
-exchange rates, or any other data from a network source. Data is stored locally and in the user's own iCloud
-private database only.
+HOW TO SEE THE APP FULLY POPULATED (30 seconds)
 
-No account or login is required. Simply launch the app, add a member in the
-"자산" (Assets) tab, then an account and a holding, and the dashboard will
-populate.
+The UI is Korean only. On first launch, at the BOTTOM of the welcome screen,
+tap the text button with a sparkles icon: "체험 자료로 둘러보기"
+(= "Explore with sample data"). This loads a fictional family of four with
+12 weeks of records, so every screen — dashboard, trajectory chart, asset
+diagnostics, simulation — is filled immediately. The sample data lives in
+memory only and is discarded when you choose "내 자료로 시작" (start with my
+own data); it never touches the user's real storage.
 
-The app does not offer, recommend, or broker any financial product. All
-projections are calculations based on assumptions the user enters, and every
-projection screen carries a disclaimer stating that future returns are not
-guaranteed.
+The five tabs across the bottom are:
+현황판 (Dashboard) · 자산 (Assets) · 계획 (Plan) · 시뮬레이션 (Simulation) ·
+더보기 (More).
+
+NO ACCOUNT, NO NETWORK
+
+There is no account, no login, and no backend. The app makes no network
+requests at all: it does not fetch quotes, exchange rates, or any other data.
+Every figure is typed in by the user, in Korean won.
+
+iCloud is OPTIONAL and is NOT needed to review the app. All data is stored
+locally. If the device happens to be signed in to iCloud, the app also syncs
+to the user's own CloudKit private database, and an optional family-sharing
+feature (더보기 → 가족 공유) lets a household share one record set via
+CKShare. Both are conveniences; with no iCloud account the app works fully.
+
+NOT FINANCIAL ADVICE
+
+The app does not offer, recommend, rate, or broker any financial product, and
+it has no in-app purchases or ads. Every projection is arithmetic applied to
+assumptions the user entered. Each projection screen carries a Korean
+disclaimer meaning "this is a calculation based on the assumptions you
+entered and does not guarantee future returns; this is not investment
+advice." The diagnostics screen adds that the app does not track tax law and
+that all amounts shown are pre-tax.
+
+Optional permissions: notifications (a Saturday check-in reminder) and Face ID
+(an optional app lock). Declining either blocks nothing.
 ```
+
+**이 메모가 왜 이렇게 긴가.** 2026-09-24 에 다시 썼다. 이전 메모는 심사자에게
+"자산 탭에서 구성원을 직접 추가하라" 고 적고 있었는데, 그건 빌드 68 에서
+**체험 자료 버튼**이 생기기 전의 이야기다. 한국어를 못 읽는 심사자가 빈 화면
+앞에서 구성원 · 계좌 · 종목을 차례로 만들 리 없다. 버튼 하나를 정확히 짚어
+주는 것이 4.2(최소 기능) 반려를 막는 가장 싼 방법이다.
 
 ## 7단계 · 제출
 
@@ -306,6 +339,9 @@ guaranteed.
 | **3.1.1 앱 내 구입** | 외부 결제 유도 | 결제가 없습니다 |
 | **1.4.1 물리적 피해** | 금융·의료 조언 | **투자 권유가 아니라는 고지가 모든 예측 화면에 있습니다.** 설명문에도 넣었습니다 |
 | **2.3 정확한 메타데이터** | 스크린샷이 실제 화면과 다름 | CI가 실제 시뮬레이터에서 찍습니다 |
+| **4.2 최소 기능** | **빈 화면을 보고 "아무것도 없다"** | 이 앱의 진짜 위험입니다. 심사자 메모 맨 위에 `체험 자료로 둘러보기` 버튼을 짚어 둡니다 |
+| **2.1 정보 부족** | 심사자가 **가족 공유를 못 켠다** | 심사 기기에 iCloud 계정이 없을 수 있습니다. 메모에 **iCloud 는 선택이고 없어도 앱이 다 돈다**고 적습니다 |
+| **5.1.5 권한** | 알림 · Face ID 를 거절하면 막힘 | 둘 다 선택이고, 거절해도 막다른 길이 아니라는 안내가 화면에 있습니다 |
 
 > **금융 카테고리는 심사가 조금 더 깐깐합니다.** 핵심은 "이 앱이 금융 상품을
 > 추천하거나 중개하지 않는다"를 분명히 하는 것입니다. 계산기이지 자문이 아닙니다.

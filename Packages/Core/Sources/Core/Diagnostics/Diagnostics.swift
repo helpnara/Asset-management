@@ -66,7 +66,7 @@ public enum DiagnosisKind: String, Sendable, Hashable, CaseIterable, Identifiabl
     public var rationale: String {
         switch self {
         case .retirementTarget:
-            return "연 생활비의 25배가 있으면 매년 4%씩 꺼내 써도 원금이 잘 버팁니다. 은퇴 준비의 결승선을 하나의 숫자로 만든 것입니다."
+            return "연 생활비의 25배가 있으면 매년 4%씩 꺼내 써도 원금이 잘 버팁니다. 은퇴 준비의 결승선을 하나의 숫자로 만든 것입니다. 세전 기준입니다."
         case .realEstateShare:
             return "부동산은 팔지 않으면 생활비로 쓸 수 없습니다. 비중이 크면 자산은 많은데 쓸 돈이 없는 노후가 됩니다."
         case .countryMix:

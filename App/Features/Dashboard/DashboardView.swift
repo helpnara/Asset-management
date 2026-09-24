@@ -197,7 +197,7 @@ struct DashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("느 린 부 자 의 기 록").eyebrowStyle()
+            Text("느 린 부 자").eyebrowStyle()
             Text(planTitle)
                 .font(.scaled(16, weight: .bold))
                 .foregroundStyle(Color.ink)

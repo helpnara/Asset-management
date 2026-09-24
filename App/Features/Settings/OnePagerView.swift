@@ -103,7 +103,7 @@ struct OnePagerView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("느 린 부 자 의 기 록")
+            Text("느 린 부 자")
                 .font(.system(size: 7, weight: .medium))
                 .tracking(2.5)
                 .foregroundStyle(Paper.muted)

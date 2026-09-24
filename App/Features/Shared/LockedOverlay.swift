@@ -17,7 +17,7 @@ struct LockedOverlay: View {
                 .font(.scaled(34, weight: .light))
                 .foregroundStyle(Color.faint)
 
-            Text("느 린 부 자 의 기 록")
+            Text("느 린 부 자")
                 .eyebrowStyle()
 
             Text("잠겨 있습니다")

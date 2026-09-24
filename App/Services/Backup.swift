@@ -470,7 +470,7 @@ extension BackupDocument {
     var suggestedFileName: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        return "느린부자의기록 백업 \(formatter.string(from: exportedAt)).json"
+        return "느린부자 백업 \(formatter.string(from: exportedAt)).json"
     }
 }
 

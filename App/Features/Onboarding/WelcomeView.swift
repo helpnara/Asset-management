@@ -24,7 +24,7 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("느 린 부 자 의 기 록")
+            Text("느 린 부 자")
                 .eyebrowStyle()
             Text("매주 토요일,\n숫자 하나씩 적어 갑니다")
                 .font(.scaled(26, weight: .bold))
