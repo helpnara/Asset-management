@@ -407,6 +407,9 @@ jobs:
           # **왜 샀나** (186번). 종목 편집 시트의 이력 구역 — 쌓인 줄과
           # 적는 자리가 함께 찍힌다. 체험 자료에 이유를 넣어 둔 이유다.
           shoot 32-holding-reason.png -skipOnboarding -seedSampleData -startTab assets -startHoldingReason
+          # **로드맵 `지금`** (190번). 다른 정거장처럼 시트가 뜨고, 제목이
+          # "지금부터 올해 말까지" · 구성원별 "지금 → 올해 말" 로 바뀌었는지.
+          shoot 33-roadmap-now.png -skipOnboarding -seedSampleData -startTab dashboard -startRoadmapNow
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL

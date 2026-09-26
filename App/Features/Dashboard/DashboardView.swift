@@ -641,6 +641,10 @@ struct DashboardView: View {
         guard !Task.isCancelled else { return }
         projected = results.now
         planProjected = results.plan
+        // 로드맵 `지금` 시트가 찍히게 (190번). 정거장은 궤적이 있어야 서므로 여기서.
+        if ProcessInfo.processInfo.arguments.contains("-startRoadmapNow"), selectedStop == nil {
+            selectedStop = roadmapStops.first { $0.isNow }
+        }
         // 진단은 관리 객체를 읽으므로 주 스레드에서 — 다만 **입력이 바뀔 때
         // 한 번**이지, 그릴 때마다가 아니다.
         diagnosis = plan.map {

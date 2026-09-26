@@ -5,6 +5,10 @@ import SwiftUI
 ///
 /// "2039 · 24.2억" 이 어떻게 나온 숫자인지 — 그때까지 넣은 돈, 자란 돈, 목돈,
 /// 그리고 사람마다 얼마씩인지. 로드맵 칩을 누르면 뜬다 (설계 2.2.2).
+///
+/// **`지금` 은 올해 말 예상** (190번). 같은 틀로 "지금부터 올해 말까지" 를 보인다.
+/// 올해 한 해 칸은 빼고(올해 남은 몇 달이라 위 칸과 같은 숫자다), 구성원별은
+/// `지금 → 올해 말` 로 적는다.
 struct RoadmapStopSheet: View {
     let stop: RoadmapStrip.Stop
     let plan: Plan
@@ -55,7 +59,12 @@ struct RoadmapStopSheet: View {
             Text(Won.abbreviated(stop.amount ?? point?.nominal ?? .zero(.krw), suffix: "원"))
                 .font(.figure(32, weight: .semibold))
                 .foregroundStyle(Color.ink)
-            if let point {
+            if stop.isNow, let point {
+                Text("올해 말 예상 \(Won.compact(point.nominal))")
+                    .font(.scaled(11.5))
+                    .foregroundStyle(Color.muted)
+                    .padding(.top, 8)
+            } else if let point {
                 Text("오늘 돈으로 \(Won.compact(point.real)) · \(year - thisYear)년 뒤")
                     .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
@@ -70,6 +79,7 @@ struct RoadmapStopSheet: View {
         if let kind = MilestoneKind.allCases.first(where: { $0.label == stop.label }) {
             return kind.detail
         }
+        if stop.isNow { return "지금 자산" }
         return stop.isGoal ? "은퇴 시점의 예상 자산" : "그 해의 예상 자산"
     }
 
@@ -81,20 +91,20 @@ struct RoadmapStopSheet: View {
         let gained = years.reduce(Money.zero(.krw)) { $0 + $1.gain }
         let withdrawn = years.reduce(Money.zero(.krw)) { $0 + $1.withdrawn }
         return VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("지금부터 그때까지")
+            sectionHeader(stop.isNow ? "지금부터 올해 말까지" : "지금부터 그때까지")
             Rectangle().fill(Color.rule).frame(height: 1)
             row("지금 자산", rollup.netWorth)
             row("넣을 돈 (적립)", contributed, sign: true)
             if !lumps.isZero { row("목돈 이벤트", lumps, sign: true) }
             row("자랄 돈 (수익)", gained, sign: true, tone: true)
             if !withdrawn.isZero { row("꺼내 쓸 돈 (인출)", withdrawn, sign: true) }
-            row("그 해 말 예상", point?.nominal ?? .zero(.krw), emphasized: true)
+            row(stop.isNow ? "올해 말 예상" : "그 해 말 예상", point?.nominal ?? .zero(.krw), emphasized: true)
         }
     }
 
     private var thatYear: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let summary = projection.years.first(where: { $0.year == year }) {
+            if !stop.isNow, let summary = projection.years.first(where: { $0.year == year }) {
                 sectionHeader("\(String(year))년 한 해")
                 Rectangle().fill(Color.rule).frame(height: 1)
                 row("적립", summary.contributed, sign: true)
@@ -108,7 +118,7 @@ struct RoadmapStopSheet: View {
     private var byMember: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !members.isEmpty {
-                sectionHeader("구성원별 예상")
+                sectionHeader(stop.isNow ? "구성원별 지금 → 올해 말" : "구성원별 예상")
                 Rectangle().fill(Color.rule).frame(height: 1)
                 ForEach(members) { member in
                     let balance = rollup.byMember[member.id] ?? .zero(.krw)
@@ -126,7 +136,9 @@ struct RoadmapStopSheet: View {
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
-                        Text(projected.map { Won.compact($0) } ?? "—")
+                        Text(stop.isNow
+                             ? "\(Won.compact(balance)) → \(projected.map { Won.compact($0) } ?? "—")"
+                             : projected.map { Won.compact($0) } ?? "—")
                             .font(.figure(12.5, weight: .medium))
                             .foregroundStyle(Color.ink)
                     }

@@ -38,8 +38,9 @@ struct RoadmapStrip: View {
 
     let stops: [Stop]
     /// 정거장을 누르면 분해 시트를 여는 곳 (docs/08-feedback.md 85번, C3).
-    /// 없으면(1페이지 등) 예전처럼 한 줄만 펼친다. `지금` 과 오지 않는 칸은
-    /// 시트로 갈 것이 없어 한 줄로 남는다.
+    /// 없으면 예전처럼 한 줄만 펼친다. 오지 않는 칸은 시트로 갈 것이 없어 한 줄로
+    /// 남는다. **`지금` 도 시트로 간다** (190번) — 예전에는 한 줄만 펼쳤는데 그 숫자는
+    /// 레일에 이미 적혀 있었고, 다른 정거장과 반응이 달라 헷갈렸다.
     var onSelect: ((Stop) -> Void)? = nil
 
     @State private var selected: Stop.ID?
@@ -51,6 +52,8 @@ struct RoadmapStrip: View {
                 Text("\(stop.label) · \(stop.year.map(String.init) ?? "—")년 · \(Won.compact(amount))")
                     .font(.figure(11))
                     .foregroundStyle(Color.bodyText)
+                    // 레일 · 각주와 같은 여백 (190번). 이 줄에만 없어 화면 왼쪽 끝에 붙었다.
+                    .padding(.horizontal, 20)
                     .transition(.opacity)
             }
         }
@@ -94,7 +97,7 @@ struct RoadmapStrip: View {
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if let onSelect, stop.year != nil, !stop.isNow, stop.state != .never {
+                    if let onSelect, stop.year != nil, stop.state != .never {
                         onSelect(stop)
                         return
                     }
