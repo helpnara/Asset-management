@@ -280,6 +280,15 @@ struct TodoEditView: View {
     }
 
     var body: some View {
+        // 지운 객체를 시트가 내려가며 한 번 더 그리다 죽지 않게 (189번).
+        if item.isGone {
+            Color.clear
+        } else {
+            editor
+        }
+    }
+
+    @ViewBuilder private var editor: some View {
         NavigationStack {
             Form {
                 Section {

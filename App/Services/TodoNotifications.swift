@@ -30,7 +30,8 @@ enum TodoNotifications {
         @MainActor
         init(items: [TodoItem], accounts: [Account]) {
             self.items = items.compactMap { item in
-                guard !item.isDone, let due = item.dueDate else { return nil }
+                // 막 지운 것은 빼고 (189번) — 지운 뒤라 `id` 가 비어 있을 수 있다.
+                guard !item.isGone, !item.isDone, let due = item.dueDate else { return nil }
                 return Item(id: item.id,
                             title: item.title.isEmpty ? "챙길 것" : item.title,
                             dueDate: due,
@@ -39,7 +40,7 @@ enum TodoNotifications {
 
             let calendar = Calendar.current
             self.maturities = accounts.compactMap { account in
-                guard !account.isArchived, let matures = account.maturesOn else { return nil }
+                guard !account.isGone, !account.isArchived, let matures = account.maturesOn else { return nil }
                 // 30일 전에 알린다. 이미 30일 안이면 만기 당일에라도 알린다.
                 let early = calendar.date(byAdding: .day, value: -30, to: matures) ?? matures
                 let fireDate = early > .now ? early : matures

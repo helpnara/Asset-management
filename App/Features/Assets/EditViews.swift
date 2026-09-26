@@ -68,6 +68,15 @@ struct MemberEditView: View {
     }
 
     var body: some View {
+        // 지운 객체를 시트가 내려가며 한 번 더 그리다 죽지 않게 (189번).
+        if member.isGone {
+            Color.clear
+        } else {
+            editor
+        }
+    }
+
+    @ViewBuilder private var editor: some View {
         NavigationStack {
             Form {
                 Section {
@@ -230,7 +239,8 @@ struct MemberEditView: View {
     }
 
     private func logChange() {
-        guard let before = nameOnOpen else { return }
+        // 지웠으면 남길 변경이 없다 (189번). 저장된 뒤 읽으면 값이 비어 엉뚱한 이력이 남는다.
+        guard !member.isGone, let before = nameOnOpen else { return }
         let after = member.name
         if before.isEmpty, !after.isEmpty {
             ChangeLogger.structureChanged(after, "구성원을 추가했습니다", in: context)
@@ -254,6 +264,15 @@ struct AccountEditView: View {
     @State private var nameOnOpen: String?
 
     var body: some View {
+        // 지운 객체를 시트가 내려가며 한 번 더 그리다 죽지 않게 (189번).
+        if account.isGone {
+            Color.clear
+        } else {
+            editor
+        }
+    }
+
+    @ViewBuilder private var editor: some View {
         NavigationStack {
             Form {
                 Section {
@@ -395,7 +414,8 @@ struct AccountEditView: View {
     }
 
     private func logChange() {
-        guard let before = nameOnOpen else { return }
+        // 지웠으면 남길 변경이 없다 (189번). 저장된 뒤 읽으면 값이 비어 엉뚱한 이력이 남는다.
+        guard !account.isGone, let before = nameOnOpen else { return }
         let after = account.name
         if before.isEmpty, !after.isEmpty {
             ChangeLogger.structureChanged(logSubject, "계좌를 추가했습니다", in: context)
@@ -544,6 +564,15 @@ struct HoldingEditView: View {
     private static let reasonAnchor = "reason"
 
     var body: some View {
+        // 지운 객체를 시트가 내려가며 한 번 더 그리다 죽지 않게 (189번).
+        if holding.isGone {
+            Color.clear
+        } else {
+            editor
+        }
+    }
+
+    @ViewBuilder private var editor: some View {
         NavigationStack {
             ScrollViewReader { scroll in
             Form {
@@ -750,11 +779,12 @@ struct HoldingEditView: View {
     }
 
     private func logChange() {
-        guard let before = nameOnOpen else { return }
+        // 지웠으면 남길 변경이 없다 (189번). 저장된 뒤 읽으면 값이 비어 엉뚱한 이력이 남는다.
+        guard !holding.isGone, let before = nameOnOpen else { return }
         let after = holding.name
         // **값 변경도 남긴다** (111번). 주간 점검 밖에서 고친 평가액이 이력에 없어
         // 엄마 폰에서 고친 것이 아빠 폰에 안 보였다. 취소하면 값이 되돌아와 안 남는다.
-        if !before.isEmpty, let opened = valueOnOpen, opened != holding.valueMinor, !holding.isDeleted {
+        if !before.isEmpty, let opened = valueOnOpen, opened != holding.valueMinor {
             ChangeLogger.record(.valueEdit, subject: logSubject,
                                 summary: "\(KoreanAmountFormatter.compact(Money(minorUnits: opened, currency: .krw))) → \(KoreanAmountFormatter.compact(holding.value))",
                                 in: context)
