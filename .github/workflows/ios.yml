@@ -494,6 +494,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 전부 찍었으니 지난번에 못 찍어 올려 둔 사진은 치운다 (아래 단계).
+          rm -rf screenshots/failed
           # 새 스크린샷은 추적되지 않는 파일이라 git diff 로는 보이지 않는다.
           # 먼저 스테이지에 올린 뒤 --cached 로 비교해야 첫 커밋이 빠지지 않는다.
           git add -A screenshots
@@ -531,3 +533,46 @@ jobs:
           name: screenshots
           path: screenshots/
           if-no-files-found: warn
+
+      # **못 찍은 사진도 브랜치로 돌려보낸다** (188번 CI 286).
+      #
+      # 성공할 때만 사진을 커밋하고 실패하면 아티팩트에만 올렸는데, 원격 세션은
+      # 네트워크 정책상 아티팩트 저장소(blob)를 못 연다. 정작 "왜 못 찍혔나" 를
+      # 봐야 할 때 창이 닫혀 있었다 — 02-dashboard 가 세 번 다 75,779 바이트로
+      # 똑같이 찍혔는데(덜 그려진 화면이면 크기가 매번 달라야 한다) 그 그림을
+      # 볼 수 없어 원인을 코드로만 짐작해야 했다.
+      #
+      # **보관 단계 뒤에 둔다.** 아래에서 작업 트리를 원격으로 되돌리므로,
+      # 앞에 두면 이번에 찍은 사진들이 지워진 채 아티팩트로 올라간다.
+      #
+      # 잘 찍힌 사진은 건드리지 않는다 — 실패한 실행의 것으로 브랜치의 좋은
+      # 사진을 덮으면 안 된다. **못 찍은 것만** `screenshots/failed/` 에 둔다.
+      - name: 못 찍은 사진을 브랜치에 (원격 세션이 볼 수 있게)
+        if: failure()
+        run: |
+          [ -s /tmp/shoot-failures ] || { echo "못 찍은 사진 목록이 없습니다"; exit 0; }
+          mkdir -p /tmp/failed-shots
+          while read -r f; do
+            [ -f "screenshots/$f" ] && cp "screenshots/$f" "/tmp/failed-shots/$(echo "$f" | tr '/' '-')"
+          done < /tmp/shoot-failures
+          ls -la /tmp/failed-shots
+          # 작업 트리에는 이번에 찍은 다른 사진들이 바뀐 채 있다. 그것은 올리지
+          # 않으므로 원격의 최신으로 되돌리고 그 위에 실패 사진만 얹는다.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch -q origin ${{ github.ref_name }}
+            git reset -q --hard origin/${{ github.ref_name }}
+            rm -rf screenshots/failed && mkdir -p screenshots/failed
+            cp /tmp/failed-shots/* screenshots/failed/
+            git add -A screenshots/failed
+            git diff --cached --quiet && { echo "변화 없음"; exit 0; }
+            git commit -q -m "chore: 못 찍은 스크린샷 ($(tr '\n' ' ' < /tmp/shoot-failures)) [skip ci]"
+            if git push origin HEAD:${{ github.ref_name }}; then
+              echo "올렸습니다 — screenshots/failed/ (시도 $attempt)"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::warning::못 찍은 사진을 올리지 못했습니다 — 아티팩트에는 있습니다"
+
