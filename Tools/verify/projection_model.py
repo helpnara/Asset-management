@@ -35,8 +35,9 @@ def run(start, end, balance, monthly, return_bp, growth_bp=0, inflation_bp=0, ev
     step = Decimal(1) + Decimal(growth_bp) / 10000
     ev = {}
     for d, amt in events:
-        off = months_between(start, d)
-        if 1 <= off <= months: ev[off] = ev.get(off, 0) + amt
+        if d <= start: continue                   # 출발일 당일까지는 출발 잔고에 이미 있다
+        off = max(1, months_between(start, d))    # 첫 달 안이면 1개월차 (188번)
+        if off <= months: ev[off] = ev.get(off, 0) + amt
     bal = balance; contrib = monthly; deflator = Decimal(1)
     for m in range(1, months + 1):
         deflator *= infl
@@ -54,6 +55,10 @@ cases = [
     ("real 2%", run(s, date(2036,1,1), 100_000_000, 1_000_000, 800, 0, 200), (397_175_701, 325_822_411)),
     ("event 1e8 @2027-01", run(s, date(2036,1,1), 100_000_000, 1_000_000, 800, events=[(date(2027,1,1), 100_000_000)]), (598_362_328, None)),
     ("2yr 0% 1M", run(s, date(2028,1,1), 0, 1_000_000, 0), (24_000_000, None)),
+    # 188번 — 첫 달 안의 목돈은 1개월차에. 출발 잔고 2억과 똑같이 굴러야 한다.
+    ("event in 1st month", run(s, date(2027,1,1), 100_000_000, 0, 800, events=[(date(2026,1,15), 100_000_000)]), (215_999_999, None)),
+    # 출발일 당일 목돈은 출발 잔고에 이미 있으므로 뺀다.
+    ("event on start day", run(s, date(2027,1,1), 100_000_000, 0, 800, events=[(date(2026,1,1), 100_000_000)]), (107_999_999, None)),
 ]
 for name, (nom, real), (en, er) in cases:
     ok = nom == en and (er is None or real == er)

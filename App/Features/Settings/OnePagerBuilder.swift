@@ -47,7 +47,9 @@ enum OnePagerBuilder {
             rollup: rollup,
             members: members,
             roadmapStops: stops,
-            cashEvents: cashEvents.filter { !$0.isAlreadyReflected },
+            // **앞으로의 목돈만** (188번). 지난 날짜를 적어 두면 증감 분해가
+            // 바르게 되는데, 그게 1페이지 "목돈 흐름" 에 앞으로의 일처럼 섞였다.
+            cashEvents: cashEvents.filter { $0.countsForward(now: today, calendar: calendar) },
             principles: principles,
             todos: todos,
             usShare: rollup.countryShare("US"),

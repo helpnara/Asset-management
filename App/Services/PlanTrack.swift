@@ -53,8 +53,8 @@ enum PlanTrack {
     /// 즉 12월 값이라 연초에 보면 몇 달치를 앞질러 견주게 된다.
     static func onPlan(_ projection: ProjectionResult, at date: Date,
                        calendar: Calendar = .current) -> Money? {
-        let day = calendar.startOfDay(for: date)
-        return projection.points.last(where: { $0.date <= day })?.nominal
+        // 점 사이의 목돈을 날짜대로 맞춰 읽는다 (188번) — `ProjectionResult.nominal(at:)`.
+        projection.nominal(at: date, calendar: calendar)
     }
 
     /// 계획선과 실제의 차이. 화면이 그대로 적을 수 있는 형태로 돌려준다.

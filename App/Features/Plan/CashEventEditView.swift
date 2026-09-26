@@ -32,10 +32,25 @@ struct CashEventEditView: View {
                     MoneyField(title: "금액", minorUnits: $magnitude)
                 }
 
-                Section {
-                    Toggle("이미 현재 잔고에 반영됨", isOn: $event.isAlreadyReflected)
-                } footer: {
-                    Text("이미 자산에 넣어둔 목돈이라면 켜세요. 예측에서 빼야 두 번 세지 않습니다.")
+                // **토글은 앞으로의 날짜에만 보인다** (188번). 지난 날짜의 목돈은
+                // 이미 적어 넣은 잔고에 들어 있으므로 앞으로의 궤적에서는 저절로
+                // 빠지고, 계획선과 증감 분해에는 날짜대로 들어간다 — 켤 일이 없다.
+                // 예전에는 "이미 자산에 넣어둔 목돈이라면 켜세요" 라고 해서, 켜면
+                // 계획선에서 빠져 "계획보다 앞서 있습니다" 로 부풀려 보였다.
+                if event.isUpcoming() {
+                    Section {
+                        Toggle("미리 받아 이미 자산에 넣어 둠", isOn: $event.isAlreadyReflected)
+                    } footer: {
+                        Text("날짜는 앞으로인데 돈은 벌써 계좌에 넣어 적어 둔 경우에만 켜세요. 예: 다음 달 전세금 전환분을 미리 받아 둔 것. 켜면 앞으로의 궤적에서 빠져 두 번 세지 않습니다.")
+                    }
+                } else {
+                    Section {
+                        Label("오늘이거나 지난 날짜입니다", systemImage: "clock.arrow.circlepath")
+                            .font(.scaled(13))
+                            .foregroundStyle(Color.muted)
+                    } footer: {
+                        Text("이미 적어 넣은 잔고에 들어 있으므로 앞으로의 궤적에서는 빠집니다. 대신 현황판의 증감 분해와 계획선에는 이 날짜에 들어갑니다 — 이 목돈이 수익으로 잘못 잡히지 않게 하는 것이 지난 목돈을 적는 이유입니다.")
+                    }
                 }
 
                 Section("메모") {

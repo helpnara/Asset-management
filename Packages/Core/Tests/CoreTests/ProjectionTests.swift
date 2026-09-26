@@ -167,6 +167,60 @@ struct ProjectionTests {
         #expect((result.last!.nominal - plain.last!.nominal) == Money(201_186_627, currency: .krw))
     }
 
+    /// 188번. 예전에는 달 수를 내림해 0 이면 버렸다 — 다음 주에 받을 목돈이
+    /// 궤적에 없었다. 기댓값은 `Tools/verify/projection_model.py` 가 따로 낸 것이다.
+    @Test("첫 달 안의 목돈도 첫 걸음에 들어간다 — 출발 잔고에 있던 것과 같다")
+    func cashEventInFirstMonth() {
+        var early = input(years: 1, start: 100_000_000, monthly: 0, returnBP: 800)
+        early.cashEvents = [
+            CashEventInput(date: date("2026-01-15"), amount: Money(100_000_000, currency: .krw))
+        ]
+        let doubled = Projection.run(input(years: 1, start: 200_000_000, monthly: 0, returnBP: 800),
+                                     calendar: calendar)
+        let result = Projection.run(early, calendar: calendar)
+        #expect(result.last?.nominal == Money(215_999_999, currency: .krw))
+        #expect(result.last?.nominal == doubled.last?.nominal)
+    }
+
+    @Test("출발일 당일의 목돈은 출발 잔고에 이미 있으므로 뺀다")
+    func cashEventOnStartDay() {
+        var same = input(years: 1, start: 100_000_000, monthly: 0, returnBP: 800)
+        same.cashEvents = [
+            CashEventInput(date: date("2026-01-01"), amount: Money(100_000_000, currency: .krw))
+        ]
+        let result = Projection.run(same, calendar: calendar)
+        #expect(result.last?.nominal == Money(107_999_999, currency: .krw))
+    }
+
+    /// 188번. 점은 한 달에 하나라, 그 사이 날짜를 읽으면 벌써 받은 목돈이 아직
+    /// 안 보였다. 수익률 0% 로 두면 기댓값이 손으로 셈이 된다.
+    @Test("점 사이를 읽을 때 벌써 받은 목돈은 더한다")
+    func nominalBetweenPointsAddsReceivedEvent() {
+        var plan = input(years: 1, start: 100_000_000, monthly: 0, returnBP: 0)
+        plan.cashEvents = [
+            CashEventInput(date: date("2026-01-15"), amount: Money(100_000_000, currency: .krw))
+        ]
+        let result = Projection.run(plan, calendar: calendar)
+        // 받기 전 — 출발점 그대로
+        #expect(result.nominal(at: date("2026-01-10"), calendar: calendar) == Money(100_000_000, currency: .krw))
+        // 받은 뒤, 다음 점(02-01) 전 — 예전에는 여기가 1억이었다
+        #expect(result.nominal(at: date("2026-01-20"), calendar: calendar) == Money(200_000_000, currency: .krw))
+        // 다음 점부터는 점에 이미 들어 있다 — 두 번 더하지 않는다
+        #expect(result.nominal(at: date("2026-02-05"), calendar: calendar) == Money(200_000_000, currency: .krw))
+    }
+
+    @Test("한 달 일찍 점에 들어간 목돈은 날짜가 오기 전까지 뺀다")
+    func nominalBetweenPointsHoldsBackEarlyEvent() {
+        // 01-01 → 02-20 은 내림해 1개월 — 02-01 점에 들어간다.
+        var plan = input(years: 1, start: 100_000_000, monthly: 0, returnBP: 0)
+        plan.cashEvents = [
+            CashEventInput(date: date("2026-02-20"), amount: Money(100_000_000, currency: .krw))
+        ]
+        let result = Projection.run(plan, calendar: calendar)
+        #expect(result.nominal(at: date("2026-02-10"), calendar: calendar) == Money(100_000_000, currency: .krw))
+        #expect(result.nominal(at: date("2026-02-25"), calendar: calendar) == Money(200_000_000, currency: .krw))
+    }
+
     @Test("기간 밖의 목돈은 무시한다")
     func cashEventOutOfRange() {
         var late = input(years: 5, start: 100_000_000, monthly: 0, returnBP: 800)

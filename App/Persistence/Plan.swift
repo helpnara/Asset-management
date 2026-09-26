@@ -61,6 +61,20 @@ extension IncomeStream {
 extension CashEvent {
     var amount: Money { Money(minorUnits: amountMinor, currency: .krw) }
     var isInflow: Bool { amountMinor >= 0 }
+
+    /// **오늘 이후 날짜인가** (188번). 오늘 당일은 아니다 — 오늘 받은 것은 오늘
+    /// 적은 잔고에 들어 있다. 앞으로의 궤적 · 1페이지 · `이미 반영됨` 토글이
+    /// 모두 이 하나로 가른다. `Projection.eventMonth` 와 같은 날짜 견주기다.
+    func isUpcoming(now: Date = .now, calendar: Calendar = .current) -> Bool {
+        calendar.startOfDay(for: date) > calendar.startOfDay(for: now)
+    }
+
+    /// 앞으로의 궤적에 실제로 들어가는가 — 오늘 이후이고, 미리 받아 넣어 둔
+    /// 것이 아닐 때. 궤적 끝(지평선) 밖인지는 궤적을 굴려 봐야 알므로 여기서
+    /// 보지 않는다.
+    func countsForward(now: Date = .now, calendar: Calendar = .current) -> Bool {
+        isUpcoming(now: now, calendar: calendar) && !isAlreadyReflected
+    }
 }
 
 extension Plan {
@@ -348,8 +362,18 @@ extension Plan {
             ? Plan.endDate(retirementYear: max(horizonYear, retirementYear),
                            notBefore: retirement, calendar: calendar)
             : retirement
+        // **계획선은 `이미 반영됨` 을 보지 않는다** (188번). 그 토글은 "**오늘**
+        // 잔고에 이미 들어 있다" 는 뜻인데, 계획선은 과거의 한 주에서 출발한다 —
+        // 그 사이에 받은 목돈은 출발 잔고에 없다. 예전에는 켜 두면 계획선에서
+        // 빠져서, 9/18 에 받은 퇴직금 7천만이 "계획보다 7천만 앞서 있습니다" 로
+        // 보였다. 앞으로의 궤적(`asOf` 없음)에서는 지난 날짜가 어차피 빠지므로
+        // 토글은 **미리 받아 넣어 둔 앞으로의 목돈**에만 뜻이 있다.
+        //
+        // 날짜 견주기와 첫 달 처리는 `Projection.eventMonth` 가 한다 — 여기서
+        // 또 거르면 두 곳의 규칙이 어긋난다.
+        let isPlanLine = asOf != nil
         let pending = cashEvents
-            .filter { !$0.isAlreadyReflected && $0.date > now }
+            .filter { isPlanLine || !$0.isAlreadyReflected }
             .map { CashEventInput(date: $0.date, amount: $0.amount, label: $0.label) }
 
         return ProjectionInput(

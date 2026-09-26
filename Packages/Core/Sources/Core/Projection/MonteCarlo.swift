@@ -129,9 +129,11 @@ public enum MonteCarlo {
         let contributionStep = 1 + NSDecimalNumber(decimal: base.annualContributionGrowth.fraction).doubleValue
 
         var eventsByMonth: [Int: Double] = [:]
+        // 결정론 궤적과 **같은 규칙**으로 자리를 정한다 (188번). 따로 적어 두면
+        // 한쪽만 고쳐져 두 화면의 목돈이 다른 달에 들어간다.
         for event in base.cashEvents {
-            let offset = calendar.dateComponents([.month], from: base.startDate, to: event.date).month ?? -1
-            guard offset >= 1, offset <= months else { continue }
+            guard let offset = Projection.eventMonth(event.date, from: base.startDate,
+                                                     months: months, calendar: calendar) else { continue }
             eventsByMonth[offset, default: 0] += Double(event.amount.minorUnits)
         }
 

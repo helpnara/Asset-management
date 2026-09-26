@@ -313,6 +313,13 @@ public struct ProjectionPoint: Sendable, Hashable {
     public let real: Money
 }
 
+/// 목돈 하나가 궤적의 몇 번째 걸음에 들어갔나. `points[step]` 부터 그 돈을 품는다.
+public struct AppliedEvent: Sendable, Hashable {
+    public let step: Int
+    public let date: Date
+    public let amount: Money
+}
+
 public struct ProjectionResult: Sendable, Hashable {
     public let points: [ProjectionPoint]
     public let years: [YearSummary]
@@ -330,7 +337,30 @@ public struct ProjectionResult: Sendable, Hashable {
     /// **앞에서 멈춘다.** 화면은 이 깃발을 보고 "값이 너무 큽니다" 를 띄운다.
     public var isOutOfRange = false
 
+    /// 목돈이 들어간 걸음과 원래 날짜 (188번). 점은 한 달에 하나라, 그 사이의
+    /// 날짜를 읽을 때 "벌써 받았는데 아직 점에 안 들어간 목돈" 을 맞추려고 든다.
+    public var appliedEvents: [AppliedEvent] = []
+
     public var first: ProjectionPoint? { points.first }
+
+    /// **그 날의 액면가** — 점 사이를 읽을 때 목돈을 날짜대로 맞춘다 (188번).
+    ///
+    /// 점은 한 달에 하나다. 예전에는 그 날 이전의 마지막 점을 그대로 읽었는데,
+    /// 계획선이 9/12 에서 출발하면 다음 점이 10/12 라 9/18 에 받은 퇴직금이
+    /// 10/12 까지 계획 값에 안 보였다 — "계획보다 7천만 앞서 있습니다".
+    /// 반대로 달 수를 내림해 한 달 일찍 점에 들어간 목돈은 날짜가 오기 전까지
+    /// 뺀다. 목돈이 그 사이 번 수익은 맞추지 않는다 — 한 달 치라 작다.
+    public func nominal(at date: Date, calendar: Calendar = .current) -> Money? {
+        let day = calendar.startOfDay(for: date)
+        guard let index = points.lastIndex(where: { $0.date <= day }) else { return nil }
+        var value = points[index].nominal
+        for event in appliedEvents {
+            let happened = calendar.startOfDay(for: event.date) <= day
+            if event.step > index && happened { value += event.amount }
+            if event.step <= index && !happened { value -= event.amount }
+        }
+        return value
+    }
     public var last: ProjectionPoint? { points.last }
 
     public func milestone(_ kind: MilestoneKind) -> Milestone? {
@@ -388,10 +418,12 @@ public enum Projection {
 
         // 목돈은 그 달에 한 번 적용한다. 같은 달에 여러 건이면 합쳐서 넣는다.
         var eventsByMonth: [Int: Money] = [:]
+        var applied: [AppliedEvent] = []
         for event in input.cashEvents {
-            let offset = calendar.dateComponents([.month], from: input.startDate, to: event.date).month ?? -1
-            guard offset >= 1, offset <= months else { continue }
+            guard let offset = Self.eventMonth(event.date, from: input.startDate,
+                                               months: months, calendar: calendar) else { continue }
             eventsByMonth[offset, default: .zero(base)] += event.amount
+            applied.append(AppliedEvent(step: offset, date: event.date, amount: event.amount))
         }
 
         var balances = input.buckets.map(\.amount)
@@ -469,12 +501,30 @@ public enum Projection {
             calendar: calendar
         )
 
-        return ProjectionResult(
+        var result = ProjectionResult(
             points: points,
             years: years,
             milestones: milestones(in: years, input: input),
             depletion: depletion
         )
+        result.appliedEvents = applied
+        return result
+    }
+
+    /// 목돈이 들어가는 걸음(몇 개월차). 궤적 밖이면 nil.
+    ///
+    /// **출발일 당일까지는 출발 잔고에 이미 들어 있다** — 날짜로 견준다(시각은
+    /// 버린다). 그 다음 날부터가 대상이다.
+    ///
+    /// **첫 달 안의 목돈은 첫 걸음(1개월차)에 넣는다** (188번). 예전에는 달 수를
+    /// 내림한 값이 0 이면 `offset >= 1` 로 걸러 **조용히 버렸다** — 다음 주에 받을
+    /// 전세금도, 계획선 출발 2주 뒤에 받은 퇴직금도 궤적에 없었다. 두 번째 달
+    /// 부터는 예전과 같은 자리라 이미 있는 목돈의 위치는 한 칸도 안 움직인다.
+    static func eventMonth(_ date: Date, from start: Date, months: Int,
+                           calendar: Calendar) -> Int? {
+        guard calendar.startOfDay(for: date) > calendar.startOfDay(for: start) else { return nil }
+        let offset = max(1, calendar.dateComponents([.month], from: start, to: date).month ?? 0)
+        return offset <= months ? offset : nil
     }
 
     /// 그 달에 자산에서 꺼내야 하는 금액. 생활비 − 연금 소득, 음수면 0.

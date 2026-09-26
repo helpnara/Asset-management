@@ -475,7 +475,7 @@ struct PlanView: View {
         } header: {
             Text("목돈 이벤트")
         } footer: {
-            Text("퇴직금 유입, 전월세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 23년 복리에서는 목돈 하나가 결과를 크게 바꿉니다.")
+            Text("퇴직금 유입, 전월세보증금 전환, 주택 구입처럼 큰 자금이 한 번에 움직이는 시점입니다. 적은 금액 그대로 그 날짜에 들어갑니다 — 물가를 따로 태우지 않습니다.\n\n지난 날짜로 적은 목돈도 쓸모가 있습니다. 앞으로의 궤적에서는 빠지지만, 현황판의 증감 분해에서 그 돈이 수익으로 잘못 잡히지 않게 하고 계획선에도 그 날짜에 들어갑니다.")
         }
     }
 
@@ -486,11 +486,11 @@ struct PlanView: View {
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 5) {
-                    Text(event.date, format: .dateTime.year().month())
+                    Text(event.date, format: .dateTime.year().month().day())
                         .font(.scaled(10))
                         .foregroundStyle(Color.faint)
-                    if event.isAlreadyReflected {
-                        StatusBadge(text: "이미 반영됨")
+                    if let note = forwardExclusion(event) {
+                        StatusBadge(text: note)
                     }
                 }
             }
@@ -498,9 +498,22 @@ struct PlanView: View {
             Text((event.isInflow ? "+" : "−")
                  + Won.grouped(abs(event.amountMinor)))
                 .font(.figure(12.5, weight: .medium))
-                .foregroundStyle(event.isAlreadyReflected ? Color.faint
+                .foregroundStyle(forwardExclusion(event) != nil ? Color.faint
                                  : (event.isInflow ? Color.gain : Color.loss))
         }
+    }
+
+    /// **앞으로의 궤적에 안 들어가는 이유** — 없으면 nil (188번).
+    ///
+    /// 예전에는 `이미 반영됨` 만 표시했고, 지난 날짜와 궤적 끝(지평선) 밖은
+    /// 초록 · 빨강으로 멀쩡하게 보이는데 조용히 빠져 있었다. "다룰 수 없는
+    /// 값이면 그렇다고 말한다" (159번) 와 같은 결이다. 날짜는 일까지 보인다 —
+    /// 달만 보여 주면 "9월인데 왜 지난 일이지" 가 된다.
+    private func forwardExclusion(_ event: CashEvent) -> String? {
+        if !event.isUpcoming() { return "지난 일" }
+        if event.isAlreadyReflected { return "미리 받음" }
+        if let end = projected?.points.last?.date, event.date > end { return "궤적 밖" }
+        return nil
     }
 
     @ViewBuilder
