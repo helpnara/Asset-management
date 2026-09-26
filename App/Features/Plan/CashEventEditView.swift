@@ -29,7 +29,7 @@ struct CashEventEditView: View {
             Form {
                 Section {
                     TextField("이름 (퇴직금 · 전월세보증금 전환 …)", text: $event.label)
-                    DatePicker("시점", selection: $event.date, displayedComponents: .date)
+                    DatePicker("시점", selection: date, displayedComponents: .date)
                 }
 
                 Section {
@@ -107,6 +107,15 @@ struct CashEventEditView: View {
                 event.amountMinor = isInflow ? magnitude : -magnitude
             }
         }
+    }
+
+    /// **`$event.date` 로 묶지 않는다** (189번 후속, 빌드 113). 날짜 칸은 연결을
+    /// 제 손에 쥐고 있다가 화면이 닫힐 때 **본문과 따로** 다시 읽는다 — 본문 맨 위의
+    /// `isGone` 가드를 거치지 않는다. 새로 만든 것을 `취소` 하면 지운 즉시 값이
+    /// 비는데, 그 빈 날짜를 `Date` 로 바꾸다 죽었다. 읽는 자리에서 지웠는지 본다.
+    private var date: Binding<Date> {
+        Binding(get: { event.isGone ? .now : event.date },
+                set: { if !event.isGone { event.date = $0 } })
     }
 
     private func cancel() {
