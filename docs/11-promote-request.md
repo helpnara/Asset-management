@@ -13,7 +13,7 @@
 | Platform | iPhone · iPad |
 | Price | Free, no ads, no in-app purchases |
 | Category | Finance (secondary: Productivity) |
-| Release date | 2026년 10월 셋째 주 (심사 통과 뒤 수동 출시) |
+| Release date | ~~2026년 10월 셋째 주~~ **10월 하순 이후** — 안정화 기준 4 가 10-24 에 차고 제출한다 (심사 통과 뒤 수동 출시, [로드맵](05-roadmap.md) 최신) |
 | Storefront | Korea (한국어) |
 | Contact | kyunglagkwon@gmail.com |
 
@@ -63,7 +63,7 @@ something needs action — with the reasoning behind each rule one tap away.
 
 - 스크린샷 5장 (`screenshots/appstore/store/iphone/`, `…/ipad/`) —
   `Actions → App Store 스크린샷` 워크플로가 만든다 (docs/07 4단계).
-- 앱 아이콘 1024 (`Tools/icon/` 산출물).
+- 앱 아이콘 1024 (`App/Assets.xcassets/AppIcon.appiconset/icon-1024.png` — `Tools/make-icon.py` 산출물).
 - 미리보기 영상 15초는 선택 — 있으면 좋다.
 
 ## 낼 때 주의

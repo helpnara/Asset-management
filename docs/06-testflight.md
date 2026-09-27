@@ -26,7 +26,7 @@ Identifiers·App Store Connect 자체가 열리지 않습니다. 그동안 준�
 | 할 일 | 왜 |
 |---|---|
 | Apple ID 2단계 인증 확인 | 없으면 승인돼도 포털에 못 들어갑니다 |
-| 앱 이름 후보 2~3개 준비 | App Store 전체에서 유일해야 합니다. `느린 부자` 이 이미 쓰이고 있으면 뒤에 말을 붙여야 합니다 |
+| 앱 이름 후보 2~3개 준비 | App Store 전체에서 유일해야 합니다. `느린 부자` 가 이미 쓰이고 있으면 뒤에 말을 붙여야 합니다 |
 | 승인 메일 확인 | 보통 24~48시간. 길면 일주일. 서류를 더 요구하는 메일이 올 수도 있으니 스팸함도 보세요 |
 | 진행 상황 확인 | <https://developer.apple.com/account> 에 들어가서 `Certificates, Identifiers & Profiles` 가 보이면 승인된 것입니다 |
 
@@ -332,7 +332,7 @@ Your team has no devices from which to generate a provisioning profile
 뿐이었습니다. 시험용을 거치면 **항상** 빌드가 두 번인데, 바로 가면 잘 되면
 한 번입니다. 최악이 같고 최선이 다르면 바로 가는 쪽이 낫습니다.
 
-### 실제로 두 번 올렸습니다
+### 실제로 올린 기록 — 처음 두 번 (그 뒤로는 일상)
 
 | 언제 | 무엇 | 확인 |
 |---|---|---|
@@ -342,9 +342,15 @@ Your team has no devices from which to generate a provisioning profile
 **두 번째는 절차가 그대로 돌았습니다.** 모델을 고치고 → CI 가 어긋남을 잡고 →
 스키마를 다시 만들어 커밋 → `apply` → Deploy. 이제 이 길은 일상입니다.
 
+*(2026-09-27 현재: 그 뒤로 스키마 파일을 스무 번 가까이 고쳐 올렸다 — `Household` 루트(2a),
+`cloudkit.share` 시스템 타입(09-09), 마지막 묶음(09-10), 편집 권한, 종목별 지난 값
+(`HoldingRecord`), 그리고 마지막이 **`HoldingNote`(187번, 빌드 111 전)** 다. 매번 CI 통과 →
+`validate` → `apply` → 사람이 Deploy → TestFlight 순서. `apply` 가 초록이어도 로그를 읽는다
+— [08 · 187번](08-feedback.md).)*
+
 ### ⚠️ 모델을 고칠 때마다 다시 올려야 합니다
 
-`@Model` 에 속성을 더하면 **Production 이 그 필드를 모릅니다.** 밀어 넣기가
+모델(`App/SlowRich.xcdatamodeld`)에 칸을 더하면 **Production 이 그 필드를 모릅니다.** 밀어 넣기가
 실패하는데 앱은 로컬에 잘 저장하니 화면에서는 티가 안 납니다.
 
 CI 가 막아 줍니다 — 모델과 `Tools/cloudkit/slowrich.ckdb` 가 어긋나면 빌드가
@@ -362,6 +368,9 @@ python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb
 ---
 
 ### 아래는 어떻게 됐는지의 기록입니다
+
+> 이 아래는 **SwiftData 시절(2026-09-07 이전)** 에 쓴 기록이다. 지금 저장 계층은 Core Data 지만
+> "Development 에서만 자동 생성, Production 은 사람이 Deploy" 라는 CloudKit 규칙은 같다.
 
 ### 왜 막히나
 
