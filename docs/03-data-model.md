@@ -1,39 +1,73 @@
 # 3. 도메인 · 데이터 모델
 
-## 3.1 엔티티 개요
+> **원본은 `App/SlowRich.xcdatamodeld` 다** (Core Data, 4차에서 SwiftData 에서 옮겼다 —
+> [09](09-family-sharing.md)). `@NSManaged` 선언(`App/Persistence/Generated/`)과
+> CloudKit 스키마(`Tools/cloudkit/slowrich.ckdb`)가 거기서 파생되고, CI 가 셋을 대조한다.
+> 아래 **3.1 이 지금 모델**이고(2026-09-27 전수 조사로 다시 썼다), **3.3 은 처음
+> 설계할 때의 SwiftData 스케치**라 이름·칸이 다르다 — 무엇이 왜 바뀌었는지 보는 기록으로 남긴다.
+
+## 3.1 엔티티 개요 — 지금 모델 (19개)
 
 ```
-Household ──┬── Member ──┬── Account ──── Holding ──── Transaction
-  (가구)     │  (구성원)   │   (계좌)      (보유자산)      (거래, 선택)
-             │            ├── ContributionPlan ── ContributionAllocation
-             │            │   (적립 계획)          (배분: 계좌/종목별)
-             │            └── IncomeStream
-             │                (연금·미래소득)
-             ├── CashEvent        (목돈 이벤트)
-             ├── Milestone        (마일스톤)
-             ├── Principle        (운용 원칙 + 자동 점검 규칙)
-             ├── Advisory         (유의사항 · 기한 있는 할 일)
-             ├── Scenario ──── Assumptions   (시나리오별 가정)
-             ├── ReviewSession                (주간 점검 1회)
-             └── Snapshot ──── SnapshotLine  (주간 실제 기록)
+Household (가구, 공유의 뿌리 — 모든 엔티티가 household 로 매달린다)
+ ├── Member (구성원) ──cascade── Account (계좌) ──cascade── Holding (종목)
+ │                                                          └─cascade─ HoldingNote (왜 샀나 이력)
+ ├── Plan (계획 — 적립 · 가정 · 목표 · 진단 기준을 한 곳에)
+ ├── IncomeStream (연금 · 미래 소득)      ├── CashEvent (목돈 이벤트)
+ ├── UserMilestone (내 마일스톤)          ├── Principle (운용 원칙)
+ ├── TodoItem (챙길 것)                   ├── FamilyTarget (가족 목표 비중)
+ ├── Scenario (저장한 시뮬레이션)          ├── DiaryEntry (목 · 실 · 감)
+ ├── ReviewSession (주간 점검 1회)         ├── ChangeLog (변경 이력)
+ ├── Snapshot (주간 총액) ──cascade── SnapshotLine (구성원별 분해)
+ └── HoldingRecord (종목별 주간 값 — 종목을 지워도 남는다)
 ```
+
+| 엔티티 | 속성 | 무엇 | 처음 스케치와 다른 점 |
+|---|---:|---|---|
+| Household | 4 | 공유 단위(`CKShare` 의 뿌리) | 제목 · 기준 시점 · 선언문은 `Plan` 으로 갔다 |
+| Member | 16 | 이름 · 생년월 · 세적 · 은퇴 나이 · 월 적립 · 회사 매칭 · 월급 · `editorIDs`(편집 권한) · 색 번호 | 기대수명 · 색 코드 대신 색 번호 |
+| Account | 14 | 종류 · 기관 · 연 납입 한도 · 만기 · 월세 · 매매가 | **통화 없음** (전부 원화) |
+| Holding | 15 | 자산군 · 상품 유형 · 상장 국가 · 상태 · 입력 주기 · 평가액 · 목표 비중 | 통화 · 수량 · 단가 · 원가 없음 |
+| HoldingNote | 4 | 종목 "왜 샀나" 한 줄 + 날짜 · 적은 사람 | 187번에서 새로 |
+| HoldingRecord | 7 | 종목별 주간 값 (이름 · 계좌 이름을 함께 적어 종목을 지워도 남는다) | A3 에서 새로 — 스케치는 "종목 단위로는 저장하지 않는다" 였다 |
+| Plan | 35 | 제목 · 시작 · 은퇴 연도 · 월 적립 · 수익률(자산군별) · 물가 · 은퇴 후 수익률 · 목표 · 생활비 · 인출률 · 진단 기준 · 채우는 순서 · 지평선 | 스케치의 `Household` 머리 · `ContributionPlan` · `Scenario.Assumptions` 를 합쳤다 |
+| IncomeStream | 7 | 연금 이름 · 월 금액 · 시작/끝 연도 · 물가 연동 | 구성원 연결 없음 |
+| CashEvent | 7 | 날짜 · 이름 · 금액(부호가 방향) · 미리 받음 · 메모 | 배치 계좌 없음. `isAlreadyReflected` 는 188번부터 앞으로의 날짜에만 뜻이 있다 |
+| UserMilestone | 6 | 연도 · 이름 · 메모 · 구성원 | 자동 마일스톤은 저장하지 않고 궤적에서 계산 |
+| Principle | 6 | 순서 · 제목 · 설명 · 점검 메모 | **자동 점검 규칙은 여기 없다** — 규칙은 `자산 진단`(Core `Diagnostics`)이 맡는다 |
+| TodoItem | 10 | 제목 · 분류 · 기한 · 완료 · 해마다 반복 | 스케치의 `Advisory` |
+| FamilyTarget | 4 | 가족 단위 목표 비중(축 · 키 · 비중) | 새로 |
+| Scenario | 8 | 이름 · 월 적립 · 은퇴 연도 · 수익률 · 변동성 · 그때 예상 | `Assumptions` 는 없다 |
+| ReviewSession | 11 | 주 · 시작/완료 · 적은 수 · 총액만 · 적은 구성원 · 그 주 진단 | |
+| Snapshot | 5 | 주 · 순자산 · 투자자산 · 부채 | 자산군 · 국가 분해 없음 |
+| SnapshotLine | 5 | 구성원별 값 (이름을 함께 적는다) | 자산군 · 국가 축 없음 |
+| DiaryEntry | 6 | 날짜 · 목표 · 실적 · 감사 | 마지막 묶음에서 새로 |
+| ChangeLog | 6 | 언제 · 누가 · 종류 · 대상 · 요약 | 29번 · 111번 |
+
+**스케치에 있었지만 만들지 않은 것:** `Transaction`(거래), `ContributionAllocation`
+(적립 배분), `Assumptions`, 자동 점검 규칙이 달린 `Principle`, 통화 · 환율.
+
+**CloudKit 규칙** — 유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널
+([ADR-0001](adr/0001-swiftdata-cloudkit.md)). 관계는 구성원 → 계좌 → 종목 → 이력만
+cascade 이고, 나머지는 `Household` 에 nullify 로 매달린다.
 
 ## 3.2 설계 원칙
 
 1. **보유 자산의 평가액이 진실의 원천이다.** 사용자가 매주 직접 적는 그 숫자다.
-   거래 내역은 선택 기능이며, 거래가 하나도 없어도 앱은 완전히 동작한다.
+   ~~거래 내역은 선택 기능이며,~~ 거래 내역은 만들지 않았다 *(2026-09-27 현재)*.
 2. **시세를 저장할 자리를 두지 않는다.** 외부에서 가져오지 않으므로 캐시가 없다.
    → [ADR-0005](adr/0005-manual-entry.md)
 3. **금액은 스케일드 정수로 저장한다.** → [ADR-0003](adr/0003-money-representation.md)
 4. **enum은 `String` rawValue로 저장한다.** 스키마 안정성과 CloudKit 호환 때문.
 5. **모든 속성에 기본값을, 모든 관계를 옵셔널로.** CloudKit 미러링 제약.
    → [ADR-0001](adr/0001-swiftdata-cloudkit.md)
-6. **계산 결과는 저장하지 않는다.** 단, 주간 스냅샷과 프로젝션 캐시는 예외
-   (재계산 비용과 과거 사실 보존 때문).
+6. **계산 결과는 저장하지 않는다.** 단, 주간 스냅샷 · 종목별 주간 값(`HoldingRecord`)은 예외
+   (과거 사실 보존). ~~프로젝션 캐시~~ 는 두지 않았다 — 궤적은 화면 밖에서 매번 굴린다(153 · 157번).
 
-## 3.3 SwiftData 스키마 (스케치)
+## 3.3 SwiftData 스키마 (처음 스케치 — 역사 기록)
 
-> 실제 구현 시 세부는 달라질 수 있습니다. 관계·필수 필드·enum 값 집합을 확정하는 것이 목적입니다.
+> **지금 모델이 아니다.** 지금 모델은 3.1 과 `App/SlowRich.xcdatamodeld`. 이 절은
+> 처음 무엇을 생각했는지 남겨 둔 것이다. 실제 구현 시 세부는 달라질 수 있습니다. 관계·필수 필드·enum 값 집합을 확정하는 것이 목적입니다.
 
 ### 3.3.1 가구 · 구성원
 
@@ -432,6 +466,8 @@ final class SnapshotLine {
 
 ### 3.4.1 평가
 
+*(현재: `holding.value = valueMinor` 하나 — 평가 방식 선택 · 환율은 없다. 아래는 처음 스케치)*
+
 ```
 holding.value =
   switch valuationMode
@@ -455,9 +491,8 @@ countryWeight      = Σ(listingCountry) / investable
 
 ### 3.4.3 수익률
 
-- 종목 단순 수익률 = `(평가액 − 원가) / 원가` — 거래 내역이 있을 때만
-- 가구 전체 **XIRR** — 외부 현금흐름(입금/출금/적립)과 현재 평가액으로 계산.
-  Newton–Raphson, 발산 시 이분법 폴백. → [ADR-0002](adr/0002-projection-engine.md)
+- ~~종목 단순 수익률 = `(평가액 − 원가) / 원가` — 거래 내역이 있을 때만~~
+- ~~가구 전체 **XIRR**~~ *(현재: 둘 다 만들지 않았다. 대신 `얼마 넣어서 얼마 자랐나` 가 증감을 넣은 돈 · 목돈 · 자란 돈으로 어림한다 — `ChangeAttribution`, 82번 · 188번)*
 
 ### 3.4.5 계획 대비 실적
 
@@ -471,8 +506,10 @@ gapRate(t)   = gap(t) / planned(t)
 ```
 
 계획선의 기준 시점은 **계획 수립일에 고정**한다. 가정을 바꿀 때마다 과거 계획선까지
-움직이면 "계획보다 앞서 있다"는 말이 의미를 잃는다. 가정을 바꾸면 그 시점부터 새 계획선을
-그리고, 이전 계획선은 옅게 남긴다.
+움직이면 "계획보다 앞서 있다"는 말이 의미를 잃는다. ~~가정을 바꾸면 그 시점부터 새 계획선을
+그리고, 이전 계획선은 옅게 남긴다.~~
+
+*(현재: 계획선은 `최초 계획 수립일` 뒤 **처음 적은 주의 총자산**에서 출발해 계획 가정으로 굴린 선 하나다(37 · 46번, `PlanTrack`). 점 사이 날짜는 `ProjectionResult.nominal(at:)` 로 읽어 그사이 받은 목돈까지 맞춘다(188번). 목돈의 `미리 받음` 토글은 계획선에서 보지 않는다.)*
 
 ### 3.4.4 원칙 점검
 
@@ -497,7 +534,9 @@ member.taxResidency ∈ {usa, both}
 
 ## 3.5 마이그레이션
 
-- `VersionedSchema` + `SchemaMigrationPlan`을 처음부터 도입한다. v1 출시 후에는
+*(현재: Core Data **경량 마이그레이션** 하나로 간다. 칸은 더하기만 하고 지우거나 이름을 바꾸지 않는다. 칸을 더하면 `.xcdatamodeld` · `Generated/` · `.ckdb` 를 함께 고치고 CloudKit 스키마를 다시 올린다 — [06](06-testflight.md). 아래 `VersionedSchema` 는 SwiftData 시절 계획이다.)*
+
+- ~~`VersionedSchema` + `SchemaMigrationPlan`을 처음부터 도입한다.~~ v1 출시 후에는
   경량 마이그레이션만으로 해결되지 않는 변경이 반드시 생긴다.
 - CloudKit이 붙으면 **속성 삭제·이름 변경이 비싸다.** 애매하면 새 속성을 추가하고
   옛 속성은 남겨 둔다.

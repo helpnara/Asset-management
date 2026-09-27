@@ -4,8 +4,8 @@
 
 | # | 제목 | 상태 |
 |---|---|---|
-| [0001](0001-swiftdata-cloudkit.md) | SwiftData + CloudKit private DB를 영속 계층으로 사용 | 채택 |
+| [0001](0001-swiftdata-cloudkit.md) | SwiftData + CloudKit private DB를 영속 계층으로 사용 | 채택 → **SwiftData 는 Core Data 로 대체** (2026-09-07). CloudKit 제약은 유효 |
 | [0002](0002-projection-engine.md) | 프로젝션 엔진을 순수 Swift 모듈로 분리 | 채택 |
-| [0003](0003-money-representation.md) | 금액·수량을 스케일드 정수로 저장 | 채택 |
-| [0004](0004-family-sharing.md) | 배우자 공유는 CloudKit shared database로, v1 이후 | 보류 |
-| [0005](0005-manual-entry.md) | 자산 평가액은 전부 수동 입력, 주기는 매주 토요일 | 채택 |
+| [0003](0003-money-representation.md) | 금액·수량을 스케일드 정수로 저장 | 채택 (금액은 원화만) |
+| [0004](0004-family-sharing.md) | 배우자 공유는 CloudKit shared database로, v1 이후 | ~~보류~~ → **구현 완료** (1.0, 빌드 55) |
+| [0005](0005-manual-entry.md) | 자산 평가액은 전부 수동 입력, 주기는 매주 토요일 | 채택 (통화도 원화 하나로) |

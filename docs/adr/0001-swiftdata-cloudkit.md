@@ -1,6 +1,6 @@
 # ADR-0001 · SwiftData + CloudKit private DB를 영속 계층으로 사용
 
-**상태**: 채택 · 2026-09
+**상태**: 채택 · 2026-09 — **SwiftData 부분은 대체됨 (2026-09-07, Core Data 로). CloudKit 과 그 제약은 그대로 유효** — 아래 후속 2
 
 ## 맥락
 
@@ -69,3 +69,18 @@ CloudKit 미러링을 켜면 스키마에 강한 제약이 걸립니다. **처�
    Release 가 `production` 이어야 합니다. 하나로 두면 한쪽이 반드시 막힙니다.
    `App/SlowRich.entitlements` 와 `App/SlowRich.Release.entitlements` 로 나누고
    `project.yml` 의 `settings.configs` 에서 갈라 씁니다.
+
+## 후속 2 (2026-09-07~10) — SwiftData 에서 Core Data 로 옮겼다
+
+가족 공유가 1.0 요구가 되자 **SwiftData 는 `CKShare` 를 못 한다**는 것이 확인됐고
+([09 가족 공유](../09-family-sharing.md)), 영속 계층을 **Core Data +
+`NSPersistentCloudKitContainer`(private · shared 두 저장소)** 로 옮겼다. 위 "대안" 표에서
+기각한 첫째 줄이 결국 답이 된 셈이다 — 보일러플레이트는 생성기(`Tools/`)로 줄였다.
+
+- **CloudKit 제약은 전부 그대로다** — 유니크 없음, 모든 속성 기본값, 모든 관계 옵셔널.
+- **모델의 원본은 `App/SlowRich.xcdatamodeld`**, `@NSManaged` 선언과 CloudKit 스키마
+  (`Tools/cloudkit/slowrich.ckdb`)는 파생이며 CI 가 셋을 대조한다.
+- 모델은 12종이 아니라 **19종**이 됐다 ([03](../03-data-model.md)).
+- **검증 과제 결과** — 1) 실기기 둘(아이폰 · 아이패드)과 가족 기기 사이 동기화 확인
+  (빌드 26 · 55). 2) iCloud 없이 로컬로 여는 길은 위 후속 1 대로 유지. 3) 마이그레이션은
+  경량 이전만 쓰고, 칸을 더할 때마다 CloudKit 스키마를 다시 올린다 ([06](../06-testflight.md)).
