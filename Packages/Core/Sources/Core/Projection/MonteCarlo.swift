@@ -248,7 +248,11 @@ public enum MonteCarlo {
         return sorted[lower] * (1 - weight) + sorted[upper] * weight
     }
 
+    /// **`Int(value.rounded())` 로 바꾸지 않는다** (크래시 전수 조사, 2026-09-29).
+    /// 경로는 `Double` 로 굴러서 상위 10% 가 `Int` 를 넘거나 무한대가 될 수 있고, 그러면
+    /// 그 자리에서 트랩이다. 밴드는 그리기만 하는 값이라 끝값으로 자르면 충분하다 — 그런
+    /// 입력이면 결정론 궤적이 먼저 `isOutOfRange` 로 화면에 알린다.
     private static func money(_ value: Double, _ currency: CurrencyCode) -> Money {
-        Money(minorUnits: Int(value.rounded()), currency: currency)
+        Money(minorUnits: SafeMath.clampedInt(value.rounded()), currency: currency)
     }
 }

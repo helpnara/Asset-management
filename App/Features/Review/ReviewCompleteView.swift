@@ -73,12 +73,38 @@ struct ReviewCompleteView: View {
     }
 
     var body: some View {
-        if onClose != nil {
+        // **보고 있던 기록이 지워졌다** (크래시 전수 조사, 2026-09-29). 두 사람이 같은 주
+        // 점검을 거의 같이 끝내면 `WeekDedup` 이 늦게 끝낸 쪽을 남기고 다른 쪽을 지운다.
+        // 지워진 쪽 화면이 열려 있으면 `session.weekAnchor`(nil 을 못 받는 `Date`)를
+        // 다시 읽다 189번처럼 죽는다. 전체 화면이라 빈 화면만 그리면 닫을 길이 없다 —
+        // 안내와 닫기를 둔다. 이 분기는 `session` 의 칸을 하나도 읽지 않는다.
+        if session.isGone {
+            mergedNotice
+        } else if onClose != nil {
             // 점검 창의 스택에 밀려 들어왔다. 뒤로 가면 안 된다 — 점검은 끝났다.
             content.navigationBarBackButtonHidden(true)
         } else {
             NavigationStack { content }
         }
+    }
+
+    private var mergedNotice: some View {
+        VStack(spacing: 12) {
+            Text("이 주 점검이 다른 기기의 기록과 하나로 합쳐졌습니다")
+                .font(.scaled(14, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .multilineTextAlignment(.center)
+            Text("현황판의 이번 주 점검에서 합쳐진 기록을 다시 열 수 있습니다.")
+                .font(.scaled(12))
+                .foregroundStyle(Color.muted)
+                .multilineTextAlignment(.center)
+            Button("닫기") { close() }
+                .fontWeight(.semibold)
+                .padding(.top, 6)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.ground)
     }
 
     /// 계획선 대비. **본문 밖에서 한 번** 굴린다 (169번 B1) — 예전에는 계산

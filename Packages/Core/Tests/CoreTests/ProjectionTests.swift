@@ -38,6 +38,29 @@ struct ProjectionTests {
         )
     }
 
+    @Test("칸마다 한도 안이어도 굴리다 넘칠 입력이면 멈추지 않고 돌아선다")
+    func runawayInputReturnsOutOfRangeInsteadOfTrapping() {
+        // 크래시 전수 조사 (2026-09-29). 칸 하나하나는 1조 한도 안이라 입력 가드를
+        // 통과하지만, 월 적립 1조 · 증가 10% · 수익률 15% · 80년은 굴리는 도중에
+        // Int 를 넘는다 (파이썬 어림 약 1.8×10¹⁹). 예전에는 여기서 트랩이었다.
+        // 숫자를 맞히는 테스트가 아니다 — **죽지 않고 돌아서는지**만 본다.
+        let absurd = input(years: 80, start: 999_999_999_999, monthly: 999_999_999_999,
+                           returnBP: 1_500, growthBP: 1_000)
+        #expect(absurd.isWithinSafeRange)
+        let result = Projection.run(absurd, calendar: calendar)
+        #expect(result.isOutOfRange)
+        #expect(result.points.isEmpty)
+
+        // 몬테카를로도 같은 입력에서 죽지 않는다 (밴드는 끝값으로 잘린다).
+        _ = MonteCarlo.run(MonteCarloInput(base: absurd, annualVolatility: Ratio(basisPoints: 3_000)),
+                           calendar: calendar)
+
+        // 현실적인 입력은 그대로 굴러간다.
+        let normal = input(years: 30, start: 500_000_000, monthly: 3_000_000,
+                           returnBP: 800, growthBP: 300)
+        #expect(!Projection.run(normal, calendar: calendar).isOutOfRange)
+    }
+
     @Test("수익률을 갈아 끼우면 결과가 실제로 달라진다")
     func settingInvestmentReturnActuallyChangesResult() {
         // **실제로 났던 버그다** (docs/08-feedback.md 34번).

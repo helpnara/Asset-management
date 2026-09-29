@@ -375,6 +375,9 @@ public struct ProjectionResult: Sendable, Hashable {
 
 public enum Projection {
 
+    /// 굴리는 도중의 한계 — 10경 원. 이걸 넘으면 결과를 내지 않고 `isOutOfRange` 로 돌아선다.
+    static let runawayCeiling = 100_000_000_000_000_000
+
     /// 월 단위로 굴린다.
     ///
     /// 한 달의 순서는 **적립 → 수익**이다. 월초에 넣고 그 달 수익을 받는다는 뜻이다.
@@ -441,6 +444,19 @@ public enum Projection {
         points.reserveCapacity(months + 1)
 
         for month in 1...months {
+            // **굴리다 넘칠 것 같으면 돌아선다** (크래시 전수 조사, 2026-09-29).
+            // 입력 가드(`isWithinSafeRange`)는 칸 하나하나가 1조 안인지만 본다. 그런데
+            // 월 적립 1조(0 을 몇 개 더 친 오타) · 적립 증가 10% · 수익률 15% · 80년이면
+            // 굴리는 도중에 `Int` 를 넘어 `Decimals.roundedInt` 가 멈춘다 — 현황판이
+            // 켤 때 굴리므로 159번처럼 **켤 때마다 죽는다.** 잔고나 적립이 10경을
+            // 넘으면 멈춘다. 그 아래에서는 한 달에 적립을 더하고 복리를 곱해도, 덩어리를
+            // 모두 더해도 `Int` 한계(약 922경)에 닿지 않는다. 현실의 가족 자산보다
+            // 1억 배 넘게 크므로 정상 입력은 여기 오지 않는다.
+            if balances.contains(where: { abs($0.minorUnits) > Self.runawayCeiling })
+                || abs(contribution.minorUnits) > Self.runawayCeiling {
+                return ProjectionResult(points: [], years: [], milestones: [],
+                                        depletion: nil, isOutOfRange: true)
+            }
             let date = calendar.date(byAdding: .month, value: month, to: input.startDate) ?? input.startDate
             let year = calendar.component(.year, from: date)
             let event = eventsByMonth[month] ?? .zero(base)

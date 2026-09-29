@@ -50,6 +50,15 @@ private struct DiaryRow: View {
     @ObservedObject var entry: DiaryEntry
 
     var body: some View {
+        // 다른 기기에서 지운 줄이 빠지기 전에 한 번 더 그려질 수 있다 (189번 계열).
+        if entry.isGone {
+            EmptyView()
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(DiaryCard.dayText(entry.day))
                 .font(.figure(11, weight: .medium))
@@ -88,10 +97,27 @@ struct DiaryEditView: View {
     @State private var reverting = false
 
     var body: some View {
+        // 지운 객체를 다시 그리지 않는다 (189번 규칙, 크래시 전수 조사 2026-09-29).
+        // 일기는 내 아이폰 · 아이패드 사이에서 동기화된다 — 한쪽에서 여는 동안 다른
+        // 쪽에서 지우면 이 시트가 지운 객체를 들고 있게 된다.
+        if entry.isGone {
+            Color.clear
+        } else {
+            editor
+        }
+    }
+
+    /// `$entry.day` 로 묶지 않는다 (189번 · 빌드 113) — 날짜 칸은 연결을 따로 다시 읽는다.
+    private var day: Binding<Date> {
+        Binding(get: { entry.isGone ? .now : entry.day },
+                set: { if !entry.isGone { entry.day = $0 } })
+    }
+
+    @ViewBuilder private var editor: some View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("날짜", selection: $entry.day, displayedComponents: .date)
+                    DatePicker("날짜", selection: day, displayedComponents: .date)
                 } footer: {
                     if dayTaken {
                         Text("그날은 이미 일기가 있어 옮기지 않았습니다.")

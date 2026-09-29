@@ -59,7 +59,8 @@ struct IncomeStreamEditView: View {
                     }
                     Toggle("끝나는 해가 있다", isOn: $hasEnd)
                     if hasEnd {
-                        Stepper(value: endYear, in: stream.startYear...(currentYear + 80)) {
+                        // 아래끝이 위끝보다 크면 범위를 만드는 순간 트랩이다 — 백업 등으로 먼 해가 들어와도 버틴다 (크래시 전수 조사).
+                        Stepper(value: endYear, in: min(stream.startYear, currentYear + 80)...(currentYear + 80)) {
                             Text(verbatim: "\(max(stream.endYear, stream.startYear))년까지")
                         }
                     }
