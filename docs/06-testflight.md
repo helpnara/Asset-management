@@ -371,6 +371,13 @@ CloudKit Console → Tokens 의 관리 토큰 `github-actions-slowrich` 에 **�
 
 **2026-09-29 첫 갱신.** 위 순서대로 했고 `read` 가 초록, 로그에 스키마 본문이 찍혔다.
 초록만 보지 않고 로그를 읽은 이유는 187번에서 배운 것 — 단계가 2초면 의심한다.
+옛 토큰을 지운 뒤 `read` 를 한 번 더 돌려 **새 토큰만으로** 스키마 본문(`CD_Plan` ·
+`CD_TodoItem` · `cloudkit.share` …)이 찍히는 것까지 확인했다.
+
+> 곁가지: 이 워크플로 로그에 `Node.js 20 is deprecated … forced to run on Node.js 24`
+> 경고가 있다(`actions/checkout@v4` · `actions/setup-node@v4`). 지금은 그대로 돈다.
+> 워크플로를 고칠 일이 생기면 그때 `@v5` 로 올린다 — 워크플로 파일을 고치면 CI 가 돌므로
+> 동결 중에는 따로 건드리지 않는다.
 
 **User Token 은 건드리지 않는다.** 콘솔 맨 위의 User Token 은 개인 데이터베이스용이고 이
 저장소는 쓰지 않는다. 화면 안내대로 저장소에 넣지도, 남에게 주지도 않는다.
