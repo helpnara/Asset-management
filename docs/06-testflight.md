@@ -348,6 +348,30 @@ Your team has no devices from which to generate a provisioning profile
 `validate` → `apply` → 사람이 Deploy → TestFlight 순서. `apply` 가 초록이어도 로그를 읽는다
 — [08 · 187번](08-feedback.md).)*
 
+### ⚠️ 관리 토큰은 만료된다 — 첫 토큰은 2026-10-06 까지
+
+CloudKit Console → Tokens 의 관리 토큰 `github-actions-slowrich` 에 **만료일**이 있다
+(2026-09-28 사용자가 콘솔에서 확인: `Expires: 2026. 10. 06.`). 이 토큰은 저장소 시크릿
+`CKTOOL_MGMT_TOKEN` 에 들어 있고 **`CloudKit 스키마` 워크플로 하나만** 쓴다.
+
+| 만료되면 | 영향 |
+|---|---|
+| 앱 · 가족의 iCloud 동기화 · 공유 | **없다.** 앱은 사용자 각자의 iCloud 로 돈다. 이 토큰을 쓰지 않는다 |
+| CI · TestFlight 빌드 | **없다.** 둘은 App Store Connect API 키(`APP_STORE_CONNECT_KEY_*`)를 쓴다 |
+| `CloudKit 스키마` 워크플로 (`read` · `validate` · `apply`) | **인증에서 막힌다** — 모델에 칸을 더해 스키마를 다시 올려야 할 때만 문제가 된다 |
+
+**새로 만드는 법 (5분)** — 스키마를 올려야 할 일이 생겼을 때, 또는 미리.
+
+1. CloudKit Console → 오른쪽 위 계정 메뉴 → **Tokens** → `+ Create Management Token`
+2. 이름은 같은 식으로(`github-actions-slowrich-2`), 만료는 **고를 수 있는 가장 긴 기간**
+3. 만든 값을 복사 → GitHub 저장소 `Settings → Secrets and variables → Actions` →
+   `CKTOOL_MGMT_TOKEN` 을 **Update** 로 덮어쓴다 (이름은 그대로)
+4. `Actions → CloudKit 스키마 → read` 를 돌려 초록이면 끝
+5. 옛 토큰은 휴지통으로 지운다
+
+**User Token 은 건드리지 않는다.** 콘솔 맨 위의 User Token 은 개인 데이터베이스용이고 이
+저장소는 쓰지 않는다. 화면 안내대로 저장소에 넣지도, 남에게 주지도 않는다.
+
 ### ⚠️ 모델을 고칠 때마다 다시 올려야 합니다
 
 모델(`App/SlowRich.xcdatamodeld`)에 칸을 더하면 **Production 이 그 필드를 모릅니다.** 밀어 넣기가
