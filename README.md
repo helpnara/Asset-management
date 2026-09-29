@@ -72,6 +72,7 @@ App Store 에 무료로 냅니다 — 10월 하순 예정 ([로드맵](docs/05-r
 11. [에디터 추천 신청서 초안](docs/11-promote-request.md)
 12. [배운 것](docs/12-lessons-learned.md) — **다음 앱을 시작하기 전에 먼저 읽는다**
 13. [소개글](docs/13-blog-intro.md) — 블로그 · 지원 페이지용
+14. [매일 점검 루틴](docs/14-daily-test-routine.md) — 안정화 기간에 쓰는 화면 밖의 버그를 찾는 요일별 순서와 기록
 
 [개인정보 처리방침](docs/privacy-policy.md) — 앱이 무엇을 모으지 않는지
 
