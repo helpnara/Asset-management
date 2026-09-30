@@ -9,6 +9,8 @@ struct MemberEditView: View {
     /// 방금 만든 것인가 — 취소하면 지운다 (104번).
     var isNew = false
     @State private var snapshot: EditSnapshot?
+    /// `취소` 를 눌렀다 — 손잡이의 남은 초안을 쓰지 않는다 (192번 C).
+    @State private var isCancelled = false
 
     /// 열었을 때의 이름. 닫을 때 견줘서 **추가인지 이름 변경인지** 가린다
     /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
@@ -23,7 +25,7 @@ struct MemberEditView: View {
     /// 맞다). 그 값을 폼에 그대로 물리면 내려도 올해에서 안 내려가는 스테퍼가
     /// 된다 — 폼은 **적어 둔 것을 그대로** 보여 준다.
     private var enteredRetirementYear: Int {
-        member.birthYear + member.targetRetirementAge
+        member.isGone ? 0 : member.birthYear + member.targetRetirementAge
     }
 
     /// 은퇴 목표 연도. 저장은 나이로 한다 (151번 A-1).
@@ -33,6 +35,7 @@ struct MemberEditView: View {
             // 생년보다 앞선 해로는 못 간다. 스테퍼의 범위가 이미 막지만
             // 생년을 나중에 고치는 경우가 있어 여기서도 접는다.
             set: {
+                guard !member.isGone else { return }
                 member.targetRetirementAge = max(0, $0 - member.birthYear)
                 // **가족 대표면 계획의 은퇴 연도가 따라온다** (168번).
                 if isFamilyHead {
@@ -99,9 +102,12 @@ struct MemberEditView: View {
                     // 저장하는 값은 그대로 **나이**다 (`targetRetirementAge`) —
                     // 연도에서 생년을 빼서 적는다. 스키마를 건드리지 않으려는 것도
                     // 있지만, 생년을 고치면 은퇴 연도가 따라 움직이는 것이 옳다.
-                    Stepper(value: retirementYear, in: retirementYearRange) {
+                    // 모델에 바로 묶지 않는다 — 대표면 한 칸마다 계획과 궤적이 다시
+                    // 굴렀다. 손을 멈춘 뒤 한 번 쓴다 (192번 C).
+                    DeferredStepper(value: retirementYear, range: retirementYearRange,
+                                    isLive: { !isCancelled && !member.isGone }) { year in
                         // Text("...\(정수)...") 는 로케일 포맷을 먹여 "2,055년" 이 된다.
-                        Text(verbatim: "은퇴 목표 \(enteredRetirementYear)년 (\(member.targetRetirementAge)세)")
+                        Text(verbatim: "은퇴 목표 \(year)년 (\(max(0, year - member.birthYear))세)")
                     }
                 } header: {
                     Text("나이")
@@ -233,8 +239,19 @@ struct MemberEditView: View {
 
     /// 열 때 값으로 되돌리고 닫는다. 새로 만든 것이면 지운다 (104번).
     private func cancel() {
+        isCancelled = true
         nameOnOpen = nil
-        if isNew { context.delete(member) } else { snapshot?.restore(to: member) }
+        if isNew {
+            context.delete(member)
+        } else {
+            snapshot?.restore(to: member)
+            // 대표의 은퇴 목표를 되돌렸으면 계획도 되돌린다 (192번 C). 고치는 동안
+            // 계획이 따라왔으므로, 되돌리지 않으면 계획만 바뀐 채 남는다.
+            if isFamilyHead {
+                Plan.primary(context.all(Plan.self))?
+                    .adoptRetirementYear(fromHeadOf: context.all(Member.self))
+            }
+        }
         dismiss()
     }
 

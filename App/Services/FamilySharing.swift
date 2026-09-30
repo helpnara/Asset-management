@@ -426,7 +426,14 @@ final class FamilySharing {
                 if next.role != .owner {
                     let pruned = Household.pruneEmptyLocalDuplicates(in: context,
                                                                      sharedStoreURL: sharedStoreURL)
-                    if pruned > 0 { try? context.save() }
+                    if pruned > 0 {
+                        do {
+                            try context.save()
+                        } catch {
+                            // 뒤쪽 문맥이라 문을 직접 못 지난다 — 실패만 같은 자리에 (192번 A).
+                            Task { @MainActor in Autosave.shared.recordFailure(error) }
+                        }
+                    }
                     next.pruneBlockers = Household.pruneBlockers(in: context, sharedStoreURL: sharedStoreURL)
                     next.strays = Self.strays(in: context, container: container, sharedStoreURL: sharedStoreURL)
                 } else {
@@ -650,7 +657,7 @@ final class FamilySharing {
             request.affectedStores = [privateStore]
             for object in (try? context.fetch(request)) ?? [] { context.delete(object) }
         }
-        try? context.save()
+        Autosave.shared.save(context)
         refreshState()
     }
 

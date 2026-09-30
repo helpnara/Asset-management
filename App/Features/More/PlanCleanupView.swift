@@ -90,6 +90,6 @@ struct PlanCleanupView: View {
         ChangeLogger.record(.other, subject: "계획 정리",
                             summary: "계획 \(plans.count)개 중 하나를 남기고 \(others.count)개를 지웠습니다",
                             in: context)
-        try? context.save()
+        Autosave.shared.save(context)
     }
 }

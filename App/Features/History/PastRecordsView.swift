@@ -75,6 +75,7 @@ struct PastRecordsView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("지난 기록 추가")
                 }
             }
         }
@@ -86,7 +87,7 @@ struct PastRecordsView: View {
     private func row(_ snapshot: Snapshot) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text(snapshot.weekAnchor, format: .dateTime.year().month().day())
+                Text(DateText.full(snapshot.weekAnchor))
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 if snapshot.liabilitiesMinor != 0 {

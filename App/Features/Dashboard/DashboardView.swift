@@ -134,7 +134,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
         case .weekly:
             // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
-            sectionHeader("이번 주 점검", trailing: "토요일 \(Self.shortDate.string(from: reviewDay))")
+            sectionHeader("이번 주 점검", trailing: "토요일 \(DateText.short(reviewDay))")
             weeklyBar
             planReviewNudge
         case .todos:
@@ -374,7 +374,7 @@ struct DashboardView: View {
         if rows.contains(where: { $0.split != nil }), let latest = snapshots.last {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("얼마 넣어서 얼마 자랐나",
-                              trailing: "마지막 점검 \(Self.shortDate.string(from: latest.weekAnchor)) 기준")
+                              trailing: "마지막 점검 \(DateText.short(latest.weekAnchor)) 기준")
                 // 세 숫자 칸은 폭을 고정하고 라벨이 나머지를 다 가진다 — `Grid` 는
                 // 내용에 맞춰 줄어들어 화면 폭의 절반에서 끝났다.
                 VStack(spacing: 0) {
@@ -431,12 +431,6 @@ struct DashboardView: View {
             .minimumScaleFactor(0.8)
             .frame(width: Self.attributionColumn, alignment: .trailing)
     }
-
-    private static let shortDate: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM.dd"
-        return formatter
-    }()
 
     // MARK: - 지난달 회고 (docs/08-feedback.md 86번, C4)
 

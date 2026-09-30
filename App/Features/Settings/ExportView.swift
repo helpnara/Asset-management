@@ -32,6 +32,8 @@ struct ExportView: View {
     @State private var isPickingBackup = false
     @State private var pending: BackupDocument?
     @State private var restoreProblem: String?
+    /// 되돌리기가 저장에서 막혀 되돌리기 전으로 돌아갔다 (192번 B).
+    @State private var restoreFailed = false
 
     /// 백업 각주 (152번 1-7). "사본이 이 아이폰 하나뿐" 은 iCloud 가 붙어
     /// 있으면 **틀린 말**이다. 그렇다고 iCloud 가 백업을 대신하지도 않는다 —
@@ -156,7 +158,7 @@ struct ExportView: View {
                                     set: { if !$0 { pending = nil } }),
                presenting: pending) { document in
             Button("되돌리기", role: .destructive) {
-                BackupDocument.restore(document, into: context)
+                restoreFailed = !BackupDocument.restore(document, into: context)
                 pending = nil
             }
             Button("그만두기", role: .cancel) { pending = nil }
@@ -170,6 +172,11 @@ struct ExportView: View {
             Button("확인", role: .cancel) { restoreProblem = nil }
         } message: { problem in
             Text(problem)
+        }
+        .alert("되돌리지 못했습니다", isPresented: $restoreFailed) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text("기기에 저장하지 못해 되돌리기 전 상태 그대로 두었습니다. 지워진 것은 없습니다. 더보기 → 동기화의 저장 실패 사유를 진단 정보로 보내 주세요.")
         }
         .navigationTitle("내보내기")
         .navigationBarTitleDisplayMode(.inline)
@@ -202,15 +209,12 @@ struct ExportView: View {
     /// 무엇이 들어오는지 세어서 보여준다. "정말 되돌릴까요?" 만으로는
     /// 무엇으로 바뀌는지 알 수 없다.
     private func summary(of document: BackupDocument) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy년 M월 d일"
         let accountCount = document.members.reduce(0) { $0 + $1.accounts.count }
         let holdingCount = document.members.reduce(0) { sum, member in
             sum + member.accounts.reduce(0) { $0 + $1.holdings.count }
         }
         let counts = "구성원 \(document.members.count)명 · 계좌 \(accountCount)개 · 종목 \(holdingCount)개 · 주간 기록 \(document.snapshots.count)주"
-        return formatter.string(from: document.exportedAt) + " 백업\n\n" + counts
+        return DateText.full(document.exportedAt) + " 백업\n\n" + counts
             + "\n\n지금 이 기기에 있는 기록은 전부 지워지고 이 파일의 내용으로 바뀝니다. 되돌릴 수 없습니다."
     }
 

@@ -17,6 +17,8 @@ struct EraseAllView: View {
 
     @State private var isConfirming = false
     @State private var phrase = ""
+    /// 저장에서 막혀 지우기 전으로 돌아갔다 (192번 B).
+    @State private var eraseFailed = false
     private static let keyword = "전부 지우기"
 
     var body: some View {
@@ -52,13 +54,21 @@ struct EraseAllView: View {
             TextField("\(Self.keyword) 라고 입력", text: $phrase)
             Button("지우기", role: .destructive) {
                 guard phrase.trimmingCharacters(in: .whitespaces) == Self.keyword else { return }
-                BackupDocument.wipeAll(in: context)
-                dismiss()
+                if BackupDocument.wipeAll(in: context) {
+                    dismiss()
+                } else {
+                    eraseFailed = true
+                }
             }
             .disabled(phrase.trimmingCharacters(in: .whitespaces) != Self.keyword)
             Button("그만두기", role: .cancel) { phrase = "" }
         } message: {
             Text("되돌릴 수 없습니다. 확인하려면 \"\(Self.keyword)\" 라고 입력하세요.")
+        }
+        .alert("지우지 못했습니다", isPresented: $eraseFailed) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text("기기에 저장하지 못해 지우기 전 상태 그대로 두었습니다. 더보기 → 동기화의 저장 실패 사유를 진단 정보로 보내 주세요.")
         }
     }
 }

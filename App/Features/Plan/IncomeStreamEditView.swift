@@ -8,6 +8,8 @@ struct IncomeStreamEditView: View {
     /// 방금 만든 것인가 — 취소하면 지운다 (104번).
     var isNew = false
     @State private var snapshot: EditSnapshot?
+    /// `취소` 를 눌렀다 — 손잡이의 남은 초안을 쓰지 않는다 (192번 C).
+    @State private var isCancelled = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
 
@@ -54,14 +56,17 @@ struct IncomeStreamEditView: View {
                 }
 
                 Section {
-                    Stepper(value: $stream.startYear, in: currentYear...(currentYear + 60)) {
-                        Text(verbatim: "\(stream.startYear)년부터")
+                    // 모델에 바로 묶지 않는다 — 손을 멈춘 뒤 한 번 쓴다 (192번 C).
+                    DeferredStepper(value: startYear, range: min(stream.startYear, currentYear)...(currentYear + 60),
+                                    isLive: { isLive() }) { year in
+                        Text(verbatim: "\(year)년부터")
                     }
                     Toggle("끝나는 해가 있다", isOn: $hasEnd)
                     if hasEnd {
                         // 아래끝이 위끝보다 크면 범위를 만드는 순간 트랩이다 — 백업 등으로 먼 해가 들어와도 버틴다 (크래시 전수 조사).
-                        Stepper(value: endYear, in: min(stream.startYear, currentYear + 80)...(currentYear + 80)) {
-                            Text(verbatim: "\(max(stream.endYear, stream.startYear))년까지")
+                        DeferredStepper(value: endYear, range: min(stream.startYear, currentYear + 80)...(currentYear + 80),
+                                        isLive: { isLive() }) { year in
+                            Text(verbatim: "\(year)년까지")
                         }
                     }
                 } header: {
@@ -118,12 +123,22 @@ struct IncomeStreamEditView: View {
     /// 종신이면 0으로 저장하므로 Stepper 에는 시작 연도를 바닥으로 깐 값을 보여준다.
     private var endYear: Binding<Int> {
         Binding(
-            get: { max(stream.endYear, stream.startYear) },
-            set: { stream.endYear = $0 }
+            get: { stream.isGone ? 0 : max(stream.endYear, stream.startYear) },
+            // 끝나는 해를 끈 뒤에 손잡이의 남은 초안이 쓰이면 종신이 확정 기간으로 되돌아간다.
+            set: { if !stream.isGone, hasEnd { stream.endYear = $0 } }
         )
     }
 
+    /// 지운 객체를 읽지 않게 `isGone` 을 거친다 (189번과 같은 이유).
+    private var startYear: Binding<Int> {
+        Binding(get: { stream.isGone ? currentYear : stream.startYear },
+                set: { if !stream.isGone { stream.startYear = $0 } })
+    }
+
+    private func isLive() -> Bool { !isCancelled && !stream.isGone }
+
     private func cancel() {
+        isCancelled = true
         if isNew { context.delete(stream) } else { snapshot?.restore(to: stream) }
         dismiss()
     }

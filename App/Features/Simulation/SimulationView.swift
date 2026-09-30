@@ -739,11 +739,19 @@ struct SimulationView: View {
                              consequence: "저장해 둔 가정이 사라집니다. 되돌릴 수 없습니다.") {
                     context.delete(scenario)
                 } label: {
+                    // **모양은 14pt, 누르는 자리는 44pt** (192번 G). 아이콘 크기만큼만
+                    // 눌려서 옆의 불러오기를 누르기 쉬웠다. 아이콘은 오른쪽 끝에
+                    // 그대로 두고 자리를 왼쪽 · 위아래로 넓힌다. 위아래로 넓힌 만큼은
+                    // 음의 여백으로 되돌려 줄 높이가 바뀌지 않게 한다.
                     Image(systemName: "xmark.circle.fill")
                         .font(.scaled(14))
                         .foregroundStyle(Color.ruleStrong)
+                        .frame(width: 44, height: 44, alignment: .trailing)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .padding(.vertical, -8)
+                .accessibilityLabel("시나리오 삭제")
             }
         }
         .padding(.vertical, 3)

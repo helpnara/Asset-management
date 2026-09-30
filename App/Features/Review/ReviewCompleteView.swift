@@ -337,9 +337,7 @@ struct ReviewCompleteView: View {
     }
 
     private var nextReviewText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM.dd"
-        return formatter.string(from: ReviewWeek.nextSaturday(after: .now))
+        DateText.short(ReviewWeek.nextSaturday(after: .now))
     }
 
 }

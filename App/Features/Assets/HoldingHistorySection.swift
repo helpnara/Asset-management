@@ -77,7 +77,7 @@ struct HoldingHistorySection: View {
             AxisMarks(values: .automatic(desiredCount: 4)) { value in
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        Text(date.formatted(.dateTime.month(.defaultDigits).day()))
+                        Text(DateText.short(date))
                             .font(.figure(9))
                     }
                 }
@@ -112,7 +112,8 @@ struct HoldingHistorySection: View {
         .buttonStyle(.plain)
     }
 
+    /// 날짜 모양은 `DateText` (192번 H).
     private static func week(_ date: Date) -> String {
-        date.formatted(.dateTime.year(.twoDigits).month(.defaultDigits).day())
+        DateText.full(date)
     }
 }

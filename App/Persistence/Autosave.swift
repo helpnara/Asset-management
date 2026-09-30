@@ -28,7 +28,8 @@ final class Autosave {
 
     static let shared = Autosave()
 
-    /// 마지막 저장이 실패했다면 그 이유. 더보기 → 동기화에 그대로 보여 준다.
+    /// 마지막 저장이 실패했다면 그 이유. 더보기 → 동기화에 그대로 보여 주고,
+    /// 위쪽 띠에 "저장하지 못했습니다" 를 띄운다 (192번 A).
     ///
     /// "저장되고 있다고 생각했는데 아니었다"가 이 앱에서 제일 위험한 상태라,
     /// 조용히 삼키지 않는다.
@@ -82,15 +83,37 @@ final class Autosave {
         // 저장 직전이어야 한다 — 그래야 한 곳도 안 샌다.
         Household.attachNew(in: context)
 
-        guard context.hasChanges else { return }
+        save(context)
+    }
+
+    /// **바로 저장하는 자리도 이 문을 지난다** (192번 A).
+    ///
+    /// 종목 삭제 · 순서 바꾸기 · 백업 되돌리기처럼 400ms 를 기다리지 않고 그
+    /// 자리에서 쓰는 곳이 열한 곳 있었다. 전부 `try? context.save()` 라서 실패해도
+    /// `lastFailure` 에 안 남았고, 한 번 막히면 그 뒤로 고친 것이 앱을 껐다 켜면
+    /// 사라지는데 사용자는 몰랐다. 이제 실패는 여기 한 곳에 적히고, `RootView`
+    /// 의 위쪽 띠가 풀릴 때까지 보여 준다.
+    ///
+    /// 매달기(`Household.attachNew`)는 부르지 않는다 — 필요한 자리는 이미 직접
+    /// 부르고, 여기서 끼우면 이 문을 지나는 모든 저장의 뜻이 바뀐다.
+    @discardableResult
+    func save(_ context: NSManagedObjectContext) -> Bool {
+        guard context.hasChanges else { return true }
         do {
             try context.save()
             lastFailure = nil
             lastSaveAt = .now
+            return true
         } catch {
-            let ns = error as NSError
-            lastFailure = "\(ns.domain) \(ns.code) "
-                + (ns.localizedFailureReason ?? ns.localizedDescription)
+            recordFailure(error)
+            return false
         }
+    }
+
+    /// 뒤쪽 문맥(공유 정리 등)에서 난 저장 실패도 같은 자리에 적는다.
+    func recordFailure(_ error: Error) {
+        let ns = error as NSError
+        lastFailure = "\(ns.domain) \(ns.code) "
+            + (ns.localizedFailureReason ?? ns.localizedDescription)
     }
 }

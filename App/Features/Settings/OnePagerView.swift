@@ -133,7 +133,7 @@ struct OnePagerView: View {
     private var periodText: String {
         let end = String(retirementYear)
         guard let startedOn else { return "\(String(startYear)) ~ \(end)" }
-        return "\(Self.dayFormatter.string(from: startedOn)) ~ \(end)"
+        return "\(DateText.full(startedOn)) ~ \(end)"
     }
 
     // MARK: - F. 가족 요약
@@ -540,7 +540,7 @@ struct OnePagerView: View {
             .prefix(2)
         guard !upcoming.isEmpty else { return nil }
         return "임박한 만기 " + upcoming
-            .map { "\($0.0) \(Self.dayFormatter.string(from: $0.1))" }
+            .map { "\($0.0) \(DateText.full($0.1))" }
             .joined(separator: " · ")
     }
 
@@ -553,16 +553,9 @@ struct OnePagerView: View {
             .foregroundStyle(Paper.muted)
     }
 
-    /// 날짜 포맷터는 한 번만 만든다. 카드마다 만들면 렌더가 눈에 띄게 느려진다.
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy.MM.dd"
-        return formatter
-    }()
-
+    /// 날짜 모양은 `DateText` 한 곳에서 (192번 H). 포맷터를 안 만드니 카드마다 불러도 가볍다.
     private func dateText(_ date: Date) -> String {
-        Self.dayFormatter.string(from: date)
+        DateText.full(date)
     }
 
     private func yearText(_ date: Date) -> String {

@@ -108,9 +108,10 @@ struct PlanView: View {
         }
     }
 
-    /// `2026. 9. 7. 오후 2:31` 처럼. 날짜만으로는 "오늘 고쳤나" 를 못 본다.
+    /// `2026.09.07 오후 2:31` 처럼. 날짜만으로는 "오늘 고쳤나" 를 못 본다.
+    /// 날짜 모양은 `DateText` (192번 H).
     private static func updatedText(_ date: Date) -> String {
-        date.formatted(date: .numeric, time: .shortened)
+        DateText.full(date) + " " + date.formatted(date: .omitted, time: .shortened)
     }
 
     private func form(_ plan: Plan) -> some View {
@@ -180,10 +181,11 @@ struct PlanView: View {
                     }
                 } else if canManageHousehold {
                     // 구성원이 아직 없으면 계획에 직접 적는다 — 따라올 대표가 없다.
-                    Stepper(value: Binding(get: { plan.retirementYear },
-                                           set: { plan.setRetirementYear($0, headOf: members) }),
-                            in: min(currentYear, plan.retirementYear)...max(currentYear + 60, plan.retirementYear + 1)) {
-                        Text(verbatim: "은퇴 목표 \(plan.retirementYear)년")
+                    // 한 칸마다 궤적을 다시 굴리지 않게 손을 멈춘 뒤 한 번 쓴다 (192번 C).
+                    DeferredStepper(value: Binding(get: { plan.retirementYear },
+                                                   set: { plan.setRetirementYear($0, headOf: members) }),
+                                    range: min(currentYear, plan.retirementYear)...max(currentYear + 60, plan.retirementYear + 1)) { year in
+                        Text(verbatim: "은퇴 목표 \(year)년")
                     }
                 } else {
                     readOnlyRow("은퇴 목표", "\(plan.retirementYear)년")
@@ -286,7 +288,7 @@ struct PlanView: View {
                                displayedComponents: .date)
                 } else {
                     readOnlyRow("최초 계획 수립일",
-                                (plan.startedOn ?? .now).formatted(date: .numeric, time: .omitted))
+                                DateText.full(plan.startedOn ?? .now))
                 }
                 LabeledContent("마지막 수정") {
                     Text(plan.updatedAt.map(Self.updatedText) ?? "아직 없음")
@@ -486,7 +488,7 @@ struct PlanView: View {
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 5) {
-                    Text(event.date, format: .dateTime.year().month().day())
+                    Text(DateText.full(event.date))
                         .font(.scaled(10))
                         .foregroundStyle(Color.faint)
                     if let note = forwardExclusion(event) {

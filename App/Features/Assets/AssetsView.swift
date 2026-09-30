@@ -427,6 +427,7 @@ struct AssetsView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.dad)
+            .accessibilityLabel("\(member.name) 궤적 보기")
 
             if mayEdit(member) {
                 Button("편집") { editingMember = member }
@@ -521,6 +522,7 @@ struct AssetsView: View {
                                    height: Font.scaledLength(24))
                             .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("계좌 메뉴")
                 }
             }
             .contentShape(Rectangle())
@@ -835,7 +837,7 @@ struct AssetsView: View {
             holding.sortIndex = position
         }
         guard context.hasChanges else { return }
-        try? context.save()
+        Autosave.shared.save(context)
     }
 
     private func delete(_ holding: Holding) {
@@ -852,7 +854,7 @@ struct AssetsView: View {
         // **지우면 그 자리에서 저장한다** (178번). 자동 저장(400ms)을 기다리면
         // 그동안 목록·합계가 지워진 객체를 한 번 더 읽는다 — 빈 줄이 반짝이고
         // 금액이 두 번 움직이는 것이 그 때문이었다.
-        try? context.save()
+        Autosave.shared.save(context)
     }
 
 }
@@ -943,7 +945,7 @@ struct MemberOrderView: View {
         // 대표가 바뀌면 계획의 은퇴 목표도 새 대표의 것으로 (168번).
         Plan.primary(context.all(Plan.self))?.adoptRetirementYear(fromHeadOf: order)
         guard context.hasChanges else { return }
-        try? context.save()
+        Autosave.shared.save(context)
     }
 }
 

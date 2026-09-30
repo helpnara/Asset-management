@@ -10,6 +10,8 @@ import SwiftUI
 /// 금액이 남는다.
 struct ChangeLogView: View {
     @Fetched(sort: \ChangeLog.at, order: .reverse) private var logs: [ChangeLog]
+    /// 금액 가리기 (192번 D). 켜고 끌 때 다시 그리려고 지켜본다.
+    @AppStorage(AmountPrivacy.key) private var hideAmounts = false
 
     var body: some View {
         List {
@@ -48,11 +50,11 @@ struct ChangeLogView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Color.raised, in: Capsule())
-                    Text(log.subject)
+                    Text(Self.shown(log.subject, of: log.kind, isSubject: true, hidden: hideAmounts))
                         .font(.scaled(13, weight: .medium))
                         .foregroundStyle(Color.ink)
                 }
-                Text(log.summary)
+                Text(Self.shown(log.summary, of: log.kind, isSubject: false, hidden: hideAmounts))
                     .font(.scaled(11.5))
                     .foregroundStyle(Color.bodyText)
             }
@@ -66,6 +68,37 @@ struct ChangeLogView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// **금액 가리기는 보여 줄 때 한다** (192번 D). 이력은 일부러 가리지 않은
+    /// 원래 숫자로 저장한다 — 가린 채 저장하면 `••••` 가 영영 남는다(111번). 그런데
+    /// 보여 줄 때 가리는 것이 빠져서, 가리기를 켜고 폰을 건네면 여기서 샜다.
+    ///
+    /// 금액이 들어가는 줄은 셋뿐이다 — 주간 점검(`이전 → 이번`), 평가액 고침
+    /// (`이전 → 이번`), 축하(`총자산 3억 2,000만`, `3억을 넘었습니다`). 나머지 줄의
+    /// 숫자(`종목 12건`, `4주 연속`)는 금액이 아니므로 건드리지 않는다.
+    static func shown(_ text: String, of kind: ChangeKind, isSubject: Bool, hidden: Bool) -> String {
+        guard hidden else { return text }
+        switch kind {
+        case .weeklyEntry, .valueEdit:
+            return isSubject ? text : replace(amount, in: text)
+        case .milestone:
+            return replace(isSubject ? eokOnly : amount, in: text)
+        case .structure, .planValue, .other:
+            return text
+        }
+    }
+
+    /// `3억 2,000만` · `1,234만` · `-5,000원` 을 한 덩어리로 잡는다.
+    private static let amount = try? NSRegularExpression(
+        pattern: "-?\\d[\\d,.]*\\s?(?:억|만|천|원)?(?:\\s?\\d[\\d,.]*\\s?(?:만|천|원))*")
+    /// 축하 제목의 `3억` 만. `4주 연속` 의 4 는 금액이 아니다.
+    private static let eokOnly = try? NSRegularExpression(pattern: "\\d[\\d,]*억")
+
+    private static func replace(_ regex: NSRegularExpression?, in text: String) -> String {
+        guard let regex else { return AmountPrivacy.mask(text) }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.stringByReplacingMatches(in: text, range: range, withTemplate: "••••")
     }
 
     private struct Group {
@@ -90,15 +123,8 @@ struct ChangeLogView: View {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "오늘" }
         if calendar.isDateInYesterday(date) { return "어제" }
-        return Self.dayFormatter.string(from: date)
+        return DateText.fullWithWeekday(date)
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy.MM.dd (E)"
-        return formatter
-    }()
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()

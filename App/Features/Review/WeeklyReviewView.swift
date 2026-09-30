@@ -495,9 +495,11 @@ struct WeeklyReviewView: View {
             if !isCompactAccessory {
                 Button { move(-1) } label: { Image(systemName: "chevron.up").font(.scaled(15, weight: .medium)) }
                     .disabled(currentIndex == 0)
+                    .accessibilityLabel("이전 종목")
             }
             Button { move(1) } label: { Image(systemName: "chevron.down").font(.scaled(15, weight: .medium)) }
                 .disabled(currentIndex >= queue.count - 1)
+                .accessibilityLabel("다음 종목")
 
             Button("만") { multiplyFocused(by: 10_000) }
                 .font(.scaled(13))

@@ -21,6 +21,11 @@ struct DeferredStepper<Label: View>: View {
     /// (`75/40%` 같은 비중 표기)이 모델이 아니라 초안을 그리게 하려는 것이다 —
     /// 모델이 따라오기 전까지 화면이 안 움직이면 "안 눌린다" 로 읽힌다.
     var onDraft: ((Int?) -> Void)? = nil
+    /// **써도 되는 때인가** (192번 C). 편집 시트에 들어가면서 생겼다 — 누르고
+    /// 250ms 안에 `취소` 를 누르면 되돌린 뒤에 초안이 뒤늦게 쓰이고, 새로 만든
+    /// 것을 취소하면 지운 객체에 쓴다. 시트는 `{ !isCancelled && !obj.isGone }`
+    /// 을 넘긴다. 계획 탭처럼 취소가 없는 곳은 기본값 그대로.
+    var isLive: @MainActor () -> Bool = { true }
     /// 지금 보이는 값(누르는 동안은 `draft`)을 받아 그린다.
     @ViewBuilder var label: (Int) -> Label
 
@@ -35,7 +40,7 @@ struct DeferredStepper<Label: View>: View {
             commit?.cancel()
             commit = Task { @MainActor in
                 try? await Task.sleep(for: delay)
-                guard !Task.isCancelled, let pending = draft else { return }
+                guard !Task.isCancelled, let pending = draft, isLive() else { return }
                 value = pending
                 // **모델이 따라온 것을 보고서야 초안을 내린다.** 바로 내리면 다음
                 // 누름이 아직 옛 값을 든 바인딩에서 출발해 한 칸이 사라진다 —
@@ -49,6 +54,14 @@ struct DeferredStepper<Label: View>: View {
             if let draft, draft == latest { self.draft = nil }
         }
         .onChange(of: draft) { _, latest in onDraft?(latest) }
+        // 250ms 가 차기 전에 사라지면(시트의 `완료`, 탭 옮기기) 남은 초안을
+        // 그 자리에서 쓴다 — 마지막 한 칸이 사라지지 않게 (192번 C).
+        .onDisappear {
+            commit?.cancel()
+            commit = nil
+            if let pending = draft, isLive() { value = pending }
+            draft = nil
+        }
         .reportsProgress("반영 중", when: draft != nil)
     }
 }

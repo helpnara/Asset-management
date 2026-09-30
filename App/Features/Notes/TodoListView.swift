@@ -129,6 +129,7 @@ struct TodoListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("챙길 것 추가")
                 }
             }
         }
@@ -168,10 +169,7 @@ struct TodoListView: View {
 
     private func maturityDetail(_ account: Account) -> String {
         guard let date = account.maturesOn, let days = daysUntilMaturity(account) else { return "" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy.MM.dd"
-        let day = formatter.string(from: date)
+        let day = DateText.full(date)
         if days < 0 { return "\(day) — 만기가 \(-days)일 지났습니다" }
         if days == 0 { return "\(day) — 오늘이 만기입니다" }
         return "\(day) — \(days)일 남았습니다"

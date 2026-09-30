@@ -114,6 +114,11 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   `obj.isGone` 이면 빈 화면을 그리고, `Date` · `UUID` 처럼 nil 을 못 받는 칸은
   `$obj.칸` 대신 `isGone` 을 보는 `Binding(get:set:)` 으로 묶는다 — 날짜 칸은 본문과
   따로 연결을 다시 읽어 본문 가드를 비켜 간다. 빌드 112 · 113 에서 두 번 죽었다.
+- **바로 저장은 `Autosave.shared.save(context)` 로** (192번). `try? context.save()` 를
+  새로 쓰지 않는다 — 실패가 삼켜지면 앱을 껐다 켤 때 고친 것이 사라지는데 아무도 모른다.
+  이 문을 지나면 실패가 모든 탭 위의 띠로 뜬다.
+- **화면의 날짜는 `DateText`** 로 (192번) — `2026.09.29` · `09.29` · `(화)`. 화면마다
+  `DateFormatter` 를 만들다 같은 날짜가 세 모양이 됐다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
 - **저장 계층은 Core Data다** (4차에서 SwiftData에서 옮겼다 — [09-family-sharing](docs/09-family-sharing.md)).
   SwiftData는 `CKShare` 공유를 못 해서, 가족 공유를 하려면 옮길 수밖에 없었다.

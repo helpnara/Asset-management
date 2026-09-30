@@ -512,8 +512,19 @@ extension BackupDocument {
     ///
     /// UUID 를 그대로 살려 넣으므로 되돌린 뒤에도 스냅샷의 구성원별 줄이
     /// 같은 사람을 가리킨다.
+    ///
+    /// **저장에 실패하면 되돌리기 전으로 돌린다** (192번 B). 예전에는 `try? save()`
+    /// 라서, 실패해도 화면은 되돌린 모습이고 저장소는 옛것이었다 — 다음 실행에서
+    /// 되돌림이 사라지고 그 사이 고친 것도 같이 사라졌다. 이제 `false` 를 돌려주고
+    /// 부른 화면이 알린다. 되돌리기 전에 모아 둔 편집을 먼저 써 두는 것은
+    /// `rollback()` 이 그것까지 버리지 않게 하려는 것이다.
     @MainActor
-    static func restore(_ document: BackupDocument, into context: NSManagedObjectContext) {
+    @discardableResult
+    static func restore(_ document: BackupDocument, into context: NSManagedObjectContext) -> Bool {
+        // 0) 모아 둔 편집부터 쓴다. 그것마저 막혀 있으면 손대지 않는다.
+        Autosave.shared.flush()
+        guard !context.hasChanges else { return false }
+
         // 1) 비운다. 관계로 딸려 가는 것까지 확실히 하려고 전부 명시한다.
         deleteAll(Member.self, in: context)
         deleteAll(Account.self, in: context)
@@ -724,7 +735,10 @@ extension BackupDocument {
 
         // Autosave 를 거치지 않는 저장이라 매달기·저장소 배정을 직접 부른다 (④).
         Household.attachNew(in: context)
-        try? context.save()
+        guard Autosave.shared.save(context) else {
+            context.rollback()
+            return false
+        }
 
         // 되돌린 것 자체를 이력에 남긴다. 다음에 "왜 이 값이지?" 를 볼 때
         // 이 한 줄이 답이 된다.
@@ -732,7 +746,8 @@ extension BackupDocument {
                             summary: "\(document.suggestedFileName) 으로 되돌렸습니다",
                             in: context)
         Household.attachNew(in: context)
-        try? context.save()
+        Autosave.shared.save(context)
+        return true
     }
 
     @MainActor
@@ -747,8 +762,13 @@ extension BackupDocument {
     /// 는 남긴다: 가족 공유의 뿌리라 지우면 초대가 끊기는데, 그건 "가족" 에서
     /// 따로 하는 일이다. 일기도 지운다 — 전부라고 했으면 전부다.
     /// 지운 뒤에는 빈 계획 하나가 새로 선다.
+    ///
+    /// 되돌리기와 같이 **저장에 실패하면 지우기 전으로 돌리고 `false`** (192번 B).
     @MainActor
-    static func wipeAll(in context: NSManagedObjectContext) {
+    @discardableResult
+    static func wipeAll(in context: NSManagedObjectContext) -> Bool {
+        Autosave.shared.flush()
+        guard !context.hasChanges else { return false }
         deleteAll(Member.self, in: context)
         deleteAll(Account.self, in: context)
         deleteAll(Holding.self, in: context)
@@ -769,7 +789,11 @@ extension BackupDocument {
         deleteAll(HoldingRecord.self, in: context)
         deleteAll(DiaryEntry.self, in: context)
         _ = Plan.current(in: context)
-        try? context.save()
+        guard Autosave.shared.save(context) else {
+            context.rollback()
+            return false
+        }
+        return true
     }
 
     @MainActor

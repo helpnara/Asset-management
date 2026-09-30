@@ -76,7 +76,9 @@ struct RetrospectiveView: View {
 
     private var periodBar: some View {
         HStack {
+            // 아이콘만 있는 버튼은 음성 안내 이름을 붙인다 (192번 F).
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                .accessibilityLabel("이전 기간")
             Spacer()
             VStack(spacing: 1) {
                 Text(period.title)
@@ -91,6 +93,7 @@ struct RetrospectiveView: View {
             Spacer()
             Button { step(1) } label: { Image(systemName: "chevron.right") }
                 .disabled(period.isCurrent())
+                .accessibilityLabel("다음 기간")
         }
         .font(.scaled(14, weight: .semibold))
         .foregroundStyle(Color.ink)

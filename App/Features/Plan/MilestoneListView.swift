@@ -60,6 +60,7 @@ struct MilestoneListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("마일스톤 추가")
                 }
             }
         }
@@ -130,6 +131,8 @@ struct MilestoneEditView: View {
     /// 방금 만든 것인가 — 취소하면 지운다 (104번).
     var isNew = false
     @State private var snapshot: EditSnapshot?
+    /// `취소` 를 눌렀다 — 손잡이의 남은 초안을 쓰지 않는다 (192번 C).
+    @State private var isCancelled = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
@@ -155,8 +158,10 @@ struct MilestoneEditView: View {
             Form {
                 Section {
                     TextField("이름 (첫째 대학 입학 …)", text: $milestone.label)
-                    Stepper(value: $milestone.year, in: currentYear...(currentYear + 60)) {
-                        Text(verbatim: "\(milestone.year)년")
+                    // 모델에 바로 묶지 않는다 — 손을 멈춘 뒤 한 번 쓴다 (192번 C).
+                    DeferredStepper(value: year, range: min(milestone.year, currentYear)...(currentYear + 60),
+                                    isLive: { !isCancelled && !milestone.isGone }) { year in
+                        Text(verbatim: "\(year)년")
                     }
                 } footer: {
                     // 예전 문구는 "로드맵에 얹힙니다" 였는데 **틀린 말이었다** —
@@ -206,7 +211,14 @@ struct MilestoneEditView: View {
         }
     }
 
+    /// 지운 객체를 읽지 않게 `isGone` 을 거친다 (189번과 같은 이유).
+    private var year: Binding<Int> {
+        Binding(get: { milestone.isGone ? currentYear : milestone.year },
+                set: { if !milestone.isGone { milestone.year = $0 } })
+    }
+
     private func cancel() {
+        isCancelled = true
         if isNew { context.delete(milestone) } else { snapshot?.restore(to: milestone) }
         dismiss()
     }

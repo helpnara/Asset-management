@@ -96,7 +96,8 @@ struct NationalPensionEstimatorView: View {
                 Section {
                     if let estimate {
                         LabeledContent("예상 월 수령액") {
-                            Text(KoreanAmountFormatter.full(estimate.monthly))
+                            // 금액 가리기를 거친다 (192번 E).
+                            Text(Won.full(estimate.monthly))
                                 .font(.figure(17, weight: .semibold))
                                 .foregroundStyle(Color.ink)
                         }

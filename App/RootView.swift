@@ -6,6 +6,8 @@ struct RootView: View {
     @State private var route = AppRoute.shared
     @State private var sharing = FamilySharing.shared
     @State private var monitor = CloudKitSyncMonitor.shared
+    /// 저장 실패를 위쪽 띠로 (192번 A).
+    @State private var autosave = Autosave.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.managedObjectContext) private var context
     @Environment(\.openURL) private var openURL
@@ -90,7 +92,7 @@ struct RootView: View {
         let context = Persistence.viewContext
         guard let plan = Plan.primary(context.all(Plan.self)),
               plan.adoptRetirementYear(fromHeadOf: context.all(Member.self)) else { return }
-        try? context.save()
+        Autosave.shared.save(context)
     }
 
     /// **손 안 댄 계획을 치운다** (167번). 가져오기가 끝난 뒤 한 번.
@@ -107,7 +109,7 @@ struct RootView: View {
         ChangeLogger.record(.other, subject: "계획 정리",
                             summary: "손대지 않은 빈 계획 \(pruned)개를 지웠습니다",
                             in: context)
-        try? context.save()
+        Autosave.shared.save(context)
     }
 
     /// **가로로 누운 넓은 화면이면 왼쪽에 메뉴를 세운다** (161번).
@@ -199,6 +201,13 @@ struct RootView: View {
     private var notices: some View {
         if trial.isActive {
             trialBar
+        } else if autosave.lastFailure != nil {
+            // **저장 실패가 맨 앞이다** (192번 A). 이대로 두면 앱을 껐다 켤 때
+            // 고친 것이 사라진다 — 받아오는 중 · 새 판보다 먼저 알아야 한다.
+            // 다음 저장이 성공하면 스스로 사라진다.
+            noticeBar(icon: "exclamationmark.triangle",
+                      text: "저장하지 못했습니다 · 더보기 → 동기화에서 사유를 확인하세요",
+                      spinning: false)
         } else if isImporting {
             noticeBar(icon: "icloud.and.arrow.down",
                       text: "iCloud 에서 기록을 받아오는 중 — 화면이 곧 채워집니다",

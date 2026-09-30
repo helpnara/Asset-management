@@ -41,18 +41,11 @@ extension HoldingNote {
         return note
     }
 
-    /// `2026-09-24 · 아빠` — 목록의 머리말.
+    /// `2026.09.24 · 아빠` — 목록의 머리말. 날짜 모양은 `DateText` (192번 H).
     var stamp: String {
-        let day = Self.dayFormatter.string(from: at)
+        let day = DateText.full(at)
         return actor.isEmpty ? day : "\(day) · \(actor)"
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy. M. d."
-        return formatter
-    }()
 }
 
 private extension String {
