@@ -54,6 +54,15 @@ final class CloudKitSyncMonitor {
 
     var recentFailures: [Attempt] { history.filter { !$0.succeeded } }
 
+    /// 이 실패 **뒤에** 같은 종류가 성공한 시각 (193번 A). 일시 오류는 저장 계층이
+    /// 다시 보내 곧 성공하는데, 실패만 남아 있으면 고장처럼 읽힌다. 다만 뒤의 성공이
+    /// 실패한 기록을 실어 갔다는 보장은 없어서(165번) **"풀렸다" 가 아니라 "그 뒤
+    /// 성공" 이라고만** 적는다.
+    func successAfter(_ failure: Attempt) -> Date? {
+        history.filter { $0.kind == failure.kind && $0.succeeded && $0.endedAt > failure.endedAt }
+            .map(\.endedAt).min()
+    }
+
     /// 지금 돌고 있는 가져오기 수. 저장소마다 따로 도니 둘일 수 있다.
     /// 빈 화면이 "아직 없는 것" 인지 "아직 안 온 것" 인지 가르는 근거다
     /// (docs/08-feedback.md 53번).

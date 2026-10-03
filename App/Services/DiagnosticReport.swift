@@ -99,7 +99,9 @@ enum DiagnosticReport {
         } else {
             lines.append("동기화 실패 \(failures.count)건 (이번 실행 시도 \(monitor.history.count)건):")
             for failure in failures.prefix(10) {
-                lines.append("  \(failure.kind.label) \(failure.endedAt.formatted(date: .numeric, time: .standard)) — \(failure.failure ?? "이유 없음")")
+                let after = monitor.successAfter(failure)
+                    .map { " → 그 뒤 \(failure.kind.label) 성공 \($0.formatted(date: .numeric, time: .standard))" } ?? ""
+                lines.append("  \(failure.kind.label) \(failure.endedAt.formatted(date: .numeric, time: .standard)) — \(failure.failure ?? "이유 없음")\(after)")
             }
         }
         lines.append("")

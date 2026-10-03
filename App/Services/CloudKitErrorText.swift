@@ -69,6 +69,15 @@ enum CloudKitErrorText {
             return "iCloud 저장 공간이 부족합니다."
         case .networkUnavailable, .networkFailure:
             return "네트워크에 연결되지 않았습니다."
+        // **일시 오류 셋** (193번 A). 저장 계층이 스스로 다시 보낸다. 10-03 두 사람이
+        // 점검을 동시에 끝냈을 때 23 이 "작업을 완료할 수 없습니다" 로 떠 고장처럼 보였다.
+        case .zoneBusy:
+            return "두 기기가 같은 기록 공간에 동시에 써서 서버가 잠깐 미뤘습니다. "
+                + "저절로 다시 보냅니다 — 자료는 그대로입니다."
+        case .requestRateLimited:
+            return "짧은 시간에 많이 보내 서버가 잠깐 미뤘습니다. 저절로 다시 보냅니다."
+        case .serviceUnavailable:
+            return "iCloud 서버가 잠깐 응답하지 않았습니다. 저절로 다시 보냅니다."
         case .zoneNotFound, .userDeletedZone:
             return "레코드 존이 없습니다. (\(ck.localizedDescription))"
         default:

@@ -514,9 +514,12 @@ struct SyncStatusSection: View {
                             .font(.scaled(11, weight: .semibold))
                             .foregroundStyle(Color.muted)
                         ForEach(Array(failures.prefix(3).enumerated()), id: \.offset) { _, failure in
-                            Text("\(failure.kind.label) \(failure.endedAt.formatted(date: .omitted, time: .shortened)) — \(failure.failure ?? "이유 없음")")
+                            // 뒤에 같은 종류가 성공했으면 함께 적고 색을 낮춘다 (193번 A).
+                            let after = monitor.successAfter(failure)
+                            Text("\(failure.kind.label) \(failure.endedAt.formatted(date: .omitted, time: .shortened)) — \(failure.failure ?? "이유 없음")"
+                                 + (after.map { " → 그 뒤 \(failure.kind.label) 성공 \($0.formatted(date: .omitted, time: .shortened))" } ?? ""))
                                 .font(.scaled(11))
-                                .foregroundStyle(Color.loss)
+                                .foregroundStyle(after == nil ? Color.loss : Color.muted)
                                 .textSelection(.enabled)
                         }
                     }

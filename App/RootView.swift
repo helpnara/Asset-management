@@ -8,6 +8,8 @@ struct RootView: View {
     @State private var monitor = CloudKitSyncMonitor.shared
     /// 저장 실패를 위쪽 띠로 (192번 A).
     @State private var autosave = Autosave.shared
+    /// 가져오기 뒤 이번 주 맞추기를 한 박자 미뤄 모은다 (193번).
+    @State private var reconcileTask: Task<Void, Never>?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.managedObjectContext) private var context
     @Environment(\.openURL) private var openURL
@@ -112,6 +114,23 @@ struct RootView: View {
         Autosave.shared.save(context)
     }
 
+    /// **같은 주 정리 + 이번 주 요약 맞추기** (96번 · 193번).
+    ///
+    /// 가져오기 끝 알림은 받은 것이 화면 문맥에 합쳐지기 **전에** 올 수 있어 한 박자
+    /// 미룬다. 연달아 오면 마지막 것 하나만 돈다. 보기 전용 기기 · 체험 자료 ·
+    /// 역할 확인 중에는 안 쓴다 — 서버가 거부할 쓰기를 만들지 않는다. 고친 것은
+    /// 자동 저장이 쓴다(새 줄을 가구에 매다는 것도 거기서 한다).
+    private func scheduleReconcile() {
+        reconcileTask?.cancel()
+        reconcileTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled, !trial.isActive, role != .viewer else { return }
+            // 둘이면 하나로 먼저 — 맞추기는 남은 하나만 본다.
+            WeekDedup.run(in: context)
+            ThisWeekReconcile.run(in: context)
+        }
+    }
+
     /// **가로로 누운 넓은 화면이면 왼쪽에 메뉴를 세운다** (161번).
     ///
     /// 아이폰은 가로로 눕혀도 좁은 등급이라 여기 걸리지 않는다 — 아래 탭
@@ -152,10 +171,15 @@ struct RootView: View {
                     sharing.refreshState()
                     pruneUntouchedPlans()
                     syncHeadRetirement()
-                    // 같은 주 기록이 둘이면 하나로 (96번). 가져온 뒤라야 둘 다 보인다.
-                    WeekDedup.run(in: context)
                     recordBuild()
                 }
+            }
+            // **가져오기가 끝날 때마다** 같은 주 정리와 이번 주 맞추기 (193번 B · C).
+            // 예전에는 앱을 켠 뒤 첫 가져오기에서 한 번만 정리했다 — 둘 다 앱을 켜 둔 채
+            // 점검을 끝내면 그 자리에서는 안 돌았다.
+            .onChange(of: monitor.lastImport?.endedAt) { _, _ in
+                guard monitor.lastImport?.succeeded == true else { return }
+                scheduleReconcile()
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
