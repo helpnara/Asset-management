@@ -27,12 +27,14 @@ enum AppUpdate {
         Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
     }
 
-    /// App Store 에 오른 뒤 App Store Connect 의 **Apple ID**(숫자)를 적는다.
-    /// 비어 있으면 TestFlight 앱을 연다 — 1.0 은 가족 넷이 TestFlight 로 쓴다.
-    static let appStoreID = ""
+    /// App Store Connect 의 **Apple ID**(숫자). 2026-10-03 사용자가 알려 줬다 —
+    /// App Store 로 내기로 하면서(안정화 기준 8). 이 값이 있으면 App Store 판의
+    /// `업데이트` 가 앱 페이지를 연다.
+    static let appStoreID = "6809116693"
 
     /// 업데이트 버튼이 여는 곳. TestFlight 판이면 TestFlight 앱(거기서 `업데이트`
-    /// 한 번), App Store 판이면 앱 페이지.
+    /// 한 번), App Store 판이면 앱 페이지. TestFlight 판에 띠가 뜨는 것은 App Store
+    /// 판이 이 기기보다 새로울 때뿐이다 — TestFlight 에는 그 빌드가 이미 있다.
     static var updateURL: URL? {
         if isTestFlight || appStoreID.isEmpty {
             return URL(string: "itms-beta://")
@@ -51,9 +53,16 @@ enum AppUpdate {
     ///
     /// 부르는 쪽이 역할을 본다: 보기 전용 참가자는 부르지 않는다 — 서버가 그
     /// 쓰기를 거부하고 내보내기가 계속 실패한 채 남는다.
+    ///
+    /// **TestFlight 판은 적지 않는다** (2026-10-03, App Store 출시 준비). 아이들 폰은
+    /// App Store 판을 쓰고 부모 폰은 TestFlight 로 그보다 새 빌드를 먼저 받는다.
+    /// TestFlight 번호를 가구에 적으면 아이들 폰에 "새 버전이 나왔습니다" 띠가
+    /// 사라지지 않는데, App Store 에는 아직 그 판이 없어 업데이트할 길도 없다.
+    /// 그래서 가구에는 **App Store 판의 번호만** 남긴다. TestFlight 끼리의 새 판
+    /// 알림은 TestFlight 앱이 따로 해 준다.
     static func record(in context: NSManagedObjectContext) {
         let build = currentBuild
-        guard build > 0 else { return }
+        guard build > 0, !isTestFlight else { return }
         for household in context.all(Household.self) where household.latestBuild < build {
             household.latestBuild = build
         }
