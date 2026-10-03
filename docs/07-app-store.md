@@ -5,9 +5,32 @@ TestFlight는 초대한 사람만 씁니다. **App Store에 올리면 누구나 
 TestFlight까지 왔다면 기술적인 준비는 대부분 끝났습니다.
 남은 것은 **심사에 필요한 자료를 채우는 일**이고, 대부분 글쓰기입니다.
 
-> 서두를 이유는 없습니다. 몇 달 직접 써 보고 화면이 안정된 뒤에 올리는 편이
-> 낫습니다. 심사에서 반려되면 고쳐서 다시 내면 되지만, 출시한 뒤 바꾸는 것보다
-> 출시 전에 다듬는 쪽이 훨씬 쌉니다.
+> **2026-10-03 사용자 결정 — 지금 낸다.** 처음에는 안정화 기준 여덟을 다 채운 뒤
+> 내려 했다. 그런데 아이들 계정은 TestFlight 나이 제한에 걸려 테스트에 못 들어오고,
+> App Store 말고는 받을 길이 없다. 느린 여백에서 아이들 폰까지 깔아 보니 오류가 훨씬
+> 많이 나왔다. 출시 뒤에도 계속 고치기로 이미 정했으므로(09-29) **빌드 119 로 심사를
+> 내고 "수동 출시" 로 둔다** — 통과해도 버튼을 누를 때까지 공개되지 않는다.
+> 이 결정이 안정화 기준 8("이제 남에게 줘도 되겠다")이다.
+
+## 제출 한눈에 (2026-10-03 기준 — 위에서부터 채우면 된다)
+
+App Store Connect → 느린 부자 → **App Store** 탭.
+
+| # | 자리 | 넣을 것 | 상태 |
+|---|---|---|---|
+| 1 | 앱 정보 → 이름 · 부제 | `느린 부자` · `노후 준비 · 은퇴 계획 · 가족 자산 궤적` | 09-24 이름 변경 완료 |
+| 2 | 앱 정보 → 카테고리 | 금융 (2차: 생산성) | 확인 |
+| 3 | 앱 정보 → 연령 등급 | 전부 `없음` / `아니요` → **4+** ([연령 등급](#연령-등급)) | 확인 |
+| 4 | 앱이 수집하는 개인정보 | 방침 URL + **수집하지 않음** | 09-11 완료 |
+| 5 | 가격 및 배포 | **무료 · 대한민국** ([가격 및 배포](#가격-및-배포)) | 확인 |
+| 6 | 1.0 버전 → 스크린샷 | **10-03 새로 찍은 것** — 아이폰 6.9" 5장 · 아이패드 13" 5장 ([4단계](#4단계--스크린샷)) | **다시 올린다** — 옛 것에 옛 이름이 찍혀 있다 |
+| 7 | 1.0 버전 → 프로모션 텍스트 · 설명 · 키워드 | [5단계](#5단계--설명문) | **설명 다시 붙여 넣는다** — 10-03 고침 |
+| 8 | 1.0 버전 → 지원 URL | `https://helpnara.github.io/Asset-management/` | 확인 |
+| 9 | 1.0 버전 → 저작권 | `2026 느린 부자` 처럼 연도 + 이름 ([저작권](#저작권)) | 새로 채운다 |
+| 10 | 1.0 버전 → 빌드 | **119** | 119 확인 뒤 |
+| 11 | 1.0 버전 → App 심사 정보 | 로그인 필요 없음 · 연락처 · **메모(영어)** ([6단계](#6단계--심사-정보)) | **메모 다시 붙여 넣는다** — 10-03 고침 |
+| 12 | 1.0 버전 → 버전 출시 | **이 버전을 수동으로 출시** | 새로 고른다 |
+| 13 | 수출 규정 | 묻지 않는다 — `ITSAppUsesNonExemptEncryption: false` 가 이미 들어 있다 | — |
 
 ## 0단계 · 먼저 정할 것
 
@@ -70,6 +93,28 @@ App Store Connect → 앱 → **App Store** 탭 → 왼쪽 **앱 정보**
 
 - **무제한 웹 접근** → 아니요 (웹뷰가 없습니다)
 - **도박** → 아니요 (**투자 시뮬레이션은 도박이 아닙니다**)
+
+2025년에 질문이 늘었다(13+ · 16+ · 18+ 등급이 생겼다). 새로 붙은 것도 이 앱은 전부 아니요다.
+
+| 질문 | 답 | 이유 |
+|---|---|---|
+| 사용자 생성 콘텐츠 · 메시지 · 채팅 | 아니요 | 가족 공유는 **초대한 사람끼리** 한 가구의 기록을 함께 보는 것뿐 — 남에게 공개되거나 서로 메시지를 주고받지 않는다 |
+| 광고 | 아니요 | 없다 |
+| 의료 · 건강 정보 | 아니요 | 없다 |
+| 보호자 통제 · 연령 확인 | 아니요 | 없다 (필요 없는 앱이다) |
+
+### 가격 및 배포
+
+| 항목 | 값 |
+|---|---|
+| 가격 | **무료** (0 등급) |
+| 국가 | **대한민국** — 화면이 한국어뿐이고 금액이 원화뿐이다. 나중에 넓힐 수 있다 (0단계) |
+| 사전 주문 | 안 함 |
+
+### 저작권
+
+1.0 버전 페이지의 **저작권** 칸. 공개되는 줄이라 실명이 싫으면 앱 이름이나 별칭을 써도 된다.
+예: `2026 느린 부자`. (© 기호는 애플이 붙인다.)
 
 ## 3단계 · 개인정보 라벨 (Nutrition Label)
 
@@ -156,6 +201,11 @@ python3 Tools/preview-icon.py     # 실제 크기(180·120·60px)로 확인
 > iPad 13" 을 다섯 장씩 찍고 문장까지 얹는다. 올릴 파일은
 > `screenshots/appstore/store/iphone/` 과 `…/ipad/` 다. 아래 "만드는 법" 은
 > 그 워크플로가 없던 때의 설명이다.
+>
+> **2026-10-03 다시 찍었다.** 09-12 판 1번(궤적) 머리글에 옛 이름 `느린 부자의 기록` 이
+> 찍혀 있었다 — 09-24 에 이름을 바꾸기 전 화면이다. 그대로 내면 "메타데이터가 실제
+> 앱과 다르다"(2.3)에 걸릴 수 있다. **App Store Connect 의 스크린샷 열 장을 새것으로
+> 갈아 끼운다.** 앞으로 화면을 크게 바꾸면 같은 워크플로를 다시 돌린다.
 
 
 **필수는 6.9" 아이폰 한 종류**입니다 (iPhone 16/17 Pro Max 계열, 1320×2868).
@@ -204,16 +254,17 @@ GitHub 웹에서 각 파일을 열고 **Download** 로 받아 업로드하면 �
 
 ### 설명 (4000자, 수정하려면 심사 필요)
 
-> **2026-09-27 고침 — App Store Connect 에도 같이 고쳐야 한다.** 자산 진단 목록에
-> 69번에서 뺀 `72의 법칙` 이 남아 있었고, 뒤에 더한 `목표 비중` · `월세 적정성` 이
-> 빠져 있었다. 손잡이도 넷이 아니라 여섯이다. 아직 제출 전이라 심사 없이 고칠 수 있다.
-> **App Store Connect 반영 완료 (2026-09-27, 사용자).**
+> **2026-10-03 다시 고침 — App Store Connect 에 다시 붙여 넣는다.** 09-27 판 뒤로
+> 들어간 것이 빠져 있었다: 가족 공유 권한 · 월간 · 연간 회고 · 챙길 것 · 운용 원칙 ·
+> 변경 이력 · 매일 일기 · 1페이지 PDF · 국민연금 추정 · 넣은 돈과 자란 돈. `가족 넷이`
+> 는 남에게 내는 앱이라 `가족이` 로. "세전 기준" 한 줄을 고지에 더했다(183번).
+> 1,413자.
 
 ```
 느린 부자는 노후 준비를 습관으로 만드는 앱입니다.
 자동으로 잔고를 가져오지 않습니다. 매주 토요일, 직접 적습니다.
 그 숫자가 은퇴 계획선 위인지 아래인지를 하나의 궤적으로 보여 줍니다.
-혼자서도, 가족 넷이 함께도 씁니다.
+혼자서도, 가족이 함께도 씁니다.
 
 ■ 매주 토요일, 3분
 정한 요일과 시각에 알림이 옵니다. 종목별로 이번 주 평가액을 적어 넣으면
@@ -222,10 +273,12 @@ GitHub 웹에서 각 파일을 열고 **Download** 로 받아 업로드하면 �
 ■ 은퇴까지 이어지는 하나의 선
 적어 넣은 기록(실선)과 계획에 따른 예측(점선)을 같은 축 위에 그립니다.
 계획선 위에 있는지 아래에 있는지 한눈에 보입니다.
+얼마를 넣어서 얼마가 자랐는지, 넣은 돈과 자란 돈을 나눠 보여 줍니다.
 
 ■ 은퇴 이후까지
 은퇴 후 생활비와 연금(국민연금·퇴직연금·개인연금)을 넣으면 인출 구간까지
 이어 그립니다. 자산이 언제 바닥나는지, 혹은 바닥나지 않는지 보여 줍니다.
+국민연금은 가입 기간과 평균 소득으로 대략의 수령액을 추정해 채울 수 있습니다.
 
 ■ 만약에
 월 적립액·은퇴 연도·기대수익률·은퇴 후 수익률·물가·변동성을 손잡이로 돌려 봅니다. 몬테카를로
@@ -241,6 +294,15 @@ GitHub 웹에서 각 파일을 열고 **Download** 로 받아 업로드하면 �
 · 월세 적정성
 기준은 전부 사용자가 바꿉니다. 기본값은 널리 쓰이는 수치일 뿐 정답이 아닙니다.
 
+■ 가족이 함께
+iCloud 가족 공유로 한 가구의 기록을 함께 봅니다. 관리자가 사람마다
+고칠 수 있는 구성원을 정해 주면, 각자 자기 몫을 적습니다.
+
+■ 돌아보기
+월간 · 연간 회고, 챙길 것(기한 알림), 운용 원칙, 변경 이력을 남깁니다.
+매일 목표 · 실적 · 감사를 한 줄씩 적는 일기도 있습니다. 일기는 나만 봅니다.
+계획 전체를 종이 한 장(1페이지 PDF)으로 뽑아 가족과 나눌 수 있습니다.
+
 ■ 시세를 가져오지 않습니다
 의도된 설계입니다. 손으로 적는 그 수고가 계획 대비 실적을 체감하게 합니다.
 자동으로 갱신되면 지난주와 이번주 사이의 증감에 내가 하지 않은 변화가 섞입니다.
@@ -253,7 +315,7 @@ Face ID 잠금과 금액 가리기, CSV 내보내기와 전체 백업을 지원�
 
 ■ 투자 권유가 아닙니다
 모든 계산은 사용자가 입력한 가정에 따른 것이며 미래 수익을 보장하지 않습니다.
-이 앱은 금융 상품을 추천하거나 중개하지 않습니다.
+금액은 모두 세전 기준입니다. 이 앱은 금융 상품을 추천하거나 중개하지 않습니다.
 ```
 
 ### 키워드 (100자, 쉼표로 구분, 공백 없이)
@@ -308,22 +370,31 @@ Every figure is typed in by the user, in Korean won.
 iCloud is OPTIONAL and is NOT needed to review the app. All data is stored
 locally. If the device happens to be signed in to iCloud, the app also syncs
 to the user's own CloudKit private database, and an optional family-sharing
-feature (더보기 → 가족 공유) lets a household share one record set via
-CKShare. Both are conveniences; with no iCloud account the app works fully.
+feature (더보기 (More) tab → the "가족" (Family) section) lets a household share
+one record set via CKShare with people the owner invites. Nothing is ever
+public, and there is no messaging. Both are conveniences; with no iCloud
+account the app works fully.
 
 NOT FINANCIAL ADVICE
 
 The app does not offer, recommend, rate, or broker any financial product, and
 it has no in-app purchases or ads. Every projection is arithmetic applied to
-assumptions the user entered. Each projection screen carries a Korean
-disclaimer meaning "this is a calculation based on the assumptions you
-entered and does not guarantee future returns; this is not investment
-advice." The diagnostics screen adds that the app does not track tax law and
-that all amounts shown are pre-tax.
+assumptions the user entered. The projection screens (dashboard trajectory,
+simulation, one-page report) carry a Korean disclaimer meaning "this is a
+calculation based on the assumptions you entered and does not guarantee
+future returns." The diagnostics screen states in Korean that its rules are
+common rules of thumb, not investment advice, that the app does not track
+tax law, and that all amounts shown are pre-tax.
 
 Optional permissions: notifications (a Saturday check-in reminder) and Face ID
 (an optional app lock). Declining either blocks nothing.
 ```
+
+**10-03 고친 곳 둘** — 앱과 대조하다 나왔다. 가족 공유 메뉴는 `더보기 → 가족 공유` 가 아니라
+`더보기` 의 **`가족` 구역**이다. "모든 예측 화면에 투자 권유 아님 고지" 는 사실과 달랐다 —
+예측 화면(현황판 궤적 · 시뮬레이션 · 1페이지)의 고지는 "가정에 따른 계산이며 미래 수익을
+보장하지 않습니다" 이고, "투자 조언이 아닙니다" 는 진단 화면에 있다. 심사자가 화면과 메모를
+대조하면 걸리므로 있는 그대로 적었다.
 
 **이 메모가 왜 이렇게 긴가.** 2026-09-24 에 다시 썼다. 이전 메모는 심사자에게
 "자산 탭에서 구성원을 직접 추가하라" 고 적고 있었는데, 그건 빌드 68 에서
@@ -334,9 +405,13 @@ Optional permissions: notifications (a Saturday check-in reminder) and Face ID
 ## 7단계 · 제출
 
 1. **App Store** 탭 → 왼쪽 버전 (`1.0 출시 준비 중`)
-2. **빌드** 섹션 → **+** → TestFlight에 올라간 빌드 선택
-3. 위에서 채운 것들이 다 초록불인지 확인
-4. 오른쪽 위 **심사를 위해 제출**
+2. **빌드** 섹션 → **+** → **119** 선택
+3. 아래쪽 **버전 출시** → **이 버전을 수동으로 출시** (10-03 결정 — 통과해도 버튼을 누를 때까지 안 나간다)
+4. 위에서 채운 것들이 다 초록불인지 확인 (맨 위 "제출 한눈에" 표)
+5. 오른쪽 위 **심사에 추가** → **심사를 위해 제출**
+
+통과하면 메일이 오고 상태가 **출시 대기(개발자 출시 대기)** 가 된다. 같은 화면의
+**이 버전 출시** 를 누르면 몇 시간 안에 App Store 에 나온다.
 
 **심사는 보통 24~48시간**입니다. 결과는 이메일로 옵니다.
 
@@ -346,7 +421,7 @@ Optional permissions: notifications (a Saturday check-in reminder) and Face ID
 
 | 조항 | 내용 | 이 앱의 대비 |
 |---|---|---|
-| **2.1 앱 완성도** | 기능이 덜 만들어졌거나 크래시 | TestFlight로 몇 주 써 보고 제출하세요 — 안정화 기준 4(크래시 0 · 4주)가 이것이다. 09-26 크래시(189번)로 10-24 까지 다시 센다 |
+| **2.1 앱 완성도** | 기능이 덜 만들어졌거나 크래시 | 가족 넷이 TestFlight 로 9월 내내 썼다. 마지막 크래시는 09-26(189번, 빌드 114 에서 고침) 이고 그 뒤 크래시 전수 조사(191번)를 했다 |
 | **4.2 최소 기능** | "웹사이트를 감싼 것 아닌가" | 해당 없음 — 네이티브 계산 앱입니다 |
 | **5.1.1 개인정보** | 방침 URL 없음 / 라벨 불일치 | 1·3단계를 정확히 |
 | **3.1.1 앱 내 구입** | 외부 결제 유도 | 결제가 없습니다 |
@@ -368,7 +443,9 @@ Optional permissions: notifications (a Saturday check-in reminder) and Face ID
 | 설명문만 고치고 싶다 | **프로모션 텍스트**는 심사 없이 바뀝니다. 설명은 심사가 필요합니다 |
 | 급한 버그 | 심사에서 **긴급 심사 요청** 가능 (남용하면 안 됩니다) |
 | 내리고 싶다 | 가격 및 배포 → 판매 중단. 이미 받은 사람은 계속 씁니다 |
-| 앱이 올라갔다 | App Store Connect 앱 정보의 **Apple ID**(숫자)를 `App/Services/AppUpdate.swift` 의 `appStoreID` 에 적습니다. 그래야 "새 버전" 띠의 `업데이트` 가 TestFlight 대신 App Store 앱 페이지를 엽니다 (143번) |
+| ~~앱이 올라갔다~~ | **10-03 미리 했다 (빌드 119).** Apple ID `6809116693` 을 `AppUpdate.appStoreID` 에 넣었고, TestFlight 판은 가구에 빌드 번호를 안 적는다 — 아이들(App Store 판) 폰에 부모(TestFlight) 폰의 더 새 번호로 "새 버전" 띠가 사라지지 않던 길을 막았다 |
+| 아이들 폰에 깐다 | App Store 에서 받는다. 아이 계정은 무료 앱도 **구입 요청**으로 부모 승인이 필요할 수 있다. 깔고 나면 관리자 폰에서 가족 공유로 초대하고, **편집 권한**에서 고칠 구성원을 정해 준다 |
+| 가족은 계속 TestFlight | 부모 폰은 TestFlight 로 새 빌드를 먼저 받아 확인하고, 괜찮으면 같은 빌드로 App Store 새 버전을 낸다. 두 판은 같은 iCloud 저장소(Production)를 써서 같은 자료를 본다 |
 
 ## 버전 번호 규칙
 
