@@ -73,6 +73,8 @@ App Store 에 무료로 냅니다 — 2026-10-03 심사 제출, 통과 뒤 공�
 12. [배운 것](docs/12-lessons-learned.md) — **다음 앱을 시작하기 전에 먼저 읽는다**
 13. [소개글](docs/13-blog-intro.md) — 블로그 · 지원 페이지용
 14. [매일 점검 루틴](docs/14-daily-test-routine.md) — 안정화 기간에 쓰는 화면 밖의 버그를 찾는 요일별 순서와 기록
+15. [App Store 제출 시트](docs/15-app-store-submission-sheet.md) — 화면 순서대로 칸마다 붙일 값. 10-03 이대로 제출했다
+16. [네이버 블로그 출시 글](docs/16-naver-blog-launch.md) — 일기체 초안 · 태그 30개 · 사진 자리. 공개 뒤 링크만 채워 올린다
 
 [개인정보 처리방침](docs/privacy-policy.md) — 앱이 무엇을 모으지 않는지
 
