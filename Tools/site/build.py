@@ -24,6 +24,8 @@ OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "_site")
 APP_NAME = "느린 부자"
 SUPPORT_EMAIL = "kyunglagkwon@gmail.com"
 ISSUES_URL = "https://github.com/helpnara/Asset-management/issues"
+# 2026-10-07 공개. 앱 안의 `AppUpdate.appStoreID` 와 같은 번호다.
+APP_STORE_URL = "https://apps.apple.com/kr/app/id6809116693"
 
 STYLE = """
 :root { color-scheme: light dark; }
@@ -164,7 +166,11 @@ def main() -> None:
 
     support = f"""
 <p>매주 토요일, 가족 자산을 직접 적습니다. 그 숫자가 은퇴 계획선 위인지
-아래인지 하나의 궤적으로 보여 주는 iPhone 앱입니다.</p>
+아래인지 하나의 궤적으로 보여 주는 iPhone · iPad 앱입니다. 무료입니다.</p>
+<div class="card">
+<p><strong>내려받기</strong><br>
+<a href="{APP_STORE_URL}">App Store 에서 {APP_NAME} 받기</a></p>
+</div>
 <div class="card">
 <p><strong>문의 · 피드백</strong><br>
 <a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a><br>

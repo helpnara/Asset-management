@@ -58,10 +58,10 @@ xcodegen generate
 cd Packages/Core && swift test
 
 # 3) 앱 빌드
-xcodebuild -scheme SlowRich -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -scheme SlowRich -destination 'platform=iOS Simulator,name=iPhone 17' build
 
 # 4) 시뮬레이터에서 실행하고 스크린샷
-xcrun simctl boot 'iPhone 16'
+xcrun simctl boot 'iPhone 17'
 xcrun simctl install booted <경로>/SlowRich.app
 xcrun simctl launch booted com.helpnara.slowrich
 xcrun simctl io booted screenshot shot.png

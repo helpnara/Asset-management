@@ -68,4 +68,5 @@ iCloud 공유로만 이루어집니다.
 ---
 
 **느린 부자** · 노후 준비 · 은퇴 계획 · 가족 자산 궤적
-문의: kyunglagkwon@gmail.com · 개인정보 처리방침: https://helpnara.github.io/Asset-management/
+App Store: https://apps.apple.com/kr/app/id6809116693
+문의: kyunglagkwon@gmail.com · 지원 페이지: https://helpnara.github.io/Asset-management/ · 개인정보 처리방침: https://helpnara.github.io/Asset-management/privacy-policy/
