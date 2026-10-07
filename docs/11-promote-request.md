@@ -1,6 +1,6 @@
 # 11. 에디터 추천 신청서 초안 — App Store 프로모션 요청
 
-출시 2주 전에 <https://developer.apple.com/contact/app-store/promote/> 에서 낸다
+~~출시 2주 전에~~ **1.0 은 10-07 공개됐다 — 다음 큰 업데이트 · 연초 시즌 2주 전에** <https://developer.apple.com/contact/app-store/promote/> 에서 낸다
 (docs/10 §5). 양식은 영어가 안전하다. 아래 영어를 붙여 넣고, 한국어는 뜻을
 맞추기 위한 것이다. 실제 금액 · 가족 이름은 어디에도 없다.
 
