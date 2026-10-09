@@ -36,13 +36,18 @@ enum ThisWeekReconcile {
     @discardableResult
     static func run(in context: NSManagedObjectContext, now: Date = .now) -> Bool {
         let anchor = ReviewWeek.anchor(for: now)
-        let anchorPredicate = NSPredicate(format: "weekAnchor == %@", anchor as NSDate)
+        // 같은 주는 시간대가 달라도 같은 토요일 (194번 D3) — 앞뒤 하루를 꺼내 다시 거른다.
+        let range = ReviewWeek.nearbyRange(of: anchor)
+        let anchorPredicate = NSPredicate(format: "weekAnchor > %@ AND weekAnchor < %@",
+                                          range.lower as NSDate, range.upper as NSDate)
 
         let sessions = context.all(ReviewSession.self, predicate: anchorPredicate)
+            .filter { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
         // 같은 주가 둘이면 `WeekDedup` 이 먼저 하나로 만든다. 여기서는 남을 것 하나만 본다.
         guard sessions.count == 1, let session = sessions.first,
               session.isComplete, !session.isTotalOnly else { return false }
         let snapshots = context.all(Snapshot.self, predicate: anchorPredicate)
+            .filter { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
         guard snapshots.count == 1, let snapshot = snapshots.first else { return false }
 
         let members = context.all(Member.self, sortedBy: [NSSortDescriptor(key: "sortIndex", ascending: true)])

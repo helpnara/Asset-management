@@ -3,6 +3,7 @@
 // 칸을 더할 때는 **셋을 함께** 고친다:
 //   App/SlowRich.xcdatamodeld · 이 파일 · Tools/cloudkit/slowrich.ckdb
 
+import Core
 import CoreData
 import Foundation
 

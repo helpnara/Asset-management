@@ -168,7 +168,8 @@ struct DashboardView: View {
     }
 
     private var familyDidReviewThisWeek: Bool {
-        completedAnchors.contains(ReviewWeek.anchor(for: .now))
+        let anchor = ReviewWeek.anchor(for: .now)
+        return completedAnchors.contains { ReviewWeek.isSameWeek($0, anchor) }
     }
 
     /// **내가 적을 수 있는데 이번 주 아직 안 적힌 종목** (docs/09 4단계 정책).

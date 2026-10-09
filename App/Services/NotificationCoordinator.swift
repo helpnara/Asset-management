@@ -83,7 +83,7 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
         let anchor = ReviewWeek.anchor(for: .now)
         let allSessions = context.all(ReviewSession.self)
 
-        let existing = allSessions.first { $0.weekAnchor == anchor }
+        let existing = allSessions.first { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
         guard existing?.isComplete != true else { return }
 
         let previous = allSessions

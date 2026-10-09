@@ -141,6 +141,11 @@ struct FamilyAllocationView: View {
             set: { newValue in
                 if let target = existing(dimension, key: key) {
                     target.targetBP = newValue
+                    // 같은 목표의 사본이 있으면 이참에 지운다 (194번 2단계).
+                    for copy in targets where copy != target && !copy.isDeleted
+                        && copy.dimension == dimension && copy.key == key {
+                        context.delete(copy)
+                    }
                 } else {
                     _ = FamilyTarget(context: context, dimension: dimension, key: key, targetBP: newValue)
                 }
@@ -149,6 +154,6 @@ struct FamilyAllocationView: View {
     }
 
     private func existing(_ dimension: FamilyTarget.Dimension, key: String) -> FamilyTarget? {
-        targets.first { $0.dimension == dimension && $0.key == key }
+        FamilyAllocation.canonical(targets).first { $0.dimension == dimension && $0.key == key }
     }
 }

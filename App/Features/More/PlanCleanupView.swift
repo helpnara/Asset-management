@@ -90,6 +90,8 @@ struct PlanCleanupView: View {
         ChangeLogger.record(.other, subject: "계획 정리",
                             summary: "계획 \(plans.count)개 중 하나를 남기고 \(others.count)개를 지웠습니다",
                             in: context)
+        // 바로 저장하는 문은 매달기를 안 한다 — 방금 넣은 이력을 가구에 매단다 (194번 2단계).
+        Household.attachNew(in: context)
         Autosave.shared.save(context)
     }
 }

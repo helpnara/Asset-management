@@ -10,9 +10,13 @@ extension HoldingRecord {
     /// 고정 종목도 남긴다: "안 변했다" 도 기록이다.
     @MainActor
     static func record(members: [Member], weekAnchor: Date, in context: NSManagedObjectContext) {
+        // 같은 주는 시간대가 달라도 같은 토요일 (194번 D3).
+        let range = ReviewWeek.nearbyRange(of: weekAnchor)
         let existing = Dictionary(
             context.all(HoldingRecord.self,
-                        predicate: NSPredicate(format: "weekAnchor == %@", weekAnchor as NSDate))
+                        predicate: NSPredicate(format: "weekAnchor > %@ AND weekAnchor < %@",
+                                               range.lower as NSDate, range.upper as NSDate))
+                .filter { ReviewWeek.isSameWeek($0.weekAnchor, weekAnchor) }
                 .map { ($0.holdingID, $0) },
             uniquingKeysWith: { first, _ in first })
 

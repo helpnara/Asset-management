@@ -43,7 +43,7 @@ extension ReviewSession {
     /// 이번 주에 그 구성원 몫이 적혔나.
     static func enteredThisWeek(_ memberID: UUID, sessions: [ReviewSession], asOf: Date = .now) -> Bool {
         let anchor = ReviewWeek.anchor(for: asOf)
-        return sessions.contains { $0.weekAnchor == anchor && $0.enteredMemberIDSet.contains(memberID) }
+        return sessions.contains { ReviewWeek.isSameWeek($0.weekAnchor, anchor) && $0.enteredMemberIDSet.contains(memberID) }
     }
 
     // MARK: - 진단 이력 (A9)

@@ -854,6 +854,8 @@ struct AssetsView: View {
         // **지우면 그 자리에서 저장한다** (178번). 자동 저장(400ms)을 기다리면
         // 그동안 목록·합계가 지워진 객체를 한 번 더 읽는다 — 빈 줄이 반짝이고
         // 금액이 두 번 움직이는 것이 그 때문이었다.
+        // 바로 저장하는 문은 매달기를 안 한다 — 방금 넣은 이력을 가구에 매단다 (194번 2단계).
+        Household.attachNew(in: context)
         Autosave.shared.save(context)
     }
 

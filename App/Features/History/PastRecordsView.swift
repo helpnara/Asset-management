@@ -112,7 +112,7 @@ struct PastRecordsView: View {
 
         // 같은 주에 이미 기록이 있으면 덮어쓴다. 주차가 궤적의 키라서
         // 한 주에 점이 둘이면 선이 꺾여 보인다.
-        let snapshot = snapshots.first { $0.weekAnchor == anchor }
+        let snapshot = snapshots.first { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
             ?? {
                 let new = Snapshot(context: context, weekAnchor: anchor, netWorthMinor: 0,
                                    investableMinor: 0, liabilitiesMinor: 0)
@@ -144,7 +144,7 @@ struct PastRecordsView: View {
 
         // 점검 기록도 함께 남긴다. 없으면 "기록한 주" 수와 궤적의 점 개수가
         // 어긋나고, 다음 주간 점검이 직전 값을 못 찾아 증감이 0으로 나온다.
-        let session = sessions.first { $0.weekAnchor == anchor }
+        let session = sessions.first { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
             ?? {
                 let new = ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
                 return new
@@ -162,7 +162,7 @@ struct PastRecordsView: View {
     private func delete(_ snapshot: Snapshot) {
         let anchor = snapshot.weekAnchor
         context.delete(snapshot)
-        for session in sessions where session.weekAnchor == anchor && session.isTotalOnly {
+        for session in sessions where ReviewWeek.isSameWeek(session.weekAnchor, anchor) && session.isTotalOnly {
             context.delete(session)
         }
     }

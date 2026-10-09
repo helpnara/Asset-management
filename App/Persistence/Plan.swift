@@ -94,7 +94,7 @@ extension Plan {
     /// 가족 자산 배분에 적힌 미국 목표. 없으면 `nil`.
     var familyUSTargetBP: Int? {
         guard let targets = household?.familyTargets as? Set<FamilyTarget>,
-              let us = targets.first(where: {
+              let us = FamilyAllocation.canonical(Array(targets)).first(where: {
                   $0.dimension == .region && $0.key == Region.unitedStates.rawValue && $0.targetBP > 0
               }) else { return nil }
         return us.targetBP
@@ -677,6 +677,11 @@ extension Plan {
         let plan = Plan(context: context)
         // 구성원이 먼저 있었으면 은퇴 연도는 대표의 것이다 (168번).
         plan.adoptRetirementYear(fromHeadOf: context.all(Member.self))
+        // **사람이 고친 것이 아니다** (194번 2단계). 따라 넣기가 `touch()` 를 불러
+        // 새 계획이 태어나자마자 `손댄 계획` 이 되면, iCloud 의 진짜 계획이 늦게
+        // 내려왔을 때 빈 계획 정리(`pruneUntouchedDuplicates`)가 이것을 못 치우고
+        // 계획이 둘로 남는다.
+        plan.updatedAt = nil
         return plan
     }
 }

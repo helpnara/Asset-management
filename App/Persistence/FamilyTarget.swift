@@ -265,6 +265,20 @@ enum FamilyAllocation {
         return Allocation.slices(entries)
     }
 
+    /// **축 · 이름마다 하나만** (194번 2단계). 관리자의 아이폰과 아이패드가 같은 목표를
+    /// 각각 처음 적으면 둘이 생긴다 — CloudKit 은 유니크 제약이 없다. 그러면 합이 100%
+    /// 를 넘고 화면은 둘 중 아무거나 읽었다. **id 가 가장 작은 것**을 남긴다 — 두 기기가
+    /// 따로 골라도 같은 것을 고른다.
+    static func canonical(_ targets: [FamilyTarget]) -> [FamilyTarget] {
+        var kept: [String: FamilyTarget] = [:]
+        for target in targets where !target.isDeleted {
+            let slot = "\(target.dimension.rawValue)|\(target.key)"
+            if let current = kept[slot], current.id.uuidString <= target.id.uuidString { continue }
+            kept[slot] = target
+        }
+        return Array(kept.values)
+    }
+
     /// 지역·자산군 한 축을 잰다. 목표는 `targets` 에서 가져온다.
     /// `overrides` 는 화면이 아직 모델에 안 쓴 초안 — 키별 목표 bp (169번 후속).
     static func slices(_ members: [Member],
@@ -273,8 +287,8 @@ enum FamilyAllocation {
                        tolerance: Allocation.Tolerance,
                        overrides: [String: Int] = [:]) -> [Allocation.Slice] {
         var targetByKey: [String: Int] = [:]
-        for target in targets where target.dimension == dimension {
-            targetByKey[target.key, default: 0] += target.targetBP
+        for target in canonical(targets) where target.dimension == dimension {
+            targetByKey[target.key] = target.targetBP
         }
         for (key, bp) in overrides { targetByKey[key] = bp }
 
@@ -297,7 +311,7 @@ enum FamilyAllocation {
     /// 적어 둔 목표의 합. 화면이 100%인지 적는다.
     static func targetSumBP(_ targets: [FamilyTarget],
                             dimension: FamilyTarget.Dimension) -> Int {
-        targets.filter { $0.dimension == dimension }.reduce(0) { $0 + $1.targetBP }
+        canonical(targets).filter { $0.dimension == dimension }.reduce(0) { $0 + $1.targetBP }
     }
 
     /// 실제로 갖고 있는 축의 값들. 목표를 세울 때 이 목록을 보여준다.

@@ -793,6 +793,8 @@ extension BackupDocument {
         deleteAll(HoldingRecord.self, in: context)
         deleteAll(DiaryEntry.self, in: context)
         _ = Plan.current(in: context)
+        // 새 계획을 가구에 매단다 — 안 그러면 공유 존 밖에 놓여 참가자 기기에 안 간다 (194번 2단계).
+        Household.attachNew(in: context)
         guard Autosave.shared.save(context) else {
             context.rollback()
             return false

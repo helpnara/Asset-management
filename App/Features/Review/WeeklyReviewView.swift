@@ -674,7 +674,7 @@ struct WeeklyReviewView: View {
             }
         }
 
-        let existing = sessions.first { $0.weekAnchor == anchor }
+        let existing = sessions.first { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
         let session = existing ?? ReviewSession(context: context, weekAnchor: anchor, totalCount: 0)
         session.totalCount = askedEveryWeek.count
         session.enteredCount = enteredThisWeek
@@ -687,7 +687,7 @@ struct WeeklyReviewView: View {
         // 이어서 끝낸 사람의 몫을 **더한다** — 앞사람이 적은 것을 지우지 않는다.
         session.setEnteredMembers(session.enteredMemberIDSet.union(enteredMembers))
 
-        let snapshot = snapshots.first { $0.weekAnchor == anchor }
+        let snapshot = snapshots.first { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
             ?? Snapshot(context: context, weekAnchor: anchor, netWorthMinor: 0,
                         investableMinor: 0, liabilitiesMinor: 0)
         snapshot.netWorthMinor = rollup.netWorth.minorUnits

@@ -45,7 +45,7 @@ struct ReviewCompleteView: View {
     /// 화면의 모든 숫자를 이 스냅샷 하나에서 읽는다.
     /// 현재 값과 섞으면 과거 점검을 열었을 때 총액과 구성원별 합이 어긋난다.
     private var snapshot: Snapshot? {
-        snapshots.first { $0.weekAnchor == session.weekAnchor }
+        snapshots.first { ReviewWeek.isSameWeek($0.weekAnchor, session.weekAnchor) }
     }
 
     private var streak: Int {

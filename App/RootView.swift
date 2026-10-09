@@ -90,7 +90,8 @@ struct RootView: View {
     /// 기기의 계획 탭을 열지 않아도 현황판 · 1페이지가 새 값으로 그려지게.
     /// 관리자 기기에서만 — 참가자는 계획을 못 고친다.
     private func syncHeadRetirement() {
-        guard !trial.isActive, !sharing.state.isParticipant else { return }
+        // `role` 은 역할 판정 중이면 보기 전용이다 — 모르는 동안은 계획을 안 만진다 (194번 2단계).
+        guard !trial.isActive, role == .owner else { return }
         let context = Persistence.viewContext
         guard let plan = Plan.primary(context.all(Plan.self)),
               plan.adoptRetirementYear(fromHeadOf: context.all(Member.self)) else { return }
@@ -104,13 +105,15 @@ struct RootView: View {
     /// `더보기 → 가족 → 계획 정리` 에서 사람이 고른다. 참가자 기기는 공유
     /// 존의 계획을 못 지우므로 관리자 기기에서만 한다.
     private func pruneUntouchedPlans() {
-        guard !trial.isActive, !sharing.state.isParticipant else { return }
+        guard !trial.isActive, role == .owner else { return }
         let context = Persistence.viewContext
         let pruned = Plan.pruneUntouchedDuplicates(in: context)
         guard pruned > 0 else { return }
         ChangeLogger.record(.other, subject: "계획 정리",
                             summary: "손대지 않은 빈 계획 \(pruned)개를 지웠습니다",
                             in: context)
+        // 바로 저장하는 문은 매달기를 안 한다 — 방금 넣은 이력을 가구에 매단다 (194번 2단계).
+        Household.attachNew(in: context)
         Autosave.shared.save(context)
     }
 
@@ -169,9 +172,15 @@ struct RootView: View {
             .onChange(of: monitor.hasFinishedImport) { _, finished in
                 if finished {
                     sharing.refreshState()
-                    pruneUntouchedPlans()
-                    syncHeadRetirement()
                     recordBuild()
+                    // **역할을 다시 읽은 뒤에** 계획을 만진다 (194번 2단계). `refreshState` 는
+                    // 뒤에서 돈다 — 바로 이어 부르면 첫 실행의 참가자 폰이 아직 "소유자" 로
+                    // 보여, 공유된 관리자 계획을 빈 계획으로 보고 지울 수 있었다.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(2))
+                        pruneUntouchedPlans()
+                        syncHeadRetirement()
+                    }
                 }
             }
             // **가져오기가 끝날 때마다** 같은 주 정리와 이번 주 맞추기 (193번 B · C).
