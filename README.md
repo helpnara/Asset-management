@@ -76,6 +76,7 @@ App Store 에 무료로 냅니다 — 2026-10-03 심사 제출, 통과 뒤 공�
 15. [App Store 제출 시트](docs/15-app-store-submission-sheet.md) — 화면 순서대로 칸마다 붙일 값. 10-03 이대로 제출했다
 16. [네이버 블로그 출시 글](docs/16-naver-blog-launch.md) — 일기체 · 태그 30개 · 사진 자리. 10-07 게시
 17. [출시 뒤 할 일](docs/17-after-launch.md) — 10-07 전수 조사 · 브레인스토밍. 만료 달력 · 1.0.1 기초 공사 · 2.0 후보
+18. [5단계 기초 공사](docs/18-stage5-foundation.md) — 착수 전 위험 목록 · 순서 · 착수 조건. 판이 하나인데 왜 괜찮았나
 
 [개인정보 처리방침](docs/privacy-policy.md) — 앱이 무엇을 모으지 않는지
 
