@@ -186,8 +186,15 @@ struct TodoListView: View {
     private func todoRow(_ item: TodoItem) -> some View {
         TodoRow(item: item, canEdit: canEdit,
                 onToggle: {
-                    item.isDone.toggle()
-                    item.completedAt = item.isDone ? .now : nil
+                    // **해마다 돌아오는 것은 끝내면 다음 해로 넘긴다** (194번 D4). 완료로 묻어
+                    // 두면 알림 목록에서 빠져 내년에 다시 오지 않았다.
+                    if item.repeatsYearly, !item.isDone, let due = item.dueDate {
+                        item.dueDate = Calendar.app.date(byAdding: .year, value: 1, to: due) ?? due
+                        item.completedAt = .now
+                    } else {
+                        item.isDone.toggle()
+                        item.completedAt = item.isDone ? .now : nil
+                    }
                     Task { await TodoNotifications.refresh(TodoNotifications.Input(items: items, accounts: allAccounts)) }
                 },
                 onEdit: { editing = item })

@@ -15,6 +15,8 @@ struct MoreView: View {
     @State private var route = AppRoute.shared
     /// 알림 권한이 꺼져 있나 (99번, F3). 꺼져 있으면 토요일 알림이 조용히 안 온다.
     @State private var notificationsDenied = false
+    /// 아직 한 번도 안 물었다 — 체험으로 들어온 사람이 그렇다 (194번 U3).
+    @State private var notificationsUndetermined = false
 
     /// CI 스크린샷이 하위 화면까지 찍을 수 있도록 실행 인자로 밀어 넣는다.
     @State private var refreshNote: String?
@@ -144,6 +146,18 @@ struct MoreView: View {
                             }
                         }
                     }
+                    if notificationsUndetermined {
+                        Button {
+                            Task {
+                                _ = await ReviewNotifications.requestAuthorization()
+                                let status = await ReviewNotifications.authorizationStatus()
+                                notificationsDenied = status == .denied
+                                notificationsUndetermined = status == .notDetermined
+                            }
+                        } label: {
+                            Label("알림 허용하기 — 점검 · 회고 알림을 받습니다", systemImage: "bell.badge")
+                        }
+                    }
                     // **알림은 한 화면에 모은다** (152번 2-2). 예전에는 `주간 점검
                     // 알림` 화면 **안에** 월간 회고 토글이 숨어 있고 목 · 실 · 감은
                     // 딴 화면이었다 — 회고 알림을 끄려면 주간 점검에 들어가야
@@ -217,7 +231,9 @@ struct MoreView: View {
                 proxy.scrollTo(target, anchor: .top)
             }
             .task {
-                notificationsDenied = await ReviewNotifications.authorizationStatus() == .denied
+                let status = await ReviewNotifications.authorizationStatus()
+                notificationsDenied = status == .denied
+                notificationsUndetermined = status == .notDetermined
             }
             }
             .readableWidth()
@@ -585,7 +601,8 @@ struct SyncStatusSection: View {
 
     private var modeColor: Color {
         switch Persistence.mode {
-        case .cloudKit: return .gain
+        // iCloud 모드여도 로그인이 안 됐으면 동기화가 없다 — 초록으로 안심시키지 않는다 (194번 U1).
+        case .cloudKit: return accountStatus == .noAccount || accountStatus == .restricted ? .loss : .gain
         case .localOnly: return .loss
         case .inMemory: return .muted
         }

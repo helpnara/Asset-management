@@ -191,6 +191,11 @@ struct SimulationView: View {
                 Text(deltaText(outcome.delta))
                     .font(.figure(12.5, weight: .medium))
                     .foregroundStyle(outcome.delta.minorUnits > 0 ? Color.gain : Color.loss)
+            } else if let outcome, outcome.expected.isZero {
+                // 자료가 없으면 "0원 · 계획 그대로" 만 보였다 (194번 U9).
+                Text("자산 탭에 종목을, 계획 탭에 월 적립을 넣으면 계산됩니다.")
+                    .font(.scaled(11.5))
+                    .foregroundStyle(Color.faint)
             } else {
                 Text("계획 그대로입니다. 아래 손잡이를 돌려 보세요.")
                     .font(.scaled(11.5))

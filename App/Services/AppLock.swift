@@ -91,7 +91,7 @@ final class AppLock {
             // 생체만 쓰면 마스크·장갑 같은 상황에서 앱이 통째로 막힌다.
             isUnlocked = try await context.evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "가족 자산 기록을 열려면 인증이 필요합니다"
+                localizedReason: "자산 기록을 열려면 인증이 필요합니다"
             )
             lastError = nil
         } catch {

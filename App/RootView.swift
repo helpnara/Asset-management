@@ -211,7 +211,8 @@ struct RootView: View {
                     if let newer = newerBuild { AppUpdate.markAlerted(newer) }
                 }
             } message: {
-                Text("가족 기기 중 하나가 빌드 \(newerBuild ?? 0) 을 쓰고 있습니다. 이 기기는 빌드 \(AppUpdate.currentBuild) 입니다. 판이 다르면 새 항목이 안 보이거나 기록이 어긋날 수 있으니, 업데이트한 뒤 사용해 주세요.")
+                // App Store 판 사용자는 버전(1.0.x)만 안다 — 버전을 앞에, 빌드는 괄호로 (194번 U9).
+                Text("가족 기기 중 하나가 더 새 판(빌드 \(newerBuild ?? 0))을 쓰고 있습니다. 이 기기는 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")(빌드 \(AppUpdate.currentBuild))입니다. 판이 다르면 새 항목이 안 보이거나 기록이 어긋날 수 있으니, 업데이트한 뒤 사용해 주세요.")
             }
     }
 
@@ -297,7 +298,12 @@ struct RootView: View {
         .background(Color.alertSoft)
         .confirmationDialog("체험을 끝내고 내 자료로 갈까요? 체험 자료는 저장되지 않습니다.",
                             isPresented: $isEndingTrial, titleVisibility: .visible) {
-            Button("내 자료로 시작") { trial.end() }
+            Button("내 자료로 시작") {
+                trial.end()
+                // 체험으로 들어온 사람은 알림을 한 번도 안 물었다 (194번 U3). 이미 답한
+                // 사람에게는 시스템이 다시 묻지 않는다.
+                Task { _ = await ReviewNotifications.requestAuthorization() }
+            }
             Button("계속 둘러보기", role: .cancel) {}
         }
     }
@@ -389,7 +395,7 @@ struct RootView: View {
             WeeklyReviewView()
                 .statusBand()
         }
-        .alert("이번 주 기록 완료",
+        .alert("이번 주 점검 완료",
                isPresented: Binding(
                    get: { route.totalOnlyMessage != nil },
                    set: { if !$0 { route.totalOnlyMessage = nil } }

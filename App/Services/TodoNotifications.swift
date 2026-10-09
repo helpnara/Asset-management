@@ -70,13 +70,22 @@ enum TodoNotifications {
         let calendar = Calendar.app
         for item in input.items {
             // 지난 기한에는 걸지 않는다. 해마다 되돌아오는 것만 다음 해로 민다.
-            var due = item.dueDate
-            if due < .now {
-                guard item.repeatsYearly,
-                      let next = calendar.date(byAdding: .year, value: 1, to: due),
-                      next > .now
-                else { continue }
-                due = next
+            //
+            // **날짜로 견주고, 몇 해든 민다** (194번 D4). 예전에는 시각까지 견줘서 기한
+            // 당일 아침에 앱을 열면(기한 시각이 만든 때의 시각이라 지금보다 앞일 수 있다)
+            // 걸어 둔 9시 알림을 지우고 다시 안 걸었다. 한 해만 밀어서 두 해 넘게 지난
+            // 반복 항목은 영영 안 알렸다.
+            let today = calendar.startOfDay(for: .now)
+            var due = calendar.startOfDay(for: item.dueDate)
+            if due < today {
+                guard item.repeatsYearly else { continue }
+                var guardCount = 0
+                while due < today, guardCount < 200,
+                      let next = calendar.date(byAdding: .year, value: 1, to: due) {
+                    due = next
+                    guardCount += 1
+                }
+                guard due >= today else { continue }
             }
 
             // **30일 전에 한 번, 당일에 한 번** (172번). 만기(28번)와 같은 규칙 —

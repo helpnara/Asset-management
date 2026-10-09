@@ -134,7 +134,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
         case .weekly:
             // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
-            sectionHeader("이번 주 점검", trailing: "토요일 \(DateText.short(reviewDay))")
+            sectionHeader("이번 주 점검", trailing: "\(ReviewSettings.weekdayName) \(DateText.short(reviewDay))")
             weeklyBar
             planReviewNudge
         case .todos:
@@ -285,20 +285,20 @@ struct DashboardView: View {
         if familyDidReviewThisWeek { return "내 몫 \(myPendingCount)건 남음" }
         // 적을 수 없는 사람에게 D-3 을 들이밀지 않는다. 재촉으로만 읽힌다.
         if !canEdit { return "기록 대기 중" }
-        let days = ReviewWeek.daysUntilReview(from: .now)
-        return days == 0 ? "오늘이 점검일입니다" : "토요일까지 D-\(days)"
+        // 알림에 정한 요일을 따른다 (194번 U4).
+        let days = ReviewSettings.daysUntilReviewDay()
+        return days == 0 ? "오늘이 점검일입니다" : "\(ReviewSettings.weekdayName)까지 D-\(days)"
     }
 
-    /// 이번 점검일. 토요일이면 오늘, 아니면 오는 토요일.
+    /// 이번 점검일 — 알림에 정한 요일. 오늘이 그날이면 오늘.
     private var reviewDay: Date {
-        ReviewWeek.daysUntilReview(from: .now) == 0
-            ? ReviewWeek.anchor(for: .now)
-            : ReviewWeek.nextSaturday(after: .now)
+        ReviewSettings.upcomingReviewDay()
     }
 
     private var weeklySubtitle: String {
         if streak == 0 {
-            return canEdit ? "매주 토요일 오전에 알려드립니다" : "관리자가 매주 토요일에 적습니다"
+            return canEdit ? "매주 \(ReviewSettings.weekdayName) \(ReviewSettings.timeText)에 알려드립니다"
+                : "관리자가 매주 \(ReviewSettings.weekdayName)에 적습니다"
         }
         return "\(streak)주 연속 기록 중"
     }
@@ -360,8 +360,12 @@ struct DashboardView: View {
             return AttributionRow(id: label, label: label, split: split)
         }
 
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: latest.weekAnchor)) ?? latest.weekAnchor
-        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: latest.weekAnchor)) ?? latest.weekAnchor
+        // **이번 달 · 올해는 지금 달력으로** (194번 D5). 마지막 점검의 달로 잡으면 달이 바뀐 첫 주
+        // (11-01 ~ 11-06)에 "이번 달" 칸에 10월 수치가, 1월 1일에 "올해" 칸에 작년 전체가 나왔다.
+        // 지금 달에 아직 점검이 없으면 그 줄은 "기록 없음" 이다.
+        let now = Date.now
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+        let yearStart = calendar.date(from: calendar.dateComponents([.year], from: now)) ?? now
         return [
             row("지난 점검", before: latest.weekAnchor),
             row("이번 달", before: monthStart),

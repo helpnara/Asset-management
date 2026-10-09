@@ -83,7 +83,7 @@ struct MemberEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("이름 (아빠 · 엄마 · 아들 …)", text: $member.name)
+                    TextField("이름 (나 · 배우자 · 아이 …)", text: $member.name)
                     // 힌트에 `2022년생` 이 있었는데 바로 아래가 생년월이라 겹쳤다 (151번).
                     TextField("설명 (본인 · 첫째 …)", text: $member.roleNote)
                 }
@@ -854,7 +854,7 @@ struct HoldingEditView: View {
 
     private var cadenceFooter: String {
         switch holding.cadence {
-        case .weekly: return "매주 토요일 점검에서 물어봅니다."
+        case .weekly: return "매주 점검에서 물어봅니다."
         case .monthly: return "월 1회만 물어봅니다. 연금보험 해지환급금처럼 자주 안 바뀌는 항목에 씁니다."
         case .fixed: return "주간 점검에서 건너뜁니다. 전월세보증금처럼 값이 고정된 항목에 씁니다."
         }

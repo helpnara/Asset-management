@@ -112,6 +112,34 @@ final class CloudKitSyncMonitor {
             )
             MainActor.assumeIsolated { self?.record(attempt) }
         }
+        watchForNothingToImport()
+    }
+
+    /// iCloud 계정이 없는가 — 그러면 동기화도 받아올 것도 없다 (194번 U1).
+    private(set) var hasNoAccount = false
+
+    /// **받아올 것이 없으면 기다리지 않는다** (194번 U1).
+    ///
+    /// "받아오기 끝남" 은 가져오기가 한 번 끝나야만 켜졌다. 그런데 iCloud 에 로그인하지
+    /// 않은 기기는 가져오기가 아예 안 돈다 — 빈 상태의 시작 단추가 "iCloud 에서 받아오는
+    /// 중" 안내로 바뀐 채 돌아오지 않았다. 계정이 없으면 바로 끝난 것으로 보고, 계정이
+    /// 있어도 30초 동안 가져오기 소식이 하나도 없으면 끝난 것으로 본다. 소식이 한 번이라도
+    /// 왔으면(돌고 있으면) 그 결과를 기다린다. CI 처럼 iCloud 없이 연 저장소는 묻지 않는다
+    /// — 자격 없이 `CKContainer` 를 만들면 앱이 죽는다.
+    private func watchForNothingToImport() {
+        guard Persistence.mode == .cloudKit else { return }
+        Task { @MainActor [weak self] in
+            let status = try? await CKContainer(identifier: Persistence.cloudKitContainerID).accountStatus()
+            // 확실히 없을 때만 바로 끝낸다. "잠깐 확인 불가" 는 아래 30초를 기다린다.
+            if status == .noAccount || status == .restricted, let self {
+                self.hasNoAccount = true
+                self.hasFinishedImport = true
+                return
+            }
+            try? await Task.sleep(for: .seconds(30))
+            guard let self, !self.hasFinishedImport, self.importsInFlight == 0, self.lastImport == nil else { return }
+            self.hasFinishedImport = true
+        }
     }
 
     private func record(_ attempt: Attempt) {

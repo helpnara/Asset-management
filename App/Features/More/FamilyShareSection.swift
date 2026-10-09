@@ -17,7 +17,26 @@ struct FamilyShareSection: View {
     /// 이력에 남을 이름 (74번). 이 기기에만 저장된다.
     @AppStorage(ActorName.key) private var actorName = ""
 
+    @State private var trial = TrialMode.shared
+
     var body: some View {
+        // **체험 중에는 초대하지 않는다** (194번 U7). 초대 제목은 체험 계획의 것인데
+        // 실제로 공유되는 것은 진짜 저장소의 (빈) 가구였다.
+        if trial.isActive {
+            Section {
+                Text("체험 중에는 가족을 초대할 수 없습니다. 위쪽 띠의 `내 자료로 시작` 을 누른 뒤 초대하세요.")
+                    .font(.scaled(11.5))
+                    .foregroundStyle(Color.muted)
+            } header: {
+                Text("가족")
+            }
+        } else {
+            sharedBody
+        }
+    }
+
+    @ViewBuilder
+    private var sharedBody: some View {
         familySection
         // **만일에 대비** (78번). 관리자 폰을 잃어버리면 어떻게 되나 — 물어보기
         // 전에 적어 둔다. 공유 소유권은 옮길 수 없다는 것이 핵심이다.
@@ -147,7 +166,7 @@ struct FamilyShareSection: View {
                 Spacer(minLength: 12)
                 // 힌트가 `관리자` 라 이름 칸인지 상태 표시인지 헷갈렸다 (152번 1-6).
                 // 사람 이름 꼴을 예로 든다.
-                TextField("아빠 · 엄마 …", text: $actorName)
+                TextField("나 · 배우자 …", text: $actorName)
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()

@@ -303,7 +303,8 @@ struct AssetsView: View {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("가족 총자산")
+                            // 혼자 쓰면 "가족" 을 붙이지 않는다 (194번 U5 — 127번이 현황판만 다뤘다).
+                            Text(members.count > 1 ? "가족 총자산" : "총자산")
                                 .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Text("구성원 · 지역 · 자산군 비중")
@@ -395,7 +396,7 @@ struct AssetsView: View {
                         .foregroundStyle(Color.ink)
                     // **맨 위 사람이 가족 대표다** (168번). 순서가 곧 대표라 이
                     // 띠지가 "누가 대표인지" 를 보여 주는 자리다.
-                    if member.objectID == members.familyHead?.objectID {
+                    if members.count > 1, member.objectID == members.familyHead?.objectID {
                         HeadBadge()
                     }
                     Text("\(member.age)세")
@@ -615,7 +616,10 @@ struct AssetsView: View {
     }
 
     private func isExpanded(_ account: Account) -> Bool {
-        expandedAccountsRaw.split(separator: ",").contains(Substring(account.id.uuidString))
+        // **종목이 없는 계좌는 늘 펼친다** (194번 U2). 첫 계좌를 만들면 접힌 채 "0" 한 줄만
+        // 남아, 다음 걸음인 "종목 추가" 가 안 보였다.
+        account.sortedHoldings.isEmpty
+            || expandedAccountsRaw.split(separator: ",").contains(Substring(account.id.uuidString))
     }
 
     private func toggle(_ member: Member) {
@@ -655,7 +659,7 @@ struct AssetsView: View {
     private func familyShare(_ member: Member) -> String? {
         guard let slice = memberSlices.first(where: { $0.key == member.id.uuidString })
         else { return nil }
-        return "가족의 \(slice.actualPercent)%"
+        return members.count > 1 ? "가족의 \(slice.actualPercent)%" : nil
     }
 
     /// 한 번만 계산해서 여러 줄이 나눠 쓴다.
@@ -728,7 +732,7 @@ struct AssetsView: View {
             Text("구성원부터 추가하세요")
                 .font(.scaled(15, weight: .bold))
                 .foregroundStyle(Color.ink)
-            Text("아빠 · 엄마 · 아들 · 딸처럼 가족 단위로 나눠 관리합니다.\n한 명만 넣어도 시작할 수 있습니다.")
+            Text("사람마다 나눠 관리합니다 — 나 · 배우자 · 아이처럼.\n혼자여도 한 명만 넣고 시작하면 됩니다.")
                 .font(.scaled(12.5))
                 .foregroundStyle(Color.muted)
                 .multilineTextAlignment(.center)

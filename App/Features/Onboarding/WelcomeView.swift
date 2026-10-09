@@ -94,7 +94,7 @@ struct WelcomeView: View {
                 .padding(.top, 4)
 
                 // 거절해도 막다른 길이 아니라는 것을 먼저 알려 준다.
-                Text("나중에 [더보기 → 주간 점검 알림]에서 켤 수 있습니다.")
+                Text("나중에 [더보기 → 알림]에서 켤 수 있습니다.")
                     .font(.scaled(10.5))
                     .foregroundStyle(Color.faint)
             }

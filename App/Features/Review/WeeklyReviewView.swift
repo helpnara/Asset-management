@@ -438,7 +438,40 @@ struct WeeklyReviewView: View {
         .onTapGesture { focusedID = holding.id }
     }
 
+    /// 적을 종목이 아예 없다 — 구성원만 넣고 들어온 처음 쓰는 사람 (194번 U6).
+    private var hasNoHoldings: Bool {
+        editableMembers.allSatisfy { member in member.sortedAccounts.allSatisfy { $0.sortedHoldings.isEmpty } }
+    }
+
+    @ViewBuilder
     private var footer: some View {
+        if hasNoHoldings {
+            // 여기서 끝내면 궤적 첫 점이 0원이 되고, 다음 주에도 "첫 기록입니다" 가 다시 나왔다.
+            VStack(spacing: 12) {
+                Text("아직 적을 종목이 없습니다.\n자산 탭에서 계좌와 종목을 먼저 추가하세요.")
+                    .font(.scaled(12.5))
+                    .foregroundStyle(Color.muted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                Button {
+                    AppRoute.shared.selectedTab = RootView.Tab.assets
+                    dismiss()
+                } label: {
+                    Text("자산 탭으로")
+                        .font(.scaled(14, weight: .medium))
+                        .foregroundStyle(Color.onInk)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
+                }
+            }
+            .padding(20)
+        } else {
+            finishFooter
+        }
+    }
+
+    private var finishFooter: some View {
         VStack(spacing: 12) {
             Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 값을 적고 나면 빠집니다.")
                 .font(.scaled(10.5))

@@ -706,6 +706,10 @@ extension Plan {
         }
         // Core Data 는 만드는 순간 컨텍스트에 들어간다 — `insert` 를 따로 안 부른다.
         let plan = Plan(context: context)
+        // 새 계획의 제목은 "가족" 을 전제하지 않는다 (194번 U5). 모델 기본값
+        // (`우리 가족 노후자금 준비`)은 스키마라 그대로 두고 여기서 덮는다 — 1~4단계는
+        // 스키마를 건드리지 않는다. 이미 있는 계획의 제목은 안 바뀐다.
+        plan.title = "노후자금 준비"
         // 구성원이 먼저 있었으면 은퇴 연도는 대표의 것이다 (168번).
         plan.adoptRetirementYear(fromHeadOf: context.all(Member.self))
         // **사람이 고친 것이 아니다** (194번 2단계). 따라 넣기가 `touch()` 를 불러

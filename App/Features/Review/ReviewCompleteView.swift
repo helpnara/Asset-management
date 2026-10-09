@@ -259,7 +259,7 @@ struct ReviewCompleteView: View {
             .padding(.horizontal, 20)
 
             Text(streak <= 1
-                 ? "다음 토요일에 또 적으면 연속 기록이 시작됩니다."
+                 ? "다음 \(ReviewSettings.weekdayName)에 또 적으면 연속 기록이 시작됩니다."
                  : "\(streak)주째 거르지 않았습니다.")
                 .font(.scaled(10))
                 .foregroundStyle(Color.faint)
@@ -332,7 +332,7 @@ struct ReviewCompleteView: View {
                     .padding(.vertical, 15)
                     .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
             }
-            Text("다음 점검 \(nextReviewText) 토요일")
+            Text("다음 점검 \(nextReviewText) \(ReviewSettings.weekdayName)")
                 .font(.scaled(10))
                 .foregroundStyle(Color.faint)
         }
@@ -340,7 +340,7 @@ struct ReviewCompleteView: View {
     }
 
     private var nextReviewText: String {
-        DateText.short(ReviewWeek.nextSaturday(after: .now))
+        DateText.short(ReviewSettings.nextReviewDay())
     }
 
 }
