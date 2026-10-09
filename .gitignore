@@ -25,3 +25,6 @@ Package.resolved
 App/Info.plist
 _site/
 .venv-store/
+
+# CloudKit 스키마 도구 — 워크플로가 매번 npm install 한다 (docs/18 5-1)
+Tools/cloudkit/node_modules/
