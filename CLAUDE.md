@@ -131,6 +131,12 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
   거기서 파생된다. **칸을 더하면 셋을 함께 고친다** — CI가 서로 대조해서
   하나만 고치면 막는다. 빠진 `@NSManaged` 선언은 컴파일을 통과하고
   화면에서 값 하나가 조용히 비는 것으로만 드러나므로, 이 대조가 유일한 심판이다.
+- **칸을 바꾸는 판부터는 모델 판을 쌓는다** ([docs/18](docs/18-stage5-foundation.md)). `.xcdatamodeld`
+  안의 지금 판을 복사해 새 판(`SlowRich 2.xcdatamodel`)을 만들고 **새 판만** 고친 뒤
+  `.xccurrentversion` 을 새 판으로 돌린다. **옛 판은 지우지 않는다** — 마이그레이션의 원본이다.
+  대조 스크립트 셋은 `.xccurrentversion` 이 가리키는 판을 읽는다. App Store 에 낸 판의 커밋은
+  `Tools/coredata/migration-baselines.txt` 맨 위에 더한다 — CI 가 그 판의 저장소를 지금 모델로
+  옮겨 보는 시험을 한다. 옛 SwiftData 시절 생성기는 판 폴더를 덮어써서 지웠다(10-09).
 - 스키마를 건드릴 때는 CloudKit 제약을 지킨다
   (유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널 — [ADR-0001](docs/adr/0001-swiftdata-cloudkit.md)).
 

@@ -15,7 +15,17 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-MODEL = "App/SlowRich.xcdatamodeld/SlowRich.xcdatamodel/contents"
+def current_model_contents(root="App/SlowRich.xcdatamodeld"):
+    """**지금 판의 모델 파일** (docs/18 R1). 판이 여럿이 되면 `.xccurrentversion` 이 가리키는
+    판을 읽어야 한다 — 경로를 박아 두면 새 판에 칸을 더해도 옛 판과 대조해 "통과" 한다."""
+    import os
+    import plistlib
+    with open(os.path.join(root, ".xccurrentversion"), "rb") as file:
+        name = plistlib.load(file)["_XCCurrentVersionName"]
+    return os.path.join(root, name, "contents")
+
+
+MODEL = current_model_contents()
 GENERATED = "App/Persistence/Generated"
 
 # `@NSManaged var x: T` 와 `@NSManaged @objc(x) var xNumber: NSNumber?` 둘 다.

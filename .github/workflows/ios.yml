@@ -45,6 +45,7 @@ jobs:
         run: |
           python3 Tools/coredata/check-model-matches-ckdb.py
           python3 Tools/coredata/check-managed-matches-model.py
+          python3 Tools/coredata/check-backup-entities.py
           echo "칸을 더했다면: .xcdatamodeld · Generated/ · slowrich.ckdb 셋을 함께 고치고,"
           echo "Actions → CloudKit 스키마 → apply 뒤 콘솔에서 Deploy Schema Changes 를 누르세요."
 

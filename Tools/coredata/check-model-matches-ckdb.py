@@ -22,7 +22,17 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-MODEL = "App/SlowRich.xcdatamodeld/SlowRich.xcdatamodel/contents"
+def current_model_contents(root="App/SlowRich.xcdatamodeld"):
+    """**지금 판의 모델 파일** (docs/18 R1). 판이 여럿이 되면 `.xccurrentversion` 이 가리키는
+    판을 읽어야 한다 — 경로를 박아 두면 새 판에 칸을 더해도 옛 판과 대조해 "통과" 한다."""
+    import os
+    import plistlib
+    with open(os.path.join(root, ".xccurrentversion"), "rb") as file:
+        name = plistlib.load(file)["_XCCurrentVersionName"]
+    return os.path.join(root, name, "contents")
+
+
+MODEL = current_model_contents()
 CKDB = "Tools/cloudkit/slowrich.ckdb"
 
 # CloudKit 이 스스로 붙이는 것들. 우리 모델에는 없어야 정상이다.
@@ -137,8 +147,7 @@ def main():
         print("모델 파일에 문제가 있습니다:\n", file=sys.stderr)
         for line in problems:
             print(f"  · {line}", file=sys.stderr)
-        print("\n둘 다 다시 뽑으세요:", file=sys.stderr)
-        print("  python3 Tools/coredata/generate-xcdatamodel.py", file=sys.stderr)
+        print("\n모델(.xcdatamodeld 의 지금 판)을 손으로 고친 뒤 CloudKit 스키마를 다시 뽑으세요:", file=sys.stderr)
         print("  python3 Tools/cloudkit/generate-ckdb.py > Tools/cloudkit/slowrich.ckdb",
               file=sys.stderr)
         sys.exit(1)
