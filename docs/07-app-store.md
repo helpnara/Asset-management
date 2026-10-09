@@ -390,8 +390,11 @@ future returns." The diagnostics screen states in Korean that its rules are
 common rules of thumb, not investment advice, that the app does not track
 tax law, and that all amounts shown are pre-tax.
 
-Optional permissions: notifications (a Saturday check-in reminder) and Face ID
-(an optional app lock). Declining either blocks nothing.
+Optional permissions: notifications (a weekly check-in reminder; Saturday by
+default, and the user can change the day and time), Face ID (an optional app
+lock), and add-only Photos access, asked only when the user saves a generated
+image (a review card or the one-page report) from the share sheet. Declining
+any of them blocks nothing.
 ```
 
 **10-03 고친 곳 둘** — 앱과 대조하다 나왔다. 가족 공유 메뉴는 `더보기 → 가족 공유` 가 아니라
@@ -473,4 +476,6 @@ Optional permissions: notifications (a Saturday check-in reminder) and Face ID
 
 - **빌드 번호**는 GitHub 실행 번호가 자동으로 붙습니다 (손댈 필요 없음)
 - **같은 버전 번호로 두 번 심사를 낼 수 없습니다.** 반려되어 고쳤다면
-  빌드만 새로 올리면 되고, 출시된 뒤 고쳤다면 `1.0` → `1.0.1` 로 올립니다 (지금 `MARKETING_VERSION` 은 `"1.0"`. 10-07 공개)
+  빌드만 새로 올리면 되고, 출시된 뒤 고쳤다면 `1.0` → `1.0.1` 로 올립니다 (지금 `MARKETING_VERSION` 은 `"1.0.4"` — 10-09 1~4단계를 TestFlight 로 한 단계씩 올렸다)
+- **App Store 의 버전 페이지 번호는 빌드의 버전과 같아야 빌드를 고를 수 있습니다.** TestFlight 로만 지나간
+  번호(1.0.1 ~ 1.0.3)는 건너뛰어도 됩니다 — 1.0 다음 업데이트는 `1.0.4` 로 냅니다 ([15 제출 시트 맨 위](15-app-store-submission-sheet.md))
