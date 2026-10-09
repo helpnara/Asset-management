@@ -75,9 +75,11 @@ struct LockedOverlay: View {
         .background(Color.canvas)
         .task {
             // 화면이 뜨자마자 한 번 물어본다. 버튼을 또 누르게 하지 않는다.
+            // **앱이 앞에 있을 때만, 잠길 때마다 한 번** (195번) — 백그라운드에서 만들어진
+            // 잠금 창이 화면 뒤에서 묻다 실패하던 자리다. 앞으로 오면 `SlowRichApp` 이 묻는다.
             guard !lock.isUnlocked, !isAsking else { return }
             isAsking = true
-            await lock.unlock()
+            await lock.unlockAutomaticallyIfNeeded()
             isAsking = false
         }
     }

@@ -95,6 +95,9 @@ struct SlowRichApp: App {
             if phase == .background { lock.lock() }
             // 앱 전환기에 올라간 순간(`.inactive`)부터 가린다 (194번 P4).
             refreshCover(phase)
+            // 앞으로 왔으면 그때 한 번 묻는다 (195번). 잠금 창은 백그라운드에서 만들어져
+            // 거기서는 못 물었다.
+            if phase == .active { Task { await lock.unlockAutomaticallyIfNeeded() } }
             // **내려가기 전에 쓴다.** `.inactive` 부터 잡는다 — 앱 전환기에
             // 올라간 순간 사용자가 쓸어 올려 끝낼 수 있고, 그때는 `.background`
             // 가 안 올 수도 있다. 모아 둔 것이 없으면 아무 일도 안 한다.

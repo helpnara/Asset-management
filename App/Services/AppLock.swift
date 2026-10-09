@@ -1,6 +1,7 @@
 import LocalAuthentication
 import Observation
 import SwiftUI
+import UIKit
 
 /// Face ID 잠금과 금액 가리기.
 ///
@@ -31,9 +32,20 @@ final class AppLock {
 
     private var isAuthenticating = false
 
+    /// 잠긴 뒤 **아직 저절로 안 물었다** (195번).
+    ///
+    /// 잠금 화면은 뜨자마자 한 번 저절로 묻는다. 그런데 194번 P1 로 잠금이 별도 창이 되면서
+    /// 그 창이 **백그라운드로 내려가는 순간** 만들어졌고, 앱이 화면 뒤에 있는 채로 물어서
+    /// iOS 가 "지금은 창을 못 띄운다"(`notInteractive`)를 돌려줬다 — 돌아오면 누르지도 않았는데
+    /// 빨간 "인증에 실패했습니다" 가 떠 있었다. 이제 **앱이 앞에 나와 있을 때, 잠길 때마다 한 번만**
+    /// 묻는다. 한 번만이어야 한다 — Face ID 창을 취소하면 앱이 다시 앞으로 오는데, 그때마다 물으면
+    /// 취소해도 끝없이 다시 뜬다.
+    private var shouldAskAutomatically = false
+
     private init() {
         // 잠금을 안 켰으면 처음부터 열린 상태다.
         isUnlocked = !AppLock.isEnabled
+        shouldAskAutomatically = AppLock.isEnabled
     }
 
     static let enabledKey = "security.appLock"
@@ -61,6 +73,16 @@ final class AppLock {
         guard AppLock.isEnabled else { return }
         isUnlocked = false
         lastError = nil
+        shouldAskAutomatically = true
+    }
+
+    /// 앱이 앞에 나와 있으면, 잠긴 뒤 한 번만 저절로 묻는다 (195번). 잠금 화면이 뜰 때와
+    /// 앱이 앞으로 올 때 둘 다 부르고, 먼저 닿은 쪽이 묻는다.
+    func unlockAutomaticallyIfNeeded() async {
+        guard shouldAskAutomatically, !isUnlocked,
+              UIApplication.shared.applicationState == .active else { return }
+        shouldAskAutomatically = false
+        await unlock()
     }
 
     func unlock() async {
@@ -121,6 +143,9 @@ final class AppLock {
         }
         switch code {
         case .userCancel, .appCancel, .systemCancel:
+            return nil
+        // 앱이 화면 뒤에 있어 창을 못 띄웠다 — 사람이 실패한 것이 아니다 (195번).
+        case .notInteractive:
             return nil
         case .userFallback:
             return nil
