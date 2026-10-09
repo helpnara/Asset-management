@@ -138,7 +138,7 @@ struct MoreView: View {
                                 .foregroundStyle(Color.loss)
                             // 화면에서는 `목 · 실 · 감` 으로 적는다 (152번 1-5).
                             // `목실감` 은 진단 정보처럼 한 줄에 욱여넣는 곳에서만 쓴다.
-                            Text("토요일 점검, 목 · 실 · 감, 회고 알림이 오지 않습니다.")
+                            Text("주간 점검, 목 · 실 · 감, 회고 알림이 오지 않습니다.")
                                 .font(.scaled(11.5))
                                 .foregroundStyle(Color.muted)
                             if let url = URL(string: UIApplication.openSettingsURLString) {

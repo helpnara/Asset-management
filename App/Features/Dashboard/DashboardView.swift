@@ -6,6 +6,11 @@ struct DashboardView: View {
     // 금액 가리기는 UserDefaults 를 직접 읽는다. 여기서 @AppStorage 로 한 번
     // 더 붙잡아야 토글한 순간 이 화면이 다시 그려진다.
     @AppStorage(AmountPrivacy.key) private var hideAmounts = false
+    // 알림의 요일 · 시각 (195번 후속) — 더보기에서 바꾸면 그 자리에서 다시 그린다. 지켜보지 않으면
+    // 현황판은 탭을 오가도 살아 있어서 "토요일 10.10" 이 그대로 남았다.
+    @AppStorage(ReviewSettings.weekdayKey) private var reviewWeekday = ReviewSettings.defaultWeekday
+    @AppStorage(ReviewSettings.hourKey) private var reviewHour = ReviewSettings.defaultHour
+    @AppStorage(ReviewSettings.minuteKey) private var reviewMinute = ReviewSettings.defaultMinute
     // 주간 점검은 **숫자를 적어 넣는** 화면이라 보기 전용이면 열 이유가 없다.
     @Environment(\.canEdit) private var canEdit
     @Environment(\.self) private var environment
@@ -134,7 +139,8 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
         case .weekly:
             // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
-            sectionHeader("이번 주 점검", trailing: "\(ReviewSettings.weekdayName) \(DateText.short(reviewDay))")
+            sectionHeader("이번 주 점검",
+                          trailing: "\(ReviewSettings.dayName(reviewWeekday)) \(DateText.short(reviewDay))")
             weeklyBar
             planReviewNudge
         case .todos:
@@ -286,19 +292,20 @@ struct DashboardView: View {
         // 적을 수 없는 사람에게 D-3 을 들이밀지 않는다. 재촉으로만 읽힌다.
         if !canEdit { return "기록 대기 중" }
         // 알림에 정한 요일을 따른다 (194번 U4).
-        let days = ReviewSettings.daysUntilReviewDay()
-        return days == 0 ? "오늘이 점검일입니다" : "\(ReviewSettings.weekdayName)까지 D-\(days)"
+        let days = ReviewSettings.daysUntilReviewDay(weekday: reviewWeekday)
+        return days == 0 ? "오늘이 점검일입니다" : "\(ReviewSettings.dayName(reviewWeekday))까지 D-\(days)"
     }
 
     /// 이번 점검일 — 알림에 정한 요일. 오늘이 그날이면 오늘.
     private var reviewDay: Date {
-        ReviewSettings.upcomingReviewDay()
+        ReviewSettings.upcomingReviewDay(weekday: reviewWeekday)
     }
 
     private var weeklySubtitle: String {
         if streak == 0 {
-            return canEdit ? "매주 \(ReviewSettings.weekdayName) \(ReviewSettings.timeText)에 알려드립니다"
-                : "관리자가 매주 \(ReviewSettings.weekdayName)에 적습니다"
+            let day = ReviewSettings.dayName(reviewWeekday)
+            return canEdit ? "매주 \(day) \(ReviewSettings.clockText(hour: reviewHour, minute: reviewMinute))에 알려드립니다"
+                : "관리자가 매주 \(day)에 적습니다"
         }
         return "\(streak)주 연속 기록 중"
     }

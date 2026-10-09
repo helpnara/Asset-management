@@ -32,34 +32,47 @@ enum ReviewSettings {
     // 요일과 시각에" 라고 약속한다. 기록의 주(토요일 기준, `ReviewWeek`)는 그대로 두고,
     // 사람에게 말하는 날짜만 여기서 짓는다.
 
+    //
+    // **화면은 값을 넘겨 부른다** (195번 후속). 현황판처럼 계속 살아 있는 화면은 `@AppStorage` 로
+    // 요일 · 시각을 지켜보고 그 값을 넘겨야, 더보기에서 요일을 바꾼 순간 다시 그려진다. 값 없이
+    // 부르면 저장된 값을 읽는다 — 열 때마다 새로 그리는 화면(점검 완료)은 그것으로 충분하다.
+
     /// `토요일`
-    static var weekdayName: String {
+    static var weekdayName: String { dayName(weekday) }
+
+    static func dayName(_ weekday: Int) -> String {
         let names = ["일", "월", "화", "수", "목", "금", "토"]
         return names[((weekday - 1) % 7 + 7) % 7] + "요일"
     }
 
     /// `오전 9시` · `오후 8시 30분`
-    static var timeText: String {
+    static var timeText: String { clockText(hour: hour, minute: minute) }
+
+    static func clockText(hour: Int, minute: Int) -> String {
         let half = hour < 12 ? "오전" : "오후"
         let h12 = hour % 12 == 0 ? 12 : hour % 12
         return minute == 0 ? "\(half) \(h12)시" : "\(half) \(h12)시 \(minute)분"
     }
 
     /// 오늘부터 정한 요일까지 남은 날. 오늘이면 0.
-    static func daysUntilReviewDay(from date: Date = .now, calendar: Calendar = .app) -> Int {
+    static func daysUntilReviewDay(weekday: Int = ReviewSettings.weekday, from date: Date = .now,
+                                   calendar: Calendar = .app) -> Int {
         let today = calendar.component(.weekday, from: date)
         return ((weekday - today) % 7 + 7) % 7
     }
 
     /// 이번 점검일 — 오늘이 그 요일이면 오늘.
-    static func upcomingReviewDay(from date: Date = .now, calendar: Calendar = .app) -> Date {
-        calendar.date(byAdding: .day, value: daysUntilReviewDay(from: date, calendar: calendar),
+    static func upcomingReviewDay(weekday: Int = ReviewSettings.weekday, from date: Date = .now,
+                                  calendar: Calendar = .app) -> Date {
+        calendar.date(byAdding: .day,
+                      value: daysUntilReviewDay(weekday: weekday, from: date, calendar: calendar),
                       to: calendar.startOfDay(for: date)) ?? date
     }
 
     /// 다음 점검일 — 오늘 끝냈으면 다음 주 그 요일.
-    static func nextReviewDay(after date: Date = .now, calendar: Calendar = .app) -> Date {
-        let days = daysUntilReviewDay(from: date, calendar: calendar)
+    static func nextReviewDay(weekday: Int = ReviewSettings.weekday, after date: Date = .now,
+                              calendar: Calendar = .app) -> Date {
+        let days = daysUntilReviewDay(weekday: weekday, from: date, calendar: calendar)
         return calendar.date(byAdding: .day, value: days == 0 ? 7 : days,
                              to: calendar.startOfDay(for: date)) ?? date
     }
