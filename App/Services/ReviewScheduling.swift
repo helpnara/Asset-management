@@ -82,7 +82,7 @@ enum ReviewScheduling {
         }
 
         // 이번 주 점검일 다음날 같은 시각. 이미 지났으면 걸지 않는다.
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         guard
             let reviewDay = calendar.date(bySetting: .weekday, value: ReviewSettings.weekday, of: thisWeek)
                 ?? calendar.date(byAdding: .day, value: 0, to: thisWeek),

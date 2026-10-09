@@ -141,7 +141,7 @@ struct TodoListView: View {
     /// 90일 안으로 들어온 만기. 지난 것도 한 달까지는 남긴다 — 연장했는지
     /// 확인하지 않은 채 사라지면 그게 더 위험하다.
     private var upcomingMaturities: [Account] {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let today = calendar.startOfDay(for: .now)
         return members
             .flatMap(\.sortedAccounts)
@@ -155,7 +155,7 @@ struct TodoListView: View {
 
     private func daysUntilMaturity(_ account: Account) -> Int? {
         guard let date = account.maturesOn else { return nil }
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         return calendar.dateComponents([.day],
                                        from: calendar.startOfDay(for: .now),
                                        to: calendar.startOfDay(for: date)).day

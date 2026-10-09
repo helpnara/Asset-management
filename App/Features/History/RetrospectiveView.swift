@@ -27,6 +27,8 @@ struct RetrospectiveView: View {
     /// 이번 달에서 시작한다 (141번). 예전에는 지난달이라 열 때마다 8월이었다.
     @State private var monthOffset = 0
     @State private var yearOffset = 0
+    /// 알림 · 현황판 카드에서 왔으면 지난달에서 연다 (194번 D1).
+    @State private var route = AppRoute.shared
 
     private var period: Retrospective.Period {
         Retrospective.Period.containing(.now, scope: scope,
@@ -48,6 +50,16 @@ struct RetrospectiveView: View {
                 .pickerStyle(.segmented)
 
                 periodBar
+                    .onChange(of: route.retrospectiveFromLastMonth, initial: true) { _, fromLastMonth in
+                        guard fromLastMonth else { return }
+                        route.retrospectiveFromLastMonth = false
+                        scope = .month
+                        monthOffset = -1
+                        // 1월 1일이면 지난달은 작년 12월이다 — 연간으로 바꿔도 작년이 보이게.
+                        let lastMonth = Retrospective.Period.containing(.now, scope: .month, offset: -1)
+                        let thisYear = Retrospective.Period.containing(.now, scope: .year)
+                        yearOffset = lastMonth.start < thisYear.start ? -1 : 0
+                    }
                 RetrospectiveCard(summary: summary)
 
                 Button {

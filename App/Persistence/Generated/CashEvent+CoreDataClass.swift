@@ -23,7 +23,7 @@ class CashEvent: NSManagedObject, Identifiable {
     /// **Swift 가 적어 두었던 기본값을 그대로 넣는다.**
     ///
     /// 모델 파일(`.xcdatamodeld`)의 기본값은 리터럴만 담을 수 있어서,
-    /// `UUID()` · `Date.now` · 열거형 rawValue · `Calendar.current.component(...)`
+    /// `UUID()` · `Date.now` · 열거형 rawValue · `Calendar.app.component(...)`
     /// 같은 것은 자리만 채워 두었다(`0` · `""` · `00000000-…`). 진짜 값은 여기서 넣는다.
     ///
     /// **이걸 빠뜨리면 화면이 조용히 틀린 숫자를 보여 준다.** 실제로 `Plan.startYear`

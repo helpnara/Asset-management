@@ -29,7 +29,7 @@ public enum PrincipleRotation {
     /// 이 날짜가 속한 점검 주가 기준점에서 몇 번째 주인가.
     ///
     /// 기준점 이전이면 음수다 — 나머지 연산 쪽에서 접는다.
-    public static func weekIndex(for date: Date, calendar: Calendar = .current) -> Int {
+    public static func weekIndex(for date: Date, calendar: Calendar = .app) -> Int {
         let anchor = ReviewWeek.anchor(for: date, calendar: calendar)
         let days = calendar.dateComponents([.day], from: epochAnchor(calendar), to: anchor).day ?? 0
         // 정수 나눗셈은 0 쪽으로 자른다. 음수에서 -1 주와 0 주가 섞이지 않게
@@ -45,7 +45,7 @@ public enum PrincipleRotation {
     /// 한 바퀴 도는 데 걸리는 주는 `count / gcd(count, take)` 다.
     /// 16개에서 5개씩이면 16주, 30개에서 5개씩이면 6주.
     public static func indices(count: Int, take: Int, on date: Date,
-                               calendar: Calendar = .current) -> [Int] {
+                               calendar: Calendar = .app) -> [Int] {
         guard count > 0, take > 0 else { return [] }
         guard count > take else { return Array(0..<count) }
 
@@ -60,7 +60,7 @@ public enum PrincipleRotation {
 
     /// 이 날짜가 1970-01-01 에서 며칠째인가. 하루의 시작으로 잘라 센다 —
     /// 시각이 섞이면 같은 날인데 다른 수가 나온다.
-    public static func dayIndex(for date: Date, calendar: Calendar = .current) -> Int {
+    public static func dayIndex(for date: Date, calendar: Calendar = .app) -> Int {
         let epoch = calendar.startOfDay(for: Date(timeIntervalSince1970: 0))
         let day = calendar.startOfDay(for: date)
         return calendar.dateComponents([.day], from: epoch, to: day).day ?? 0
@@ -73,7 +73,7 @@ public enum PrincipleRotation {
     /// **하루 종일 같은 한 줄**이고, 가족의 기기가 같은 날 같은 문구를 보며,
     /// N개가 N일에 한 바퀴를 고르게 돈다.
     public static func index(count: Int, on date: Date,
-                            calendar: Calendar = .current) -> Int? {
+                            calendar: Calendar = .app) -> Int? {
         guard count > 0 else { return nil }
         let day = dayIndex(for: date, calendar: calendar)
         // 1970 이전이면 음수다 — 나머지를 0 이상으로 접는다.

@@ -38,7 +38,7 @@ struct DiaryCard: View {
 
     private enum Field: Hashable { case goal, result, gratitude }
 
-    private var today: Date { Calendar.current.startOfDay(for: .now) }
+    private var today: Date { Calendar.app.startOfDay(for: .now) }
     private var todayEntry: DiaryEntry? { entries.first { $0.day == today } }
 
     /// 오늘 일기의 글자 셋을 하나로 — **다른 기기에서 적은 것이 iCloud 로 내려오면**
@@ -204,6 +204,7 @@ struct DiaryCard: View {
 
     static func dayText(_ day: Date) -> String {
         let formatter = DateFormatter()
+        formatter.calendar = .app
         formatter.locale = Locale(identifier: "ko_KR")
         formatter.dateFormat = "M월 d일 EEEE"
         return formatter.string(from: day)

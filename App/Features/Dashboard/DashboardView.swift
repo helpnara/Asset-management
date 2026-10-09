@@ -126,7 +126,7 @@ struct DashboardView: View {
         case .principle:
             principleCard
         case .diary:
-            sectionHeader("오늘의 목 · 실 · 감", trailing: DiaryCard.dayText(Calendar.current.startOfDay(for: .now)))
+            sectionHeader("오늘의 목 · 실 · 감", trailing: DiaryCard.dayText(Calendar.app.startOfDay(for: .now)))
             DiaryCard(embedsTitle: false)
         case .hero:
             hero
@@ -341,7 +341,7 @@ struct DashboardView: View {
     /// 깔렸는데 증감은 0" 이 되어 수익이 가짜로 음수가 된다.
     private var attributionRows: [AttributionRow] {
         guard let plan, let latest = snapshots.last else { return [] }
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let monthly = plan.effectiveMonthlyContribution(members: members)
         let end = Money(minorUnits: latest.netWorthMinor, currency: .krw)
 
@@ -444,6 +444,7 @@ struct DashboardView: View {
         if summary.hasRecords {
             sectionHeader("지난달 회고", trailing: period.title)
             Button {
+                AppRoute.shared.retrospectiveFromLastMonth = true
                 AppRoute.shared.wantsRetrospective = true
                 AppRoute.shared.selectedTab = RootView.Tab.more
             } label: {
@@ -497,7 +498,7 @@ struct DashboardView: View {
     /// 오지 않는 것은 맨 뒤에 `—` 로.
     private var roadmapStops: [RoadmapStrip.Stop] {
         guard let plan, let projection else { return [] }
-        let thisYear = Calendar.current.component(.year, from: .now)
+        let thisYear = Calendar.app.component(.year, from: .now)
 
         var stops: [RoadmapStrip.Stop] = [
             .init(year: thisYear, amount: rollup.netWorth, label: "지금", isNow: true, isGoal: false)
@@ -540,7 +541,7 @@ struct DashboardView: View {
     /// 인생 이벤트(아이 대학 입학, 전세 만기 …)를 궤적의 x축 눈금으로 옮겼다.
     /// 로드맵에 섞으면 개수가 늘수록 뼈대가 길어진다 (docs/08-feedback.md 5번).
     private var milestoneMarks: [TrajectoryChart.EventMark] {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let thisYear = calendar.component(.year, from: .now)
         return userMilestones.compactMap { milestone in
             guard milestone.year >= thisYear,
@@ -556,7 +557,7 @@ struct DashboardView: View {
     /// 바닥나는 해. 정거장으로 넣지 않고 **머리글 아래 빨간 부제**로 뺀다 —
     /// 여섯 칸의 뼈대를 흔들지 않으면서, 일어난다면 가장 무거운 한 점이다.
     private var depletionYear: Int? {
-        projection?.depletion.map { Calendar.current.component(.year, from: $0) }
+        projection?.depletion.map { Calendar.app.component(.year, from: $0) }
     }
 
     @ViewBuilder
@@ -823,7 +824,7 @@ struct DashboardView: View {
 
     /// 앞으로 올 것 셋. 지난 것은 적지 않는다 — 현황판은 앞을 보는 화면이다.
     private var upcomingEvents: [LifeEvent] {
-        let thisYear = Calendar.current.component(.year, from: .now)
+        let thisYear = Calendar.app.component(.year, from: .now)
         // 예측은 한 번만 돌린다. 줄마다 부르면 세 번 돈다.
         let result = projection
         return userMilestones
@@ -862,11 +863,11 @@ struct DashboardView: View {
             // 기간 선택은 차트가 들고 있다. 창을 좁히면 목표선도 차트가 스스로 뺀다.
             TrajectoryChart(
                 points: trajectoryPoints,
-                today: Calendar.current.startOfDay(for: .now),
+                today: Calendar.app.startOfDay(for: .now),
                 targetMinor: plan?.targetAmountMinor ?? 0,
                 retirementDate: plan.map {
                     Plan.endDate(retirementYear: $0.retirementYear,
-                                 notBefore: Calendar.current.startOfDay(for: .now))
+                                 notBefore: Calendar.app.startOfDay(for: .now))
                 },
                 events: milestoneMarks
             )
@@ -936,7 +937,7 @@ struct DashboardView: View {
             line += " · 목표의 \(PercentFormatter.integer(ratio))%"
         }
         if let depletion = projection?.depletion {
-            line += " · \(String(Calendar.current.component(.year, from: depletion)))년 고갈"
+            line += " · \(String(Calendar.app.component(.year, from: depletion)))년 고갈"
         }
         return line
     }

@@ -167,7 +167,7 @@ struct TrajectoryChart: View {
     /// 누른 날짜에 가장 가까운 점을 계열마다 하나씩 찾아 한 줄로 적는다.
     /// 실제 기록은 주마다 있으니 60일 안, 예측·계획선은 분기 점이라 200일 안에서만.
     private func readout(at date: Date) -> String? {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         var parts: [String] = []
         var shownDate: Date?
         for series in [Point.Series.actual, .projected, .plan] {
@@ -270,7 +270,7 @@ struct TrajectoryChart: View {
                 // 축 라벨은 8pt 라서 그 한 글자가 눈금끼리 부딪히게 만든다.
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        Text(verbatim: "\(Calendar.current.component(.year, from: date))")
+                        Text(verbatim: "\(Calendar.app.component(.year, from: date))")
                             .font(.figure(8))
                             .foregroundStyle(Color.faint)
                     }
@@ -315,7 +315,7 @@ struct TrajectoryChart: View {
             return min(first, today)...max(retirementDate, today)
         }
         guard let years = span.years else { return nil }
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         guard
             let from = calendar.date(byAdding: .year, value: -years, to: today),
             let to = calendar.date(byAdding: .year, value: years, to: today)
@@ -367,7 +367,7 @@ struct TrajectoryChart: View {
     private var xStride: Int {
         guard let first = visiblePoints.first?.date, let last = visiblePoints.last?.date
         else { return 5 }
-        let years = Calendar.current.dateComponents([.year], from: first, to: last).year ?? 0
+        let years = Calendar.app.dateComponents([.year], from: first, to: last).year ?? 0
         switch years {
         case ..<3: return 1
         case ..<8: return 2

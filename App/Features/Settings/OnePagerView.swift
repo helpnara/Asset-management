@@ -531,7 +531,7 @@ struct OnePagerView: View {
             .filter { !$0.isArchived }
             .compactMap { account -> (String, Date)? in
                 guard let date = account.maturesOn, date >= today,
-                      let limit = Calendar.current.date(byAdding: .year, value: 1, to: today),
+                      let limit = Calendar.app.date(byAdding: .year, value: 1, to: today),
                       date <= limit
                 else { return nil }
                 return (account.weightLabel, date)
@@ -559,6 +559,6 @@ struct OnePagerView: View {
     }
 
     private func yearText(_ date: Date) -> String {
-        String(Calendar.current.component(.year, from: date))
+        String(Calendar.app.component(.year, from: date))
     }
 }

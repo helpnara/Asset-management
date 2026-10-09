@@ -482,7 +482,11 @@ extension BackupDocument {
     }
 
     var suggestedFileName: String {
+        // 기기 달력 · 지역과 상관없이 같은 모양 (194번 D2).
         let formatter = DateFormatter()
+        formatter.calendar = .app
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Calendar.app.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
         return "느린부자 백업 \(formatter.string(from: exportedAt)).json"
     }

@@ -66,7 +66,7 @@ extension Member {
     }
 
     var age: Int {
-        let now = Calendar.current.dateComponents([.year, .month], from: .now)
+        let now = Calendar.app.dateComponents([.year, .month], from: .now)
         guard let year = now.year, let month = now.month else { return 0 }
         return (year - birthYear) - (month < birthMonth ? 1 : 0)
     }
@@ -79,7 +79,7 @@ extension Member {
     ///
     /// 이미 지난 나이를 적어 두었으면 올해로 본다 — 과거로 은퇴시킬 수는 없다.
     var retirementYear: Int {
-        let thisYear = Calendar.current.component(.year, from: .now)
+        let thisYear = Calendar.app.component(.year, from: .now)
         return max(birthYear + targetRetirementAge, thisYear)
     }
 
@@ -130,7 +130,7 @@ extension Holding {
     /// **이번 주 점검에서 물어볼 종목인가** (docs/08-feedback.md 92번, B7).
     /// 매주는 늘, 고정은 안, 월 1회는 **그 달에 아직 안 적었으면**. 예전에는
     /// 고정만 건너뛰고 월 1회를 매주 세어 "내 몫 N건" 이 실제보다 컸다.
-    func isDue(asOf now: Date = .now, calendar: Calendar = .current) -> Bool {
+    func isDue(asOf now: Date = .now, calendar: Calendar = .app) -> Bool {
         switch cadence {
         case .weekly: return true
         case .fixed: return false
@@ -146,7 +146,7 @@ extension Holding {
     }
 
     /// 이번 주에 (누군가) 적었나.
-    func wasEntered(thisWeekOf now: Date = .now, calendar: Calendar = .current) -> Bool {
+    func wasEntered(thisWeekOf now: Date = .now, calendar: Calendar = .app) -> Bool {
         (lastEnteredAt ?? .distantPast) >= ReviewWeek.anchor(for: now, calendar: calendar)
     }
 

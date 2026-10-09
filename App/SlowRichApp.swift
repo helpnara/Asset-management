@@ -1,3 +1,4 @@
+import Core
 import CoreData
 import SwiftUI
 import UserNotifications
@@ -39,6 +40,21 @@ struct SlowRichApp: App {
         MainActor.assumeIsolated { ValuationCache.shared.start() }
     }
 
+    /// 잠금 · 가림막 창을 지금 상태에 맞춘다 (194번 P1 · P4).
+    ///
+    /// - 잠겨 있으면 잠금 화면
+    /// - 잠금을 켠 사람이 앱 전환기 · 제어 센터에 올렸으면 가림막(인증은 안 건드린다)
+    /// - 그 밖에는 걷는다. 잠금을 끈 사람에게는 가림막도 없다 — 열면 바로 보이는 앱이다
+    private func refreshCover(_ phase: ScenePhase) {
+        if !lock.isUnlocked {
+            LockWindow.shared.show(.lock)
+        } else if phase != .active && AppLock.isEnabled {
+            LockWindow.shared.show(.privacy)
+        } else {
+            LockWindow.shared.show(.none)
+        }
+    }
+
     /// CI 스크린샷은 매 실행마다 환영 화면에 막히면 안 되므로 실행 인자로 건너뛴다.
     private var needsOnboarding: Bool {
         !onboardingCompleted && !ProcessInfo.processInfo.arguments.contains("-skipOnboarding")
@@ -61,12 +77,15 @@ struct SlowRichApp: App {
 
                 // 잠금은 화면 위를 통째로 덮는다. 아래를 흐리게만 두면
                 // 앱 전환기 미리보기에 금액이 그대로 남는다.
+                // **진짜 잠금은 `LockWindow` 의 별도 창이다** (194번 P1) — 시트 · 알림창까지
+                // 덮는다. 이것은 그 창이 붙기 전 첫 화면을 덮는 안전망으로 남긴다.
                 if !lock.isUnlocked {
                     LockedOverlay()
-                        .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.15), value: lock.isUnlocked)
+            // 날짜 고르기 · 날짜 글자가 기기 달력(일본력 · 불기 …)을 따르지 않게 (194번 D2).
+            .environment(\.calendar, .app)
+            .onChange(of: lock.isUnlocked, initial: true) { _, _ in refreshCover(scenePhase) }
         }
         .onChange(of: scenePhase) { _, phase in
             // **`.background` 에서만 잠근다.** `.inactive` 는 앱 전환기·제어 센터뿐
@@ -74,6 +93,8 @@ struct SlowRichApp: App {
             // 스스로 판을 엎고, 시스템이 그 평가를 취소한다 — 실제로
             // "인증이 취소되었습니다" 가 반복해서 났다 (docs/08-feedback.md 4번).
             if phase == .background { lock.lock() }
+            // 앱 전환기에 올라간 순간(`.inactive`)부터 가린다 (194번 P4).
+            refreshCover(phase)
             // **내려가기 전에 쓴다.** `.inactive` 부터 잡는다 — 앱 전환기에
             // 올라간 순간 사용자가 쓸어 올려 끝낼 수 있고, 그때는 `.background`
             // 가 안 올 수도 있다. 모아 둔 것이 없으면 아무 일도 안 한다.

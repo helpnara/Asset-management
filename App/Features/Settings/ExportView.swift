@@ -259,7 +259,12 @@ struct ExportView: View {
 
     private var snapshotCSV: CSVFile {
         var lines = ["주차,순자산,투자자산,부채"]
+        // 기계가 읽는 날짜라 기기 달력 · 지역과 상관없이 같은 모양 (194번 D2).
+        // 불기 기기에서 `2569-10-03` 이 나오던 자리다.
         let formatter = DateFormatter()
+        formatter.calendar = .app
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Calendar.app.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
         for snapshot in snapshots {
             lines.append([

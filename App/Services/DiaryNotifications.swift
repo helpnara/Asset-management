@@ -48,7 +48,7 @@ enum DiaryNotifications {
     /// 오늘 일기에 글자가 하나라도 있나.
     @MainActor
     static func todayWritten(_ entries: [DiaryEntry]) -> Bool {
-        let today = Calendar.current.startOfDay(for: .now)
+        let today = Calendar.app.startOfDay(for: .now)
         return entries.contains {
             $0.day == today && !($0.goal.isEmpty && $0.result.isEmpty && $0.gratitude.isEmpty)
         }
@@ -68,7 +68,7 @@ enum DiaryNotifications {
         content.categoryIdentifier = Identifier.category
         content.sound = .default
 
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let now = Date.now
         let todayAt = calendar.date(bySettingHour: DiarySettings.hour, minute: DiarySettings.minute,
                                     second: 0, of: now) ?? now
@@ -77,7 +77,8 @@ enum DiaryNotifications {
             // 오늘 몫은 끝났다. 내일부터 7일, 같은 시각에 한 번씩.
             for offset in 1...Identifier.onceDays {
                 guard let day = calendar.date(byAdding: .day, value: offset, to: todayAt) else { continue }
-                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: day)
+                // 트리거는 날짜 숫자를 기기 달력으로 읽는다 (194번 D2).
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: day)
                 let request = UNNotificationRequest(
                     identifier: Identifier.once(offset), content: content,
                     trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))

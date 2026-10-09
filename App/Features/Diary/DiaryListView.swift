@@ -151,7 +151,7 @@ struct DiaryEditView: View {
             // 약속(`day` 비교)이 그래야 지켜진다. **이미 일기가 있는 날로는 못
             // 옮긴다** — 둘이 되면 현황판이 어느 쪽을 오늘로 보일지 정할 수 없다.
             .onChange(of: entry.day) { old, value in
-                let start = Calendar.current.startOfDay(for: value)
+                let start = Calendar.app.startOfDay(for: value)
                 if start != value { entry.day = start; return }
                 if reverting { reverting = false; return }
                 let taken = !context.all(DiaryEntry.self,

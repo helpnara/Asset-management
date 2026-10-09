@@ -18,8 +18,8 @@ struct RoadmapStopSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var year: Int { stop.year ?? Calendar.current.component(.year, from: .now) }
-    private var thisYear: Int { Calendar.current.component(.year, from: .now) }
+    private var year: Int { stop.year ?? Calendar.app.component(.year, from: .now) }
+    private var thisYear: Int { Calendar.app.component(.year, from: .now) }
 
     var body: some View {
         NavigationStack {

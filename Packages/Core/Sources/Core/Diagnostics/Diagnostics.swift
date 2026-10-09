@@ -530,7 +530,7 @@ public enum Diagnostics {
 
     /// 남은 달 계산에만 쓴다. 입력에 월을 따로 받지 않는다.
     private static var monthOfYear: Int {
-        Calendar.current.component(.month, from: .now)
+        Calendar.app.component(.month, from: .now)
     }
 
     // MARK: - 6) 선저축 비율

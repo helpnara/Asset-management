@@ -16,7 +16,7 @@ struct MemberEditView: View {
     /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
     @State private var nameOnOpen: String?
 
-    private let years = Array((1930...Calendar.current.component(.year, from: .now)).reversed())
+    private let years = Array((1930...Calendar.app.component(.year, from: .now)).reversed())
 
     /// 폼이 보여 주는 은퇴 목표 **연도** — 적어 둔 나이를 그대로 더한 값이다.
     ///
@@ -55,7 +55,7 @@ struct MemberEditView: View {
     /// 올해부터 생년 + 90년까지. 적어 둔 값이 이미 그보다 앞서 있으면
     /// 아래쪽을 거기까지 넓힌다 — 범위 밖 값이 들어간 스테퍼는 조작이 막힌다.
     private var retirementYearRange: ClosedRange<Int> {
-        let thisYear = Calendar.current.component(.year, from: .now)
+        let thisYear = Calendar.app.component(.year, from: .now)
         let lower = min(thisYear, enteredRetirementYear)
         let upper = max(member.birthYear + 90, lower + 1)
         return lower...upper
@@ -495,7 +495,7 @@ struct AccountEditView: View {
             get: { account.maturesOn != nil },
             set: { on in
                 account.maturesOn = on
-                    ? (Calendar.current.date(byAdding: .year, value: 1, to: .now) ?? .now)
+                    ? (Calendar.app.date(byAdding: .year, value: 1, to: .now) ?? .now)
                     : nil
             }
         )
@@ -512,8 +512,8 @@ struct AccountEditView: View {
         guard let date = account.maturesOn else {
             return "ISA·예적금처럼 기한이 있는 계좌에 적습니다. 1페이지 푸터의 `임박한 만기` 와 할 일 목록이 이 날짜를 읽습니다."
         }
-        let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now),
-                                                   to: Calendar.current.startOfDay(for: date)).day ?? 0
+        let days = Calendar.app.dateComponents([.day], from: Calendar.app.startOfDay(for: .now),
+                                                   to: Calendar.app.startOfDay(for: date)).day ?? 0
         if days < 0 { return "만기가 \(-days)일 지났습니다. 연장했다면 날짜를 새로 적어 주세요." }
         if days == 0 { return "오늘이 만기입니다." }
         return "\(days)일 남았습니다. 90일 안으로 들어오면 챙길 것 목록에 함께 뜹니다."

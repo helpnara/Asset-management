@@ -68,7 +68,7 @@ public struct MonteCarloResult: Sendable, Hashable {
 /// 이 둘을 섞지 않는 것이 중요하다.
 public enum MonteCarlo {
 
-    public static func run(_ input: MonteCarloInput, calendar: Calendar = .current) -> MonteCarloResult {
+    public static func run(_ input: MonteCarloInput, calendar: Calendar = .app) -> MonteCarloResult {
         let base = input.base
         let currency = base.startingBalance.currency
         let months = calendar.dateComponents([.month], from: base.startDate, to: base.endDate).month ?? 0

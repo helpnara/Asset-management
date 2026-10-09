@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import UserNotifications
 
@@ -38,15 +39,17 @@ enum TodoNotifications {
                             repeatsYearly: item.repeatsYearly)
             }
 
-            let calendar = Calendar.current
+            let calendar = Calendar.app
             self.maturities = accounts.compactMap { account in
                 guard !account.isGone, !account.isArchived, let matures = account.maturesOn else { return nil }
                 // 30일 전에 알린다. 이미 30일 안이면 만기 당일에라도 알린다.
                 let early = calendar.date(byAdding: .day, value: -30, to: matures) ?? matures
                 let fireDate = early > .now ? early : matures
                 guard fireDate > .now else { return nil }
+                // 잠긴 화면에 뜨는 제목이라 **계좌 이름은 안 넣는다** (194번 P7) — 기관명이
+                // 들어간 이름이 흔하다. 누구의 어떤 종류인지만.
                 let owner = account.owner?.name ?? ""
-                let name = account.name.isEmpty ? account.kind.label : account.name
+                let name = account.kind.label
                 return Item(id: account.id,
                             title: owner.isEmpty ? name : "\(owner) · \(name)",
                             dueDate: fireDate,
@@ -64,7 +67,7 @@ enum TodoNotifications {
             .filter { $0.hasPrefix(prefix) || $0.hasPrefix(maturityPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: existing)
 
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         for item in input.items {
             // 지난 기한에는 걸지 않는다. 해마다 되돌아오는 것만 다음 해로 민다.
             var due = item.dueDate
@@ -88,7 +91,8 @@ enum TodoNotifications {
                 content.body = "더보기 → 챙길 것에서 확인하세요."
                 content.sound = .default
 
-                var components = calendar.dateComponents([.year, .month, .day], from: fireDate)
+                // 트리거는 날짜 숫자를 기기 달력으로 읽는다 — 그 달력으로 뽑는다 (194번 D2).
+                var components = Calendar.current.dateComponents([.year, .month, .day], from: fireDate)
                 components.hour = 9
                 components.minute = 0
 
@@ -107,7 +111,7 @@ enum TodoNotifications {
             content.body = "연장할지 옮길지 정해 두세요. 자산 탭에서 계좌를 열면 날짜가 보입니다."
             content.sound = .default
 
-            var components = calendar.dateComponents([.year, .month, .day], from: item.dueDate)
+            var components = Calendar.current.dateComponents([.year, .month, .day], from: item.dueDate)
             components.hour = 9
             components.minute = 0
 

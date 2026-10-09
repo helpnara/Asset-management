@@ -111,7 +111,7 @@ enum DiagnosticReport {
         let auth = await ReviewNotifications.authorizationStatus()
         let pending = await center.pendingNotificationRequests()
         lines.append("알림 권한: \(authLabel(auth)) · 걸려 있는 알림 \(pending.count)개")
-        lines.append("주간 점검 알림: \(Calendar.current.weekdaySymbols[max(0, min(6, ReviewSettings.weekday - 1))]) \(String(format: "%02d:%02d", ReviewSettings.hour, ReviewSettings.minute)) · 목실감 \(DiarySettings.enabled ? "켬" : "끔") · 회고 \(UserDefaults.standard.object(forKey: RetrospectiveNotifications.enabledKey) == nil || UserDefaults.standard.bool(forKey: RetrospectiveNotifications.enabledKey) ? "켬" : "끔")")
+        lines.append("주간 점검 알림: \(Calendar.app.weekdaySymbols[max(0, min(6, ReviewSettings.weekday - 1))]) \(String(format: "%02d:%02d", ReviewSettings.hour, ReviewSettings.minute)) · 목실감 \(DiarySettings.enabled ? "켬" : "끔") · 회고 \(UserDefaults.standard.object(forKey: RetrospectiveNotifications.enabledKey) == nil || UserDefaults.standard.bool(forKey: RetrospectiveNotifications.enabledKey) ? "켬" : "끔")")
         return lines.joined(separator: "\n")
     }
 

@@ -88,7 +88,7 @@ enum SampleData {
         dadIRP.annualContributionMinor = 1_800_000
         // 만기가 있는 계좌. 1페이지 푸터의 `임박한 만기` 가 이걸 읽는다
         // (docs/08-feedback.md 28번). **날짜도 예시다.**
-        dadIRP.maturesOn = Calendar.current.date(byAdding: .day, value: 96, to: .now)
+        dadIRP.maturesOn = Calendar.app.date(byAdding: .day, value: 96, to: .now)
         holding("채권 혼합형", .bond, .fund, "KR", .accumulating, .monthly, 18_500_000, dadIRP, 0, context)
 
         // 받을 돈 — 종목 자리에 빌려준 사람들이 늘어선다. 비중·목표가 없는
@@ -161,7 +161,7 @@ enum SampleData {
 
         // 유의사항 · 할 일 — 전부 예시다.
         let limitTodo = TodoItem(context: context, title: "연금저축 한도 채우기", category: .limit, sortIndex: 0)
-        limitTodo.dueDate = Calendar.current.date(byAdding: .day, value: 26, to: .now)
+        limitTodo.dueDate = Calendar.app.date(byAdding: .day, value: 26, to: .now)
         limitTodo.repeatsYearly = true
         limitTodo.detail = "12월 말까지 넣어야 올해 세액공제에 들어갑니다."
 
@@ -169,7 +169,7 @@ enum SampleData {
         taxTodo.detail = "미국 세적이라 한국 상장 ETF 는 PFIC 로 분류됩니다."
 
         let leaseTodo = TodoItem(context: context, title: "전세 만기 6개월 전 알아보기", category: .deadline, sortIndex: 2)
-        leaseTodo.dueDate = Calendar.current.date(byAdding: .day, value: 120, to: .now)
+        leaseTodo.dueDate = Calendar.app.date(byAdding: .day, value: 120, to: .now)
 
         // 운용 원칙 — **기본 열여섯을 그대로 넣는다.** 1페이지가 가장 꽉 차는
         // 경우라, CI 스크린샷이 "한 장에 들어가나" 를 최악의 조건에서 보여준다
@@ -190,16 +190,16 @@ enum SampleData {
         for (kind, subject, summary, daysAgo) in logs {
             let log = ChangeLog(context: context, kind: kind, subject: subject, summary: summary,
                                 actor: kind == .structure ? "엄마" : "아빠")
-            log.at = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+            log.at = Calendar.app.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
         }
 
         // 직접 찍은 마일스톤
         // 구성원에게 붙은 마일스톤. 현황판 `인생 이벤트` 줄이 그 해 나이를
         // 함께 적는지 스크린샷으로 본다 (docs/08-feedback.md 32번).
-        let college = UserMilestone(context: context, year: Calendar.current.component(.year, from: .now) + 14,
+        let college = UserMilestone(context: context, year: Calendar.app.component(.year, from: .now) + 14,
                                     label: "첫째 대학 입학", sortIndex: 0, memberID: son.id)
 
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let deposit = CashEvent(context: context,
             date: calendar.date(byAdding: .month, value: 3, to: .now) ?? .now,
             label: "전월세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
@@ -215,7 +215,7 @@ enum SampleData {
     /// 이번 주는 일부러 비워 둬서 "지금 입력" 상태를 확인할 수 있게 한다.
     private static func seedPastReviews(members: [Member], into context: NSManagedObjectContext) {
         let thisWeek = ReviewWeek.anchor(for: .now)
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let weeklyCount = members
             .flatMap { $0.sortedAccounts }
             .flatMap { $0.sortedHoldings }
@@ -316,7 +316,7 @@ enum SampleData {
         holding.lastEnteredValueMinor = sortIndex % 2 == 0
             ? valueMinor - valueMinor / 40      // 이번 주 상승
             : valueMinor + valueMinor / 60      // 이번 주 하락
-        holding.lastEnteredAt = Calendar.current.date(byAdding: .day, value: -7, to: .now)
+        holding.lastEnteredAt = Calendar.app.date(byAdding: .day, value: -7, to: .now)
         // 왜 샀나 (186번). 체험 자료에도 넣어 둔다 — 빈 구역만 보면 이 칸이
         // 무엇을 담는 자리인지 알 수 없다. `(며칠 전, 적은 말)` 로 준다.
         for (daysAgo, body) in reasons {
@@ -324,7 +324,7 @@ enum SampleData {
             note.body = body
             note.actor = "아빠"
             note.holding = holding
-            note.at = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+            note.at = Calendar.app.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
         }
     }
 }

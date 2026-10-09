@@ -200,7 +200,7 @@ struct ReviewCompleteView: View {
     /// 이 점검 주에 넘긴 선들. 지난 점검을 열어 봐도 그 주의 것이 나온다.
     @ViewBuilder
     private var celebrations: some View {
-        let weekEnd = Calendar.current.date(byAdding: .day, value: 7, to: session.weekAnchor) ?? session.weekAnchor
+        let weekEnd = Calendar.app.date(byAdding: .day, value: 7, to: session.weekAnchor) ?? session.weekAnchor
         let items = logs.filter { $0.kind == .milestone && $0.at >= session.weekAnchor && $0.at < weekEnd }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
@@ -210,10 +210,13 @@ struct ReviewCompleteView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("🎉")
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.subject)
+                            // 금액 가리기를 거친다 (194번 P2) — 변경 이력(192번 D)과 같은 규칙.
+                            Text(ChangeLogView.shown(item.subject, of: item.kind, isSubject: true,
+                                                     hidden: hideAmounts))
                                 .font(.scaled(14, weight: .bold))
                                 .foregroundStyle(Color.ink)
-                            Text(item.summary)
+                            Text(ChangeLogView.shown(item.summary, of: item.kind, isSubject: false,
+                                                     hidden: hideAmounts))
                                 .font(.scaled(11))
                                 .foregroundStyle(Color.muted)
                         }

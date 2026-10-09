@@ -39,7 +39,7 @@ extension IncomeStream {
         self.init(context: context)
         self.label = label
         self.monthlyAmountMinor = monthlyAmountMinor
-        self.startYear = startYear ?? (Calendar.current.component(.year, from: .now) + 20)
+        self.startYear = startYear ?? (Calendar.app.component(.year, from: .now) + 20)
         self.sortIndex = sortIndex
     }
 }
@@ -65,14 +65,14 @@ extension CashEvent {
     /// **오늘 이후 날짜인가** (188번). 오늘 당일은 아니다 — 오늘 받은 것은 오늘
     /// 적은 잔고에 들어 있다. 앞으로의 궤적 · 1페이지 · `이미 반영됨` 토글이
     /// 모두 이 하나로 가른다. `Projection.eventMonth` 와 같은 날짜 견주기다.
-    func isUpcoming(now: Date = .now, calendar: Calendar = .current) -> Bool {
+    func isUpcoming(now: Date = .now, calendar: Calendar = .app) -> Bool {
         calendar.startOfDay(for: date) > calendar.startOfDay(for: now)
     }
 
     /// 앞으로의 궤적에 실제로 들어가는가 — 오늘 이후이고, 미리 받아 넣어 둔
     /// 것이 아닐 때. 궤적 끝(지평선) 밖인지는 궤적을 굴려 봐야 알므로 여기서
     /// 보지 않는다.
-    func countsForward(now: Date = .now, calendar: Calendar = .current) -> Bool {
+    func countsForward(now: Date = .now, calendar: Calendar = .app) -> Bool {
         isUpcoming(now: now, calendar: calendar) && !isAlreadyReflected
     }
 }
@@ -258,7 +258,7 @@ extension Plan {
     var targetAmount: Money { Money(minorUnits: targetAmountMinor, currency: .krw) }
 
     var yearsToRetirement: Int {
-        max(retirementYear - Calendar.current.component(.year, from: .now), 0)
+        max(retirementYear - Calendar.app.component(.year, from: .now), 0)
     }
 
     /// 오늘 잔고에서 은퇴 시점까지 굴린다.
@@ -270,7 +270,7 @@ extension Plan {
         cashEvents: [CashEvent] = [],
         incomes: [IncomeStream] = [],
         members: [Member] = [],
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> ProjectionResult {
         Projection.run(
             projectionInput(from: balance, cashEvents: cashEvents, incomes: incomes,
@@ -315,7 +315,7 @@ extension Plan {
     /// 쓴다 (85번). 은퇴 해를 넘겨 그려야 할 때(정거장이 그 사람 은퇴 뒤면)
     /// `through` 로 끝 해를 늘린다.
     func memberProjection(_ member: Member, balance: Money, monthlyMinor: Int,
-                          through year: Int? = nil, calendar: Calendar = .current) -> ProjectionResult {
+                          through year: Int? = nil, calendar: Calendar = .app) -> ProjectionResult {
         Projection.run(memberProjectionInput(member, balance: balance, monthlyMinor: monthlyMinor,
                                              through: year, calendar: calendar),
                        calendar: calendar)
@@ -325,7 +325,7 @@ extension Plan {
     /// 건넬 수 있고, `Hashable` 이라 `.task(id:)` 의 열쇠가 된다 (157번).
     func memberProjectionInput(_ member: Member, balance: Money, monthlyMinor: Int,
                                through year: Int? = nil,
-                               calendar: Calendar = .current) -> ProjectionInput {
+                               calendar: Calendar = .app) -> ProjectionInput {
         let now = calendar.startOfDay(for: .now)
         let endYear = max(member.retirementYear, year ?? member.retirementYear)
         return ProjectionInput(
@@ -349,7 +349,7 @@ extension Plan {
         incomes: [IncomeStream] = [],
         members: [Member] = [],
         asOf: Date? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> ProjectionInput {
         // `asOf` 는 **계획선**이 쓴다 (docs/08-feedback.md 37번) — 계획을 세운
         // 날에서 출발해 굴려야 "그때 계획대로면 지금쯤 여기" 가 나온다.
@@ -492,7 +492,7 @@ extension Plan {
 
     /// 은퇴 연도만 바꾼 종료 시점. 시뮬레이션에서 기간 손잡이가 쓴다.
     static func endDate(retirementYear: Int, notBefore start: Date,
-                        calendar: Calendar = .current) -> Date {
+                        calendar: Calendar = .app) -> Date {
         let end = calendar.date(from: DateComponents(year: retirementYear, month: 12, day: 31)) ?? start
         return max(end, start)
     }
@@ -506,7 +506,7 @@ extension Plan {
         accounts: [Account],
         projection: ProjectionResult?,
         members: [Member] = [],
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> DiagnosticsInput {
         // 진단의 "은퇴 시점 예상"은 궤적의 끝이 아니라 **은퇴 시점**이어야 한다.
         // 인출 구간까지 그리기 시작하면서 끝값이 은퇴 후 30년 뒤 잔고가 됐다.

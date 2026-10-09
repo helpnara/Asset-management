@@ -21,7 +21,7 @@ enum PlanTrack {
     /// 수립일 이후 첫 기록이 없으면 가장 이른 기록에서 출발한다 — 계획을
     /// 나중에 적었더라도 견줄 선은 있는 편이 낫다.
     static func anchor(plan: Plan?, snapshots: [Snapshot],
-                       calendar: Calendar = .current) -> (date: Date, balance: Money)? {
+                       calendar: Calendar = .app) -> (date: Date, balance: Money)? {
         let sorted = snapshots.sorted { $0.weekAnchor < $1.weekAnchor }
         guard !sorted.isEmpty else { return nil }
         let startedOn = plan?.startedOn.map { calendar.startOfDay(for: $0) }
@@ -38,7 +38,7 @@ enum PlanTrack {
     /// 재현이 아니다 — 그래도 견줄 선이 하나도 없는 것보다 낫다.
     static func projection(plan: Plan?, snapshots: [Snapshot], cashEvents: [CashEvent],
                            incomes: [IncomeStream], members: [Member],
-                           calendar: Calendar = .current) -> ProjectionResult? {
+                           calendar: Calendar = .app) -> ProjectionResult? {
         guard let plan, let anchor = anchor(plan: plan, snapshots: snapshots, calendar: calendar)
         else { return nil }
         let input = plan.projectionInput(from: anchor.balance, cashEvents: cashEvents,
@@ -52,7 +52,7 @@ enum PlanTrack {
     /// **그 날짜 자리**의 값이어야 한다. 연 단위로 읽으면 그 해의 마지막 점,
     /// 즉 12월 값이라 연초에 보면 몇 달치를 앞질러 견주게 된다.
     static func onPlan(_ projection: ProjectionResult, at date: Date,
-                       calendar: Calendar = .current) -> Money? {
+                       calendar: Calendar = .app) -> Money? {
         // 점 사이의 목돈을 날짜대로 맞춰 읽는다 (188번) — `ProjectionResult.nominal(at:)`.
         projection.nominal(at: date, calendar: calendar)
     }
@@ -70,7 +70,7 @@ enum PlanTrack {
     }
 
     static func gap(_ projection: ProjectionResult?, actual: Money, at date: Date = .now,
-                    calendar: Calendar = .current) -> Gap? {
+                    calendar: Calendar = .app) -> Gap? {
         guard let projection, let onPlan = onPlan(projection, at: date, calendar: calendar)
         else { return nil }
         let delta = actual - onPlan
@@ -97,7 +97,7 @@ enum PlanTrack {
     /// 봐야 한다 — 기대수익률 · 물가 · 목표 금액 · 연금 예상액. 지금은 그럴
     /// 계기가 없어서, 처음 적은 가정이 20년을 그대로 간다.
     static func yearsSincePlanReview(_ plan: Plan?, asOf: Date = .now,
-                                     calendar: Calendar = .current) -> Int? {
+                                     calendar: Calendar = .app) -> Int? {
         guard let plan else { return nil }
         let last = plan.updatedAt ?? plan.createdAt
         let years = calendar.dateComponents([.year], from: last, to: asOf).year ?? 0

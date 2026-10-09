@@ -23,7 +23,7 @@ struct IncomeStreamEditView: View {
         _hasEnd = State(initialValue: stream.endYear > 0)
     }
 
-    private var currentYear: Int { Calendar.current.component(.year, from: .now) }
+    private var currentYear: Int { Calendar.app.component(.year, from: .now) }
 
     var body: some View {
         // 지운 객체를 시트가 내려가며 한 번 더 그리다 죽지 않게 (189번).

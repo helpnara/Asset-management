@@ -350,7 +350,7 @@ public struct ProjectionResult: Sendable, Hashable {
     /// 10/12 까지 계획 값에 안 보였다 — "계획보다 7천만 앞서 있습니다".
     /// 반대로 달 수를 내림해 한 달 일찍 점에 들어간 목돈은 날짜가 오기 전까지
     /// 뺀다. 목돈이 그 사이 번 수익은 맞추지 않는다 — 한 달 치라 작다.
-    public func nominal(at date: Date, calendar: Calendar = .current) -> Money? {
+    public func nominal(at date: Date, calendar: Calendar = .app) -> Money? {
         let day = calendar.startOfDay(for: date)
         guard let index = points.lastIndex(where: { $0.date <= day }) else { return nil }
         var value = points[index].nominal
@@ -368,7 +368,7 @@ public struct ProjectionResult: Sendable, Hashable {
     }
 
     /// 그 해에 속한 마지막 지점. 로드맵 타임라인이 연도별로 읽는다.
-    public func point(inYear year: Int, calendar: Calendar = .current) -> ProjectionPoint? {
+    public func point(inYear year: Int, calendar: Calendar = .app) -> ProjectionPoint? {
         points.last { calendar.component(.year, from: $0.date) == year }
     }
 }
@@ -386,7 +386,7 @@ public enum Projection {
     /// 은퇴 이후의 인출은 아직 다루지 않는다. 연금 소득 모델이 들어와야
     /// "생활비 − 연금"을 뺄 수 있고, 그전에 추정하면 틀린 숫자를 크게 보여주게 된다.
     /// 그래서 `endDate` 를 은퇴 시점으로 두고 거기서 멈춘다.
-    public static func run(_ input: ProjectionInput, calendar: Calendar = .current) -> ProjectionResult {
+    public static func run(_ input: ProjectionInput, calendar: Calendar = .app) -> ProjectionResult {
         // **굴릴 수 없는 입력이면 돌아선다** (159번). 예전에는 그냥 굴리다가
         // 복리가 `Int` 를 넘는 순간 앱이 멈췄고, 그 자료가 저장돼 있으면
         // 켤 때마다 멈춰 고칠 기회조차 없었다.

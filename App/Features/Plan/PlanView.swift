@@ -598,7 +598,7 @@ struct PlanView: View {
     private func depletionRow(_ plan: Plan, _ result: ProjectionResult) -> some View {
         if plan.monthlyRetirementSpending.minorUnits > 0 {
             if let depletion = result.depletion {
-                let year = Calendar.current.component(.year, from: depletion)
+                let year = Calendar.app.component(.year, from: depletion)
                 LabeledContent("자산 고갈") {
                     Text(verbatim: "\(year)년 (은퇴 \(year - plan.retirementYear)년 뒤)")
                         .font(.figure(13, weight: .medium))
@@ -620,7 +620,7 @@ struct PlanView: View {
         return "\(PercentFormatter.oneDecimal(ratio))%"
     }
 
-    private var currentYear: Int { Calendar.current.component(.year, from: .now) }
+    private var currentYear: Int { Calendar.app.component(.year, from: .now) }
 
     private var currentBalance: Money {
         ValuationCache.shared.familyRollUp(holdings).netWorth

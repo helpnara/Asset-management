@@ -8,7 +8,7 @@ import Foundation
 public enum ReviewWeek {
 
     /// 그 날짜가 속한 점검 주의 토요일.
-    public static func anchor(for date: Date, calendar: Calendar = .current) -> Date {
+    public static func anchor(for date: Date, calendar: Calendar = .app) -> Date {
         let startOfDay = calendar.startOfDay(for: date)
         // Foundation weekday: 1 = 일요일 … 7 = 토요일
         let daysSinceSaturday = calendar.component(.weekday, from: startOfDay) % 7
@@ -16,13 +16,13 @@ public enum ReviewWeek {
     }
 
     /// 다음 점검일(토요일).
-    public static func nextSaturday(after date: Date, calendar: Calendar = .current) -> Date {
+    public static func nextSaturday(after date: Date, calendar: Calendar = .app) -> Date {
         let current = anchor(for: date, calendar: calendar)
         return calendar.date(byAdding: .day, value: 7, to: current) ?? current
     }
 
     /// 점검일까지 남은 일수. 오늘이 토요일이면 0.
-    public static func daysUntilReview(from date: Date, calendar: Calendar = .current) -> Int {
+    public static func daysUntilReview(from date: Date, calendar: Calendar = .app) -> Int {
         let startOfDay = calendar.startOfDay(for: date)
         let weekday = calendar.component(.weekday, from: startOfDay)
         return (7 - weekday) % 7
@@ -36,7 +36,7 @@ public enum ReviewWeek {
     public static func streak(
         completedAnchors: [Date],
         asOf: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> Int {
         let completed = Set(completedAnchors.map { anchor(for: $0, calendar: calendar) })
         guard !completed.isEmpty else { return 0 }

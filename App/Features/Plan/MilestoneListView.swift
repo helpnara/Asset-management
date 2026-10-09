@@ -137,7 +137,7 @@ struct MilestoneEditView: View {
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
-    private var currentYear: Int { Calendar.current.component(.year, from: .now) }
+    private var currentYear: Int { Calendar.app.component(.year, from: .now) }
 
     /// `Picker` 는 옵셔널 태그를 직접 못 다룬다. 바인딩으로 감싼다.
     private var memberSelection: Binding<UUID?> {

@@ -23,7 +23,7 @@ enum Retrospective {
         let end: Date
 
         var title: String {
-            let calendar = Calendar.current
+            let calendar = Calendar.app
             let year = calendar.component(.year, from: start)
             switch scope {
             case .month: return "\(year)년 \(calendar.component(.month, from: start))월"
@@ -33,7 +33,7 @@ enum Retrospective {
 
         /// 오늘이 속한 기간에서 `offset` 만큼 앞뒤로.
         static func containing(_ date: Date, scope: Scope, offset: Int = 0,
-                               calendar: Calendar = .current) -> Period {
+                               calendar: Calendar = .app) -> Period {
             let component: Calendar.Component = scope == .month ? .month : .year
             let parts: Set<Calendar.Component> = scope == .month ? [.year, .month] : [.year]
             let base = calendar.date(from: calendar.dateComponents(parts, from: date)) ?? date
@@ -42,7 +42,7 @@ enum Retrospective {
             return Period(scope: scope, start: start, end: end)
         }
 
-        func shifted(by delta: Int, calendar: Calendar = .current) -> Period {
+        func shifted(by delta: Int, calendar: Calendar = .app) -> Period {
             Period.containing(start, scope: scope, offset: delta, calendar: calendar)
         }
 
@@ -104,7 +104,7 @@ enum Retrospective {
         diary: [DiaryEntry],
         logs: [ChangeLog],
         asOf now: Date = .now,
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> Summary {
         let sorted = snapshots.sorted { $0.weekAnchor < $1.weekAnchor }
         let base = sorted.last { $0.weekAnchor < period.start }

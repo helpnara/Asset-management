@@ -55,6 +55,10 @@ targets:
         # 없어서 `com.apple.LocalAuthentication 오류 -6` 이 났다
         # (docs/08-feedback.md 4번).
         NSFaceIDUsageDescription: 가족 자산 기록을 열 때 본인 확인에 씁니다.
+        # **이게 없으면 공유 시트의 "이미지 저장" 에서 앱이 죽는다** (194번 P6).
+        # 회고 그림 공유(`UIActivityViewController` 에 그림을 넘김)가 그 단추를 띄운다.
+        # 저장만 하고 읽지는 않으므로 "추가" 권한 하나면 된다.
+        NSPhotoLibraryAddUsageDescription: 회고 그림을 사진 앱에 저장할 때 씁니다.
         # **초대 링크가 이 앱으로 오게 하는 조건** (4차 2b). 이게 없으면 iOS 는
         # 링크를 눌러도 이 앱을 후보로 안 본다 — 앱은 열리지도 않고, 사용자는
         # "링크가 안 된다" 만 본다.
@@ -71,7 +75,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich
         # App Store Connect 에 이미 "1.0" 트레인이 있다. "1.0.0" 으로 쓰면
         # 다른 트레인이 하나 더 생긴다.
-        MARKETING_VERSION: "1.0"
+        MARKETING_VERSION: "1.0.1"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
         # 1 = iPhone, 2 = iPad. 2026-09-10 부터 둘 다 (로드맵 M7 1단계) —

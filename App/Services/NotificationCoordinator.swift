@@ -48,6 +48,7 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
         }
         // 월간 회고 알림 → 더보기의 회고 화면 (86번).
         if category == RetrospectiveNotifications.category {
+            AppRoute.shared.retrospectiveFromLastMonth = true
             AppRoute.shared.wantsRetrospective = true
             AppRoute.shared.selectedTab = RootView.Tab.more
             return
@@ -70,6 +71,13 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
     private static func recordTotalOnly(_ text: String, container: NSPersistentContainer) {
         let digits = String(text.filter(\.isNumber).prefix(15))
         guard let value = Int(digits), value > 0 else { return }
+        // **보기 전용이면 적지 않는다** (194번 E8). 주간 점검 화면은 막혀 있는데 이 길만
+        // 열려 있었다 — 서버는 거부해도 이 기기에만 다른 총액의 점이 영구히 남았다.
+        let sharing = FamilySharing.shared.state
+        if sharing.isParticipant && !sharing.role.canEdit {
+            AppRoute.shared.totalOnlyMessage = "보기 전용이라 기록하지 않았습니다. 이번 주 점검은 편집 권한이 있는 가족이 적습니다."
+            return
+        }
 
         let context = container.viewContext
         let anchor = ReviewWeek.anchor(for: .now)

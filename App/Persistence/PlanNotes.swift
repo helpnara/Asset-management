@@ -11,7 +11,7 @@ extension UserMilestone {
     convenience init(context: NSManagedObjectContext, year: Int? = nil, label: String = "", sortIndex: Int = 0, memberID: UUID? = nil) {
         self.init(context: context)
         self.memberID = memberID
-        self.year = year ?? (Calendar.current.component(.year, from: .now) + 5)
+        self.year = year ?? (Calendar.app.component(.year, from: .now) + 5)
         self.label = label
         self.sortIndex = sortIndex
     }
@@ -69,7 +69,7 @@ extension TodoItem {
     /// 기한까지 남은 날. 기한이 없으면 nil, 지났으면 음수.
     var daysRemaining: Int? {
         guard let dueDate else { return nil }
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         return calendar.dateComponents([.day],
                                        from: calendar.startOfDay(for: .now),
                                        to: calendar.startOfDay(for: dueDate)).day
@@ -117,7 +117,7 @@ extension Scenario {
         self.monthlyMinor = monthlyMinor
         self.retirementYear = retirementYear > 0
             ? retirementYear
-            : Calendar.current.component(.year, from: .now) + 23
+            : Calendar.app.component(.year, from: .now) + 23
         self.returnBP = returnBP
         self.volatilityBP = volatilityBP
         self.projectedMinor = projectedMinor

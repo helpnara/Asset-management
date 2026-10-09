@@ -21,7 +21,7 @@ enum OnePagerBuilder {
         todos: [TodoItem],
         snapshots: [Snapshot] = [],
         today: Date = .now,
-        calendar: Calendar = .current
+        calendar: Calendar = .app
     ) -> OnePagerView {
         let rollup = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
         let projection = plan?.projection(from: rollup.netWorth, cashEvents: cashEvents,

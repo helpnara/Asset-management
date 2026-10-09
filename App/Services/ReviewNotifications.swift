@@ -25,7 +25,8 @@ enum ReviewNotifications {
         let quickTotal = UNTextInputNotificationAction(
             identifier: Action.quickTotal,
             title: "총액만 기록",
-            options: [],
+            // 잠긴 폰에서 남이 총액을 적어 가족 전체로 퍼뜨리지 못하게 (194번 P7).
+            options: [.authenticationRequired],
             textInputButtonTitle: "기록",
             textInputPlaceholder: "총자산 (원)"
         )
@@ -103,6 +104,7 @@ enum ReviewNotifications {
         content.categoryIdentifier = Identifier.category
         content.sound = .default
 
+        // 트리거는 날짜 숫자를 기기 달력으로 읽는다 — 그 달력으로 뽑는다 (194번 D2).
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let request = UNNotificationRequest(
             identifier: Identifier.followUp,

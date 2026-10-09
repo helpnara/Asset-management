@@ -108,7 +108,7 @@ struct ChangeLogView: View {
 
     /// 날짜별로 묶는다. 하루에 여러 줄이 쌓이므로 날짜가 머리글로 서야 읽힌다.
     private var groups: [Group] {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         var order: [Date] = []
         var byDay: [Date: [ChangeLog]] = [:]
         for log in logs {
@@ -120,7 +120,7 @@ struct ChangeLogView: View {
     }
 
     private func dayText(_ date: Date) -> String {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         if calendar.isDateInToday(date) { return "오늘" }
         if calendar.isDateInYesterday(date) { return "어제" }
         return DateText.fullWithWeekday(date)

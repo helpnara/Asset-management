@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// **화면의 날짜는 세 모양** (docs/08-feedback.md 192번 H).
@@ -18,25 +19,25 @@ import Foundation
 /// 모양이 바뀌지 않고, 어느 스레드에서 불러도 된다.
 enum DateText {
     /// `2026.09.29`
-    static func full(_ date: Date, calendar: Calendar = .current) -> String {
+    static func full(_ date: Date, calendar: Calendar = .app) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return "\(parts.year ?? 0).\(twoDigits(parts.month))." + twoDigits(parts.day)
     }
 
     /// `09.29`
-    static func short(_ date: Date, calendar: Calendar = .current) -> String {
+    static func short(_ date: Date, calendar: Calendar = .app) -> String {
         let parts = calendar.dateComponents([.month, .day], from: date)
         return "\(twoDigits(parts.month))." + twoDigits(parts.day)
     }
 
     /// `화`
-    static func weekday(_ date: Date, calendar: Calendar = .current) -> String {
+    static func weekday(_ date: Date, calendar: Calendar = .app) -> String {
         let index = calendar.component(.weekday, from: date) - 1   // 1 = 일요일
         return weekdays.indices.contains(index) ? weekdays[index] : ""
     }
 
     /// `2026.09.29 (화)`
-    static func fullWithWeekday(_ date: Date, calendar: Calendar = .current) -> String {
+    static func fullWithWeekday(_ date: Date, calendar: Calendar = .app) -> String {
         "\(full(date, calendar: calendar)) (\(weekday(date, calendar: calendar)))"
     }
 

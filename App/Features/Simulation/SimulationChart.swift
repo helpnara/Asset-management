@@ -161,7 +161,7 @@ struct SimulationChart: View {
                 // 축 라벨은 8pt 라서 그 한 글자가 눈금끼리 부딪히게 만든다.
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        Text(verbatim: "\(Calendar.current.component(.year, from: date))")
+                        Text(verbatim: "\(Calendar.app.component(.year, from: date))")
                             .font(.figure(8))
                             .foregroundStyle(Color.faint)
                     }
@@ -209,7 +209,7 @@ struct SimulationChart: View {
     private var xStride: Int {
         let dates = series.flatMap { $0.points.map(\.date) }
         guard let first = dates.min(), let last = dates.max() else { return 5 }
-        let years = Calendar.current.dateComponents([.year], from: first, to: last).year ?? 0
+        let years = Calendar.app.dateComponents([.year], from: first, to: last).year ?? 0
         return years < 8 ? 2 : (years < 32 ? 5 : 10)
     }
 }

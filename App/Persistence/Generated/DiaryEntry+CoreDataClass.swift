@@ -20,6 +20,6 @@ class DiaryEntry: NSManagedObject, Identifiable {
         super.awakeFromInsert()
         id = UUID()
         createdAt = Date.now
-        day = Calendar.current.startOfDay(for: .now)
+        day = Calendar.app.startOfDay(for: .now)
     }
 }

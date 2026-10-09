@@ -23,6 +23,10 @@ final class AppRoute {
     var wantsDiagnostics = false
     /// 월간 회고 알림이나 현황판 카드를 누르면 더보기 탭의 회고 화면까지 밀어 넣는다 (86번).
     var wantsRetrospective = false
+    /// 회고 화면을 **지난달에서** 열라는 표시 (194번 D1). 알림 · 현황판 카드는 이름이
+    /// "지난달 회고" 인데 화면은 141번 이후 이번 달에서 시작해서, 1일 아침에 누르면
+    /// 기록 없는 새 달이 열렸다. 더보기에서 직접 열 때는 세우지 않는다 — 이번 달 그대로.
+    var retrospectiveFromLastMonth = false
     /// 현황판의 오늘의 운용 원칙을 누르면 더보기 탭의 원칙 목록까지 밀어 넣는다 (148번).
     var wantsPrinciples = false
     /// 현황판의 챙길 것 카드를 누르면 더보기 탭의 챙길 것 목록까지 밀어 넣는다 (172번).

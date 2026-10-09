@@ -8,7 +8,7 @@ import Foundation
 public enum DiaryStreak {
 
     /// - Parameter days: 글이 있는 날들. 시각이 섞여 있어도 된다 — 자정으로 맞춰 센다.
-    public static func count(days: [Date], asOf: Date, calendar: Calendar = .current) -> Int {
+    public static func count(days: [Date], asOf: Date, calendar: Calendar = .app) -> Int {
         let written = Set(days.map { calendar.startOfDay(for: $0) })
         guard !written.isEmpty else { return 0 }
 

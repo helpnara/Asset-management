@@ -20,11 +20,11 @@ struct NationalPensionEstimatorView: View {
     @State private var birthYear: Int
     @Fetched(sort: \Member.sortIndex) private var members: [Member]
 
-    private var currentYear: Int { Calendar.current.component(.year, from: .now) }
+    private var currentYear: Int { Calendar.app.component(.year, from: .now) }
 
     init(stream: IncomeStream) {
         self.stream = stream
-        let year = Calendar.current.component(.year, from: .now)
+        let year = Calendar.app.component(.year, from: .now)
         _firstYear = State(initialValue: year - 15)
         _lastYear = State(initialValue: year + 10)
         _birthYear = State(initialValue: year - 45)

@@ -80,11 +80,11 @@ struct MemberTrajectoryView: View {
                 .foregroundStyle(Color.bodyText)
             TrajectoryChart(
                 points: points,
-                today: Calendar.current.startOfDay(for: .now),
+                today: Calendar.app.startOfDay(for: .now),
                 targetMinor: 0,
                 retirementDate: Plan.endDate(
                     retirementYear: retirementYear,
-                    notBefore: Calendar.current.startOfDay(for: .now)
+                    notBefore: Calendar.app.startOfDay(for: .now)
                 ),
                 events: events
             )
@@ -97,7 +97,7 @@ struct MemberTrajectoryView: View {
     /// 가족 전체의 일(전세 만기 등)은 현황판 궤적에 있으므로 여기서는 뺀다 —
     /// 한 사람의 화면에 가족 일까지 세우면 눈금만 늘어난다.
     private var events: [TrajectoryChart.EventMark] {
-        let calendar = Calendar.current
+        let calendar = Calendar.app
         let thisYear = calendar.component(.year, from: .now)
         return userMilestones.compactMap { milestone in
             guard milestone.memberID == member.id, milestone.year >= thisYear,
@@ -119,7 +119,7 @@ struct MemberTrajectoryView: View {
             // 예측은 연 단위로만 남긴다. 매달 찍으면 선이 두꺼워지기만 한다.
             var seenYear = -1
             for point in projection.points {
-                let year = Calendar.current.component(.year, from: point.date)
+                let year = Calendar.app.component(.year, from: point.date)
                 guard year != seenYear else { continue }
                 seenYear = year
                 result.append(.init(date: point.date,
@@ -196,7 +196,7 @@ struct MemberTrajectoryView: View {
 
     /// 가구 공통 은퇴 연도. 화면에 함께 적어 두 값이 다르다는 것을 보인다.
     private var householdRetirementYear: Int {
-        plan?.retirementYear ?? Calendar.current.component(.year, from: .now) + 23
+        plan?.retirementYear ?? Calendar.app.component(.year, from: .now) + 23
     }
 
     private var currentBalance: Money {
