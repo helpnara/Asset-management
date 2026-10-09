@@ -120,6 +120,8 @@ project.yml      XcodeGen 명세. .xcodeproj는 여기서 생성한다
 - **화면의 날짜는 `DateText`** 로 (192번) — `2026.09.29` · `09.29` · `(화)`. 화면마다
   `DateFormatter` 를 만들다 같은 날짜가 세 모양이 됐다.
 - **실제 금액·기관명·계좌 정보를 커밋하지 않는다.** 테스트 픽스처와 문서의 숫자는 예시다.
+  **사용자가 보낸 화면 사진의 숫자도 실제 금액이다** — 문서에 옮길 때 예시로 바꾼다.
+  저장소가 public 이라 커밋하면 이력에 남는다 (194번 P3, 10-09 에 다섯 자리를 예시로 바꿨다).
 - **저장 계층은 Core Data다** (4차에서 SwiftData에서 옮겼다 — [09-family-sharing](docs/09-family-sharing.md)).
   SwiftData는 `CKShare` 공유를 못 해서, 가족 공유를 하려면 옮길 수밖에 없었다.
   화면에서 쓰는 것은 `@Fetched`(속은 `@FetchRequest`, 겉은 `[T]`)와
