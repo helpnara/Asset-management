@@ -299,7 +299,11 @@ struct RetrospectiveCard: View {
             ForEach(summary.milestones, id: \.self) { title in
                 HStack(spacing: 6) {
                     Text("🎉")
-                    Text(title)
+                    // 화면에서는 금액 가리기를 거친다 (195번 · 194번 P2 의 빠진 자리). "5억을 넘었습니다"
+                    // 가 가리기를 켜도 보였다. 공유 그림(`forPrint`)은 다른 숫자처럼 그대로.
+                    Text(forPrint ? title
+                         : ChangeLogView.shown(title, of: .milestone, isSubject: true,
+                                               hidden: AmountPrivacy.isHidden))
                         .font(.scaled(12, weight: .medium))
                         .foregroundStyle(ink)
                 }
