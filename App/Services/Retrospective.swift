@@ -114,7 +114,12 @@ enum Retrospective {
         if let base, let last, let plan {
             let days = calendar.dateComponents([.day], from: base.weekAnchor, to: last.weekAnchor).day ?? 0
             let lumps = cashEvents
-                .filter { $0.date > base.weekAnchor && $0.date <= last.weekAnchor }
+                // 날짜로 견준다 — 목돈은 만든 시각을 들고 있어서, 기준 토요일 오후에 받은
+                // 목돈이 빠지거나 두 번 세였다. 예상선(`eventMonth`)과 같은 규칙 (194번 3단계).
+                .filter {
+                    let day = calendar.startOfDay(for: $0.date)
+                    return day > base.weekAnchor && day <= last.weekAnchor
+                }
                 .reduce(Money.zero(.krw)) { $0 + $1.amount }
             attribution = ChangeAttribution.estimate(
                 from: Money(minorUnits: base.netWorthMinor, currency: .krw),

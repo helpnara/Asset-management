@@ -619,6 +619,15 @@ struct SimulationView: View {
         }
     }
 
+    /// 은퇴 해 말의 액면가를 오늘 돈으로 (194번 E3). 저장된 시나리오에는 액면가만 있다.
+    private func todayMoney(_ nominal: Money, retirementYear: Int, plan: Plan) -> Money {
+        let calendar = Calendar.app
+        let now = Date.now
+        let end = Plan.endDate(retirementYear: retirementYear, notBefore: calendar.startOfDay(for: now))
+        let months = max(calendar.dateComponents([.month], from: now, to: end).month ?? 0, 0)
+        return nominal.scaled(by: Decimal(1) / Projection.deflator(annual: plan.inflation, months: months))
+    }
+
     private struct CompareRow: Identifiable {
         let id: String
         let name: String
@@ -671,7 +680,9 @@ struct SimulationView: View {
                             .font(.figure(11.5, weight: .semibold))
                             .foregroundStyle(Color.ink)
                         if plan.targetAmountMinor > 0 {
-                            let ratio = Decimal(row.projected.minorUnits) / Decimal(plan.targetAmountMinor)
+                            // 목표는 오늘 돈 — 은퇴 해 말의 액면가를 오늘 돈으로 바꿔 견준다 (194번 E3).
+                            let real = todayMoney(row.projected, retirementYear: row.retirementYear, plan: plan)
+                            let ratio = Decimal(real.minorUnits) / Decimal(plan.targetAmountMinor)
                             Text("목표의 \(PercentFormatter.integer(ratio))%")
                                 .font(.figure(8.5))
                                 .foregroundStyle(Color.faint)

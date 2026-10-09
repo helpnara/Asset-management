@@ -285,7 +285,27 @@ extension Plan {
     /// `monthlyContributionMinor` 를 직접 읽으면 구성원별로 나눠 넣는 집에서
     /// 계획에 남은 옛 값(대개 0)을 보게 된다 — 시뮬레이션 손잡이와 현황판
     /// 한 줄이 그렇게 어긋나 있었다.
+    ///
+    /// **회사 매칭을 더한다** (194번 E4). 09-06 결정은 "궤적 · 시뮬레이션은 본인 + 회사
+    /// 합계" — 실제로 그만큼 쌓이기 때문이다. 구성원 궤적 · 1페이지는 합계였는데 가족
+    /// 궤적 · 계획선 · 시뮬레이션만 본인 몫이라, 매칭이 있는 집의 궤적이 낮게 그려졌다.
+    /// 저축률 진단은 내 소득에서 나가는 돈만 봐야 하므로 `ownMonthlyContribution` 을 쓴다.
     func effectiveMonthlyContribution(members: [Member]) -> Money {
+        guard usesMemberContributions else { return monthlyContribution }
+        return Money(minorUnits: members.reduce(0) { $0 + $1.monthlyContributionMinor + $1.employerMatchMinor },
+                     currency: .krw)
+    }
+
+    /// 가족 월 소득 — 구성원마다 적은 월급 · 기타 수입의 합, 아무도 안 적었으면 계획의 한 칸.
+    /// 진단과 궤적(`수익 > 연봉`)이 같은 값을 쓴다.
+    func familyMonthlyIncomeMinor(_ members: [Member]) -> Int {
+        let memberIncome = members.reduce(0) { $0 + $1.monthlySalaryMinor + $1.otherIncomeMinor }
+        return memberIncome > 0 ? memberIncome : monthlyIncomeMinor
+    }
+
+    /// **본인 부담만** — 저축률(선저축 비율) 진단이 쓴다. 회사가 넣어 주는 돈을 내 저축으로
+    /// 세면 저축률이 실제보다 높게 나온다 (09-06 결정).
+    func ownMonthlyContribution(members: [Member]) -> Money {
         guard usesMemberContributions else { return monthlyContribution }
         return Money(minorUnits: members.reduce(0) { $0 + $1.monthlyContributionMinor },
                      currency: .krw)
@@ -303,11 +323,17 @@ extension Plan {
             return member.monthlyContributionMinor + member.employerMatchMinor
         }
         let mine = member.netTotalMinor
-        guard familyTotal.minorUnits > 0, mine > 0 else { return 0 }
+        // **나누는 몫은 순자산이 양수인 사람끼리** (194번 E6). 음수인 사람(주담대만 있는
+        // 사람)은 0 을 받는데 분모에는 그 음수가 들어가 있어서, 몫의 합이 100% 를 넘었다
+        // (엄마 6억 · 아빠 −1억이면 엄마 120%). 가구의 구성원을 알면 양수끼리 더한다.
+        let family = (member.household?.members as? Set<Member>)?.filter { !$0.isGone }
+        let positiveTotal = family.map { $0.reduce(0) { $0 + max($1.netTotalMinor, 0) } }
+            ?? familyTotal.minorUnits
+        guard positiveTotal > 0, mine > 0 else { return 0 }
         // 정수로만 센다 (ADR-0003 — 금액에 Double 을 쓰지 않는다).
         // **비중을 먼저** 내도 `mine × 10,000` 이 먼저 넘칠 수 있다 (159번).
         // `SafeMath.share` 가 넘칠 때만 `Decimal` 로 돌아간다.
-        let shareBP = SafeMath.share(mine, times: 10_000, over: familyTotal.minorUnits)
+        let shareBP = SafeMath.share(mine, times: 10_000, over: positiveTotal)
         return SafeMath.share(monthlyContributionMinor, times: shareBP, over: 10_000)
     }
 
@@ -335,7 +361,11 @@ extension Plan {
             monthlyContribution: Money(minorUnits: monthlyMinor, currency: .krw),
             annualReturn: annualReturn,
             annualContributionGrowth: contributionGrowth,
-            inflation: inflation
+            inflation: inflation,
+            // **그 사람의 은퇴 해에서 적립을 멈춘다** (194번 3단계). 정거장이 은퇴 뒤면
+            // 끝 해를 늘려 그리는데, 은퇴 날짜를 안 넘겨서 그 해까지 적립이 이어졌다.
+            retirementDate: Plan.endDate(retirementYear: member.retirementYear, notBefore: now,
+                                         calendar: calendar)
         )
     }
 
@@ -386,7 +416,9 @@ extension Plan {
             inflation: inflation,
             cashEvents: pending,
             targetAmount: targetAmountMinor > 0 ? targetAmount : nil,
-            annualIncome: Money(minorUnits: SafeMath.share(monthlyIncomeMinor, times: 12, over: 1),
+            // 진단과 같은 규칙 — 구성원 소득이 있으면 그 합이 먼저다 (194번 3단계).
+            // 예전에는 계획의 한 칸만 봐서, 구성원 월급만 적은 집은 `수익 > 연봉` 이 안 떴다.
+            annualIncome: Money(minorUnits: SafeMath.share(familyMonthlyIncomeMinor(members), times: 12, over: 1),
                                 currency: .krw),
             retirementDate: retirement,
             monthlyRetirementSpending: monthlyRetirementSpending,
@@ -525,9 +557,7 @@ extension Plan {
         // **소득은 구성원 합이 먼저다** (docs/05-roadmap.md 마지막 묶음 3).
         // 사람마다 월급·기타 수입을 적었으면 그 합이 가족 월 소득이고, 아무도 안
         // 적었으면 예전처럼 계획의 한 칸을 쓴다.
-        let memberIncome = members.reduce(0) { $0 + $1.monthlySalaryMinor + $1.otherIncomeMinor }
-        let familyIncome = Money(minorUnits: memberIncome > 0 ? memberIncome : monthlyIncomeMinor,
-                                 currency: .krw)
+        let familyIncome = Money(minorUnits: familyMonthlyIncomeMinor(members), currency: .krw)
 
         // **세 든 집** — 전월세보증금 계좌의 매매가·월세. 둘 이상이면 합으로 본다.
         let homes = accounts.filter { $0.kind == .leaseDeposit && !$0.isArchived }
@@ -548,7 +578,8 @@ extension Plan {
             driftingHoldings: members.reduce(0) { $0 + $1.driftingHoldingCount(tolerance: driftTolerance) },
             untargetedHoldings: members.reduce(0) { $0 + $1.untargetedHoldingCount },
             totalHoldings: members.reduce(0) { $0 + $1.investableHoldingCount },
-            monthlyContribution: effectiveMonthlyContribution(members: members),
+            // 저축률은 본인 부담만 (194번 E4).
+            monthlyContribution: ownMonthlyContribution(members: members),
             savingsFloor: savingsFloor,
             annualReturn: annualReturn,
             illiquidCap: illiquidCap,

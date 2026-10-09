@@ -171,8 +171,10 @@ public enum MonteCarlo {
 
                 if isAccumulating[month] {
                     balances[inflowIndex] += contribution + event
+                    Projection.coverShortfall(&balances, at: inflowIndex, order: drawdownOrder)
                 } else {
                     balances[inflowIndex] += event
+                    Projection.coverShortfall(&balances, at: inflowIndex, order: drawdownOrder)
                     // 투자자산부터 꺼낸다. 예상선과 같은 순서다.
                     var remaining = withdrawalByMonth[month]
                     for index in drawdownOrder where remaining > 0 {
@@ -187,8 +189,8 @@ public enum MonteCarlo {
                 for index in balances.indices {
                     let logReturn = drifts[index] + (index == volatileIndex ? monthlySigma * shock : 0)
                     balances[index] *= exp(logReturn)
-                    // 음수 목돈(큰 지출)이 잔고보다 크면 마이너스가 된다. 빚으로
-                    // 굴러가지는 않는다 — 예상선도 같은 규칙이다.
+                    // 음수는 위에서 다른 덩어리로 메웠다(`coverShortfall`) — 예상선과 같은
+                    // 규칙이다 (194번 E7). 그래도 혹시 남으면 빚으로 굴리지 않는다.
                     if balances[index] < 0 { balances[index] = 0 }
                 }
                 if month % 12 == 0 { contribution *= contributionStep }
@@ -218,7 +220,11 @@ public enum MonteCarlo {
 
         var success: Double?
         if let target = base.targetAmount, !target.isZero {
+            // **목표는 오늘 돈** (194번 E3) — 은퇴 달의 액면가와 견주려면 그때까지의
+            // 물가만큼 올린다. 예상선의 마일스톤과 같은 기준이다.
+            let retirementDeflator = Projection.deflator(annual: base.inflation, months: retirementMonth)
             let threshold = Double(target.minorUnits)
+                * NSDecimalNumber(decimal: retirementDeflator).doubleValue
             success = Double(atRetirement.filter { $0 >= threshold }.count) / Double(atRetirement.count)
         }
         // 인출 구간이 있을 때만 뜻이 있다. 적립만 하면 바닥날 일이 없다.

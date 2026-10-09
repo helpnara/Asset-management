@@ -934,7 +934,8 @@ struct DashboardView: View {
         let real = Won.compact(end.real)
         var line = "이대로 가면 \(String(plan.retirementYear))년에 \(nominal) · 오늘 돈으로 \(real)"
         if plan.targetAmountMinor > 0 {
-            let ratio = Decimal(end.nominal.minorUnits) / Decimal(plan.targetAmountMinor)
+            // 목표는 오늘 돈이라 **오늘 돈으로** 견준다 (194번 E3) — 진단(52번)과 같은 기준.
+            let ratio = Decimal(end.real.minorUnits) / Decimal(plan.targetAmountMinor)
             line += " · 목표의 \(PercentFormatter.integer(ratio))%"
         }
         if let depletion = projection?.depletion {

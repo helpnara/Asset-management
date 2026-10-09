@@ -63,13 +63,14 @@ struct NationalPensionTests {
         #expect(estimate.replacementBP == 4325)
     }
 
-    // 1985~1997 → 1988~1997 (10년, 전부 2.4). 24000 × 5,589,062 × 240 / (1000·240·12·10) = 1,117,812.4
-    @Test("1988년 전은 가입 기간이 아니다 · 딱 10년이면 된다")
+    // 1985~1997 → 1988~1997 (10년, 전부 2.4). 10년이면 기본연금액의 50% (194번 E2).
+    // 24000 × 5,589,062 × 120 / (1000·240·12·10) = 558,906.2 → 558,906
+    @Test("1988년 전은 가입 기간이 아니다 · 딱 10년이면 된다 · 그때는 절반")
     func schemeStart() throws {
         let estimate = try #require(NationalPension.estimate(
             averageMonthlyIncome: krw(2_500_000), firstYear: 1985, lastYear: 1997))
         #expect(estimate.years == 10)
-        #expect(estimate.monthly.minorUnits == 1_117_812)
+        #expect(estimate.monthly.minorUnits == 558_906)
         #expect(estimate.replacementBP == 8000)
     }
 
@@ -91,6 +92,21 @@ struct NationalPensionTests {
         // 119개월은 연금이 아니다.
         #expect(NationalPension.estimate(averageMonthlyIncome: krw(3_000_000),
                                          firstYear: 2012, lastYear: 2045, months: 119) == nil)
+    }
+
+    // 가입 10~20년은 50% + 10년 넘는 1년마다 5% = 월수/240 (194번 E2). 파이썬으로 따로 계산.
+    // 2026~2040 (15년, 180개월), B = 300만. Σ상수 = 19,350.
+    // 19350 × 6,089,062 × 180 / (1000·240·12·15) = 490,930.62375 → 490,931 (예전 식은 654,574)
+    // 2026~2035 (10년) 은 327,287 — 20년(654,574)의 정확히 절반.
+    @Test("가입 20년 미만이면 그만큼 줄어든다")
+    func underTwentyYears() throws {
+        let fifteen = try #require(NationalPension.estimate(
+            averageMonthlyIncome: krw(3_000_000), firstYear: 2026, lastYear: 2040))
+        #expect(fifteen.years == 15)
+        #expect(fifteen.monthly.minorUnits == 490_931)
+        let ten = try #require(NationalPension.estimate(
+            averageMonthlyIncome: krw(3_000_000), firstYear: 2026, lastYear: 2035))
+        #expect(ten.monthly.minorUnits == 327_287)
     }
 
     @Test("수령 개시 나이 — 1969년생부터 65세")

@@ -96,6 +96,7 @@ public struct ProjectionInput: Sendable, Hashable {
     public var inflation: Ratio
     public var cashEvents: [CashEventInput]
     /// 마일스톤 판정에 쓴다. nil이면 목표 도달을 찾지 않는다.
+    /// **오늘 돈 기준이다** — 예상의 실질 값과 견준다 (194번 E3).
     public var targetAmount: Money?
     /// 오늘 돈 기준 연 소득. `수익 > 연봉` 마일스톤에만 쓴다.
     /// 0이면 그 마일스톤을 찾지 않는다.
@@ -468,6 +469,7 @@ public enum Projection {
                 // 적립 구간 — 월초에 넣고 그 달 수익을 받는다.
                 contributedByYear[year, default: .zero(base)] += contribution
                 balances[inflowIndex] += contribution + event
+                coverShortfall(&balances, at: inflowIndex, order: order, base: base)
                 if month % 12 == 0 {
                     contribution = contribution.scaled(by: contributionStep)
                 }
@@ -478,9 +480,9 @@ public enum Projection {
                 // 물가(deflator)를 곱해 액면가로 올린다. 이걸 빼먹으면 30년 뒤에도
                 // 지금 생활비로 살 수 있다는 거짓말이 된다.
                 let withdrawal = monthlyWithdrawal(input, year: year, deflator: deflator, base: base)
-                if !withdrawal.isZero { withdrawnByYear[year, default: .zero(base)] += withdrawal }
 
                 balances[inflowIndex] += event
+                coverShortfall(&balances, at: inflowIndex, order: order, base: base)
 
                 // **투자자산부터 꺼낸다.** 전월세보증금은 꺼내 쓸 수 있는 돈이
                 // 아니므로 마지막이다. 전부 비면 그 달이 고갈 시점이다.
@@ -491,6 +493,11 @@ public enum Projection {
                     balances[index] -= Money(minorUnits: take, currency: base)
                     remaining -= Money(minorUnits: take, currency: base)
                 }
+                // **실제로 꺼낸 만큼만** 그 해 인출로 센다 (194번 E5). 바닥난 뒤 못 꺼낸
+                // 몫까지 세면 "수익 = 연말 − 연초 − 적립 − 목돈 + 인출" 이 그만큼 부풀어,
+                // 수익률 0% 에도 "자랄 돈" 이 생기고 가짜 `수익 > 연봉` 이 찍혔다.
+                let taken = withdrawal - remaining
+                if !taken.isZero { withdrawnByYear[year, default: .zero(base)] += taken }
                 if remaining.minorUnits > 0, depletion == nil { depletion = date }
             }
 
@@ -520,7 +527,8 @@ public enum Projection {
         var result = ProjectionResult(
             points: points,
             years: years,
-            milestones: milestones(in: years, input: input),
+            milestones: milestones(in: years, realEndByYear: realEndByYear(points, calendar: calendar),
+                                   input: input),
             depletion: depletion
         )
         result.appliedEvents = applied
@@ -603,7 +611,17 @@ public enum Projection {
         return summaries
     }
 
-    private static func milestones(in years: [YearSummary], input: ProjectionInput) -> [Milestone] {
+    /// 해마다 마지막 점의 **오늘 돈** 값.
+    private static func realEndByYear(_ points: [ProjectionPoint], calendar: Calendar) -> [Int: Money] {
+        var result: [Int: Money] = [:]
+        for point in points.dropFirst() {
+            result[calendar.component(.year, from: point.date)] = point.real
+        }
+        return result
+    }
+
+    private static func milestones(in years: [YearSummary], realEndByYear: [Int: Money],
+                                   input: ProjectionInput) -> [Milestone] {
         var result: [Milestone] = []
 
         // 첫 해는 부분 연도라 적립이 덜 들어간다. 판정에서 뺀다.
@@ -634,8 +652,10 @@ public enum Projection {
             }
         }
 
+        // **목표는 오늘 돈이다** (194번 E3). 154번부터 목표는 생활비로 계산한 오늘 돈
+        // 기준 값인데 액면가와 견줘서, 물가만큼 부푼 숫자로 일찍 "목표 달성" 이 찍혔다.
         if let target = input.targetAmount, !target.isZero,
-           let hit = years.first(where: { $0.endBalance >= target }) {
+           let hit = years.first(where: { (realEndByYear[$0.year] ?? $0.endBalance) >= target }) {
             result.append(Milestone(kind: .targetReached, year: hit.year, balance: hit.endBalance))
         }
 
@@ -647,6 +667,48 @@ public enum Projection {
     /// 12제곱근은 `Decimal` 로 구할 수 없어 `Double` 을 거친다. 금액이 아니라
     /// 비율이므로 ADR-0003 의 예외에 해당한다. 다만 잡음을 그대로 들이지 않도록
     /// 소수 12자리로 고정한 뒤 `Decimal` 로 옮긴다.
+    /// **음수가 된 덩어리는 다른 덩어리로 메운다** (194번 E7).
+    ///
+    /// 큰 지출(음수 목돈)이 투자자산보다 크면 투자자산이 마이너스가 된다. 예전에는
+    /// 예상선은 그 마이너스를 **빚처럼 수익률로 굴렸고**, 몬테카를로는 0 으로 **잘라
+    /// 지출을 지웠다** — 같은 계획에 선과 밴드가 다른 말을 했다. 이제 둘 다 같은
+    /// 규칙이다: 모자란 만큼을 인출과 같은 순서로 다른 덩어리에서 꺼내고, 그래도
+    /// 모자라면 0 에서 멈춘다(없는 돈은 쓸 수 없다).
+    static func coverShortfall(_ balances: inout [Money], at index: Int, order: [Int],
+                               base: CurrencyCode) {
+        guard balances[index].minorUnits < 0 else { return }
+        var shortfall = -balances[index].minorUnits
+        balances[index] = .zero(base)
+        for other in order where other != index && shortfall > 0 {
+            let take = min(balances[other].minorUnits, shortfall)
+            guard take > 0 else { continue }
+            balances[other] -= Money(minorUnits: take, currency: base)
+            shortfall -= take
+        }
+    }
+
+    /// 같은 규칙의 몬테카를로 판 — 경로마다 실수로 굴린다.
+    static func coverShortfall(_ balances: inout [Double], at index: Int, order: [Int]) {
+        guard balances[index] < 0 else { return }
+        var shortfall = -balances[index]
+        balances[index] = 0
+        for other in order where other != index && shortfall > 0 {
+            let take = min(balances[other], shortfall)
+            guard take > 0 else { continue }
+            balances[other] -= take
+            shortfall -= take
+        }
+    }
+
+    /// 그 달 수만큼의 물가 배수 — 오늘 돈 × 이 값 = 그때의 액면가 (194번 E3).
+    /// 예상선이 달마다 곱하는 것과 같은 식이다.
+    public static func deflator(annual: Ratio, months: Int) -> Decimal {
+        let factor = monthlyFactor(annual: annual)
+        var result = Decimal(1)
+        for _ in 0..<max(months, 0) { result *= factor }
+        return result
+    }
+
     static func monthlyFactor(annual: Ratio) -> Decimal {
         guard annual != .zero else { return 1 }
         let yearly = NSDecimalNumber(decimal: annual.fraction).doubleValue

@@ -226,7 +226,7 @@ struct PlanView: View {
 
             Section {
                 if plan.usesMemberContributions {
-                    LabeledContent("매월 적립 합계") {
+                    LabeledContent("매월 적립 합계 (회사 매칭 포함)") {
                         Text(Won.abbreviated(
                             plan.effectiveMonthlyContribution(members: members), suffix: "원"))
                             .font(.figure(15, weight: .semibold))
@@ -565,9 +565,10 @@ struct PlanView: View {
                 }
                 if plan.targetAmountMinor > 0 {
                     LabeledContent("목표 달성률") {
-                        Text(achievement(end.nominal, plan.targetAmountMinor))
+                        // 목표는 오늘 돈 — 오늘 돈으로 견준다 (194번 E3).
+                        Text(achievement(end.real, plan.targetAmountMinor))
                             .font(.figure(13, weight: .medium))
-                            .foregroundStyle(end.nominal.minorUnits >= plan.targetAmountMinor
+                            .foregroundStyle(end.real.minorUnits >= plan.targetAmountMinor
                                              ? Color.gain : Color.loss)
                     }
                 }

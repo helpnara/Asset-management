@@ -282,6 +282,65 @@ struct ProjectionTests {
         #expect(crossing?.year == 2029)
     }
 
+    // 목표는 오늘 돈이다 (194번 E3). 수익 0% · 적립 0 이면 액면가는 내내 1억이다.
+    // 물가 0% 면 오늘 돈도 1억이라 첫 해에 닿고, 물가 3% 면 오늘 돈은 첫 달부터
+    // 1억 아래라 끝내 못 닿는다 — 예전 식(액면가)은 둘 다 2026 이었다.
+    @Test("목표 달성은 오늘 돈으로 잰다")
+    func targetIsTodaysMoney() {
+        var flat = input(years: 5, start: 100_000_000, monthly: 0, returnBP: 0)
+        flat.targetAmount = Money(100_000_000, currency: .krw)
+        #expect(Projection.run(flat, calendar: calendar).milestone(.targetReached)?.year == 2026)
+
+        var inflated = input(years: 5, start: 100_000_000, monthly: 0, returnBP: 0, inflationBP: 300)
+        inflated.targetAmount = Money(100_000_000, currency: .krw)
+        let result = Projection.run(inflated, calendar: calendar)
+        #expect(result.last?.nominal == Money(100_000_000, currency: .krw))
+        #expect(result.milestone(.targetReached) == nil)
+    }
+
+    // 바닥난 뒤 못 꺼낸 인출은 인출이 아니다 (194번 E5). 1억 · 수익 0% · 물가 0%,
+    // 2027-01 부터 월 500만 → 2027 년 6,000만, 2028 년은 남은 4,000만(8달)만 꺼내고 바닥.
+    // 수익률이 0 이니 어느 해든 수익은 0 이어야 한다 — 예전 식은 2028 +2,000만 · 2029 +6,000만.
+    @Test("고갈 뒤에는 실제로 꺼낸 만큼만 인출로 센다")
+    func withdrawalsStopAtDepletion() {
+        var retiring = input(years: 4, start: 100_000_000, monthly: 0, returnBP: 0)
+        retiring.retirementDate = date("2026-12-31")
+        retiring.monthlyRetirementSpending = Money(5_000_000, currency: .krw)
+        retiring.postRetirementReturn = Ratio(basisPoints: 0)
+        let result = Projection.run(retiring, calendar: calendar)
+
+        for summary in result.years {
+            #expect(summary.gain == Money(0, currency: .krw), "\(summary.year) 수익")
+        }
+        #expect(result.years.first { $0.year == 2027 }?.withdrawn == Money(60_000_000, currency: .krw))
+        #expect(result.years.first { $0.year == 2028 }?.withdrawn == Money(40_000_000, currency: .krw))
+        #expect(result.years.first { $0.year == 2029 }?.withdrawn == Money(0, currency: .krw))
+    }
+
+    // 큰 지출이 투자자산보다 크면 (194번 E7). 투자 5천만 · 보증금 3억, 2월에 −1억.
+    // 투자는 0, 모자란 5천만은 보증금에서 → 2억 5천만. 투자가 0 이라 8% 가 붙을 것이 없고
+    // 보증금은 0% 라 끝까지 2억 5천만이다. 예전 식은 −5천만을 8% 빚으로 굴려 약 2.38억이었다.
+    @Test("음수 목돈이 투자자산보다 크면 다른 덩어리에서 메운다 — 빚으로 굴리지 않는다")
+    func shortfallIsCoveredNotCompounded() {
+        let start = date("2026-01-01")
+        var spending = ProjectionInput(
+            startDate: start,
+            endDate: calendar.date(byAdding: .year, value: 3, to: start)!,
+            buckets: [
+                BalanceBucket(profile: .investment, amount: Money(50_000_000, currency: .krw),
+                              annualReturn: Ratio(basisPoints: 800)),
+                BalanceBucket(profile: .fixed, amount: Money(300_000_000, currency: .krw),
+                              annualReturn: .zero, followsPlanRate: false)
+            ],
+            monthlyContribution: Money(0, currency: .krw),
+            annualReturn: Ratio(basisPoints: 800)
+        )
+        spending.cashEvents = [CashEventInput(date: date("2026-02-15"),
+                                              amount: Money(-100_000_000, currency: .krw))]
+        let result = Projection.run(spending, calendar: calendar)
+        #expect(result.last?.nominal == Money(250_000_000, currency: .krw))
+    }
+
     @Test("목표를 넘기지 못하면 마일스톤도 없다")
     func targetNotReached() {
         var modest = input(years: 5, start: 10_000_000, monthly: 200_000, returnBP: 500)

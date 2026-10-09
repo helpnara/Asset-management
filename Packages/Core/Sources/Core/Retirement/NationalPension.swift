@@ -12,6 +12,11 @@ import Foundation
 ///
 ///     비례상수 × (A + B) × (1 + 0.05 × 20년 초과 가입 연수)
 ///
+/// **가입 10~20년이면 그 기본연금액의 50% + 10년 넘는 1년마다 5%** 다
+/// (국민연금법 노령연금, 194번 E2). 두 구간 모두 달마다 나눠 세면
+/// **가입월수 / 240** 하나로 떨어진다 — 120개월이면 절반, 240개월이면 그대로,
+/// 300개월이면 1.25배. 예전에는 20년 미만도 20년과 같은 값을 내 최대 두 배였다.
+///
 /// - A: 전체 가입자의 최근 3년 평균 월소득 (연금 수급 직전 재평가). 매년
 ///   공단이 고시한다.
 /// - B: 본인의 가입 기간 평균 월소득 (재평가 뒤). 기준소득월액 상·하한 안.
@@ -93,11 +98,10 @@ public enum NationalPension {
         let income = min(max(averageMonthlyIncome.minorUnits, incomeFloorMinor), incomeCeilingMinor)
         // 비례상수는 연도 폭으로 가중한다 — 어느 달을 빠뜨렸는지는 모르므로.
         let sumMilli = (first...lastYear).reduce(0) { $0 + constantMilli(forYear: $1) }
-        let extraMonths = max(0, months - 240)
-
-        // 연 기본연금액 = (Σ상수/연수)/1000 × (A + B) × (240 + 초과월수)/240 → 월은 ÷ 12.
-        // 0.05 × 초과연수 = 초과월수 / 240 이라 분수 하나로 정확히 떨어진다.
-        let numerator = Decimal(sumMilli) * Decimal(aValue.minorUnits + income) * Decimal(240 + extraMonths)
+        // 연금액 = (Σ상수/연수)/1000 × (A + B) × 가입월수/240 → 월은 ÷ 12.
+        // 20년 넘으면 0.05 × 초과연수 = 초과월수/240 이라 (240 + 초과)/240 = 월수/240,
+        // 10~20년이면 50% + 5% × (연수 − 10) = 월수/240 — 한 분수로 정확히 떨어진다.
+        let numerator = Decimal(sumMilli) * Decimal(aValue.minorUnits + income) * Decimal(months)
         let denominator = Decimal(1_000 * 240 * 12) * Decimal(years)
         let monthly = Decimals.roundedInt(numerator / denominator, rounding: .bankers)
 
