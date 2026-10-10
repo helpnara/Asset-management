@@ -339,21 +339,25 @@ struct RootView: View {
             // **진행 상황 띠는 여기 한 장** (169번). 화면은 `.reportsProgress` 만 붙인다.
             DashboardView()
                 .statusBand()
+                .onAppear { LaunchTiming.mark("현황판 첫 그림") }
                 .tabItem { Label("현황판", systemImage: "chart.bar") }
                 .tag(Tab.dashboard)
 
             AssetsView()
                 .statusBand()
+                .onAppear { LaunchTiming.mark("자산 첫 그림") }
                 .tabItem { Label("자산", systemImage: "list.bullet") }
                 .tag(Tab.assets)
 
             PlanView()
                 .statusBand()
+                .onAppear { LaunchTiming.mark("계획 첫 그림") }
                 .tabItem { Label("계획", systemImage: "calendar") }
                 .tag(Tab.plan)
 
             SimulationView()
                 .statusBand()
+                .onAppear { LaunchTiming.mark("시뮬레이션 첫 그림") }
                 .tabItem { Label("시뮬레이션", systemImage: "slider.horizontal.3") }
                 .tag(Tab.simulation)
 
@@ -395,7 +399,9 @@ struct RootView: View {
             WeeklyReviewView()
                 .statusBand()
         }
-        .alert("이번 주 점검 완료",
+        // 제목은 사람이 누른 알림 동작의 이름 (196번). 예전에는 "이번 주 점검 완료" 라서
+        // 보기 전용 폰의 "기록하지 않았습니다" 안내에도 완료라는 제목이 붙었다.
+        .alert("총액만 기록",
                isPresented: Binding(
                    get: { route.totalOnlyMessage != nil },
                    set: { if !$0 { route.totalOnlyMessage = nil } }

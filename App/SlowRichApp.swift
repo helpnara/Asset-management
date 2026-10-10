@@ -24,7 +24,9 @@ struct SlowRichApp: App {
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
 
     init() {
+        _ = LaunchTiming.start
         let store = Persistence.shared
+        LaunchTiming.mark("저장소 열기 · 체험 자료 채우기")
         let container = store.container
         self.container = container
         self.notifications = NotificationCoordinator(container: container)

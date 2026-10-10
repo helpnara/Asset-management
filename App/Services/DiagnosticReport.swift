@@ -58,6 +58,10 @@ enum DiagnosticReport {
         if let last = sessions.filter(\.isComplete).max(by: { $0.weekAnchor < $1.weekAnchor }) {
             lines.append("마지막 점검 주: \(last.weekAnchor.formatted(date: .abbreviated, time: .omitted))")
         }
+        // 저장소가 얼마나 무거워지나 (docs/18 5-7 · R4). 변경 기록은 비우지 않는다 —
+        // 가족 폰에서 실제로 얼마나 쌓이는지 이 두 줄로 먼저 본다.
+        lines.append("저장소 크기: \(storeSizes())")
+        lines.append("변경 기록: \(historyCount(in: context).map { "\($0)건" } ?? "못 셈")")
         lines.append("")
 
         // **동기화 대조** (165번). 두 기기에서 이걸 복사해 나란히 놓으면 어느
@@ -143,5 +147,29 @@ enum DiagnosticReport {
         case .notDetermined: return "아직 안 물음"
         @unknown default: return "알 수 없음"
         }
+    }
+
+    /// 저장소 파일 크기 — 개인 · 공유, 각각 `-wal` 까지 더해 MB 로.
+    static func storeSizes() -> String {
+        func size(_ base: URL) -> Int64 {
+            ["", "-wal"].reduce(Int64(0)) { sum, suffix in
+                let path = base.path(percentEncoded: false) + suffix
+                let bytes = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value ?? 0
+                return sum + bytes
+            }
+        }
+        func megabytes(_ bytes: Int64) -> String {
+            String(format: "%.1fMB", Double(bytes) / 1_048_576)
+        }
+        return "개인 \(megabytes(size(Persistence.storeURL))) · 공유 \(megabytes(size(Persistence.sharedStoreURL)))"
+    }
+
+    /// 변경 기록(persistent history)의 거래 수. 세기만 한다 — 비우지 않는다 (R4).
+    @MainActor
+    static func historyCount(in context: NSManagedObjectContext) -> Int? {
+        guard Persistence.mode != .inMemory else { return nil }
+        let request = NSPersistentHistoryChangeRequest.fetchHistory(after: .distantPast)
+        request.resultType = .count
+        return (try? context.execute(request) as? NSPersistentHistoryResult)?.result as? Int
     }
 }

@@ -547,6 +547,24 @@ jobs:
           fi
           echo "전부 찍었습니다."
 
+      # **5년치 자료로 화면 시간** (docs/18-stage5-foundation.md 5-7 · R9). 체험 저장소(인메모리)에
+      # 260주를 채워 탭마다 처음 뜨기까지의 시간을 로그에만 남긴다. 막는 검사가 아니다 —
+      # "느린 곳만 고친다"(로드맵 로딩 화면 원칙)의 숫자를 모으는 자리다.
+      - name: 5년치 자료로 화면 시간 재기 (로그만)
+        continue-on-error: true
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          BUNDLE=com.helpnara.slowrich
+          for tab in dashboard assets plan simulation; do
+            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+            echo "── $tab ──"
+            perl -e 'alarm 45; exec @ARGV' \
+              xcrun simctl launch --console-pty "$UDID" "$BUNDLE" \
+                -skipOnboarding -seedSampleData -seedLargeSample -startTab "$tab" 2>&1 \
+              | grep --line-buffered "⏱" || echo "  (찍힌 시간 없음)"
+          done
+          xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+
       - name: 스크린샷을 브랜치에 커밋
         run: |
           git config user.name "github-actions[bot]"
