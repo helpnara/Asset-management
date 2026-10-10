@@ -11,6 +11,7 @@ on:
       - "screenshots/**"
       - "docs/**"
       - "**.md"
+      - "Tools/promo/**"
   workflow_dispatch:
 
 concurrency:
