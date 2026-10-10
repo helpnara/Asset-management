@@ -26,6 +26,13 @@ enum Persistence {
     struct Store {
         let container: NSPersistentContainer
         let mode: Mode
+        /// **저장소를 끝내 못 열었다** (docs/18-stage5-foundation.md 5-4). 그 이유.
+        ///
+        /// 예전에는 여기서 `fatalError` 로 죽었다 — 켤 때마다 죽으니 사용자는 이유도
+        /// 모르고 문의할 길도 없었다. 이제는 빈 인메모리 저장소를 쥐여 주고 앱은
+        /// `StoreFailureView` 만 그린다. 진짜 저장소 파일은 **아무도 건드리지 않는다**
+        /// — 지우지도, 새로 만들지도 않는다 (R3).
+        var failure: String? = nil
     }
 
     /// **SwiftData 가 쓰던 그 파일이다.** 여기가 이 이전에서 제일 위험한 한 줄이다
@@ -124,6 +131,10 @@ enum Persistence {
         if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
             return Store(container: makeTrialContainer(), mode: .inMemory)
         }
+        // 못 열었을 때의 안내 화면을 CI 가 찍는다 (5-4). 실행 인자는 Xcode · CI 만 넘긴다.
+        if ProcessInfo.processInfo.arguments.contains("-simulateStoreFailure") {
+            return failed("실행 인자 -simulateStoreFailure — CI 가 이 화면을 찍으려고 일부러 실패시켰습니다.")
+        }
 
         // CI 는 `CODE_SIGNING_ALLOWED=NO` 로 빌드해서 entitlement 가 붙지 않는다.
         // 아래 fallback 이 그 경우도 받아내지만, 스크린샷이 예외 처리 방식에
@@ -144,7 +155,8 @@ enum Persistence {
                 return Store(container: try load(cloudKit: false),
                              mode: .localOnly(reason: reason))
             } catch {
-                fatalError("데이터 저장소를 열지 못했습니다: \(error)")
+                // **죽지 않는다** (5-4). 두 번 다 못 열었다 — 안내 화면으로 간다.
+                return failed("iCloud 로 열기:\n" + reason + "\n\n기기에만 열기:\n" + describe(error))
             }
         }
     }
@@ -308,6 +320,14 @@ enum Persistence {
     /// 넣었다가 참가자 폰에서 **동기화된 가족 기록과 합쳐지는** 일이 났다 (133번).
     /// CI 스크린샷도 같은 것을 쓴다. `open()` 이 격리 없이 부르므로 여기도 격리가 없다.
     static func makeTrialContainer() -> NSPersistentContainer {
+        let container = makeEmptyContainer()
+        SampleData.seed(into: container.viewContext)
+        return container
+    }
+
+    /// 빈 인메모리 저장소. 체험 자료와 **못 열었을 때의 자리 채움**(5-4)이 쓴다.
+    /// 파일이 없으니 진짜 저장소에도 iCloud 에도 닿지 않는다.
+    static func makeEmptyContainer() -> NSPersistentContainer {
         let container = NSPersistentContainer(name: modelName, managedObjectModel: managedObjectModel)
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
@@ -316,8 +336,13 @@ enum Persistence {
         container.loadPersistentStores { _, error in failure = error }
         if let failure { fatalError("인메모리 저장소를 열지 못했습니다: \(failure)") }
         configure(container.viewContext)
-        SampleData.seed(into: container.viewContext)
         return container
+    }
+
+    /// 못 열었다 — 빈 인메모리 저장소를 쥐여 주고 이유를 든다. 앱은 안내 화면만 그린다.
+    /// `.inMemory` 라 동기화 감시 · 가족 공유 쪽은 스스로 쉰다.
+    private static func failed(_ reason: String) -> Store {
+        Store(container: makeEmptyContainer(), mode: .inMemory, failure: reason)
     }
 
     private static func configure(_ context: NSManagedObjectContext) {

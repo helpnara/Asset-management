@@ -437,6 +437,9 @@ jobs:
           # **로드맵 `지금`** (190번). 다른 정거장처럼 시트가 뜨고, 제목이
           # "지금부터 올해 말까지" · 구성원별 "지금 → 올해 말" 로 바뀌었는지.
           shoot 33-roadmap-now.png -skipOnboarding -seedSampleData -startTab dashboard -startRoadmapNow
+          # 저장소를 끝내 못 열었을 때의 안내 화면 (docs/18 5-4). 실행 인자로 일부러 실패시킨다 —
+          # 죽지 않고 이 화면이 뜨는지, 지우기 단추가 없는지 눈으로 본다.
+          shoot 34-store-failure.png -skipOnboarding -simulateStoreFailure
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL

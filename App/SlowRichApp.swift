@@ -7,6 +7,8 @@ import UserNotifications
 struct SlowRichApp: App {
     private let container: NSPersistentContainer
     private let notifications: NotificationCoordinator
+    /// 저장소를 끝내 못 열었으면 그 이유 (docs/18 5-4). 그때는 안내 화면만 그린다.
+    private let storeFailure: String?
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var lock = AppLock.shared
@@ -22,12 +24,16 @@ struct SlowRichApp: App {
     @AppStorage("onboarding.completed") private var onboardingCompleted = false
 
     init() {
-        let container = Persistence.shared.container
+        let store = Persistence.shared
+        let container = store.container
         self.container = container
         self.notifications = NotificationCoordinator(container: container)
+        self.storeFailure = store.failure
 
         UNUserNotificationCenter.current().delegate = notifications
         ReviewNotifications.registerCategories()
+        // 못 열었으면 감시 · 저장을 켜지 않는다 — 쥐고 있는 것은 빈 인메모리 저장소다.
+        guard store.failure == nil else { return }
         // 동기화가 **실제로** 되는지 지켜본다. 저장소가 iCloud 모드로 열리고
         // 계정이 붙어 있어도 밀어 넣기는 전부 실패하고 있을 수 있다
         // (Production 스키마에 레코드 타입이 없을 때가 그렇다).
@@ -38,6 +44,30 @@ struct SlowRichApp: App {
         // **같은 숫자를 두 번 굴리지 않는다** (157번). 자료가 바뀔 때까지는
         // 가족 전체 자산을 한 번만 셈한다.
         MainActor.assumeIsolated { ValuationCache.shared.start() }
+    }
+
+    private var mainContent: some View {
+        ZStack {
+            RootView()
+                // 체험을 켜고 끌 때 화면을 통째로 새로 만든다 — `@FetchRequest`
+                // 가 컨텍스트를 바꿔 물게 하는 가장 확실한 길이다.
+                .id(trial.isActive)
+                .fullScreenCover(isPresented: .constant(needsOnboarding)) {
+                    WelcomeView(onFinish: { onboardingCompleted = true },
+                                onTrial: {
+                                    trial.begin()
+                                    onboardingCompleted = true
+                                })
+                }
+
+            // 잠금은 화면 위를 통째로 덮는다. 아래를 흐리게만 두면
+            // 앱 전환기 미리보기에 금액이 그대로 남는다.
+            // **진짜 잠금은 `LockWindow` 의 별도 창이다** (194번 P1) — 시트 · 알림창까지
+            // 덮는다. 이것은 그 창이 붙기 전 첫 화면을 덮는 안전망으로 남긴다.
+            if !lock.isUnlocked {
+                LockedOverlay()
+            }
+        }
     }
 
     /// 잠금 · 가림막 창을 지금 상태에 맞춘다 (194번 P1 · P4).
@@ -62,25 +92,12 @@ struct SlowRichApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                RootView()
-                    // 체험을 켜고 끌 때 화면을 통째로 새로 만든다 — `@FetchRequest`
-                    // 가 컨텍스트를 바꿔 물게 하는 가장 확실한 길이다.
-                    .id(trial.isActive)
-                    .fullScreenCover(isPresented: .constant(needsOnboarding)) {
-                        WelcomeView(onFinish: { onboardingCompleted = true },
-                                    onTrial: {
-                                        trial.begin()
-                                        onboardingCompleted = true
-                                    })
-                    }
-
-                // 잠금은 화면 위를 통째로 덮는다. 아래를 흐리게만 두면
-                // 앱 전환기 미리보기에 금액이 그대로 남는다.
-                // **진짜 잠금은 `LockWindow` 의 별도 창이다** (194번 P1) — 시트 · 알림창까지
-                // 덮는다. 이것은 그 창이 붙기 전 첫 화면을 덮는 안전망으로 남긴다.
-                if !lock.isUnlocked {
-                    LockedOverlay()
+            Group {
+                if let storeFailure {
+                    // 저장소 · 관리 객체를 하나도 안 쓰는 화면 (docs/18 5-4 · R3).
+                    StoreFailureView(reason: storeFailure)
+                } else {
+                    mainContent
                 }
             }
             // 날짜 고르기 · 날짜 글자가 기기 달력(일본력 · 불기 …)을 따르지 않게 (194번 D2).
