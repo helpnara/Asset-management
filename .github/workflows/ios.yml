@@ -205,6 +205,30 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      # **앱 테스트** (docs/18-stage5-foundation.md 5-6). 같은 주 정리 · 편집 취소 · 백업 왕복을
+      # 인메모리 저장소로 — 10-10 두 폰으로 손으로 확인한 것을 매번 기계가 다시 본다.
+      - name: 앱 테스트 (인메모리 저장소)
+        run: |
+          status=0
+          xcodebuild \
+            -project SlowRich.xcodeproj \
+            -scheme SlowRich \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            test > /tmp/app-tests.log 2>&1 || status=$?
+          # 테스트는 앱을 띄워 그 안에서 돈다 — 그 앱과 자료를 지워, 아래 스크린샷의
+          # 00-welcome · 01-empty 가 처음 설치한 모습으로 찍히게 한다.
+          xcrun simctl uninstall "${{ steps.sim.outputs.udid }}" com.helpnara.slowrich >/dev/null 2>&1 || true
+          # 줄인 결과만 보이고, 실패면 꼬리를 통째로 보인다.
+          grep -E "Test Case .*(passed|failed)|Executed|error:|XCTAssert" /tmp/app-tests.log | tail -80 || true
+          if [ "$status" -ne 0 ]; then
+            echo "── 실패 — 로그 꼬리 ──"
+            tail -150 /tmp/app-tests.log
+            exit "$status"
+          fi
+
       # **모델 파일이 정말 컴파일됐는지 본다** (docs/09-family-sharing.md 1a).
       #
       # XcodeGen 이 `.xcdatamodeld` 를 소스가 아니라 리소스로 잡으면, 빌드는

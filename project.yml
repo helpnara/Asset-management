@@ -104,6 +104,24 @@ targets:
           # (.github/workflows/testflight.yml).
           CODE_SIGN_STYLE: Automatic
 
+  # **앱 테스트** (docs/18-stage5-foundation.md 5-6 · R5). 저장소를 쓰는 규칙(같은 주 정리 ·
+  # 편집 취소 · 백업 왕복)을 인메모리 저장소로 시험한다. 계산은 Core 의 `swift test` 가 맡고,
+  # 여기는 Core Data 가 있어야만 시험되는 것만 둔다. 앱 타깃에 기대므로 XcodeGen 이
+  # TEST_HOST · BUNDLE_LOADER 를 채운다.
+  SlowRichTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - AppTests
+    dependencies:
+      - target: SlowRich
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+
 schemes:
   SlowRich:
     build:
@@ -113,6 +131,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - SlowRichTests
     # 아카이브는 Release 로 굽는다. 비워 두면 XcodeGen 기본값에 기대게 된다.
     archive:
       config: Release
