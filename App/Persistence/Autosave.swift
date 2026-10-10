@@ -115,5 +115,24 @@ final class Autosave {
         let ns = error as NSError
         lastFailure = "\(ns.domain) \(ns.code) "
             + (ns.localizedFailureReason ?? ns.localizedDescription)
+            + Self.fields(of: ns)
+    }
+
+    /// **어느 칸에서 막혔나** (docs/18 5-5). 검사 실패(1560 · 1570 …)는 엔티티와 칸을
+    /// `userInfo` 에 들고 오는데, 사유 글에는 안 나와 "저장하지 못했습니다" 만 보였다.
+    /// `Holding.name` 꼴로 셋까지 붙인다. 값은 붙이지 않는다 — 금액이 섞인다.
+    static func fields(of error: NSError) -> String {
+        var found: [String] = []
+        func collect(_ error: NSError) {
+            guard let key = error.userInfo[NSValidationKeyErrorKey] as? String else { return }
+            let entity = (error.userInfo[NSValidationObjectErrorKey] as? NSManagedObject)?.entity.name ?? "?"
+            let field = "\(entity).\(key)"
+            if !found.contains(field) { found.append(field) }
+        }
+        collect(error)
+        for detail in error.userInfo[NSDetailedErrorsKey] as? [NSError] ?? [] { collect(detail) }
+        guard !found.isEmpty else { return "" }
+        let shown = found.prefix(3).joined(separator: " · ")
+        return " (칸: \(shown)\(found.count > 3 ? " 외 \(found.count - 3)" : ""))"
     }
 }

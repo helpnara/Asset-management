@@ -34,6 +34,8 @@ struct ExportView: View {
     @State private var restoreProblem: String?
     /// 되돌리기가 저장에서 막혀 되돌리기 전으로 돌아갔다 (192번 B).
     @State private var restoreFailed = false
+    /// 전체 백업을 만들지 못한 까닭 (5-5). 예전에는 빈 파일이 조용히 나갔다.
+    @State private var backupProblem: String?
 
     /// 백업 각주 (152번 1-7). "사본이 이 아이폰 하나뿐" 은 iCloud 가 붙어
     /// 있으면 **틀린 말**이다. 그렇다고 iCloud 가 백업을 대신하지도 않는다 —
@@ -103,7 +105,12 @@ struct ExportView: View {
             Section {
                 Button {
                     let document = BackupDocument.make(from: context)
-                    backup = JSONFile(data: document.encoded(), name: document.suggestedFileName)
+                    do {
+                        backup = JSONFile(data: try document.encoded(), name: document.suggestedFileName)
+                    } catch {
+                        backup = nil
+                        backupProblem = "\((error as NSError).domain) \((error as NSError).code) · \(error.localizedDescription)"
+                    }
                 } label: {
                     Label("전체 백업 만들기", systemImage: "shippingbox")
                 }
@@ -176,7 +183,16 @@ struct ExportView: View {
         .alert("되돌리지 못했습니다", isPresented: $restoreFailed) {
             Button("확인", role: .cancel) {}
         } message: {
-            Text("기기에 저장하지 못해 되돌리기 전 상태 그대로 두었습니다. 지워진 것은 없습니다. 더보기 → 동기화의 저장 실패 사유를 진단 정보로 보내 주세요.")
+            // 어느 칸에서 막혔는지 (5-5) — 저장 실패 사유에 엔티티 · 칸 이름이 붙어 온다.
+            Text("기기에 저장하지 못해 되돌리기 전 상태 그대로 두었습니다. 지워진 것은 없습니다.\n\n이유: \(Autosave.shared.lastFailure ?? "알 수 없음")\n\n더보기 → 동기화의 진단 정보를 보내 주세요.")
+        }
+        .alert("백업을 만들지 못했습니다",
+               isPresented: Binding(get: { backupProblem != nil },
+                                    set: { if !$0 { backupProblem = nil } }),
+               presenting: backupProblem) { _ in
+            Button("확인", role: .cancel) { backupProblem = nil }
+        } message: { problem in
+            Text("빈 파일을 내보내지 않았습니다. 다시 눌러 보고, 같으면 진단 정보와 함께 알려 주세요.\n\n이유: \(problem)")
         }
         .navigationTitle("내보내기")
         .navigationBarTitleDisplayMode(.inline)
@@ -199,11 +215,14 @@ struct ExportView: View {
             restoreProblem = "파일을 읽지 못했습니다."
             return
         }
-        guard let document = BackupDocument.decode(data) else {
-            restoreProblem = "이 앱이 만든 백업 파일이 아니거나 형식이 다릅니다. 전체 백업 만들기로 만든 .json 파일을 골라 주세요."
-            return
+        // 못 읽으면 **까닭과 칸** 을 보여 준다 (5-5) — 새 판 백업 · 깨진 칸 · 백업이 아님.
+        do {
+            pending = try BackupDocument.decode(data)
+        } catch let problem as BackupDocument.ReadError {
+            restoreProblem = problem.message
+        } catch {
+            restoreProblem = BackupDocument.ReadError.notBackup.message
         }
-        pending = document
     }
 
     /// 무엇이 들어오는지 세어서 보여준다. "정말 되돌릴까요?" 만으로는

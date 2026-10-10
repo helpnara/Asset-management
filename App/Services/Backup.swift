@@ -15,7 +15,12 @@ import CoreData
 /// (ADR-0005). 되살릴 일이 생기면 그때 만든다 — 그때도 이 파일만 있으면 된다.
 struct BackupDocument: Codable, Sendable {
     /// 형식이 바뀌면 올린다. 나중에 읽는 쪽이 이 숫자를 보고 갈래를 탄다.
-    var formatVersion: Int = 1
+    var formatVersion: Int = BackupDocument.currentFormat
+
+    /// 이 앱이 쓰고 읽는 가장 높은 형식 (docs/18 5-5 · R6). **더 큰 번호만 거절한다** —
+    /// 옛 형식(1)은 그대로 받는다. 칸을 더할 때는 옵셔널로 더하고 번호는 두며,
+    /// 옛 앱이 읽으면 틀리게 되는 변경일 때만 올린다.
+    static let currentFormat = 1
     var exportedAt: Date
     var appVersion: String
 
@@ -474,11 +479,14 @@ extension BackupDocument {
 
     /// 사람이 열어 봐도 읽히도록 들여쓰고 키를 정렬한다. 백업은 언젠가
     /// 눈으로 확인하게 된다.
-    func encoded() -> Data {
+    ///
+    /// **실패를 숨기지 않는다** (5-5). 예전에는 실패하면 빈 `Data()` 를 돌려줘,
+    /// 0바이트 "백업" 이 저장되고 아무도 몰랐다 — 되돌릴 때에야 빈 파일임을 안다.
+    func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .iso8601
-        return (try? encoder.encode(self)) ?? Data()
+        return try encoder.encode(self)
     }
 
     var suggestedFileName: String {
@@ -496,11 +504,76 @@ extension BackupDocument {
 
 extension BackupDocument {
 
-    /// 파일에서 읽는다. 형식이 다르면 `nil`.
-    static func decode(_ data: Data) -> BackupDocument? {
+    /// 왜 못 읽었나 — 사람에게 보여 줄 글이 붙어 있다 (5-5).
+    enum ReadError: Error, Equatable {
+        /// JSON 이 아니거나 이 앱의 백업 모양이 아니다.
+        case notBackup
+        /// 더 새 판 앱이 만든 백업이다 — 업데이트하면 읽힌다.
+        case newerFormat(Int)
+        /// 모양은 맞는데 한 칸을 못 읽었다. `path` 는 `members[1].accounts[0].name` 꼴.
+        case field(path: String, problem: String)
+
+        var message: String {
+            switch self {
+            case .notBackup:
+                return "이 앱이 만든 백업 파일이 아니거나 형식이 다릅니다. 전체 백업 만들기로 만든 .json 파일을 골라 주세요."
+            case .newerFormat(let format):
+                return "더 새 판 앱이 만든 백업입니다(형식 \(format) — 이 앱은 \(BackupDocument.currentFormat)까지 읽습니다). App Store · TestFlight 에서 앱을 업데이트한 뒤 되돌려 주세요. 지금 기록은 그대로입니다."
+            case .field(let path, let problem):
+                return "백업 파일의 `\(path)` 칸을 읽지 못했습니다(\(problem)). 파일이 잘렸거나 손으로 고쳐졌을 수 있습니다. 지금 기록은 그대로입니다."
+            }
+        }
+    }
+
+    /// 파일에서 읽는다. 못 읽으면 **어느 칸인지** 를 담아 던진다 (5-5).
+    ///
+    /// 예전에는 무엇이 틀려도 `nil` 하나였다 — "형식이 다릅니다" 만 보고는 새 판 백업인지,
+    /// 잘린 파일인지, 한 칸이 깨졌는지 알 수 없었다. 형식 번호를 먼저 보고(R6),
+    /// 그다음 전체를 읽는다.
+    static func decode(_ data: Data) throws -> BackupDocument {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(BackupDocument.self, from: data)
+
+        struct Header: Decodable { var formatVersion: Int? }
+        guard let header = try? decoder.decode(Header.self, from: data) else {
+            throw ReadError.notBackup
+        }
+        if let format = header.formatVersion, format > currentFormat {
+            throw ReadError.newerFormat(format)
+        }
+
+        do {
+            return try decoder.decode(BackupDocument.self, from: data)
+        } catch let error as DecodingError {
+            throw readError(error)
+        }
+    }
+
+    /// `DecodingError` 를 사람이 읽는 칸 이름과 까닭으로 편다.
+    static func readError(_ error: DecodingError) -> ReadError {
+        func path(_ keys: [any CodingKey]) -> String {
+            var text = ""
+            for key in keys {
+                if let index = key.intValue { text += "[\(index)]" }
+                else { text += text.isEmpty ? key.stringValue : "." + key.stringValue }
+            }
+            return text.isEmpty ? "(맨 위)" : text
+        }
+        switch error {
+        case .keyNotFound(let key, let context):
+            return .field(path: path(context.codingPath + [key]), problem: "칸이 없음")
+        case .typeMismatch(_, let context):
+            // 맨 위가 객체가 아니면 아예 백업 모양이 아니다.
+            return context.codingPath.isEmpty ? .notBackup
+                : .field(path: path(context.codingPath), problem: "값의 종류가 다름")
+        case .valueNotFound(_, let context):
+            return .field(path: path(context.codingPath), problem: "값이 비어 있음")
+        case .dataCorrupted(let context):
+            return context.codingPath.isEmpty ? .notBackup
+                : .field(path: path(context.codingPath), problem: "값이 깨짐")
+        @unknown default:
+            return .notBackup
+        }
     }
 
     /// **이 기기의 기록을 백업 파일로 갈아 끼운다** (docs/08-feedback.md 40번).
