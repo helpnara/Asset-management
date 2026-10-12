@@ -56,7 +56,15 @@ const PROFILES = {
   ipad: {
     W: 1200, H: 1600, TOP: 230, titleTop: 62, titleSize: 58, subTop: 142, subSize: 30,
     file: "app-preview-1200x1600.mp4",
-    scenes: [],   // raw-ipad.mp4 를 훑어 채운다
+    //   raw-ipad.mp4 = 아이패드 다섯 번째 녹화 (iPad Pro 13" 시뮬레이터). 점검은 치지 않고 보여만 준다 —
+    //   칸을 누르면 점검 창이 저절로 닫혀 그 뒤 장면을 못 찍었다 (네 번째 녹화).
+    scenes: [
+      { key: "review", src: "raw-ipad.mp4", from: 219.0, to: 225.0, speed: 1 },
+      { key: "complete", src: "raw-ipad.mp4", from: 237.5, to: 241.5, speed: 1 },
+      { key: "dashboard", src: "raw-ipad.mp4", from: 259.5, to: 267.0, speed: 1 },
+      { key: "simulation", src: "raw-ipad.mp4", from: 301.0, to: 309.0, speed: 1 },
+      { key: "diagnostics", src: "raw-ipad.mp4", from: 326.5, to: 331.5, speed: 1 },
+    ],
   },
 };
 

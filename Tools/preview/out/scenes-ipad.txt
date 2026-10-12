@@ -1,0 +1,5 @@
+review	6.00s	매주 토요일, 직접 적기
+complete	4.00s	점검 완료, 연속 기록
+dashboard	7.50s	계획선 위인가, 아래인가
+simulation	8.00s	‘만약에’를 돌려 보기
+diagnostics	5.00s	원칙은 앱이 기억합니다
