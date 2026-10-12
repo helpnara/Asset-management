@@ -46,8 +46,8 @@ const PROFILES = {
     //   raw.mp4      = 세 번째 녹화 — 점검 입력 · 점검 완료가 제대로 찍혔다
     //   raw-run2.mp4 = 두 번째 녹화 — 현황판 스크롤 · 시뮬레이션 손잡이 · 진단이 제대로 찍혔다
     scenes: [
-      { key: "review", src: "raw.mp4", from: 166.8, to: 175.3, speed: 1.4 },
-      { key: "complete", src: "raw.mp4", from: 181.6, to: 185.6, speed: 1 },
+      { key: "review", src: "raw.mp4", from: 166.8, to: 175.5, speed: 1.4 },
+      { key: "complete", src: "raw.mp4", from: 181.9, to: 185.9, speed: 1 },
       { key: "dashboard", src: "raw-run2.mp4", from: 268.5, to: 275.5, speed: 1 },
       { key: "simulation", src: "raw-run2.mp4", from: 291.0, to: 299.0, speed: 1 },
       { key: "diagnostics", src: "raw-run2.mp4", from: 319.5, to: 324.3, speed: 1 },
@@ -97,9 +97,12 @@ for (const [i, s] of scenes.entries()) {
   execFileSync("ffmpeg", [
     "-y", "-loglevel", "error",
     "-loop", "1", "-t", s.dur.toFixed(3), "-i", path.join(work, `${device}-bg-${i}.png`),
-    "-ss", s.from.toFixed(3), "-t", (s.to - s.from).toFixed(3), "-i", path.join(here, "raw", s.src),
+    // 처음부터 풀어 trim 으로 프레임 시각 그대로 자른다. 녹화가 가변 프레임이라 입력 앞 -ss 로 감으면 시각이
+    // 0.6초쯤 밀려, 점검 장면 끝에 앱이 닫히며 홈 화면이 4프레임 비쳤다 (2026-10-12). 느리지만 정확하다.
+    // fps 를 trim 앞에 둔다 — 화면이 멈춘 동안은 프레임이 없어서, 먼저 30fps 로 메워야 구간 끝이 비지 않는다.
+    "-i", path.join(here, "raw", s.src),
     "-filter_complex",
-    `[1:v]fps=30,setpts=(PTS-STARTPTS)/${s.speed},fps=30,scale=-2:${vh}:flags=lanczos,setsar=1[app];` +
+    `[1:v]fps=30,trim=start=${s.from}:end=${s.to},setpts=(PTS-STARTPTS)/${s.speed},fps=30,scale=-2:${vh}:flags=lanczos,setsar=1[app];` +
     `[0:v]fps=30,format=yuv420p[bg];` +
     `[bg][app]overlay=x=(W-w)/2:y=${TOP}:shortest=1,format=yuv420p[v]`,
     "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-r", "30", part,
