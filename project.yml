@@ -122,7 +122,32 @@ targets:
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1,2"
 
+  # **App Store 미리 보기 녹화** (Tools/preview, 2026-10-12). 앱을 눌러 가며 장면을 만드는 UI 테스트 —
+  # 앱 동작 시험이 아니라 녹화 대본이다. 앱 CI 스킴에는 넣지 않고 `SlowRichPreview` 스킴에만 둔다.
+  SlowRichUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - AppUITests
+    dependencies:
+      - target: SlowRich
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.helpnara.slowrich.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+
 schemes:
+  SlowRichPreview:
+    build:
+      targets:
+        SlowRich: all
+        SlowRichUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - SlowRichUITests
   SlowRich:
     build:
       targets:

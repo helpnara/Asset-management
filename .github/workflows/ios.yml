@@ -12,6 +12,9 @@ on:
       - "docs/**"
       - "**.md"
       - "Tools/promo/**"
+      - "Tools/preview/**"
+      - "AppUITests/**"
+      - ".github/workflows/preview.yml"
   workflow_dispatch:
 
 concurrency:

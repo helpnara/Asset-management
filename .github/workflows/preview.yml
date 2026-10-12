@@ -1,0 +1,183 @@
+name: App Store 미리 보기 녹화
+
+# 앱을 체험 자료로 띄워 UI 테스트(AppUITests/PreviewRecording)로 눌러 가며 시뮬레이터를 녹화한다.
+# 녹화와 장면 표시는 Tools/preview/raw/ 로 커밋하고, 편집(886×1920 · 자막)은 Tools/preview/edit.mjs 가 한다.
+# 손으로만 돌린다 — 앱 CI 와 상관없다.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  record:
+    name: 미리 보기 녹화
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: 최신 Xcode 선택
+        run: |
+          set -uo pipefail
+
+          # 러너가 기본으로 선택해 둔 Xcode 에만 시뮬레이터 런타임이 갖춰져 있다.
+          # 그래서 **이미 26 이상이면 손대지 않는다.** 예전에 major 만 비교해
+          # 다른 26.x 로 바꿨다가 "iOS 26.0 is not installed" 로 막혔다.
+          xcver() {
+            [ -f "$1/Contents/version.plist" ] || return 1
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+              "$1/Contents/version.plist" 2>/dev/null
+          }
+
+          CUR_APP=$(xcode-select -p 2>/dev/null || true)
+          CUR_APP=${CUR_APP%/Contents/Developer}
+          CUR_V=$(xcver "$CUR_APP" || true)
+          echo "현재 선택: ${CUR_APP:-(없음)} ${CUR_V:-(?)}"
+
+          NEED=1
+          case "${CUR_V%%.*}" in
+            ''|*[!0-9]*) ;;
+            *) [ "${CUR_V%%.*}" -ge 26 ] && NEED=0 ;;
+          esac
+
+          if [ "$NEED" -eq 1 ]; then
+            echo "── 설치된 Xcode ──"
+            BEST=""; BEST_K=0
+            for app in /Applications/Xcode*.app; do
+              v=$(xcver "$app" || true)
+              [ -n "$v" ] || continue
+              k=$(echo "$v" | awk -F. '{printf "%d", ($1*10000)+($2*100)+$3}')
+              echo "  $app → $v"
+              if [ "$k" -gt "$BEST_K" ]; then BEST_K=$k; BEST="$app"; BEST_V="$v"; fi
+            done
+            if [ -n "$BEST" ]; then
+              echo "전환: $BEST ($BEST_V)"
+              sudo xcode-select -s "$BEST/Contents/Developer"
+              CUR_V="$BEST_V"
+            fi
+          fi
+
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "── 시뮬레이터 런타임 ──"; xcrun simctl list runtimes | grep -i ios || true
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: Xcode 프로젝트 생성
+        run: xcodegen generate
+
+      - name: 시뮬레이터 고르기
+        id: sim
+        run: |
+          # 러너 이미지마다 있는 기기가 달라 이름을 박지 않는다.
+          # 다만 SE·mini 는 화면이 좁아 설계 기준(390pt급)과 어긋나므로 제외한다.
+          read -r UDID NAME <<< "$(xcrun simctl list devices available -j | python3 -c "
+          import json, re, sys
+          data = json.load(sys.stdin)['devices']
+          rank = {'': 3, ' Pro': 2, ' Plus': 1, ' Pro Max': 0}
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              m = re.search(r'iOS-(\\d+)-(\\d+)', runtime)
+              version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+              for d in devices:
+                  name = d.get('name', '')
+                  if not d.get('isAvailable') or not name.startswith('iPhone'):
+                      continue
+                  if 'SE' in name or 'mini' in name:
+                      continue
+                  n = re.match(r'iPhone (\\d+)(.*)$', name)
+                  if not n:
+                      continue
+                  key = (version, int(n.group(1)), rank.get(n.group(2), 0))
+                  if best is None or key > best[0]:
+                      best = (key, d['udid'], name)
+          if best is None:
+              sys.exit('쓸 만한 iPhone 시뮬레이터를 찾지 못했습니다')
+          print(best[1], best[2])
+          ")"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "선택한 시뮬레이터: $NAME ($UDID)"
+
+      - name: 빌드 (테스트용)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SlowRich.xcodeproj \
+            -scheme SlowRichPreview \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build-for-testing | tail -30
+
+      - name: 녹화
+        run: |
+          set -u
+          UDID="${{ steps.sim.outputs.udid }}"
+          # 소프트웨어 키보드가 보이게 (점검 장면의 숫자 패드)
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false || true
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          sleep 3
+
+          mkdir -p Tools/preview/raw
+          RAW=Tools/preview/raw/raw.mp4
+          rm -f "$RAW" /tmp/rec.log
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$RAW" 2> /tmp/rec.log &
+          REC=$!
+          # 녹화가 실제로 시작된 시각을 잡는다 — 장면 표시와 같은 시계(호스트)다.
+          for i in $(seq 1 50); do grep -q "Recording started" /tmp/rec.log && break; sleep 0.1; done
+          START=$(python3 -c 'import time; print(f"{time.time():.3f}")')
+          echo "녹화 시작 $START"
+
+          status=0
+          xcodebuild \
+            -project SlowRich.xcodeproj \
+            -scheme SlowRichPreview \
+            -configuration Debug \
+            -destination "id=$UDID" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:SlowRichUITests/PreviewRecording/testRecordPreview \
+            test-without-building > /tmp/uitest.log 2>&1 || status=$?
+
+          sleep 1
+          kill -INT "$REC" || true
+          wait "$REC" || true
+          cat /tmp/rec.log || true
+
+          { echo "RECORD-START $START"; grep -o "PREVIEW-MARK [a-z]* [a-z]* [0-9.]*" /tmp/uitest.log | sort -u -k4 -n; } > Tools/preview/raw/marks.txt
+          echo "── 장면 표시 ──"; cat Tools/preview/raw/marks.txt
+          ls -la Tools/preview/raw
+          if [ "$status" -ne 0 ]; then
+            echo "── UI 테스트 로그 꼬리 ──"; tail -80 /tmp/uitest.log
+          fi
+          [ -s "$RAW" ] || { echo "::error::녹화 파일이 비었습니다"; exit 1; }
+
+      - name: 녹화를 브랜치에 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A Tools/preview/raw
+          git diff --cached --quiet && { echo "변화 없음"; exit 0; }
+          git commit -m "chore: App Store 미리 보기 녹화 (${{ steps.sim.outputs.name }}) [skip ci]"
+          for attempt in 1 2 3; do
+            git push origin HEAD:${{ github.ref_name }} && exit 0
+            git fetch origin ${{ github.ref_name }}
+            git rebase -X ours origin/${{ github.ref_name }} || { git rebase --abort || true; }
+            sleep $((attempt * 5))
+          done
+          echo "::error::녹화를 올리지 못했습니다"; exit 1
