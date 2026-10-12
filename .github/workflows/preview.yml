@@ -217,6 +217,14 @@ jobs:
           fi
           [ -s "$RAW" ] || { echo "::error::녹화 파일이 비었습니다"; exit 1; }
 
+          # **올리기 전에 줄인다.** 아이패드 13" 녹화가 154MB 로 GitHub 한 파일 한도(100MB)에 막혔다.
+          # 편집에 필요한 것은 높이 1920 이하라(아이폰 886×1920 · 아이패드 1200×1600) 그만큼으로.
+          command -v ffmpeg >/dev/null || brew install ffmpeg >/dev/null
+          ffmpeg -y -loglevel error -i "$RAW" -vf "scale=-2:'min(1920,ih)'" \
+            -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p "$RAW.small.mp4"
+          mv "$RAW.small.mp4" "$RAW"
+          ls -la "$RAW"
+
       - name: 녹화를 브랜치에 커밋
         run: |
           git config user.name "github-actions[bot]"
