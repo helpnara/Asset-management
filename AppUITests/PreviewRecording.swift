@@ -47,8 +47,13 @@ final class PreviewRecording: XCTestCase {
         continueAfterFailure = true
 
         // 1. 주간 점검 — 종목 평가액을 적으면 지난주 대비 증감이 바로 (첫 칸에 저절로 커서가 간다)
-        var app = launch(["-startTab", "dashboard", "-startReview"])
-        pause(2.5)
+        // 사람처럼 현황판의 `지금 입력` 을 눌러 연다. `-startReview` 로 바로 열면 아이패드에서 점검 창이
+        // 열렸다 닫혔다를 되풀이해 칸을 누를 수 없었다 (아이패드 세 번째 녹화).
+        var app = launch(["-startTab", "dashboard"])
+        pause(1.5)
+        let open = app.buttons.matching(NSPredicate(format: "label IN %@", ["지금 입력", "다시 열기"])).firstMatch
+        if open.waitForExistence(timeout: 5) { open.tap() }
+        pause(1.5)
         mark("review", "start")
         pause(0.8)
         // 아이패드는 첫 칸에 저절로 커서가 가지 않는다 — 누른다 (아이패드 첫 녹화: "keyboard focus" 없음으로 멈춤).
