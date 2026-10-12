@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// **App Store 미리 보기 녹화** (Tools/preview, 2026-10-12).
@@ -56,19 +57,19 @@ final class PreviewRecording: XCTestCase {
         pause(1.5)
         mark("review", "start")
         pause(0.8)
-        // 아이패드는 첫 칸에 저절로 커서가 가지 않는다 — 누른다 (아이패드 첫 녹화: "keyboard focus" 없음으로 멈춤).
-        let firstField = app.textFields.firstMatch
-        if firstField.waitForExistence(timeout: 3) {
-            firstField.tap()
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // **아이패드는 치지 않고 보여만 준다.** 칸을 누르자 점검 창이 15초쯤 뒤 저절로 닫혀(아이패드 네 번째
+            // 녹화) 뒤 장면을 하나도 못 찍었다. 첫 칸에는 이미 커서가 가 있다.
+            pause(4.0)
+        } else {
+            type(app, "48650000")
+            pause(1.0)
+            let next = app.buttons["다음"]
+            if next.waitForExistence(timeout: 2) { next.tap() }
             pause(0.8)
+            type(app, "26510000")
+            pause(1.5)
         }
-        type(app, "48650000")
-        pause(1.0)
-        let next = app.buttons["다음"]
-        if next.waitForExistence(timeout: 2) { next.tap() }
-        pause(0.8)
-        type(app, "26510000")
-        pause(1.5)
         mark("review", "end")
         app.terminate()
 

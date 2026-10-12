@@ -213,6 +213,7 @@ jobs:
           echo "── 장면 표시 ──"; cat "$MARKS"
           ls -la Tools/preview/raw
           if [ "$status" -ne 0 ]; then
+            echo "── UI 테스트 단계 ──"; grep -E " t = |error:|Test Case" /tmp/uitest.log | cut -c1-300 | tail -150
             echo "── UI 테스트 로그 꼬리 ──"; tail -80 /tmp/uitest.log
           fi
           [ -s "$RAW" ] || { echo "::error::녹화 파일이 비었습니다"; exit 1; }
