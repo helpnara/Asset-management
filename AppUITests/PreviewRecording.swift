@@ -18,10 +18,14 @@ final class PreviewRecording: XCTestCase {
 
     private func pause(_ seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
 
+    /// 앱이 **앞으로 나온 뒤에** 돌려준다. 첫 녹화에서 점검 완료 장면에 홈 화면이 찍혔다 —
+    /// 앱이 뜨기 전에 표시를 찍었다.
     private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-skipOnboarding", "-seedSampleData"] + arguments
         app.launch()
+        if !app.wait(for: .runningForeground, timeout: 8) { app.activate() }
+        _ = app.wait(for: .runningForeground, timeout: 5)
         return app
     }
 
@@ -33,12 +37,10 @@ final class PreviewRecording: XCTestCase {
                     withVelocity: XCUIGestureVelocity(rawValue: velocity), thenHoldForDuration: 0.25)
     }
 
-    /// 한 글자씩 — 숫자가 차오르는 모습이 보이게.
-    private func typeSlowly(_ app: XCUIApplication, _ text: String) {
-        for character in text {
-            app.typeText(String(character))
-            pause(0.12)
-        }
+    /// 한 번에 친다. 한 글자씩 치면 CI 에서 장면이 37초로 늘었고, 치는 도중의 반쪽 숫자에
+    /// "30% 넘게 움직였습니다" 표시가 번쩍였다 (첫 녹화).
+    private func type(_ app: XCUIApplication, _ text: String) {
+        app.typeText(text)
     }
 
     func testRecordPreview() throws {
@@ -49,18 +51,19 @@ final class PreviewRecording: XCTestCase {
         pause(2.5)
         mark("review", "start")
         pause(0.8)
-        typeSlowly(app, "48650000")
+        type(app, "48650000")
         pause(1.0)
         let next = app.buttons["다음"]
         if next.waitForExistence(timeout: 2) { next.tap() }
         pause(0.8)
-        typeSlowly(app, "26510000")
+        type(app, "26510000")
         pause(1.5)
         mark("review", "end")
         app.terminate()
 
         // 2. 점검 완료 — 연속 기록 · 축하
         app = launch(["-startTab", "dashboard", "-showReviewComplete"])
+        pause(1.5)
         mark("complete", "start")
         pause(4.5)
         mark("complete", "end")
