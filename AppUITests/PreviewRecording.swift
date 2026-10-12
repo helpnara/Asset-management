@@ -51,6 +51,12 @@ final class PreviewRecording: XCTestCase {
         pause(2.5)
         mark("review", "start")
         pause(0.8)
+        // 아이패드는 첫 칸에 저절로 커서가 가지 않는다 — 누른다 (아이패드 첫 녹화: "keyboard focus" 없음으로 멈춤).
+        let firstField = app.textFields.firstMatch
+        if firstField.waitForExistence(timeout: 3) {
+            firstField.tap()
+            pause(0.8)
+        }
         type(app, "48650000")
         pause(1.0)
         let next = app.buttons["다음"]
