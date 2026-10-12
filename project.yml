@@ -146,6 +146,9 @@ schemes:
         SlowRichUITests: [test]
     test:
       config: Debug
+      # 디버거를 붙이지 않는다 — CI 에는 LLDB 가 없어 앱이 "디버거를 기다리다" 실행 시간 초과로
+      # 막혔다 (미리 보기 녹화 첫 실행, wait_for_debugger = 1).
+      debugEnabled: false
       targets:
         - SlowRichUITests
   SlowRich:
