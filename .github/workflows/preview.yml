@@ -6,6 +6,12 @@ name: App Store 미리 보기 녹화
 
 on:
   workflow_dispatch:
+    inputs:
+      device:
+        description: "어느 기기로 녹화하나 — iphone(886×1920) · ipad(1200×1600)"
+        type: choice
+        options: [iphone, ipad]
+        default: iphone
 
 concurrency:
   group: preview-${{ github.ref }}
@@ -108,6 +114,50 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "선택한 시뮬레이터: $NAME ($UDID)"
 
+      - name: iPad 시뮬레이터 고르기
+        id: ipad
+        run: |
+          read -r UDID NAME <<< "$(xcrun simctl list devices available -j | python3 -c "
+          import json, re, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              m = re.search(r'iOS-(\\d+)-(\\d+)', runtime)
+              version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+              for d in devices:
+                  name = d.get('name', '')
+                  if not d.get('isAvailable') or not name.startswith('iPad'):
+                      continue
+                  if 'mini' in name:
+                      continue
+                  size = re.search(r'(\\d+)-inch', name)
+                  inch = int(size.group(1)) if size else 0
+                  key = (version, inch, 'Pro' in name, name)
+                  if best is None or key > best[0]:
+                      best = (key, d['udid'], name)
+          if best is None:
+              print('', '')
+          else:
+              print(best[1], best[2])
+          ")"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "선택한 iPad: ${NAME:-없음} ($UDID)"
+
+      - name: 녹화할 기기
+        run: |
+          if [ "${{ inputs.device }}" = "ipad" ]; then
+            echo "UDID=${{ steps.ipad.outputs.udid }}" >> "$GITHUB_ENV"
+            echo "DEVNAME=${{ steps.ipad.outputs.name }}" >> "$GITHUB_ENV"
+            echo "SUFFIX=-ipad" >> "$GITHUB_ENV"
+          else
+            echo "UDID=${{ steps.sim.outputs.udid }}" >> "$GITHUB_ENV"
+            echo "DEVNAME=${{ steps.sim.outputs.name }}" >> "$GITHUB_ENV"
+            echo "SUFFIX=" >> "$GITHUB_ENV"
+          fi
+
       - name: 빌드 (테스트용)
         run: |
           set -o pipefail
@@ -115,7 +165,7 @@ jobs:
             -project SlowRich.xcodeproj \
             -scheme SlowRichPreview \
             -configuration Debug \
-            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -destination "id=$UDID" \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build-for-testing | tail -30
@@ -123,7 +173,6 @@ jobs:
       - name: 녹화
         run: |
           set -u
-          UDID="${{ steps.sim.outputs.udid }}"
           # 소프트웨어 키보드가 보이게 (점검 장면의 숫자 패드)
           defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false || true
           xcrun simctl boot "$UDID" || true
@@ -134,7 +183,8 @@ jobs:
           sleep 3
 
           mkdir -p Tools/preview/raw
-          RAW=Tools/preview/raw/raw.mp4
+          RAW=Tools/preview/raw/raw$SUFFIX.mp4
+          MARKS=Tools/preview/raw/marks$SUFFIX.txt
           rm -f "$RAW" /tmp/rec.log
           xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$RAW" 2> /tmp/rec.log &
           REC=$!
@@ -159,8 +209,8 @@ jobs:
           wait "$REC" || true
           cat /tmp/rec.log || true
 
-          { echo "RECORD-START $START"; grep -o "PREVIEW-MARK [a-z]* [a-z]* [0-9.]*" /tmp/uitest.log | sort -u -k4 -n; } > Tools/preview/raw/marks.txt
-          echo "── 장면 표시 ──"; cat Tools/preview/raw/marks.txt
+          { echo "RECORD-START $START"; grep -o "PREVIEW-MARK [a-z]* [a-z]* [0-9.]*" /tmp/uitest.log | sort -u -k4 -n; } > "$MARKS"
+          echo "── 장면 표시 ──"; cat "$MARKS"
           ls -la Tools/preview/raw
           if [ "$status" -ne 0 ]; then
             echo "── UI 테스트 로그 꼬리 ──"; tail -80 /tmp/uitest.log
@@ -173,7 +223,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A Tools/preview/raw
           git diff --cached --quiet && { echo "변화 없음"; exit 0; }
-          git commit -m "chore: App Store 미리 보기 녹화 (${{ steps.sim.outputs.name }}) [skip ci]"
+          git commit -m "chore: App Store 미리 보기 녹화 ($DEVNAME) [skip ci]"
           for attempt in 1 2 3; do
             git push origin HEAD:${{ github.ref_name }} && exit 0
             git fetch origin ${{ github.ref_name }}
