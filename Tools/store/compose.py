@@ -117,12 +117,14 @@ def main() -> None:
             print(f"{target} {done.width}×{done.height}")
             # App Store Connect 의 아이폰 칸이 6.5" (1284×2778) 로 잡힌 계정이 있다
             # (140번). 비율 차이가 0.4% 라 줄여 넣어도 티가 안 난다.
+            # 15.5 · 15.9cm(6.1 · 6.3") 칸은 1206×2622 만 받는다 (2026-10-13 사용자) — 비율 차이 0.07%.
             if kind == "iphone":
-                small_dir = target_dir.parent / "iphone-6.5"
-                small_dir.mkdir(parents=True, exist_ok=True)
-                small = done.convert("RGB").resize((1284, 2778), Image.LANCZOS)
-                small.save(small_dir / source.name, "PNG", optimize=True)
-                print(f"{small_dir / source.name} 1284×2778")
+                for folder, size in (("iphone-6.5", (1284, 2778)), ("iphone-6.3", (1206, 2622))):
+                    small_dir = target_dir.parent / folder
+                    small_dir.mkdir(parents=True, exist_ok=True)
+                    small = done.convert("RGB").resize(size, Image.LANCZOS)
+                    small.save(small_dir / source.name, "PNG", optimize=True)
+                    print(f"{small_dir / source.name} {size[0]}×{size[1]}")
 
 
 if __name__ == "__main__":
