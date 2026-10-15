@@ -22,10 +22,12 @@ struct PercentStepper: View {
     @Binding var basisPoints: Int
     var range: ClosedRange<Int> = 0...10_000
     var step: Int = 250
+    /// 화면이 아직 살아 있는가 — 취소 · 삭제 뒤 250ms 에 늦게 쓰지 않게 (192번 C · 199번 A2).
+    var isLive: @MainActor () -> Bool = { true }
 
     var body: some View {
         // 미루는 쓰기는 `DeferredStepper` 하나가 한다 (169번). 여기는 퍼센트 글자만.
-        DeferredStepper(value: $basisPoints, range: range, step: step) { shown in
+        DeferredStepper(value: $basisPoints, range: range, step: step, isLive: isLive) { shown in
             HStack(spacing: 8) {
                 Text(title)
                 Spacer()

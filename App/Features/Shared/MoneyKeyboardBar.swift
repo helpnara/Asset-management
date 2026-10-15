@@ -35,8 +35,20 @@ final class MoneyKeyboard {
     }
 
     private(set) var active: Handle?
+    /// **취소로 닫히는 화면의 칸** (199번 A2). 금액 칸은 치는 동안 글자만 들고 있다가 손 뗄 때 · 화면이
+    /// 사라질 때 모델에 쓴다(169번). 그래서 커서를 둔 채 `취소` 를 누르면, 시트가 값을 되돌린 **뒤에**
+    /// 칸이 적던 글자를 써 넣어 친 값이 저장됐다. 취소가 먼저 이 칸을 "버릴 칸" 으로 적어 둔다.
+    private(set) var discarding: UUID?
 
-    func activate(_ handle: Handle) { active = handle }
+    func activate(_ handle: Handle) {
+        active = handle
+        discarding = nil
+    }
+
+    /// 편집 시트의 `취소` 가 되돌리기 **전에** 부른다 (199번 A2).
+    func discardActive() { discarding = active?.id }
+
+    func shouldDiscard(_ id: UUID) -> Bool { discarding == id }
 
     /// **자기 것일 때만 지운다.** 칸에서 칸으로 옮길 때 새 칸이 먼저 잡고
     /// 옛 칸이 뒤늦게 놓는 순서가 되는데, 그때 남의 손잡이를 지우면 띠가

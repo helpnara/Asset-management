@@ -80,12 +80,14 @@ enum SampleData {
         let dadPension = account("연금저축", "증권사 A", .pensionSavings, dad, 2, context)
         dadPension.annualLimitMinor = 6_000_000
         dadPension.annualContributionMinor = 6_000_000
+        dadPension.annualContributionYear = Calendar.app.component(.year, from: .now)  // 체험 자료는 늘 올해 것 (199번 B2)
         holding("TDF 2045", .equity, .fund, "KR", .accumulating, .monthly, 42_000_000, dadPension, 0, context, targetBP: 10_000,
                 reasons: [(60, "연금 계좌는 손이 덜 가야 오래 간다. 은퇴 연도에 맞춰 알아서 채권을 늘려 주는 쪽으로.")])
 
         let dadIRP = account("IRP", "증권사 A", .irp, dad, 3, context)
         dadIRP.annualLimitMinor = 3_000_000
         dadIRP.annualContributionMinor = 1_800_000
+        dadIRP.annualContributionYear = Calendar.app.component(.year, from: .now)  // 체험 자료는 늘 올해 것 (199번 B2)
         // 만기가 있는 계좌. 1페이지 푸터의 `임박한 만기` 가 이걸 읽는다
         // (docs/08-feedback.md 28번). **날짜도 예시다.**
         dadIRP.maturesOn = Calendar.app.date(byAdding: .day, value: 96, to: .now)

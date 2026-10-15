@@ -31,8 +31,6 @@ struct DashboardView: View {
     @Fetched(sort: \Principle.order) private var principles: [Principle]
     @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
 
-    /// CI 스크린샷이 점검 화면도 찍을 수 있도록 실행 인자로 바로 열 수 있게 한다.
-    @State private var isReviewing = ProcessInfo.processInfo.arguments.contains("-startReview")
     @State private var completedToShow: ReviewSession?
     /// 로드맵 정거장을 누르면 그 시점의 분해 시트 (85번).
     @State private var selectedStop: RoadmapStrip.Stop?
@@ -104,9 +102,6 @@ struct DashboardView: View {
             .background(Color.ground)
             .syncRefreshable(note: $refreshNote)
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $isReviewing) {
-                WeeklyReviewView()
-            }
             .task(id: projectionKey) {
                 await runProjections(projectionKey)
             }
@@ -267,7 +262,8 @@ struct DashboardView: View {
             // 갱신" 이라 저장 쪽은 처음부터 재입력을 받았는데, 입구만 없었다.
             if canEdit {
                 Button {
-                    isReviewing = true
+                    // 창은 RootView 가 탭 바깥에서 띄운다 (199번 C4 — 아이패드를 돌려도 안 닫히게).
+                    AppRoute.shared.showReview = true
                 } label: {
                     Text(didReviewThisWeek ? "다시 열기" : "지금 입력")
                         .font(.scaled(11.5, weight: .medium))

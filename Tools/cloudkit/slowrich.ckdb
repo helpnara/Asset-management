@@ -23,6 +23,7 @@ DEFINE SCHEMA
         CD_createdAt TIMESTAMP,
         CD_annualContributionMinor INT64,
         CD_annualLimitMinor INT64,
+        CD_annualContributionYear INT64,
         CD_expectedReturnBP INT64,
         CD_maturesOn TIMESTAMP,
         CD_ownerID STRING,

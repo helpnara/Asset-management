@@ -9,7 +9,10 @@ import Observation
 final class AppRoute {
     static let shared = AppRoute()
 
-    var showReview = false
+    /// 주간 점검 창. **현황판의 `지금 입력` 도 이것을 세운다** (199번 C4). 예전에는 현황판이 제 `@State` 로
+    /// 띄워서, 아이패드를 돌려 탭 구조가 다시 만들어지면 그 값이 처음으로 돌아가 점검 창이 닫혔다.
+    /// CI 스크린샷은 `-startReview` 로 바로 연다.
+    var showReview = ProcessInfo.processInfo.arguments.contains("-startReview")
     /// 자산 탭의 `이번 주 점검에서 고치기` 가 점검을 열며 건네는 종목 (145번). 점검은
     /// 이 줄을 큐에 넣고(월 1회라 이미 빠졌어도) 커서를 여기에 둔 뒤 비운다.
     var reviewFocusID: UUID?

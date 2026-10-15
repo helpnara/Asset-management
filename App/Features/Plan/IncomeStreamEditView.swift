@@ -138,6 +138,7 @@ struct IncomeStreamEditView: View {
     private func isLive() -> Bool { !isCancelled && !stream.isGone }
 
     private func cancel() {
+        MoneyKeyboard.shared.discardActive()
         isCancelled = true
         if isNew { context.delete(stream) } else { snapshot?.restore(to: stream) }
         dismiss()

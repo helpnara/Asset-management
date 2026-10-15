@@ -143,6 +143,8 @@ struct BackupDocument: Codable, Sendable {
         var kind: String
         var isArchived: Bool
         var annualContributionMinor: Int
+        /// 납입액이 어느 해의 것인가 (199번 B2). 옛 백업에는 없다 — 없으면 0(= 이 칸 이전 값).
+        var annualContributionYear: Int?
         var annualLimitMinor: Int
         var expectedReturnBP: Int?
         var maturesOn: Date?
@@ -322,6 +324,7 @@ extension BackupDocument {
                             institution: account.institution, kind: account.kindRaw,
                             isArchived: account.isArchived,
                             annualContributionMinor: account.annualContributionMinor,
+                            annualContributionYear: account.annualContributionYear,
                             annualLimitMinor: account.annualLimitMinor,
                             expectedReturnBP: account.expectedReturnBP,
                             maturesOn: account.maturesOn,
@@ -653,6 +656,7 @@ extension BackupDocument {
                 account.id = accountData.id
                 account.isArchived = accountData.isArchived
                 account.annualContributionMinor = accountData.annualContributionMinor
+                account.annualContributionYear = accountData.annualContributionYear ?? 0
                 account.annualLimitMinor = accountData.annualLimitMinor
                 account.expectedReturnBP = accountData.expectedReturnBP
                 account.maturesOn = accountData.maturesOn

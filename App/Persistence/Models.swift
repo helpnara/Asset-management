@@ -99,6 +99,21 @@ extension Account {
         set { kindRaw = newValue.rawValue }
     }
 
+    /// `annualContributionYear` 가 0 인 값(모델 2판 전에 적은 것)이 속한 해 (199번 B2). 2판이 나간 해다.
+    static let legacyContributionYear = 2026
+
+    /// 납입액이 속한 해.
+    var contributionYear: Int {
+        annualContributionYear == 0 ? Self.legacyContributionYear : annualContributionYear
+    }
+
+    /// **그해의 납입액** (199번 B2). 해가 바뀌면 지난해 납입은 0 으로 센다 — 값을 지우지 않는다.
+    /// 예전에는 안내에 "해가 바뀌면 0 으로 되돌립니다" 라고 적어 놓고 아무도 안 되돌려, 1월에 자산
+    /// 진단이 지난해 납입으로 "한도를 다 채웠다" 고 말할 참이었다.
+    func contributedMinor(in year: Int) -> Int {
+        contributionYear == year ? annualContributionMinor : 0
+    }
+
     var sortedHoldings: [Holding] {
         // 지운 것은 빼고 준다 (178번). 위 `sortedAccounts` 와 같은 이유다.
         (holdings as? Set<Holding> ?? []).filter { !$0.isDeleted }

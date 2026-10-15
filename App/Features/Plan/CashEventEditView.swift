@@ -119,6 +119,7 @@ struct CashEventEditView: View {
     }
 
     private func cancel() {
+        MoneyKeyboard.shared.discardActive()
         if isNew { context.delete(event) } else { snapshot?.restore(to: event) }
         dismiss()
     }

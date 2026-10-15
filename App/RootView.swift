@@ -144,6 +144,32 @@ struct RootView: View {
 
     var body: some View {
         tabs
+            // **점검 창은 탭 바깥에 단다** (199번 C4). `tabs` 는 아이패드 가로 · 세로에 따라 다른 갈래라,
+            // 돌리는 순간 `TabView` 와 그 안의 화면 상태가 통째로 새로 만들어진다. 점검 창이 그 안에
+            // 달려 있으면 함께 닫히거나(현황판 `지금 입력`), 다시 열리며 열 때 값을 잃었다(알림).
+            .fullScreenCover(isPresented: Binding(
+                // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.
+                get: { route.showReview && role.canEdit },
+                set: { route.showReview = $0 }
+            )) {
+                WeeklyReviewView()
+                    .statusBand()
+                    // 탭 안에 달려 있을 때 물려받던 둘 — 탭 바깥으로 나오며 직접 준다.
+                    .tint(Color.ink)
+                    .scrollDismissesKeyboard(.interactively)
+            }
+            // 제목은 사람이 누른 알림 동작의 이름 (196번). 예전에는 "이번 주 점검 완료" 라서
+            // 보기 전용 폰의 "기록하지 않았습니다" 안내에도 완료라는 제목이 붙었다.
+            .alert("총액만 기록",
+                   isPresented: Binding(
+                       get: { route.totalOnlyMessage != nil },
+                       set: { if !$0 { route.totalOnlyMessage = nil } }
+                   ),
+                   presenting: route.totalOnlyMessage) { _ in
+                Button("확인", role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
             // 크기만 잰다. `GeometryReader` 로 본문을 감싸면 안전 영역 계산이
             // 헝클어지므로 배경에 숨겨 둔다.
             .background {
@@ -390,26 +416,6 @@ struct RootView: View {
 
             // 매달 1일 회고 알림 (86번).
             await RetrospectiveNotifications.refresh()
-        }
-        .fullScreenCover(isPresented: Binding(
-            // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.
-            get: { route.showReview && role.canEdit },
-            set: { route.showReview = $0 }
-        )) {
-            WeeklyReviewView()
-                .statusBand()
-        }
-        // 제목은 사람이 누른 알림 동작의 이름 (196번). 예전에는 "이번 주 점검 완료" 라서
-        // 보기 전용 폰의 "기록하지 않았습니다" 안내에도 완료라는 제목이 붙었다.
-        .alert("총액만 기록",
-               isPresented: Binding(
-                   get: { route.totalOnlyMessage != nil },
-                   set: { if !$0 { route.totalOnlyMessage = nil } }
-               ),
-               presenting: route.totalOnlyMessage) { _ in
-            Button("확인", role: .cancel) {}
-        } message: { message in
-            Text(message)
         }
     }
 

@@ -239,6 +239,7 @@ struct MemberEditView: View {
 
     /// 열 때 값으로 되돌리고 닫는다. 새로 만든 것이면 지운다 (104번).
     private func cancel() {
+        MoneyKeyboard.shared.discardActive()
         isCancelled = true
         nameOnOpen = nil
         if isNew {
@@ -268,6 +269,8 @@ struct MemberEditView: View {
 }
 
 struct AccountEditView: View {
+    /// `취소` 를 눌렀다 — 퍼센트 손잡이가 250ms 뒤에 늦게 쓰지 않게 (199번 A2).
+    @State private var isCancelled = false
     @ObservedObject var account: Account
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
@@ -329,12 +332,12 @@ struct AccountEditView: View {
                 // 채워야 할 것이 있는 것처럼 읽힌다.
                 if account.kind.hasContributionLimit {
                     Section {
-                        MoneyField(title: "올해 납입액", minorUnits: $account.annualContributionMinor)
+                        MoneyField(title: "올해 납입액", minorUnits: thisYearContribution)
                         MoneyField(title: "연간 한도", minorUnits: $account.annualLimitMinor)
                     } header: {
                         Text("연간 한도")
                     } footer: {
-                        Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. 이 앱은 세법을 따라가지 않습니다 — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 납입액을 0으로 되돌립니다.")
+                        Text("자산 진단이 이 두 값으로 \"어느 계좌부터 채울지\"를 판단합니다. 이 앱은 세법을 따라가지 않습니다 — 한도는 직접 확인해서 넣고, 바뀌면 직접 고치세요. 해가 바뀌면 지난해 납입액은 0 으로 셉니다 — 올해 넣은 만큼 다시 적으세요.\(lastYearNote)")
                     }
                 }
 
@@ -368,7 +371,8 @@ struct AccountEditView: View {
                     Toggle("따로 정한 수익률이 있다", isOn: hasOwnReturn)
                     if account.expectedReturnBP != nil {
                         PercentStepper(title: "연 기대수익률", basisPoints: ownReturnBP,
-                                       range: 0...2_000, step: 25)
+                                       range: 0...2_000, step: 25,
+                                       isLive: { !isCancelled && !account.isGone })
                     } else {
                         LabeledContent("연 기대수익률") {
                             Text("계획의 \(account.kind.returnProfile.label) 값을 따름")
@@ -456,7 +460,32 @@ struct AccountEditView: View {
         return "이 계좌에 담긴 종목 \(count)개와 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다."
     }
 
+    /// **올해 납입액 칸** (199번 B2). 지난해 값이면 0 으로 보이고, 적으면 올해 것으로 적힌다.
+    private var thisYearContribution: Binding<Int> {
+        Binding(
+            get: {
+                guard !account.isGone else { return 0 }
+                return account.contributedMinor(in: Calendar.app.component(.year, from: .now))
+            },
+            set: { newValue in
+                guard !account.isGone else { return }
+                account.annualContributionMinor = newValue
+                account.annualContributionYear = Calendar.app.component(.year, from: .now)
+            }
+        )
+    }
+
+    /// 지난해에 적어 둔 값이 있으면 한 줄 덧붙인다 — 0 으로 보이는 까닭.
+    private var lastYearNote: String {
+        guard !account.isGone, account.annualContributionMinor > 0 else { return "" }
+        let year = account.contributionYear
+        guard year != Calendar.app.component(.year, from: .now) else { return "" }
+        return " (\(year)년에 적은 \(Won.grouped(account.annualContributionMinor))원은 지난해 것으로 둡니다.)"
+    }
+
     private func cancel() {
+        MoneyKeyboard.shared.discardActive()
+        isCancelled = true
         nameOnOpen = nil
         if isNew { context.delete(account) } else { snapshot?.restore(to: account) }
         dismiss()
@@ -550,6 +579,8 @@ struct AccountEditView: View {
 }
 
 struct HoldingEditView: View {
+    /// `취소` 를 눌렀다 — 퍼센트 손잡이가 250ms 뒤에 늦게 쓰지 않게 (199번 A2).
+    @State private var isCancelled = false
     @ObservedObject var holding: Holding
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var context
@@ -602,7 +633,7 @@ struct HoldingEditView: View {
                         PercentStepper(title: "목표 비중", basisPoints: Binding(
                             get: { holding.targetWeightBP ?? 0 },
                             set: { holding.targetWeightBP = $0 }
-                        ))
+                        ), isLive: { !isCancelled && !holding.isGone })
                     }
                 } header: {
                     Text("목표 비중")
@@ -826,6 +857,8 @@ struct HoldingEditView: View {
     }
 
     private func cancel() {
+        MoneyKeyboard.shared.discardActive()
+        isCancelled = true
         nameOnOpen = nil
         if isNew { context.delete(holding) } else { snapshot?.restore(to: holding) }
         dismiss()

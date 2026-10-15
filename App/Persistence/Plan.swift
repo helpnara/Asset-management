@@ -594,7 +594,7 @@ extension Plan {
                     LimitAccountInput(
                         kind: $0.kind,
                         name: $0.name,
-                        contributedThisYear: Money(minorUnits: $0.annualContributionMinor, currency: .krw),
+                        contributedThisYear: Money(minorUnits: $0.contributedMinor(in: year), currency: .krw),
                         annualLimit: Money(minorUnits: $0.annualLimitMinor, currency: .krw)
                     )
                 },

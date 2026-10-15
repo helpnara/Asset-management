@@ -136,15 +136,17 @@ struct MoneyField: View {
                         // **손 뗄 때 한 번 저장한다** (169번 C1). 글자마다 저장하면
                         // 살아 있는 다섯 탭이 글자마다 다시 그렸다. 만 · 억은
                         // 누르는 순간 저장한다 — 그건 한 번의 뜻이다 (156번).
-                        commitDraft()
+                        // 취소로 닫히는 중이면 쓰지 않는다 (199번 A2).
+                        if !MoneyKeyboard.shared.shouldDiscard(fieldID) { commitDraft() }
                         draft = nil
                         note = nil
                         MoneyKeyboard.shared.resign(fieldID)
                     }
                 }
                 .onDisappear {
-                    // 커서가 있는 채로 화면이 닫히면 적던 값을 잃지 않게.
-                    if isFocused { commitDraft() }
+                    // 커서가 있는 채로 화면이 닫히면 적던 값을 잃지 않게. 단 `취소` 로 닫힐 때는
+                    // 버린다 — 시트가 값을 되돌린 뒤에 써 넣으면 취소가 취소가 아니다 (199번 A2).
+                    if isFocused, !MoneyKeyboard.shared.shouldDiscard(fieldID) { commitDraft() }
                     MoneyKeyboard.shared.resign(fieldID)
                 }
             Text("원")

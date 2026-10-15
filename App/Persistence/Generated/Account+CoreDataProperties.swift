@@ -43,6 +43,11 @@ extension Account {
     /// 여기에 숫자를 박아 두고 세법이 바뀌면, 앱이 조용히 틀린 조언을 하게 된다.
     @NSManaged var annualLimitMinor: Int
 
+    /// **올해 납입액이 어느 해의 것인가** (199번 B2, 모델 2판). 0 은 이 칸이 생기기 전(1.0.5 까지)에 적은 값 —
+    /// 그때 적은 것은 2026년 것으로 본다(`Account.contributedThisYear`). 해가 바뀌면 지난해 납입은 0 으로 센다.
+    /// 값을 지우지 않고 해만 보므로, 여러 기기가 새해 첫날 서로 0 으로 덮어쓸 일이 없다.
+    @NSManaged var annualContributionYear: Int
+
     /// 이 계좌만의 기대수익률(basis point). 비워 두면 계좌 종류의 기본값을 따른다.
     /// 예금마다 금리가 다르므로 계좌 단위로 적을 수 있어야 한다
     /// (docs/08-feedback.md 11번).

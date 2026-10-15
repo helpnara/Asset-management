@@ -53,6 +53,12 @@ struct WeeklyReviewView: View {
     @State private var scrollProxy: ScrollViewProxy?
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
+    /// `나중에` 를 눌렀는데 적은 것이 있어 되묻는 중 (199번 C1).
+    @State private var isConfirmingLater = false
+    /// **이 기기가 이번 점검에서 적은 값** (199번 A1). `나중에` · `되돌리기` 는 이것과 지금 값이 같은
+    /// 줄만 되돌린다. 예전에는 큐 전체를 열 때 값으로 돌려서, 화면을 열어 둔 사이 다른 식구가 제 폰에서
+    /// 적어 동기화된 값까지 지난주로 돌아갔다. 지금 값이 이것과 다르면 그 뒤에 누가 고친 것이다 — 둔다.
+    @State private var written: [UUID: Int] = [:]
 
     /// **활성 행에 친 글자** (144-A). 활성 행의 입력칸은 비어 있고 지난 값은 회색
     /// 자리표시로만 보인다 — 여덟 자리를 지우고 치는 수고를 없앤다. 어느 줄의
@@ -156,7 +162,7 @@ struct WeeklyReviewView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // **취소다** (103번). 치는 대로 저장되므로 열 때 값으로 되돌린다.
-                    Button("나중에") { revertAll(); dismiss() }.foregroundStyle(Color.muted)
+                    Button("나중에") { requestLater() }.foregroundStyle(Color.muted)
                 }
             }
             // **도구막대는 키보드 툴바가 아니라 화면 안의 띠다** (144 빌드 76). SwiftUI 의
@@ -218,6 +224,14 @@ struct WeeklyReviewView: View {
             } message: {
                 Text(largeChangeMessage)
             }
+            // **적은 것이 있으면 한 번 묻는다** (199번 C1). `나중에` 는 103번에서 정한 대로 "취소" 다 —
+            // 열 때 값으로 돌아간다. 이어서 하려던 사람이 몇 건을 확인 없이 잃던 자리다.
+            .confirmationDialog(laterTitle, isPresented: $isConfirmingLater, titleVisibility: .visible) {
+                Button("되돌리고 나가기", role: .destructive) { revertAll(); dismiss() }
+                Button("계속 적기", role: .cancel) {}
+            } message: {
+                Text("치는 대로 저장돼 있지만, 나가면 이 화면을 열 때 값으로 돌아갑니다. 지금 값으로 남기려면 끝까지 가서 `완료` 를 누르세요.")
+            }
         }
     }
 
@@ -232,7 +246,9 @@ struct WeeklyReviewView: View {
         return delta >= 100_000 && Decimal(delta) / Decimal(abs(last)) >= Decimal(string: "0.3")!
     }
 
-    private var suspiciousHoldings: [Holding] { queue.filter(isLargeChange) }
+    /// **이 기기가 적은 줄만** 묻는다 (199번 A1). 다른 식구가 제 폰에서 적은 큰 변화는 그 폰이 묻는다 —
+    /// 여기서 `되돌리기` 를 누르면 남의 진짜 값을 지웠다.
+    private var suspiciousHoldings: [Holding] { queue.filter { isMine($0) && isLargeChange($0) } }
 
     private var largeChangeTitle: String {
         "크게 바뀐 항목 \(suspiciousHoldings.count)건 — 맞나요?"
@@ -250,7 +266,7 @@ struct WeeklyReviewView: View {
     /// 크게 바뀐 항목을 지난주 값으로 되돌리고 그 첫 줄로 간다 (103번).
     private func revertSuspicious() {
         let items = suspiciousHoldings
-        for holding in items { holding.valueMinor = holding.lastEnteredValueMinor }
+        for holding in items { write(holding, holding.lastEnteredValueMinor) }
         focus(items.first?.id)
     }
 
@@ -268,14 +284,45 @@ struct WeeklyReviewView: View {
         }
     }
 
-    /// 열 때 값으로 전부 되돌린다 — `나중에` (103번). 방문 기록도 열 때 것으로.
+    /// 열 때 값으로 되돌린다 — `나중에` (103번). 방문 기록도 열 때 것으로.
+    /// **이 기기가 적은 줄만** (199번 A1) — 다른 식구가 그사이 적은 값은 둔다.
     private func revertAll() {
         VisitedStore.save(visitedAtOpen, anchor: ReviewWeek.anchor(for: .now))
-        for holding in queue {
+        for holding in queue where isMine(holding) {
             guard let original = originals[holding.id] else { continue }
             holding.valueMinor = original.value
             holding.lastEnteredValueMinor = original.baseline
             holding.lastEnteredAt = original.at
+        }
+    }
+
+    /// 이 기기가 적은 값이 아직 그대로인가 (199번 A1).
+    private func isMine(_ holding: Holding) -> Bool { written[holding.id] == holding.valueMinor }
+
+    /// 점검 화면에서 값을 쓰는 **유일한 문** (199번 A1) — 무엇을 썼는지 남겨야 `나중에` 가 제 것만 되돌린다.
+    private func write(_ holding: Holding, _ value: Int) {
+        // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번). 이미 옮겼으면 아무 일도 안 한다.
+        holding.rollBaselineIfNewWeek()
+        holding.valueMinor = value
+        written[holding.id] = value
+    }
+
+    /// 열 때와 달라진, 이 기기가 적은 줄 수.
+    private var changedByMe: Int {
+        queue.filter { holding in
+            isMine(holding) && originals[holding.id]?.value != holding.valueMinor
+        }.count
+    }
+
+    private var laterTitle: String { "적은 \(changedByMe)건을 되돌리고 나갈까요?" }
+
+    /// `나중에` — 적은 것이 없으면 바로 나가고, 있으면 묻는다 (199번 C1).
+    private func requestLater() {
+        if changedByMe == 0 {
+            revertAll()
+            dismiss()
+        } else {
+            isConfirmingLater = true
         }
     }
 
@@ -554,7 +601,9 @@ struct WeeklyReviewView: View {
                 Spacer(minLength: 0)
             }
 
-            Button("변동 없음") { move(1) }
+            // **이름대로 — 이 줄을 커서가 올 때 값으로 두고 넘어간다** (199번 C2). 예전에는 `다음` 과 같아서
+            // 잘못 친 숫자가 그대로 남았고, 마지막 줄에서는 아무 일도 안 했다.
+            Button("변동 없음") { keepUnchanged() }
                 .font(.scaled(13))
             Button(currentIndex >= queue.count - 1 ? "완료" : "다음") {
                 if currentIndex >= queue.count - 1 { requestFinish() } else { move(1) }
@@ -568,6 +617,14 @@ struct WeeklyReviewView: View {
     private var currentIndex: Int {
         guard let focusedID, let index = queue.firstIndex(where: { $0.id == focusedID }) else { return 0 }
         return index
+    }
+
+    private func keepUnchanged() {
+        if let focusedID, let holding = queue.first(where: { $0.id == focusedID }) {
+            draft = nil
+            if holding.valueMinor != focusOriginal { write(holding, focusOriginal) }
+        }
+        if currentIndex >= queue.count - 1 { requestFinish() } else { move(1) }
     }
 
     private func move(_ delta: Int) {
@@ -600,7 +657,7 @@ struct WeeklyReviewView: View {
                     // 아직 아무것도 안 친 줄에 오는 빈 세터는 그냥 둔다.
                     guard draft?.id == holding.id else { return }
                     draft = Draft(id: holding.id, text: "")
-                    if holding.valueMinor != focusOriginal { holding.valueMinor = focusOriginal }
+                    if holding.valueMinor != focusOriginal { write(holding, focusOriginal) }
                     return
                 }
                 let next = Int(digits) ?? 0
@@ -608,9 +665,7 @@ struct WeeklyReviewView: View {
                 // **값이 실제로 바뀔 때만.** 같은 값으로 불렸을 때 기준값을 옮기면
                 // 증감이 사라진다 (CI 에서 잡음).
                 guard next != holding.valueMinor else { return }
-                // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번).
-                holding.rollBaselineIfNewWeek()
-                holding.valueMinor = next
+                write(holding, next)
             }
         )
     }
@@ -624,10 +679,7 @@ struct WeeklyReviewView: View {
         let digits = String(whole.filter(\.isNumber).prefix(15))
         guard let next = Int(digits), next > 0 else { return }
         draft = Draft(id: holding.id, text: Won.grouped(next))
-        if next != holding.valueMinor {
-            holding.rollBaselineIfNewWeek()
-            holding.valueMinor = next
-        }
+        if next != holding.valueMinor { write(holding, next) }
         move(1)
     }
 
@@ -641,8 +693,7 @@ struct WeeklyReviewView: View {
         let (next, hitLimit) = SafeMath.multiplyClamping(holding.valueMinor, by: factor,
                                                          limit: MoneyLimits.maxMinorUnits)
         guard next != holding.valueMinor else { return }
-        holding.rollBaselineIfNewWeek()
-        holding.valueMinor = next
+        write(holding, next)
         draft = Draft(id: holding.id, text: Won.grouped(next))
         if hitLimit { limitNote = true }
     }
