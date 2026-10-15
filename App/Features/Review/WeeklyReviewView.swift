@@ -1,5 +1,6 @@
 import Core
 import CoreData
+import Observation
 import SwiftUI
 import UIKit
 
@@ -39,26 +40,18 @@ struct WeeklyReviewView: View {
     /// 그 줄을 건너뛰었다. 이제 떠날 때 넣는다 — `다음`·`변동 없음`·다른 줄 탭·
     /// 완료 전부 "떠남" 이다. 화면의 진행은 지금 줄까지 센다(`shownVisited`).
     @State private var visited: Set<UUID> = []
-    /// 열 때의 방문 기록 — `나중에` 는 값과 함께 이것도 되돌린다.
-    @State private var visitedAtOpen: Set<UUID> = []
     @State private var completed: ReviewSession?
-    /// **열 때 정한 큐** (105번). 월 1회 종목은 값을 적는 순간 "이 달에 적음" 이
-    /// 되어 `isDue()` 가 거짓이 되는데, 큐를 매번 다시 계산하면 그 줄이 손에서
-    /// 사라진다. 열 때 한 번 정하고 그대로 둔다.
-    @State private var queuedIDs: Set<UUID>?
-    /// 열 때의 값 — `나중에` 는 전부 되돌린다 (103번). 값은 치는 대로 저장되므로
-    /// 되돌릴 것을 따로 들고 있어야 한다.
-    @State private var originals: [UUID: (value: Int, baseline: Int, at: Date?)] = [:]
+    /// **열고 닫을 때까지의 장부** — 열 때 정한 큐 · 열 때 값 · 이 기기가 쓴 값 (199번 A1 후속).
+    /// 화면의 `@State` 에 두었더니 빌드 127 에서 `나중에` 가 아무것도 되돌리지 않았다(사용자). 화면이
+    /// 점검 도중 다시 만들어지면 `@State` 가 처음으로 돌아가고, 다시 뜨면서 "열 때 값" 을 **고친 값으로**
+    /// 새로 잡는다 — 그러면 되돌릴 것이 없다. 장부는 화면 밖(`AppRoute`)에 두고 창이 닫힐 때만 비운다.
+    private var ledger: ReviewLedger { AppRoute.shared.reviewLedger }
     /// 확인 창이 닫힌 뒤 특정 줄로 스크롤하고 포커스를 주기 위해 붙잡아 둔다 (112번).
     @State private var scrollProxy: ScrollViewProxy?
     /// 크게 바뀐 항목을 한 번 확인받는 중 (B2).
     @State private var isConfirmingLargeChanges = false
     /// `나중에` 를 눌렀는데 적은 것이 있어 되묻는 중 (199번 C1).
     @State private var isConfirmingLater = false
-    /// **이 기기가 이번 점검에서 적은 값** (199번 A1). `나중에` · `되돌리기` 는 이것과 지금 값이 같은
-    /// 줄만 되돌린다. 예전에는 큐 전체를 열 때 값으로 돌려서, 화면을 열어 둔 사이 다른 식구가 제 폰에서
-    /// 적어 동기화된 값까지 지난주로 돌아갔다. 지금 값이 이것과 다르면 그 뒤에 누가 고친 것이다 — 둔다.
-    @State private var written: [UUID: Int] = [:]
 
     /// **활성 행에 친 글자** (144-A). 활성 행의 입력칸은 비어 있고 지난 값은 회색
     /// 자리표시로만 보인다 — 여덟 자리를 지우고 치는 수고를 없앤다. 어느 줄의
@@ -103,7 +96,7 @@ struct WeeklyReviewView: View {
     }
 
     private func isQueued(_ holding: Holding) -> Bool {
-        if let queuedIDs { return queuedIDs.contains(holding.id) }
+        if let queuedIDs = ledger.queuedIDs { return queuedIDs.contains(holding.id) }
         return holding.isDue()
     }
 
@@ -162,7 +155,17 @@ struct WeeklyReviewView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // **취소다** (103번). 치는 대로 저장되므로 열 때 값으로 되돌린다.
-                    Button("나중에") { requestLater() }.foregroundStyle(Color.muted)
+                    Button("나중에") { requestLater() }
+                        .foregroundStyle(Color.muted)
+                        // **적은 것이 있으면 한 번 묻는다** (199번 C1). `나중에` 는 103번에서 정한 대로 "취소" 다 —
+                        // 열 때 값으로 돌아간다. 확인 창은 **이 단추에** 단다 — 화면에는 이미 "크게 바뀐 항목"
+                        // 확인 창이 달려 있어, 같은 사슬에 하나 더 걸면 하나만 뜨는 일이 있다(빌드 127 에서 안 떴다).
+                        .confirmationDialog(laterTitle, isPresented: $isConfirmingLater, titleVisibility: .visible) {
+                            Button("되돌리고 나가기", role: .destructive) { revertAll(); dismiss() }
+                            Button("계속 적기", role: .cancel) {}
+                        } message: {
+                            Text("치는 대로 저장돼 있지만, 나가면 이 화면을 열 때 값으로 돌아갑니다. 지금 값으로 남기려면 끝까지 가서 `완료` 를 누르세요.")
+                        }
                 }
             }
             // **도구막대는 키보드 툴바가 아니라 화면 안의 띠다** (144 빌드 76). SwiftUI 의
@@ -173,7 +176,7 @@ struct WeeklyReviewView: View {
                 if focusedID != nil { accessoryBar }
             }
             .onAppear {
-                if queuedIDs == nil {
+                if ledger.queuedIDs == nil {
                     var ids = Set(queue.map(\.id))
                     // 자산 탭에서 `이번 주 점검에서 고치기` 로 들어왔다 (145번). 그 줄이
                     // 월 1회라 이미 빠졌어도 큐에 넣는다 — 내 구성원의 것일 때만.
@@ -183,16 +186,16 @@ struct WeeklyReviewView: View {
                         .contains(where: { $0.id == wanted }) {
                         ids.insert(wanted)
                     }
-                    queuedIDs = ids
+                    ledger.queuedIDs = ids
                     let items = queue
                     for holding in items {
-                        originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
+                        ledger.originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
                     }
                     // **이번 주 커서가 다녀간 줄은 지난 것으로 센다** (144-C). 같은 주에
                     // 다시 열면(90번) 진행 바가 거기서부터 차 있고, 커서는 아직 손이
                     // 안 간 첫 줄로 간다. 다 다녀갔으면 맨 위 — 다시 보는 자리다.
                     visited = VisitedStore.load(anchor: ReviewWeek.anchor(for: .now)).intersection(ids)
-                    visitedAtOpen = visited
+                    ledger.visitedAtOpen = visited
                     let target = (wanted.flatMap { ids.contains($0) ? $0 : nil })
                         ?? items.first { !visited.contains($0.id) }?.id
                         ?? items.first?.id
@@ -223,14 +226,6 @@ struct WeeklyReviewView: View {
                 }
             } message: {
                 Text(largeChangeMessage)
-            }
-            // **적은 것이 있으면 한 번 묻는다** (199번 C1). `나중에` 는 103번에서 정한 대로 "취소" 다 —
-            // 열 때 값으로 돌아간다. 이어서 하려던 사람이 몇 건을 확인 없이 잃던 자리다.
-            .confirmationDialog(laterTitle, isPresented: $isConfirmingLater, titleVisibility: .visible) {
-                Button("되돌리고 나가기", role: .destructive) { revertAll(); dismiss() }
-                Button("계속 적기", role: .cancel) {}
-            } message: {
-                Text("치는 대로 저장돼 있지만, 나가면 이 화면을 열 때 값으로 돌아갑니다. 지금 값으로 남기려면 끝까지 가서 `완료` 를 누르세요.")
             }
         }
     }
@@ -287,9 +282,9 @@ struct WeeklyReviewView: View {
     /// 열 때 값으로 되돌린다 — `나중에` (103번). 방문 기록도 열 때 것으로.
     /// **이 기기가 적은 줄만** (199번 A1) — 다른 식구가 그사이 적은 값은 둔다.
     private func revertAll() {
-        VisitedStore.save(visitedAtOpen, anchor: ReviewWeek.anchor(for: .now))
+        VisitedStore.save(ledger.visitedAtOpen, anchor: ReviewWeek.anchor(for: .now))
         for holding in queue where isMine(holding) {
-            guard let original = originals[holding.id] else { continue }
+            guard let original = ledger.originals[holding.id] else { continue }
             holding.valueMinor = original.value
             holding.lastEnteredValueMinor = original.baseline
             holding.lastEnteredAt = original.at
@@ -297,20 +292,20 @@ struct WeeklyReviewView: View {
     }
 
     /// 이 기기가 적은 값이 아직 그대로인가 (199번 A1).
-    private func isMine(_ holding: Holding) -> Bool { written[holding.id] == holding.valueMinor }
+    private func isMine(_ holding: Holding) -> Bool { ledger.written[holding.id] == holding.valueMinor }
 
     /// 점검 화면에서 값을 쓰는 **유일한 문** (199번 A1) — 무엇을 썼는지 남겨야 `나중에` 가 제 것만 되돌린다.
     private func write(_ holding: Holding, _ value: Int) {
         // 이번 주 처음 손대는 순간 직전 값을 기준값으로 (91번). 이미 옮겼으면 아무 일도 안 한다.
         holding.rollBaselineIfNewWeek()
         holding.valueMinor = value
-        written[holding.id] = value
+        ledger.written[holding.id] = value
     }
 
     /// 열 때와 달라진, 이 기기가 적은 줄 수.
     private var changedByMe: Int {
         queue.filter { holding in
-            isMine(holding) && originals[holding.id]?.value != holding.valueMinor
+            isMine(holding) && ledger.originals[holding.id]?.value != holding.valueMinor
         }.count
     }
 
@@ -827,5 +822,29 @@ struct WeeklyReviewView: View {
 
         focusedID = nil
         completed = session
+    }
+}
+
+/// **점검 한 번의 장부** (199번 A1 후속). 화면이 다시 만들어져도 남도록 화면 밖에 둔다 — 창이 닫힐 때
+/// `RootView` 가 비운다. 큐만 화면이 그린다(관찰), 나머지는 단추가 누를 때만 읽는다.
+@Observable
+@MainActor
+final class ReviewLedger {
+    /// **열 때 정한 큐** (105번). 월 1회 종목은 값을 적는 순간 "이 달에 적음" 이 되어 `isDue()` 가
+    /// 거짓이 되는데, 큐를 매번 다시 계산하면 그 줄이 손에서 사라진다. 열 때 한 번 정하고 그대로 둔다.
+    var queuedIDs: Set<UUID>?
+    /// 열 때의 값 — `나중에` 가 되돌리는 곳 (103번). 값은 치는 대로 저장되므로 따로 들고 있어야 한다.
+    @ObservationIgnored var originals: [UUID: (value: Int, baseline: Int, at: Date?)] = [:]
+    /// **이 기기가 이번 점검에서 쓴 값** (199번 A1). `나중에` · `되돌리기` 는 지금 값이 이것과 같은 줄만
+    /// 되돌린다 — 다르면 그 뒤에 다른 식구가 제 폰에서 고친 것이다.
+    @ObservationIgnored var written: [UUID: Int] = [:]
+    /// 열 때의 방문 기록 — `나중에` 는 값과 함께 이것도 되돌린다.
+    @ObservationIgnored var visitedAtOpen: Set<UUID> = []
+
+    func reset() {
+        queuedIDs = nil
+        originals = [:]
+        written = [:]
+        visitedAtOpen = []
     }
 }

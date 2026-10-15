@@ -150,7 +150,11 @@ struct RootView: View {
             .fullScreenCover(isPresented: Binding(
                 // 알림을 눌러 들어오는 길도 막는다 — 보기 전용이면 적을 화면이 없다.
                 get: { route.showReview && role.canEdit },
-                set: { route.showReview = $0 }
+                set: { shown in
+                    route.showReview = shown
+                    // 닫힐 때 장부를 비운다 — 다음에 열면 그때 값으로 새로 잡는다 (199번 A1 후속).
+                    if !shown { route.reviewLedger.reset() }
+                }
             )) {
                 WeeklyReviewView()
                     .statusBand()
