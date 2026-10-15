@@ -135,6 +135,8 @@ struct WeeklyReviewView: View {
                     // 줄이 바뀌면 친 글자는 버리고 그 줄의 값을 자리표시로 (144-A).
                     draft = nil
                     focusOriginal = newValue.flatMap { id in queue.first { $0.id == id } }?.valueMinor ?? 0
+                    // 사람이 직접 다른 줄을 누르면 그 줄은 다시 받는다.
+                    if let newValue { ledger.blocked.remove(newValue) }
                     // 떠난 줄이 "다녀간 줄" 이다 (144-C).
                     if let oldValue {
                         visited.insert(oldValue)
@@ -161,8 +163,10 @@ struct WeeklyReviewView: View {
                         // 열 때 값으로 돌아간다. 확인 창은 **이 단추에** 단다 — 화면에는 이미 "크게 바뀐 항목"
                         // 확인 창이 달려 있어, 같은 사슬에 하나 더 걸면 하나만 뜨는 일이 있다(빌드 127 에서 안 떴다).
                         .confirmationDialog(laterTitle, isPresented: $isConfirmingLater, titleVisibility: .visible) {
-                            Button("되돌리고 나가기", role: .destructive) { revertAll(); dismiss() }
-                            Button("계속 적기", role: .cancel) {}
+                            Button("되돌리고 나가기", role: .destructive) { leave() }
+                            // 역할을 `.cancel` 로 두면 iOS 가 단추를 감추고 바깥 누르기로만 닫는다(빌드 127 에서
+                            // "계속 적기 단추가 없다", 사용자). 이름 있는 단추로 늘 보이게 한다.
+                            Button("계속 적기") {}
                         } message: {
                             Text("치는 대로 저장돼 있지만, 나가면 이 화면을 열 때 값으로 돌아갑니다. 지금 값으로 남기려면 끝까지 가서 `완료` 를 누르세요.")
                         }
@@ -187,6 +191,7 @@ struct WeeklyReviewView: View {
                         ids.insert(wanted)
                     }
                     ledger.queuedIDs = ids
+                    ledger.isClosing = false
                     let items = queue
                     for holding in items {
                         ledger.originals[holding.id] = (holding.valueMinor, holding.lastEnteredValueMinor, holding.lastEnteredAt)
@@ -261,7 +266,12 @@ struct WeeklyReviewView: View {
     /// 크게 바뀐 항목을 지난주 값으로 되돌리고 그 첫 줄로 간다 (103번).
     private func revertSuspicious() {
         let items = suspiciousHoldings
-        for holding in items { write(holding, holding.lastEnteredValueMinor) }
+        // 커서가 있던 줄이 친 글자로 다시 써 넣지 않게 — `leave()` 와 같은 까닭 (빌드 127 체크리스트 2).
+        draft = nil
+        for holding in items {
+            write(holding, holding.lastEnteredValueMinor)
+            ledger.blocked.insert(holding.id)
+        }
         focus(items.first?.id)
     }
 
@@ -275,6 +285,7 @@ struct WeeklyReviewView: View {
             try? await Task.sleep(for: .milliseconds(450))
             withAnimation(.easeOut(duration: 0.2)) { scrollProxy?.scrollTo(id, anchor: .center) }
             try? await Task.sleep(for: .milliseconds(400))
+            ledger.blocked.remove(id)
             focusedID = id
         }
     }
@@ -289,6 +300,16 @@ struct WeeklyReviewView: View {
             holding.lastEnteredValueMinor = original.baseline
             holding.lastEnteredAt = original.at
         }
+    }
+
+    /// 되돌리고 닫는다. **커서가 있는 줄의 글자를 먼저 버린다** — 빌드 127 에서 `되돌리고 나가기` 를 눌러도
+    /// 고친 값이 남았다(사용자). 되돌린 뒤 창이 닫히며 커서가 떠날 때, 그 줄의 입력칸이 들고 있던 글자로
+    /// 세터를 한 번 더 불러 친 값을 다시 써 넣었다. 닫는 동안은 세터가 아무것도 안 받는다(`isClosing`).
+    private func leave() {
+        ledger.isClosing = true
+        draft = nil
+        revertAll()
+        dismiss()
     }
 
     /// 이 기기가 적은 값이 아직 그대로인가 (199번 A1).
@@ -314,8 +335,7 @@ struct WeeklyReviewView: View {
     /// `나중에` — 적은 것이 없으면 바로 나가고, 있으면 묻는다 (199번 C1).
     private func requestLater() {
         if changedByMe == 0 {
-            revertAll()
-            dismiss()
+            leave()
         } else {
             isConfirmingLater = true
         }
@@ -645,7 +665,7 @@ struct WeeklyReviewView: View {
             set: { newText in
                 // 활성 행만 받는다. 포커스가 옮겨 갈 때 앞 줄 세터가 제 값으로 한 번
                 // 더 불리는데, 그것은 값이 아니라 표시다.
-                guard focusedID == holding.id else { return }
+                guard focusedID == holding.id, !ledger.isClosing, !ledger.blocked.contains(holding.id) else { return }
                 let digits = String(newText.filter(\.isNumber).prefix(15))
                 if digits.isEmpty {
                     // 친 것을 다 지웠다 — 포커스 받은 순간의 값으로 (변동 없음).
@@ -840,11 +860,17 @@ final class ReviewLedger {
     @ObservationIgnored var written: [UUID: Int] = [:]
     /// 열 때의 방문 기록 — `나중에` 는 값과 함께 이것도 되돌린다.
     @ObservationIgnored var visitedAtOpen: Set<UUID> = []
+    /// `나중에` 로 닫는 중 — 입력칸 세터가 늦게 글자를 되쓰지 않게 (빌드 127 체크리스트 2).
+    /// `reset()` 에서 안 지운다: 창이 닫힌다고 알린 뒤에야 입력칸이 떠나며 세터를 부른다. 다음에 열 때 지운다.
+    @ObservationIgnored var isClosing = false
+    /// 크게 바뀐 항목 `되돌리기` 로 되돌린 줄 — 커서가 다시 올 때까지 늦은 세터를 안 받는다.
+    @ObservationIgnored var blocked: Set<UUID> = []
 
     func reset() {
         queuedIDs = nil
         originals = [:]
         written = [:]
         visitedAtOpen = []
+        blocked = []
     }
 }
