@@ -59,7 +59,7 @@ struct PlanCleanupView: View {
                 if let keep = pendingKeep { keepOnly(keep) }
                 pendingKeep = nil
             }
-            Button("취소", role: .cancel) { pendingKeep = nil }
+            Button("취소") { pendingKeep = nil }
         }
     }
 

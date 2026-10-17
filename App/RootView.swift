@@ -341,7 +341,7 @@ struct RootView: View {
                 // 사람에게는 시스템이 다시 묻지 않는다.
                 Task { _ = await ReviewNotifications.requestAuthorization() }
             }
-            Button("계속 둘러보기", role: .cancel) {}
+            Button("계속 둘러보기") {}
         }
     }
 

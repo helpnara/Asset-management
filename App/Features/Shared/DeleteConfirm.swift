@@ -24,7 +24,8 @@ struct DeleteButton<Label: View>: View {
         Button(role: .destructive) { isConfirming = true } label: { label }
             .confirmationDialog(title, isPresented: $isConfirming, titleVisibility: .visible) {
                 Button("삭제", role: .destructive, action: action)
-                Button("취소", role: .cancel) {}
+                // 이름 있는 단추로 — `.cancel` 역할은 iOS 26 말풍선 창에서 감춰진다 (200번).
+                Button("취소") {}
             } message: {
                 if let consequence { Text(consequence) }
             }
@@ -121,7 +122,8 @@ private struct DeleteDialogHost<Item>: View {
                     withAnimation { perform(item) }
                     pending.item = nil
                 }
-                Button("취소", role: .cancel) { pending.item = nil }
+                // 이름 있는 단추로 — `.cancel` 역할은 iOS 26 말풍선 창에서 감춰져 "취소가 없다" 로 보였다 (200번).
+                Button("취소") { pending.item = nil }
             } message: { item in
                 Text(message(item))
             }

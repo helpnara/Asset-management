@@ -365,7 +365,12 @@ struct DashboardView: View {
                 .min { $0.weekAnchor < $1.weekAnchor }
             guard let base = before ?? firstInside
             else { return AttributionRow(id: label, label: label, split: nil) }
-            let shown = before == nil ? "\(label) · \(DateText.short(base.weekAnchor))부터" : label
+            // 기간 앞 기록이 경계보다 **2주 넘게 앞이면** 그 날짜도 적는다 (201번). 9월 말 기록에서
+            // 센 수치가 "올해" 라고만 나와 1월부터의 수치로 읽혔다. 해가 다르면 연도까지 적는다.
+            let farBefore = before.map { boundary.timeIntervalSince($0.weekAnchor) > 14 * 86_400 } ?? false
+            let sameYear = calendar.isDate(base.weekAnchor, equalTo: latest.weekAnchor, toGranularity: .year)
+            let baseText = sameYear ? DateText.short(base.weekAnchor) : DateText.full(base.weekAnchor)
+            let shown = before == nil || farBefore ? "\(label) · \(baseText)부터" : label
             let days = calendar.dateComponents([.day], from: base.weekAnchor, to: latest.weekAnchor).day ?? 0
             let lumps = cashEvents
                 // **날짜로 견준다** (199번 B4) — 월간 회고(194번 3단계)와 같은 규칙. 목돈은 만든 시각을

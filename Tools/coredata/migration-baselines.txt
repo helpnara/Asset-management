@@ -3,6 +3,7 @@
 # 출시한 판은 지우지 않는다. 새로 App Store 에 낸 판의 커밋을 맨 위에 더한다.
 #
 # 커밋                                      설명
+31c903bae38f28048beb278d8e624b821c263c2e    1.0.7 App Store 빌드 129 (2026-10-17 제출)
 318ea3f80feedc63aced719847f71454f51dacb8    1.0.6 App Store 빌드 128 (2026-10-15 제출) — 모델 2판 첫 출시 (Account.annualContributionYear)
 9ca578ced0979e80d5e689ebed2eb227d9fb031b    1.0.5 App Store 빌드 126 (2026-10-10) — 모델 1판 마지막. 1.0.6 이 2판(199번 B2)
 3b799b9c2a6a148b51d3c26453d8c96df4304137    1.0 App Store 빌드 119 (2026-10-03) — 지금 사용자의 업데이트 경로

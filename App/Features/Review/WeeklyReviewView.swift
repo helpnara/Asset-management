@@ -226,7 +226,7 @@ struct WeeklyReviewView: View {
                                 titleVisibility: .visible) {
                 Button("그대로 저장") { finish() }
                 Button("되돌리기") { revertSuspicious() }
-                Button("다시 보기", role: .cancel) {
+                Button("다시 보기") {
                     focus(suspiciousHoldings.first?.id)
                 }
             } message: {

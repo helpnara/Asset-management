@@ -140,7 +140,7 @@ struct FamilyShareSection: View {
                         .confirmationDialog("개인 저장소의 기록 \(sharing.state.strays)건을 지울까요? 관리자가 공유한 기록은 그대로입니다.",
                                             isPresented: $isConfirmingStrays, titleVisibility: .visible) {
                             Button("지우기", role: .destructive) { sharing.deleteStrays() }
-                            Button("취소", role: .cancel) {}
+                            Button("취소") {}
                         }
                     }
                 }
@@ -189,7 +189,7 @@ struct FamilyShareSection: View {
                         .confirmationDialog("참가자 상태를 지울까요?", isPresented: $isConfirmingForget,
                                             titleVisibility: .visible) {
                             Button("지우기", role: .destructive) { sharing.forgetParticipation() }
-                            Button("취소", role: .cancel) {}
+                            Button("취소") {}
                         } message: {
                             Text("이 기기는 관리자 없이 제 기록을 새로 시작합니다. 관리자에게 다시 초대받으면 그때 다시 참가자가 됩니다.")
                         }
@@ -227,7 +227,7 @@ struct FamilyShareSection: View {
                     .confirmationDialog("먼저 백업을 받으셨나요?", isPresented: $isConfirmingMove,
                                         titleVisibility: .visible) {
                         Button("백업 받았음 — 옮기기") { sharing.moveUnsharedIntoShare() }
-                        Button("취소", role: .cancel) {}
+                        Button("취소") {}
                     } message: {
                         Text("더보기 → 내보내기 → 전체 백업을 먼저 받으세요. 옮기기는 개인 저장소에서 지우고 공유 저장소에 새로 만드는 두 단계라, 실패하면 다른 기기의 기록이 잠시 사라질 수 있습니다. 한 기기에서만 누르세요.")
                     }
