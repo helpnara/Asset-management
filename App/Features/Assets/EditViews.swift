@@ -227,7 +227,7 @@ struct MemberEditView: View {
                 if nameOnOpen == nil { nameOnOpen = member.name }
                 if snapshot == nil { snapshot = EditSnapshot(of: member) }
             }
-            .onDisappear { logChange() }
+            .onDisappear { dropIfEmptyNew(); logChange() }
             // 대표의 생년이 바뀌면 은퇴 연도(생년 + 나이)도 바뀐다 — 계획이 따라온다 (168번).
             .onChange(of: member.birthYear) { _, _ in
                 guard isFamilyHead else { return }
@@ -254,6 +254,15 @@ struct MemberEditView: View {
             }
         }
         dismiss()
+    }
+
+    /// **새로 만들다 그냥 닫으면 빈 것을 남기지 않는다** (199번 C9). `+` 를 누르는 순간 만들어 두므로
+    /// 쓸어내려 닫으면 이름 없는 빈 항목이 남아 목록 · 점검 큐에 끼었다.
+    private func dropIfEmptyNew() {
+        guard isNew, !member.isGone,
+              member.name.trimmingCharacters(in: .whitespaces).isEmpty,
+              member.sortedAccounts.isEmpty else { return }
+        context.delete(member)
     }
 
     private func logChange() {
@@ -424,7 +433,7 @@ struct AccountEditView: View {
                 if nameOnOpen == nil { nameOnOpen = account.name }
                 if snapshot == nil { snapshot = EditSnapshot(of: account) }
             }
-            .onDisappear { logChange() }
+            .onDisappear { dropIfEmptyNew(); logChange() }
         }
     }
 
@@ -432,6 +441,14 @@ struct AccountEditView: View {
         let owner = account.owner?.name ?? ""
         let name = account.name.isEmpty ? account.kind.label : account.name
         return owner.isEmpty ? name : "\(owner) · \(name)"
+    }
+
+    /// 새로 만들다 그냥 닫으면 빈 것을 남기지 않는다 (199번 C9).
+    private func dropIfEmptyNew() {
+        guard isNew, !account.isGone,
+              account.name.trimmingCharacters(in: .whitespaces).isEmpty,
+              account.sortedHoldings.isEmpty else { return }
+        context.delete(account)
     }
 
     private func logChange() {
@@ -802,7 +819,7 @@ struct HoldingEditView: View {
                 if valueOnOpen == nil { valueOnOpen = holding.valueMinor }
                 if valueEditableAtOpen == nil { valueEditableAtOpen = isNew || holding.lastEnteredAt == nil }
             }
-            .onDisappear { logChange() }
+            .onDisappear { dropIfEmptyNew(); logChange() }
             }
         }
     }
@@ -824,6 +841,14 @@ struct HoldingEditView: View {
         let account = holding.account.map { $0.name.isEmpty ? $0.kind.label : $0.name } ?? ""
         let name = holding.name.isEmpty ? "이름 없음" : holding.name
         return [owner, account, name].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// 새로 만들다 그냥 닫으면 빈 것을 남기지 않는다 (199번 C9) — 이름도 값도 없을 때만.
+    private func dropIfEmptyNew() {
+        guard isNew, !holding.isGone,
+              holding.name.trimmingCharacters(in: .whitespaces).isEmpty,
+              holding.valueMinor == 0 else { return }
+        context.delete(holding)
     }
 
     private func logChange() {

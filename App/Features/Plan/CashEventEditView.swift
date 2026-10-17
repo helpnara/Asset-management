@@ -90,6 +90,8 @@ struct CashEventEditView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("완료") {
+                        // 커서가 있는 금액 칸의 마지막 글자를 먼저 쓴다 (199번 A3 과 같은 꼴).
+                        MoneyKeyboard.shared.commitActive()
                         event.amountMinor = isInflow ? magnitude : -magnitude
                         dismiss()
                     }

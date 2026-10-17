@@ -255,13 +255,13 @@ struct AssetsView: View {
                 if !on { reorderDrafts.removeAll() }
             }
             .sheet(item: $editingMember, onDismiss: { newIDs.removeAll() }) {
-                MemberEditView(member: $0, isNew: newIDs.contains($0.id))
+                MemberEditView(member: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
             }
             .sheet(item: $editingAccount, onDismiss: { newIDs.removeAll() }) {
-                AccountEditView(account: $0, isNew: newIDs.contains($0.id))
+                AccountEditView(account: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
             }
             .sheet(item: $editingHolding, onDismiss: { newIDs.removeAll() }) {
-                HoldingEditView(holding: $0, isNew: newIDs.contains($0.id))
+                HoldingEditView(holding: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
             }
             .navigationDestination(item: $targetingAccount) { AccountTargetView(account: $0) }
             .sheet(item: $movingHolding) { holding in
@@ -425,14 +425,20 @@ struct AssetsView: View {
             } label: {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.scaled(11))
+                    // 누르는 자리 (199번 C6) — 아이콘만 하던 것.
+                    .frame(minWidth: 32, minHeight: 32)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.dad)
             .accessibilityLabel("\(member.name) 궤적 보기")
 
             if mayEdit(member) {
-                Button("편집") { editingMember = member }
-                    .font(.scaled(11))
+                Button { editingMember = member } label: {
+                    Text("편집").font(.scaled(11))
+                        .frame(minWidth: 40, minHeight: 32)
+                        .contentShape(Rectangle())
+                }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.dad)
             }
@@ -519,8 +525,8 @@ struct AssetsView: View {
                         Image(systemName: "ellipsis")
                             .font(.scaled(12, weight: .semibold))
                             .foregroundStyle(Color.faint)
-                            .frame(width: Font.scaledLength(24),
-                                   height: Font.scaledLength(24))
+                            .frame(width: Font.scaledLength(36),
+                                   height: Font.scaledLength(32))
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("계좌 메뉴")

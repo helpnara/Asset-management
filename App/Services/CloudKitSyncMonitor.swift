@@ -70,6 +70,11 @@ final class CloudKitSyncMonitor {
     /// 이번 실행에서 가져오기가 한 번이라도 끝났는가. 끝나기 전의 빈 화면은
     /// "받아오는 중" 으로 본다.
     private(set) var hasFinishedImport = false
+    /// **공유 저장소의 가져오기가 끝났는가** (199번 A5). 역할(관리자/참가자)은 공유 저장소에 든
+    /// `CKShare` 로 정한다. 새로 깐 참가자 폰은 개인 저장소가 거의 비어 그쪽 가져오기가 먼저 끝나는데,
+    /// 위의 `hasFinishedImport` 는 그 순간 켜져서 공유를 아직 못 본 폰이 "관리자" 로 적혔다.
+    /// 공유 저장소의 가져오기가 끝나거나, 다른 가져오기가 끝난 뒤 15초 동안 아무 가져오기도 없으면 켠다.
+    private(set) var hasFinishedSharedImport = false
 
     private var observer: NSObjectProtocol?
 
@@ -110,7 +115,16 @@ final class CloudKitSyncMonitor {
                 succeeded: event.succeeded,
                 failure: event.error.map { Self.describe($0) }
             )
-            MainActor.assumeIsolated { self?.record(attempt) }
+            // 값만 뽑는다 — 어느 저장소의 이벤트인지 (199번 A5).
+            let storeIdentifier = event.storeIdentifier
+            let succeeded = event.succeeded
+            MainActor.assumeIsolated {
+                self?.record(attempt)
+                if kind == .importing {
+                    let fromSharedStore = storeIdentifier == Persistence.sharedStore?.identifier
+                    self?.noteImportEnded(fromSharedStore: fromSharedStore, succeeded: succeeded)
+                }
+            }
         }
         watchForNothingToImport()
     }
@@ -134,11 +148,29 @@ final class CloudKitSyncMonitor {
             if status == .noAccount || status == .restricted, let self {
                 self.hasNoAccount = true
                 self.hasFinishedImport = true
+                self.hasFinishedSharedImport = true
                 return
             }
             try? await Task.sleep(for: .seconds(30))
             guard let self, !self.hasFinishedImport, self.importsInFlight == 0, self.lastImport == nil else { return }
             self.hasFinishedImport = true
+            self.hasFinishedSharedImport = true
+        }
+    }
+
+    /// 가져오기가 끝날 때마다 (199번 A5).
+    private func noteImportEnded(fromSharedStore: Bool, succeeded: Bool) {
+        guard !hasFinishedSharedImport else { return }
+        if fromSharedStore && succeeded {
+            hasFinishedSharedImport = true
+            return
+        }
+        // 공유 저장소 쪽 소식이 안 오는 기기(소유자 · 공유 없음)도 있다. 다른 가져오기가 끝난 뒤
+        // 15초 동안 새 가져오기가 없으면 끝난 것으로 본다.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard let self, !self.hasFinishedSharedImport, self.importsInFlight == 0 else { return }
+            self.hasFinishedSharedImport = true
         }
     }
 

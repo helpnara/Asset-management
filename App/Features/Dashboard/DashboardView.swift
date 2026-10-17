@@ -271,10 +271,16 @@ struct DashboardView: View {
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
                         .overlay(Rectangle().stroke(didReviewThisWeek ? Color.ruleStrong : Color.ink, lineWidth: 1))
+                        // 단추 모양은 그대로, 누르는 자리만 넓힌다 (199번 C6).
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
                 }
             }
         }
         .padding(13)
+        // **카드 아무 데나 눌러도 연다** (199번 C6). 매주 누르는 자리인데 단추가 작았다.
+        .contentShape(Rectangle())
+        .onTapGesture { if canEdit { AppRoute.shared.showReview = true } }
         // 바탕이 `surface` 가 됐으므로 이 카드는 한 겹 위(`raised`)로 올린다.
         // 그러지 않으면 카드가 바탕에 묻혀 사라진다 (35번).
         .background(Color.raised)
@@ -350,17 +356,29 @@ struct DashboardView: View {
         let end = Money(minorUnits: latest.netWorthMinor, currency: .krw)
 
         func row(_ label: String, before boundary: Date) -> AttributionRow {
-            guard latest.weekAnchor >= boundary,
-                  let base = snapshots.filter({ $0.weekAnchor < boundary }).max(by: { $0.weekAnchor < $1.weekAnchor })
+            guard latest.weekAnchor >= boundary else { return AttributionRow(id: label, label: label, split: nil) }
+            // 기간 앞 기록이 없으면(첫해 · 첫 달) **기간 안 첫 기록부터** 센다 (199번 C8). 예전에는
+            // 12주를 적은 사람에게도 "올해 · 기록 없음" 이라 했다 — 1월 1일 전 기록이 없다는 까닭으로.
+            let before = snapshots.filter { $0.weekAnchor < boundary }.max { $0.weekAnchor < $1.weekAnchor }
+            let firstInside = snapshots
+                .filter { $0.weekAnchor >= boundary && $0.weekAnchor < latest.weekAnchor }
+                .min { $0.weekAnchor < $1.weekAnchor }
+            guard let base = before ?? firstInside
             else { return AttributionRow(id: label, label: label, split: nil) }
+            let shown = before == nil ? "\(label) · \(DateText.short(base.weekAnchor))부터" : label
             let days = calendar.dateComponents([.day], from: base.weekAnchor, to: latest.weekAnchor).day ?? 0
             let lumps = cashEvents
-                .filter { $0.date > base.weekAnchor && $0.date <= latest.weekAnchor }
+                // **날짜로 견준다** (199번 B4) — 월간 회고(194번 3단계)와 같은 규칙. 목돈은 만든 시각을
+                // 들고 있어서, 점검한 토요일 오전에 넣은 목돈이 그 주에서 빠지고 다음 주로 넘어갔다.
+                .filter {
+                    let day = calendar.startOfDay(for: $0.date)
+                    return day > base.weekAnchor && day <= latest.weekAnchor
+                }
                 .reduce(Money.zero(.krw)) { $0 + $1.amount }
             let split = ChangeAttribution.estimate(
                 from: Money(minorUnits: base.netWorthMinor, currency: .krw), to: end,
                 monthlyContribution: monthly, days: days, lumpSums: lumps)
-            return AttributionRow(id: label, label: label, split: split)
+            return AttributionRow(id: label, label: shown, split: split)
         }
 
         // **이번 달 · 올해는 지금 달력으로** (194번 D5). 마지막 점검의 달로 잡으면 달이 바뀐 첫 주

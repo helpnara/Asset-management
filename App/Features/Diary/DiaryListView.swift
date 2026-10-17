@@ -9,6 +9,8 @@ struct DiaryListView: View {
     @Environment(\.managedObjectContext) private var context
     @Fetched(sort: \DiaryEntry.day, order: .reverse) private var entries: [DiaryEntry]
     @State private var editing: DiaryEntry?
+    /// 지우기를 기다리는 일기 (199번 C9 — 180번에서 빠진 자리).
+    @State private var pendingDelete = PendingDelete<DiaryEntry>()
 
     var body: some View {
         List {
@@ -26,11 +28,13 @@ struct DiaryListView: View {
                     DiaryRow(entry: entry)
                 }
                 .buttonStyle(.plain)
-            }
-            .onDelete { offsets in
-                for index in offsets { context.delete(entries[index]) }
+                // 밀어서 지우기 + 확인 창 — 다른 목록과 같은 꼴 (180 · 181번). 예전에는 밀기 한 번에 사라졌다.
+                .swipeDelete { pendingDelete.item = entry }
             }
         }
+        .confirmsDelete(pendingDelete, title: "이 날의 일기를 삭제할까요?",
+                        message: { _ in "목 · 실 · 감 세 줄이 함께 사라집니다. 되돌릴 수 없습니다." },
+                        perform: { context.delete($0) })
         .navigationTitle("목 · 실 · 감")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editing) { entry in DiaryEditView(entry: entry) }

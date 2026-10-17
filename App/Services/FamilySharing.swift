@@ -461,7 +461,8 @@ final class FamilySharing {
                     // 공유가 없으면 이 기기는 소유자다 — 다음 실행부터는 확인을
                     // 기다리지 않는다. 참가자는 위에서 공유를 읽을 때 적힌다.
                     if !result.isParticipant, !result.shareLost,
-                       CloudKitSyncMonitor.shared.hasFinishedImport,
+                       // 공유 저장소까지 받은 뒤에만 (199번 A5) — 새 참가자 폰이 관리자로 적히지 않게.
+                       CloudKitSyncMonitor.shared.hasFinishedSharedImport,
                        UserDefaults.standard.string(forKey: Self.roleKey) == nil {
                         UserDefaults.standard.set(FamilyRole.owner.rawValue, forKey: Self.roleKey)
                     }

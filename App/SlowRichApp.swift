@@ -120,7 +120,12 @@ struct SlowRichApp: App {
             // **내려가기 전에 쓴다.** `.inactive` 부터 잡는다 — 앱 전환기에
             // 올라간 순간 사용자가 쓸어 올려 끝낼 수 있고, 그때는 `.background`
             // 가 안 올 수도 있다. 모아 둔 것이 없으면 아무 일도 안 한다.
-            if phase != .active { Autosave.shared.flush() }
+            if phase != .active {
+                // 커서가 있는 금액 칸은 글자만 들고 있다 — 손 떼기 전에 앱이 내려가면 그 값은
+                // 모델에 없었다(199번 A4). 먼저 쓰고 저장한다. 잠금 창이 커서를 가져가며 쓰는 것보다 앞선다.
+                MoneyKeyboard.shared.commitActive()
+                Autosave.shared.flush()
+            }
         }
         // SwiftData 의 `.modelContainer(_:)` 자리. Core Data 는 컨텍스트를
         // 환경으로 내리고, `@Fetched` 가 그것을 읽는다.

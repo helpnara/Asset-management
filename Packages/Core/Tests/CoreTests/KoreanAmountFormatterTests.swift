@@ -59,6 +59,9 @@ struct PercentFormatterTests {
         #expect(PercentFormatter.oneDecimal(Decimal(string: "0.298")!) == "29.8")
         #expect(PercentFormatter.oneDecimal(0) == "0.0")
         #expect(PercentFormatter.oneDecimal(1) == "100.0")
+        // -1% ~ 0 사이에서 부호가 사라지던 것 (199번 B5).
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "-0.005")!) == "-0.5")
+        #expect(PercentFormatter.oneDecimal(Decimal(string: "-0.013")!) == "-1.3")
     }
 
     @Test("나누어떨어지지 않는 비중도 0.0 이 되지 않는다")

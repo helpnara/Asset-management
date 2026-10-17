@@ -36,8 +36,9 @@ struct PrincipleListView: View {
             .overlay { emptyNote }
             .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) { principle in
                 PrincipleEditView(principle: principle,
-                                  isNew: newIDs.contains(principle.id),
+                                  isNew: !principle.isGone && newIDs.contains(principle.id),
                                   onDelete: { remove(principle) })
+                    .saveFailureBand()
             }
     }
 

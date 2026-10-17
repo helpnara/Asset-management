@@ -55,7 +55,8 @@ struct RootView: View {
     private var isRolePending: Bool {
         guard Persistence.mode == .cloudKit, !roleWaitExpired,
               UserDefaults.standard.string(forKey: FamilySharing.roleKey) == nil else { return false }
-        return !sharing.state.isResolved || !monitor.hasFinishedImport
+        // 공유 저장소까지 받은 뒤에 판정한다 (199번 A5).
+        return !sharing.state.isResolved || !monitor.hasFinishedSharedImport
     }
 
     /// **iCloud 에서 자료가 오고 있나** (160번).
@@ -158,6 +159,8 @@ struct RootView: View {
             )) {
                 WeeklyReviewView()
                     .statusBand()
+                    // 점검 창은 탭 위 알림 줄을 덮는다 — 저장 실패를 여기서도 보인다 (199번 C3).
+                    .saveFailureBand()
                     // 탭 안에 달려 있을 때 물려받던 둘 — 탭 바깥으로 나오며 직접 준다.
                     .tint(Color.ink)
                     .scrollDismissesKeyboard(.interactively)
@@ -196,6 +199,10 @@ struct RootView: View {
             .task {
                 try? await Task.sleep(for: .seconds(20))
                 roleWaitExpired = true
+            }
+            // 공유 저장소까지 받았으면 역할을 다시 읽는다 (199번 A5). 참가자 폰의 `CKShare` 는 여기 든다.
+            .onChange(of: monitor.hasFinishedSharedImport) { _, finished in
+                if finished { sharing.refreshState() }
             }
             // 가져오기가 끝나면 한 번 더 읽는다 — 첫 실행의 참가자 폰은 이때
             // 비로소 공유가 손에 들어온다 (76번).

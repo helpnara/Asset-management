@@ -51,6 +51,19 @@ private struct StatusBandHost: ViewModifier {
     }
 }
 
+private struct SaveFailureBandHost: ViewModifier {
+    @State private var autosave = Autosave.shared
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .top, spacing: 0) {
+            if autosave.lastFailure != nil {
+                StatusBand(text: "저장하지 못했습니다 · 더보기 → 동기화에서 사유를 확인하세요",
+                           spinning: false, icon: "exclamationmark.triangle")
+            }
+        }
+    }
+}
+
 /// 화면이 "지금 이 일을 하고 있다" 고 목록에 올리는 방법. 플래그가 참인 동안
 /// 올라가 있고, 거짓이 되거나 화면이 사라지면 내려간다.
 private struct ProgressReporter: ViewModifier {
@@ -79,6 +92,13 @@ extension View {
     /// 탭 뿌리 · 시트 뿌리에 한 번.
     func statusBand() -> some View {
         modifier(StatusBandHost())
+    }
+
+    /// **저장 실패 띠 — 탭을 덮는 화면용** (199번 C3). 탭 위의 알림 줄(`RootView.notices`)은 점검 창 ·
+    /// 편집 시트 밑에 깔려 안 보였다. 치는 대로 저장하는 그 화면에서 저장이 실패해도 아무 말이 없었다.
+    /// 덮는 화면의 뿌리에 단다 — 탭 화면에는 달지 않는다(위 알림 줄과 둘이 된다).
+    func saveFailureBand() -> some View {
+        modifier(SaveFailureBandHost())
     }
 
     /// `isActive` 가 참인 동안 띠에 `label` 을 올린다.

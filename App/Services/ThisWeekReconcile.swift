@@ -50,7 +50,10 @@ enum ThisWeekReconcile {
             .filter { ReviewWeek.isSameWeek($0.weekAnchor, anchor) }
         guard snapshots.count == 1, let snapshot = snapshots.first else { return false }
 
+        // 순서 번호가 같은 구성원이 있으면(지우고 새로 만들면 생긴다) 기기마다 가져온 순서로 갈려,
+        // 두 기기가 이번 주 줄 순서를 서로 고쳐 쓰며 동기화가 맴돌 수 있었다 (199번 D). 끝까지 갈리게 한다.
         let members = context.all(Member.self, sortedBy: [NSSortDescriptor(key: "sortIndex", ascending: true)])
+            .sorted { ($0.sortIndex, $0.createdAt, $0.id.uuidString) < ($1.sortIndex, $1.createdAt, $1.id.uuidString) }
         let holdings = members.flatMap(\.sortedAccounts).flatMap(\.sortedHoldings)
         let rollup = Valuation.rollUp(holdings.compactMap { $0.position() }, base: .krw)
         var changed = false

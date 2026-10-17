@@ -54,6 +54,23 @@ struct MonteCarloTests {
         )
     }
 
+    @Test("대출(처음부터 빚인 덩어리)은 밴드에서도 빚이다 — 예상선과 같은 규칙 (199번 B1)")
+    func liabilityBucketStaysDebt() {
+        var input = base(years: 10, start: 0, monthly: 0)
+        input.buckets = [
+            BalanceBucket(profile: .investment, amount: Money(300_000_000, currency: .krw),
+                          annualReturn: Ratio(basisPoints: 800)),
+            BalanceBucket(profile: .fixed, amount: Money(-300_000_000, currency: .krw),
+                          annualReturn: Ratio(basisPoints: 0))
+        ]
+        let line = Projection.run(input, calendar: calendar).last?.nominal.minorUnits ?? 0
+        // 흔들림이 0 이면 모든 경로가 예상선이다. 예전에는 대출이 첫 달에 지워져 3억이 더 나왔다.
+        let result = run(input, volatilityBP: 0, paths: 20)
+        let median = result.bands.last?.p50.minorUnits ?? 0
+        #expect(abs(median - line) < 10_000)
+        #expect(median < 400_000_000)
+    }
+
     @Test("같은 시드면 같은 그림이 나온다")
     func deterministicSeed() {
         // 사용자가 아무것도 안 바꿨는데 밴드가 흔들리면 그건 결함으로 읽힌다.

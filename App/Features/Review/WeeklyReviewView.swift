@@ -424,31 +424,49 @@ struct WeeklyReviewView: View {
         queue(for: member).filter { shownVisited.contains($0.id) }.count
     }
 
+    /// 줄의 띠지 — 상태 · 비중 (199번 C5 에서 떼어 냄).
+    @ViewBuilder
+    private func rowBadges(_ holding: Holding) -> some View {
+        if holding.status != .accumulating {
+            StatusBadge(text: holding.status.label,
+                        foreground: holding.status.badgeForeground,
+                        background: holding.status.badgeBackground)
+        }
+        // 금액을 고치는 순간 다시 계산된다 — "지금 이걸 적고 나니
+        // 비중이 틀어졌다" 를 그 자리에서 본다 (docs/08-feedback.md 14번).
+        // 숫자가 먼저다 — `15/20% 주의` 라야 얼마나 벗어났는지 읽힌다.
+        if let slice = driftSlice(holding) {
+            WeightLabel(slice: slice)
+        }
+    }
+
     private func row(_ holding: Holding) -> some View {
         let isActive = focusedID == holding.id
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
+                // **큰 글씨에서는 띠지를 둘째 줄로** (199번 C5, 144번에서 미룬 것). 한 줄에 이름 · 띠지 ·
+                // 비중을 다 놓으면 이름 칸이 밀려 "해/외/ET/F" 처럼 한 글자씩 꺾였다.
+                if typeSize >= .xLarge {
                     Text(holding.name.isEmpty ? "이름 없음" : holding.name)
                         .font(.scaled(13.5, weight: isActive ? .medium : .regular))
                         .foregroundStyle(Color.ink)
-                    if holding.status != .accumulating {
-                        StatusBadge(text: holding.status.label,
-                                    foreground: holding.status.badgeForeground,
-                                    background: holding.status.badgeBackground)
-                    }
-                    // 금액을 고치는 순간 다시 계산된다 — "지금 이걸 적고 나니
-                    // 비중이 틀어졌다" 를 그 자리에서 본다 (docs/08-feedback.md 14번).
-                    // 숫자가 먼저다 — `15/20% 주의` 라야 얼마나 벗어났는지 읽힌다.
-                    if let slice = driftSlice(holding) {
-                        WeightLabel(slice: slice)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 5) { rowBadges(holding) }
+                } else {
+                    HStack(spacing: 5) {
+                        Text(holding.name.isEmpty ? "이름 없음" : holding.name)
+                            .font(.scaled(13.5, weight: isActive ? .medium : .regular))
+                            .foregroundStyle(Color.ink)
+                            .layoutPriority(1)
+                        rowBadges(holding)
                     }
                 }
                 // 같은 주에 다시 열었으면 기준은 지난주가 아니라 **이번 주에 먼저
                 // 적은 값**이다 (90번). 끝낼 때 기준값이 그 값으로 바뀌어 있다.
                 Text("\(baselineLabel(holding)) \(Won.grouped(holding.lastEnteredValueMinor))")
                     .font(.scaled(9.5))
-                    .foregroundStyle(Color.faint)
+                    // 매주 견주는 기준값이라 한 단계 진하게 (199번 C7) — `faint` 는 흰 바탕에서 2.6:1 이었다.
+                    .foregroundStyle(Color.muted)
                 // **왜 샀나 — 지금 적고 있는 줄에서만** (186번). 숫자를 적는
                 // 그 순간이 "이 이유가 아직 맞나" 를 묻게 되는 자리다.
                 // 모든 줄에 붙이면 줄마다 한 칸씩 높아져 3분 안에 끝내기가
@@ -472,6 +490,8 @@ struct WeeklyReviewView: View {
                     .font(.figure(isActive ? 19 : 16, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(Color.ink)
                     .frame(width: Font.scaledLength(155))
+                    // VoiceOver 가 금액만 읽었다 — 어느 종목 칸인지 (199번 C5).
+                    .accessibilityLabel(holding.name.isEmpty ? "이름 없음" : holding.name)
                 // **읽는 값** (80번, B1). 활성 행에서만 — 열다섯 자리 중 0 하나가
                 // 더 붙었는지 치는 순간 보인다. 입력 칸이라 가리기를 안 거친다.
                 if isActive && holding.valueMinor >= 10_000 {
@@ -596,10 +616,13 @@ struct WeeklyReviewView: View {
                 .disabled(currentIndex >= queue.count - 1)
                 .accessibilityLabel("다음 종목")
 
-            Button("만") { multiplyFocused(by: 10_000) }
-                .font(.scaled(13))
-            Button("억") { multiplyFocused(by: 100_000_000) }
-                .font(.scaled(13))
+            // **누르는 자리를 넓힌다** (199번 C6). 글자만 한 크기라 둘이 붙어 있었다 — 잘못 누르면 만 배.
+            Button { multiplyFocused(by: 10_000) } label: {
+                Text("만").font(.scaled(13)).frame(minWidth: 40, minHeight: 32).contentShape(Rectangle())
+            }
+            Button { multiplyFocused(by: 100_000_000) } label: {
+                Text("억").font(.scaled(13)).frame(minWidth: 40, minHeight: 32).contentShape(Rectangle())
+            }
             // 증권사 앱에서 복사해 온 숫자를 한 번에 (144-D).
             Button { pasteIntoFocused() } label: { Image(systemName: "doc.on.clipboard").font(.scaled(15, weight: .medium)) }
                 .accessibilityLabel("붙여넣기")
@@ -713,8 +736,9 @@ struct WeeklyReviewView: View {
         if hitLimit { limitNote = true }
     }
 
-    /// 기준값은 이번 주 처음 손대기 직전의 값이라 늘 "지난주" 다 (91번).
-    private func baselineLabel(_ holding: Holding) -> String { "지난주" }
+    /// **"직전"** (199번 C7). 예전에는 늘 "지난주" 였는데, 월 1회 종목이나 몇 주 건너뛴 종목에는 틀린
+    /// 말이었다. 기준값은 이번 주 처음 손대기 직전의 값이다 (91번).
+    private func baselineLabel(_ holding: Holding) -> String { "직전" }
 
     private func deltaText(_ holding: Holding) -> String {
         let delta = holding.valueMinor - holding.lastEnteredValueMinor
@@ -728,9 +752,10 @@ struct WeeklyReviewView: View {
     /// 부채는 늘어나는 것이 나쁜 일이다. 같은 +112,500 이라도 자산이면 초록,
     /// 마이너스통장이면 빨강이어야 한다.
     private func deltaColor(_ holding: Holding) -> Color {
-        guard holding.lastEnteredValueMinor != 0 else { return .faint }
+        // "첫 기록" · "변동 없음" 도 읽혀야 한다 — `faint` 에서 한 단계 진하게 (199번 C7).
+        guard holding.lastEnteredValueMinor != 0 else { return .muted }
         let delta = holding.valueMinor - holding.lastEnteredValueMinor
-        guard delta != 0 else { return .faint }
+        guard delta != 0 else { return .muted }
         let isLiability = holding.account?.kind.isLiability ?? false
         let isGood = isLiability ? delta < 0 : delta > 0
         return isGood ? .gain : .loss

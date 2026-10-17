@@ -151,7 +151,10 @@ struct PastRecordsView: View {
             }()
 
         session.completedAt = session.completedAt ?? draft.date
-        session.isTotalOnly = true
+        // **새로 만든 점검 기록만 "총액만"** (199번 A3). 예전에는 저장할 때마다 붙여서, 주간 점검으로
+        // 끝낸 주를 여기서 고치면 "총액만 기록한 주" 가 되어 회고의 총액만 주 수가 늘고, 이번 주라면
+        // 종목 값과 맞추기(`ThisWeekReconcile`)도 멈췄다.
+        if session.totalCount == 0 && session.enteredCount == 0 { session.isTotalOnly = true }
         session.totalValueMinor = draft.netWorthMinor
         session.previousTotalValueMinor = snapshots
             .filter { $0.weekAnchor < anchor }
@@ -224,8 +227,13 @@ struct PastRecordEditView: View {
                 Section {
                     DatePicker("시점", selection: $draft.date,
                                in: ...Date.now, displayedComponents: .date)
+                        // **있던 기록의 날짜는 못 옮긴다** (199번 A3). 옮기면 원래 주의 기록은 그대로 남고
+                        // 새 주에 하나가 더 생겼다(또는 남의 주를 덮었다). 옮기려면 지우고 새로 넣는다.
+                        .disabled(!draft.isNew)
                 } footer: {
-                    Text("그 주 토요일 기준으로 저장됩니다. 같은 주에 이미 기록이 있으면 덮어씁니다.")
+                    Text(draft.isNew
+                         ? "그 주 토요일 기준으로 저장됩니다. 같은 주에 이미 기록이 있으면 덮어씁니다."
+                         : "있던 기록의 날짜는 바꿀 수 없습니다. 다른 주로 옮기려면 이 기록을 지우고 새로 넣으세요.")
                 }
 
                 Section {
@@ -272,6 +280,9 @@ struct PastRecordEditView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("저장") {
+                        // 커서가 있는 칸의 마지막 글자를 먼저 쓴다 (199번 A3). 예전에는 키보드를 둔 채
+                        // 누르면 손 떼기 전의 값이 저장됐다 — 마지막에 고친 순자산 · 부채가 빠졌다.
+                        MoneyKeyboard.shared.commitActive()
                         onSave(draft)
                         dismiss()
                     }

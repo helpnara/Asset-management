@@ -631,7 +631,9 @@ public enum Projection {
         }
 
         let doubled = input.startingBalance.scaled(by: 2)
-        if !input.startingBalance.isZero,
+        // **양수에서 시작할 때만** (199번 B5). 순자산이 -1억이면 "2배" 가 -2억이라 첫해에 이미 넘어,
+        // 로드맵에 `자산 2배` 가 올해 찬 것으로 떴다. 빚에서 출발하면 2배라는 말이 뜻이 없다.
+        if input.startingBalance.minorUnits > 0,
            let hit = years.first(where: { $0.endBalance >= doubled }) {
             result.append(Milestone(kind: .doubled, year: hit.year, balance: hit.endBalance))
         }

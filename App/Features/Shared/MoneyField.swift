@@ -130,6 +130,11 @@ struct MoneyField: View {
                                   multiply: { [value = $minorUnits, text = $draft, note = $note] factor in
                                       Self.multiply(factor, value: value, text: text, note: note)
                                   },
+                                  commit: { [value = $minorUnits, text = $draft] in
+                                      guard let next = Self.parse(text.wrappedValue),
+                                            next != value.wrappedValue else { return }
+                                      value.wrappedValue = next
+                                  },
                                   focus: $isFocused)
                         )
                     } else {

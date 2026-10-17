@@ -100,10 +100,10 @@ struct PlanView: View {
             // `반영 중` 은 수익률 구역까지 내려가면 안 보였다.
             .reportsProgress("반영 중", when: isProjecting)
             .sheet(item: $editingEvent, onDismiss: { newIDs.removeAll() }) {
-                CashEventEditView(event: $0, isNew: newIDs.contains($0.id))
+                CashEventEditView(event: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
             }
             .sheet(item: $editingIncome, onDismiss: { newIDs.removeAll() }) {
-                IncomeStreamEditView(stream: $0, isNew: newIDs.contains($0.id))
+                IncomeStreamEditView(stream: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
             }
         }
     }

@@ -134,7 +134,7 @@ struct TodoListView: View {
             }
         }
         .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) {
-            TodoEditView(item: $0, isNew: newIDs.contains($0.id))
+            TodoEditView(item: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
         }
     }
 

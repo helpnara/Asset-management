@@ -65,7 +65,7 @@ struct MilestoneListView: View {
             }
         }
         .sheet(item: $editing, onDismiss: { newIDs.removeAll() }) {
-            MilestoneEditView(milestone: $0, isNew: newIDs.contains($0.id))
+            MilestoneEditView(milestone: $0, isNew: !$0.isGone && newIDs.contains($0.id)).saveFailureBand()
         }
     }
 

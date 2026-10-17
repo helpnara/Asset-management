@@ -46,8 +46,9 @@ extension HoldingRecord {
             sortedBy: [NSSortDescriptor(key: "weekAnchor", ascending: false)],
             predicate: NSPredicate(format: "holdingID == %@", holdingID as CVarArg),
             limit: limit)
-        // 같은 주가 둘이면(두 기기가 같은 주에 끝냄) 하나만.
-        var seen: Set<Date> = []
-        return Array(newestFirst.filter { seen.insert($0.weekAnchor).inserted }.reversed())
+        // 같은 주가 둘이면(두 기기가 같은 주에 끝냄) 하나만. **날 번호로** 가린다 (199번 B3) — 시간대가
+        // 다른 두 기기의 기준일은 시각이 몇 시간 달라 `Set<Date>` 로는 같은 주가 점 둘로 그려졌다.
+        var seen: Set<Int> = []
+        return Array(newestFirst.filter { seen.insert(ReviewWeek.dayKey($0.weekAnchor)).inserted }.reversed())
     }
 }

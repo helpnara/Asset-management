@@ -30,6 +30,10 @@ final class MoneyKeyboard {
         /// 순간의 사본에 묶인다. 그리고 이 함수는 모델뿐 아니라 **칸의 글자까지**
         /// 바꿔야 한다 — 커서가 있는 칸은 모델 값을 다시 읽지 않기 때문이다.
         let multiply: @MainActor (Int) -> Void
+        /// **지금 친 글자를 바로 모델에 쓴다** (199번 A3 · A4). 칸은 손 뗄 때 쓰는데(169번), 그 "손 뗌" 은
+        /// 다음 그리기에서야 온다. `저장` 단추가 같은 손짓 안에서 값을 읽거나 앱이 내려갈 때는
+        /// 그때까지 기다릴 수 없다 — 마지막에 친 금액이 빠졌다.
+        let commit: @MainActor () -> Void
         /// 숫자 키패드에는 return 키가 없다. 내리는 길을 띠가 낸다.
         let focus: FocusState<Bool>.Binding
     }
@@ -43,6 +47,12 @@ final class MoneyKeyboard {
     func activate(_ handle: Handle) {
         active = handle
         discarding = nil
+    }
+
+    /// 커서가 있는 금액 칸의 글자를 지금 모델에 쓴다 (199번 A3 · A4). 버릴 칸이면 안 쓴다.
+    func commitActive() {
+        guard let active, discarding != active.id else { return }
+        active.commit()
     }
 
     /// 편집 시트의 `취소` 가 되돌리기 **전에** 부른다 (199번 A2).

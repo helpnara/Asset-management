@@ -125,7 +125,9 @@ enum ReviewScheduling {
         )
 
         let thisWeek = ReviewWeek.anchor(for: .now)
-        let didThisWeek = completed.contains(thisWeek)
+        // 시각이 아니라 같은 주인지로 (199번 B3). 다른 시간대에서 끝낸 이번 주를 못 알아봐
+        // "아직 안 했어요" 알림이 또 걸렸다 — 현황판은 같은 질문에 `isSameWeek` 로 "끝냄" 이라 했다.
+        let didThisWeek = completed.contains { ReviewWeek.isSameWeek($0, thisWeek) }
 
         if didThisWeek || !ReviewSettings.followUpEnabled {
             ReviewNotifications.cancelFollowUp()

@@ -22,15 +22,17 @@ public enum ReviewWeek {
     /// 자리들이 같은 주를 둘로 갈랐다 — 세션 · 스냅샷이 하나씩 더 생기고 정리도
     /// 못 잡았다. 저장된 기준일은 그대로 두고 **비교만** 이것으로 한다.
     ///
-    /// 기준일에 12시간을 더한 UTC 날짜로 견준다. UTC−10 ~ UTC+12 에서 같은
+    /// 기준일에 13시간을 더한 UTC 날짜로 견준다. UTC−10 ~ UTC+13 에서 같은
     /// 토요일 자정은 모두 같은 날이 되고, 이웃 토요일과는 7일 떨어진다.
+    /// (처음엔 12시간이라 UTC+13 — 뉴질랜드 여름 — 에서 만든 주가 하루 앞 날로 갈렸다. 199번 B3.
+    ///  한국 기기의 날 번호는 12 · 13 어느 쪽이든 같다.)
     public static func isSameWeek(_ lhs: Date, _ rhs: Date) -> Bool {
         dayKey(lhs) == dayKey(rhs)
     }
 
     /// 기준일의 날 번호(1970-01-01 부터). 같은 토요일이면 시간대가 달라도 같다.
     public static func dayKey(_ anchor: Date) -> Int {
-        Int(((anchor.timeIntervalSince1970 + 43_200) / 86_400).rounded(.down))
+        Int(((anchor.timeIntervalSince1970 + 46_800) / 86_400).rounded(.down))
     }
 
     /// 기준일 근처(앞뒤 하루)를 고르는 조건 — 저장소에서 같은 주 후보를 꺼낼 때.
@@ -62,19 +64,19 @@ public enum ReviewWeek {
         asOf: Date,
         calendar: Calendar = .app
     ) -> Int {
-        let completed = Set(completedAnchors.map { anchor(for: $0, calendar: calendar) })
+        // **날 번호로 센다** (199번 B3 — 194번 D3 의 남은 자리). 예전에는 저장된 기준일을 이 기기
+        // 시간대로 다시 토요일에 맞췄다. 시드니(UTC+11)에서 만든 토요일 자정은 한국에서 금요일
+        // 밤이라 그 앞 토요일로 밀려, 그 한 주 때문에 한국 폰 전부에서 연속 기록이 끊겼다.
+        let completed = Set(completedAnchors.map(dayKey))
         guard !completed.isEmpty else { return 0 }
 
-        let thisWeek = anchor(for: asOf, calendar: calendar)
-        var cursor = completed.contains(thisWeek)
-            ? thisWeek
-            : (calendar.date(byAdding: .day, value: -7, to: thisWeek) ?? thisWeek)
+        let thisWeek = dayKey(anchor(for: asOf, calendar: calendar))
+        var cursor = completed.contains(thisWeek) ? thisWeek : thisWeek - 7
 
         var count = 0
         while completed.contains(cursor) {
             count += 1
-            guard let previous = calendar.date(byAdding: .day, value: -7, to: cursor) else { break }
-            cursor = previous
+            cursor -= 7
         }
         return count
     }

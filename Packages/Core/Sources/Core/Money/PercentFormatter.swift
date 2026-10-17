@@ -10,7 +10,9 @@ public enum PercentFormatter {
     /// 비중이 통째로 `0.0` 으로 나오는 버그가 났다.
     public static func oneDecimal(_ fraction: Decimal) -> String {
         let tenths = Decimals.roundedInt(fraction * 1000, rounding: .plain)
-        return "\(tenths / 10).\(abs(tenths % 10))"
+        // -0.5% 의 몫은 0 이라 부호가 사라졌다 (199번 B5). 부호를 따로 붙인다.
+        let sign = tenths < 0 ? "-" : ""
+        return "\(sign)\(abs(tenths) / 10).\(abs(tenths) % 10)"
     }
 
     /// 정수 퍼센트. **비중은 전부 이쪽을 쓴다** (docs/08-feedback.md 18번).

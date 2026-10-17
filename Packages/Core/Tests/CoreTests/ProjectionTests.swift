@@ -362,6 +362,14 @@ struct ProjectionTests {
         #expect(result.milestone(.doubled) == nil)
     }
 
+    @Test("빚에서 시작하면 `자산 2배` 마일스톤이 없다 (199번 B5)")
+    func doubledNeedsPositiveStart() {
+        // 예전에는 -1,000만의 "2배" 가 -2,000만이라 첫해에 이미 넘은 것으로 나왔다.
+        let indebted = input(years: 5, start: -10_000_000, monthly: 1_000_000, returnBP: 500)
+        let result = Projection.run(indebted, calendar: calendar)
+        #expect(result.milestone(.doubled) == nil)
+    }
+
     @Test("연도로 지점을 찾을 수 있다 — 로드맵 타임라인이 쓴다")
     func pointInYear() {
         let result = Projection.run(input(years: 5, start: 100_000_000, monthly: 0, returnBP: 800),

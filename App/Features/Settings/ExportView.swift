@@ -142,7 +142,7 @@ struct ExportView: View {
                 } header: {
                     Text("되돌리기")
                 } footer: {
-                    Text("백업 파일을 골라 이 기기의 기록을 통째로 갈아 끼웁니다. 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 먼저 지금 상태로 백업을 하나 만들어 두세요 — 위의 `전체 백업 만들기` 입니다.")
+                    Text("백업 파일을 골라 이 기기의 기록을 통째로 갈아 끼웁니다. 지금 들어 있는 것은 전부 지워지고, iCloud 로도 그렇게 퍼집니다. 되돌리기 전에 먼저 지금 상태로 백업을 하나 만들어 두세요 — 위의 `전체 백업 만들기` 입니다. 가족 공유 중이면 되돌리는 동안 다른 가족 폰에서는 앱을 닫아 두세요.")
                 }
             } else {
                 // 참가자 기기에는 되돌리기가 없다 (98번, A7). 있으면 관리자의
@@ -170,7 +170,9 @@ struct ExportView: View {
             }
             Button("그만두기", role: .cancel) { pending = nil }
         } message: { document in
-            Text(summary(of: document))
+            // 되돌리기는 전부 지우고 다시 넣는다 — 그동안 다른 가족 폰에서 만들던 것은 함께 지워질 수
+            // 있다 (199번 A7). 그 폰들에서 앱을 닫아 두라고 여기서 말한다.
+            Text(summary(of: document) + "\n\n가족 공유 중이면 되돌리는 동안 다른 가족 폰에서는 앱을 닫아 두세요. 그 사이 다른 폰에서 새로 적은 것은 사라질 수 있습니다.")
         }
         .alert("이 파일은 읽을 수 없습니다",
                isPresented: Binding(get: { restoreProblem != nil },

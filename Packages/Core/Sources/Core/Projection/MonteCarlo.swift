@@ -84,6 +84,10 @@ public enum MonteCarlo {
         // 전월세보증금이 ±15% 로 흔들리면 밴드가 거짓말을 한다
         // (docs/08-feedback.md 3번 (d) · 11번).
         let startBalances = base.buckets.map { Double($0.amount.minorUnits) }
+        // **빚으로 시작한 덩어리는 빚 그대로 굴린다** (199번 B1). 대출은 음수로 담긴다(`Plan.buckets`).
+        // 예전에는 아래에서 달마다 음수를 0 으로 지워, 대출이 전세보증금 · 받을 돈보다 큰 집은 첫 달에
+        // 빚이 사라졌다 — 밴드와 확률이 예상선보다 그만큼 좋게 나왔다(σ 15% · 20년이면 50% 가 61%).
+        let startsInDebt = startBalances.map { $0 < 0 }
         // **로그정규 수익률 — 중앙값이 결정론 궤적과 같다** (docs/08-feedback.md 68번).
         //
         // 한 달 배수 = exp(드리프트 + σ·Z). 드리프트를 ln(1+연수익률)/12 로 두면
@@ -191,7 +195,8 @@ public enum MonteCarlo {
                     balances[index] *= exp(logReturn)
                     // 음수는 위에서 다른 덩어리로 메웠다(`coverShortfall`) — 예상선과 같은
                     // 규칙이다 (194번 E7). 그래도 혹시 남으면 빚으로 굴리지 않는다.
-                    if balances[index] < 0 { balances[index] = 0 }
+                    // **처음부터 빚인 덩어리(대출)는 예외** — 예상선도 그대로 들고 간다 (199번 B1).
+                    if balances[index] < 0 && !startsInDebt[index] { balances[index] = 0 }
                 }
                 if month % 12 == 0 { contribution *= contributionStep }
 
