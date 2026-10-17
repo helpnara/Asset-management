@@ -299,10 +299,12 @@ jobs:
           while read -r rev _; do
             case "$rev" in ''|'#'*) continue;; esac
             git fetch --no-tags --depth=1 origin "$rev"
-            SRC="$WORK/$rev/SlowRich.xcdatamodeld/SlowRich.xcdatamodel"
-            mkdir -p "$SRC"
-            git show "$rev:App/SlowRich.xcdatamodeld/SlowRich.xcdatamodel/contents" > "$SRC/contents"
-            git show "$rev:App/SlowRich.xcdatamodeld/.xccurrentversion" > "$WORK/$rev/SlowRich.xcdatamodeld/.xccurrentversion"
+            # **그 판의 모델 폴더를 통째로** 꺼낸다 (199번 1.0.7 CI). 예전에는 1판 폴더(`SlowRich.xcdatamodel`)
+            # 와 `.xccurrentversion` 만 꺼냈는데, 1.0.6 부터 현재 판이 `SlowRich 2` 라 없는 판을 가리켜
+            # 모델을 못 열었다 — docs/18 R1 과 같은 꼴(판 경로를 박아 둠)이 이 단계에만 남아 있었다.
+            mkdir -p "$WORK/$rev"
+            git archive "$rev" App/SlowRich.xcdatamodeld | tar -x -C "$WORK/$rev"
+            mv "$WORK/$rev/App/SlowRich.xcdatamodeld" "$WORK/$rev/SlowRich.xcdatamodeld"
             xcrun momc "$WORK/$rev/SlowRich.xcdatamodeld" "$WORK/$rev/"
             OLD+=("$WORK/$rev/SlowRich.momd")
           done < Tools/coredata/migration-baselines.txt
