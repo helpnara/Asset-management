@@ -50,8 +50,18 @@ WHITE_THRESHOLD = 24
 FILL_BLUR = 6
 
 
+# 네 귀퉁이가 모두 이보다 밝아야 "흰 여백이 있는 원본" 으로 본다 (202번). 크림색 바탕
+# (247, 242, 232)은 흰색과의 차이가 문턱(24) 아래라, 이 검사 없이 자르면 바탕을 여백으로 보고
+# 그림만 남겨 꽉 차게 키운다.
+WHITE_CORNER = 250
+
+
 def trim_and_fill(image: Image.Image) -> Image.Image:
     """흰 여백을 잘라내고, 테두리와 이어진 흰 모서리를 가장자리 색으로 메운다."""
+    w, h = image.size
+    corners = [image.getpixel(c) for c in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))]
+    if min(min(c) for c in corners) < WHITE_CORNER:
+        return image  # 바탕이 흰색이 아니다 — 원본 그대로가 아이콘이다
     white = Image.new("RGB", image.size, (255, 255, 255))
     ink = ImageChops.difference(image, white).convert("L")
     box = ink.point(lambda v: 255 if v > WHITE_THRESHOLD else 0).getbbox()

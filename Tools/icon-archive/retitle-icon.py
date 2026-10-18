@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""아이콘 그림에 박힌 제목을 `느린 부자의 기록` → `느린 부자` 로 고친다.
+"""
+**보관용 (2026-10-19).** 1.0 ~ 1.0.8 의 옛 아이콘(글자 든 그림)을 만들던 단계다. 새 아이콘(202번)은 글자가 없어
+이 단계를 거치지 않는다. 다시 돌리면 보관 폴더 안에서만 읽고 쓴다.
+아이콘 그림에 박힌 제목을 `느린 부자의 기록` → `느린 부자` 로 고친다.
 
     python3 Tools/retitle-icon.py
 
@@ -39,8 +42,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-SOURCE = Path("Tools/icon-source-original.png")
-OUTPUT = Path("Tools/icon-source.png")
+SOURCE = Path("Tools/icon-archive/2026-09-08-original.png")
+OUTPUT = Path("Tools/icon-archive/2026-09-24-source.png")
 
 TOP, BOT = 940, 1112        # 글자 잉크가 있는 줄 (실제 잉크는 949~1107)
 LEFT, RIGHT = 195, 1060     # 지울 가로 범위 — `느` 왼쪽부터 `록` 오른쪽까지

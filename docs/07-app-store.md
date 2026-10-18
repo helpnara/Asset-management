@@ -169,7 +169,11 @@ python3 Tools/preview-icon.py     # 실제 크기(180·120·60px)로 확인
 
 아이콘을 바꾸려면 `Tools/icon-source.png` 를 갈아 끼우고 다시 돌립니다.
 
-**지금 아이콘은 두 단계다 (2026-09-24, 184번).** 처음 받은 그림(`Tools/icon-source-original.png`)에
+**2026-10-19 새 아이콘 (202번).** 크림색 바탕의 새싹 · 동전 그림(글자 없음)을 `icon-source.png` 로 갈아 끼웠다.
+`make-icon.py` 는 네 귀퉁이가 흰색(250 이상)일 때만 여백을 자르므로 이 그림은 그대로 구워진다. 아래 두 단계는 **옛 아이콘**의 기록이고,
+그 원본과 스크립트는 `Tools/icon-archive/` 에 있다.
+
+~~**지금 아이콘은 두 단계다 (2026-09-24, 184번).**~~ 처음 받은 그림(`Tools/icon-source-original.png`)에
 `느린 부자의 기록` 이 박혀 있어서 `python3 Tools/retitle-icon.py` 가 `느린 부자` 로 고쳐
 `icon-source.png` 를 만들고, 그다음 `make-icon.py` 가 굽는다. 원본 서체가 없어 글자를
 다시 쓰지 않고 이미 그려진 `느린 부자` 를 오려 가운데로 옮겼다.
