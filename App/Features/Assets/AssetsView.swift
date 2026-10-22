@@ -933,6 +933,7 @@ struct MemberOrderView: View {
             .onAppear {
                 if order.isEmpty { order = members }
             }
+            .readableWidth()
             .navigationTitle("구성원 순서")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1024,6 +1025,7 @@ struct MoveTargetSheet: View {
                     }
                 }
             }
+            .readableWidth()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

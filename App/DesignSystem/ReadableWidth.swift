@@ -15,6 +15,11 @@ struct ReadableWidth: ViewModifier {
     /// 한 줄이 이보다 넓어지지 않는다. 700pt 는 아이패드 가로에서 양옆에
     /// 여백이 남으면서도 표가 답답하지 않은 폭이다.
     var maxWidth: CGFloat = 700
+    /// **묶고 남은 양옆의 바탕** (205번). 예전에는 칠하지 않아 그 자리에 시스템 기본 바탕(흰색)이
+    /// 비쳤다 — 자산 · 계획 · 더보기는 가운데만 회색 목록이고 양옆이 흰 띠였고, 현황판 · 시뮬레이션은
+    /// 화면이 스스로 `ground` 를 깔아서 통일돼 보였다. 이제 여기서 한 번에 칠한다. 기본은 앱의 한 가지
+    /// 바탕(`ground` = 목록 · 폼의 회색과 같은 색). 흰 바탕을 쓰는 점검 창 · 점검 완료는 `canvas` 를 건넨다.
+    var background: Color = .ground
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -24,6 +29,7 @@ struct ReadableWidth: ViewModifier {
             content
                 .frame(maxWidth: maxWidth)
                 .frame(maxWidth: .infinity)
+                .background(background)
         } else {
             content
         }
@@ -31,8 +37,8 @@ struct ReadableWidth: ViewModifier {
 }
 
 extension View {
-    /// 넓은 화면에서 내용의 폭을 읽기 좋은 만큼으로 묶는다 (161번).
-    func readableWidth(_ maxWidth: CGFloat = 700) -> some View {
-        modifier(ReadableWidth(maxWidth: maxWidth))
+    /// 넓은 화면에서 내용의 폭을 읽기 좋은 만큼으로 묶고, 양옆은 `background` 로 칠한다 (161 · 205번).
+    func readableWidth(_ maxWidth: CGFloat = 700, background: Color = .ground) -> some View {
+        modifier(ReadableWidth(maxWidth: maxWidth, background: background))
     }
 }

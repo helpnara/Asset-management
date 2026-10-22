@@ -196,6 +196,7 @@ struct ExportView: View {
         } message: { problem in
             Text("빈 파일을 내보내지 않았습니다. 다시 눌러 보고, 같으면 진단 정보와 함께 알려 주세요.\n\n이유: \(problem)")
         }
+        .readableWidth()
         .navigationTitle("내보내기")
         .navigationBarTitleDisplayMode(.inline)
     }

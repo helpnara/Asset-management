@@ -33,6 +33,7 @@ struct ChangeLogView: View {
                 }
             }
         }
+        .readableWidth()
         .navigationTitle("변경 이력")
         .navigationBarTitleDisplayMode(.inline)
     }

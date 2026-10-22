@@ -35,6 +35,7 @@ struct DiaryListView: View {
         .confirmsDelete(pendingDelete, title: "이 날의 일기를 삭제할까요?",
                         message: { _ in "목 · 실 · 감 세 줄이 함께 사라집니다. 되돌릴 수 없습니다." },
                         perform: { context.delete($0) })
+        .readableWidth()
         .navigationTitle("목 · 실 · 감")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editing) { entry in DiaryEditView(entry: entry) }
@@ -138,6 +139,7 @@ struct DiaryEditView: View {
                     MultilineField(placeholder: "오늘 감사한 것", text: $entry.gratitude)
                 }
             }
+            .readableWidth()
             .navigationTitle(DiaryCard.dayText(entry.day))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

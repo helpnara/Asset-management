@@ -49,6 +49,7 @@ struct PlanCleanupView: View {
                 }
             }
         }
+        .readableWidth()
         .navigationTitle("계획 정리")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("이 계획만 남기고 나머지 \(max(plans.count - 1, 0))개를 지울까요? 되돌릴 수 없습니다.",

@@ -42,6 +42,7 @@ struct MemberTrajectoryView: View {
         .task(id: projectionInput) { await runProjection(projectionInput) }
         .reportsProgress("반영 중", when: isProjecting)
         .background(Color.ground)
+        .readableWidth()
         .navigationTitle(member.name.isEmpty ? "구성원" : member.name)
         .navigationBarTitleDisplayMode(.inline)
     }

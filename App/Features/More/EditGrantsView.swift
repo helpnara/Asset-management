@@ -55,6 +55,7 @@ struct EditGrantsView: View {
                 }
             }
         }
+        .readableWidth()
         .navigationTitle("편집 권한")
         .navigationBarTitleDisplayMode(.inline)
         .task { sharing.refreshState() }

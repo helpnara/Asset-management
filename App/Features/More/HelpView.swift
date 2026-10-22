@@ -82,6 +82,7 @@ struct HelpView: View {
                 Text("진단 규칙마다 \"왜 이 기준인가\" 는 자산 진단 화면의 각 카드 안에 있습니다.")
             }
         }
+        .readableWidth()
         .navigationTitle("도움말 · 용어집")
         .navigationBarTitleDisplayMode(.inline)
     }

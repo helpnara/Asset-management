@@ -117,6 +117,7 @@ struct TodoListView: View {
                 }
             }
         }
+        .readableWidth()
         .navigationTitle("챙길 것")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -331,6 +332,7 @@ struct TodoEditView: View {
                     }
                 }
             }
+            .readableWidth()
             .navigationTitle("챙길 것")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: item) } }

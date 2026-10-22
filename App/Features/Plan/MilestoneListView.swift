@@ -48,6 +48,7 @@ struct MilestoneListView: View {
             }
         }
         .confirmsDelete(pendingDelete, title: "이 마일스톤을 삭제할까요?") { context.delete($0) }
+        .readableWidth()
         .navigationTitle("내 마일스톤")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -196,6 +197,7 @@ struct MilestoneEditView: View {
                     }
                 }
             }
+            .readableWidth()
             .navigationTitle("마일스톤")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { if snapshot == nil { snapshot = EditSnapshot(of: milestone) } }

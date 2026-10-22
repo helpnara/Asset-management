@@ -42,6 +42,7 @@ struct SecuritySettingsView: View {
                 Text("주간 점검 알림에서 총액만 기록했을 때 그 금액을 알림에 보여줄지 정합니다. 알림은 잠긴 화면에도 뜹니다 — 기본은 표시하지 않음입니다.")
             }
         }
+        .readableWidth()
         .navigationTitle("잠금 · 가리기")
         .navigationBarTitleDisplayMode(.inline)
     }

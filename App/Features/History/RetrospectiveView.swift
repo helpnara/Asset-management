@@ -82,6 +82,7 @@ struct RetrospectiveView: View {
             .padding(16)
         }
         .background(Color.ground)
+        .readableWidth()
         .navigationTitle("회고")
         .navigationBarTitleDisplayMode(.inline)
     }

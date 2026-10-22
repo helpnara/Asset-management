@@ -52,6 +52,7 @@ struct OnePagerSettingsView: View {
                     .foregroundStyle(Color.muted)
             }
         }
+        .readableWidth()
         .navigationTitle("1페이지 문서 설정")
         .navigationBarTitleDisplayMode(.inline)
         // 여기서 고친 것도 계획의 수정 시각에 남는다 — **이 기기에서 고쳤을 때만**

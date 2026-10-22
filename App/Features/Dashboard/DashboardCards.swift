@@ -125,6 +125,7 @@ struct DashboardCardsView: View {
         }
         // 손잡이가 늘 보이게 — 편집 버튼을 찾아 누르게 하지 않는다.
         .environment(\.editMode, .constant(.active))
+        .readableWidth()
         .navigationTitle("현황판 카드 순서")
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -57,6 +57,7 @@ struct FamilyAllocationView: View {
             dimensionSection(.region)
             dimensionSection(.assetClass)
         }
+        .readableWidth()
         .navigationTitle("가족 자산 배분")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {

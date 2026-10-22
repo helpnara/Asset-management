@@ -447,6 +447,7 @@ struct NotificationSettingsView: View {
                     .foregroundStyle(Color.muted)
             }
         }
+        .readableWidth()
         .navigationTitle("알림")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }

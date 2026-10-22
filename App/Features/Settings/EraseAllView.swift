@@ -48,6 +48,7 @@ struct EraseAllView: View {
                 }
             }
         }
+        .readableWidth()
         .navigationTitle("데이터 전부 지우기")
         .navigationBarTitleDisplayMode(.inline)
         .alert("정말 전부 지울까요?", isPresented: $isConfirming) {

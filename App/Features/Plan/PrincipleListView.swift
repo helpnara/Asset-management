@@ -30,6 +30,7 @@ struct PrincipleListView: View {
             .confirmsDelete(pendingDelete, title: "이 원칙을 삭제할까요?",
                             message: { _ in "1페이지 계획서의 원칙 칸에서도 사라집니다. 되돌릴 수 없습니다." },
                             perform: remove)
+            .readableWidth()
             .navigationTitle("운용 원칙")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
@@ -252,6 +253,7 @@ struct PrincipleEditView: View {
                     }
                 }
             }
+            .readableWidth()
             .navigationTitle(isNew ? "원칙 추가" : "운용 원칙")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

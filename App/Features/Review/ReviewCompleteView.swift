@@ -124,6 +124,7 @@ struct ReviewCompleteView: View {
         }
         .background(Color.canvas)
         .task(id: gapStamp) { planGap = computePlanGap() }
+        .readableWidth(background: .canvas)
         .navigationTitle("점검 완료")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
