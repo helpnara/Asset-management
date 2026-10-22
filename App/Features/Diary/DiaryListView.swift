@@ -129,13 +129,13 @@ struct DiaryEditView: View {
                     }
                 }
                 Section("목표") {
-                    TextField("오늘의 목표", text: $entry.goal, axis: .vertical).lineLimit(1...4)
+                    MultilineField(placeholder: "오늘의 목표", text: $entry.goal)
                 }
                 Section("실적") {
-                    TextField("오늘 한 것", text: $entry.result, axis: .vertical).lineLimit(1...4)
+                    MultilineField(placeholder: "오늘 한 것", text: $entry.result)
                 }
                 Section("감사") {
-                    TextField("오늘 감사한 것", text: $entry.gratitude, axis: .vertical).lineLimit(1...4)
+                    MultilineField(placeholder: "오늘 감사한 것", text: $entry.gratitude)
                 }
             }
             .navigationTitle(DiaryCard.dayText(entry.day))

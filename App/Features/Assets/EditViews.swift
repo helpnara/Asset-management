@@ -154,8 +154,7 @@ struct MemberEditView: View {
                 }
 
                 Section {
-                    TextField("자세한 내용", text: $member.note, axis: .vertical)
-                        .lineLimit(1...4)
+                    MultilineField(placeholder: "자세한 내용", text: $member.note)
                 } header: {
                     Text("메모")
                 } footer: {

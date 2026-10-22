@@ -137,10 +137,10 @@ struct DiaryCard: View {
                 .foregroundStyle(Color.muted)
                 .frame(width: Font.scaledLength(28), alignment: .leading)
                 .padding(.top, 1)
-            TextField("한 줄", text: text, axis: .vertical)
+            // 외부 키보드의 Return 도 줄을 바꾸게 (203번).
+            MultilineField(placeholder: "한 줄", text: text, maxLines: 3)
                 .font(.scaled(13))
                 .foregroundStyle(Color.ink)
-                .lineLimit(1...3)
                 .focused($focus, equals: field)
         }
     }

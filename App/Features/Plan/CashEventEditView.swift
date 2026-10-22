@@ -63,8 +63,7 @@ struct CashEventEditView: View {
                 }
 
                 Section("메모") {
-                    TextField("메모", text: $event.note, axis: .vertical)
-                        .lineLimit(1...4)
+                    MultilineField(placeholder: "메모", text: $event.note)
                 }
 
                 if !isNew {

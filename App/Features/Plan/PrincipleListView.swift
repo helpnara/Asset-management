@@ -231,8 +231,7 @@ struct PrincipleEditView: View {
                 }
 
                 Section("부연") {
-                    TextField("자세한 내용", text: $principle.detail, axis: .vertical)
-                        .lineLimit(1...5)
+                    MultilineField(placeholder: "자세한 내용", text: $principle.detail, maxLines: 5)
                 }
 
                 Section {

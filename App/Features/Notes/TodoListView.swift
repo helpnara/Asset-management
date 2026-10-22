@@ -318,8 +318,7 @@ struct TodoEditView: View {
                 }
 
                 Section("메모") {
-                    TextField("자세한 내용", text: $item.detail, axis: .vertical)
-                        .lineLimit(1...5)
+                    MultilineField(placeholder: "자세한 내용", text: $item.detail, maxLines: 5)
                 }
 
                 if !isNew {

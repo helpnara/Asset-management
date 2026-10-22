@@ -39,8 +39,7 @@ struct HoldingReasonSection: View {
 
     private var writer: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("고른 이유 · 팔 조건", text: $draft, axis: .vertical)
-                .lineLimit(1...5)
+            MultilineField(placeholder: "고른 이유 · 팔 조건", text: $draft, maxLines: 5)
                 .focused($isWriting)
             if !trimmedDraft.isEmpty {
                 Button("담기") { commit() }

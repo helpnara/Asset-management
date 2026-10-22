@@ -183,8 +183,7 @@ struct MilestoneEditView: View {
                 }
 
                 Section("메모") {
-                    TextField("자세한 내용", text: $milestone.note, axis: .vertical)
-                        .lineLimit(1...4)
+                    MultilineField(placeholder: "자세한 내용", text: $milestone.note)
                 }
 
                 if !isNew {
