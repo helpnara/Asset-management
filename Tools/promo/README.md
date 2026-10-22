@@ -7,7 +7,7 @@
 | `promo.html` | 영상 자체. 브라우저로 열면 바로 재생된다. 모든 움직임이 `render(t)` 하나에서 나온다 |
 | `render.mjs` | `promo.html` 을 1/30초씩 찍어 `out/slowrich-promo.mp4` 로 굽는다 |
 | `fonts/` | Pretendard (SIL OFL 1.1 — `Pretendard-LICENSE.txt`) |
-| `out/slowrich-promo.mp4` | 구운 결과 |
+| `out/slowrich-promo.mp4` | 구운 결과 — **10-10 판이라 옛 아이콘**이다. 202번 새 아이콘(10-18) 뒤로 다시 굽지 않았다 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)

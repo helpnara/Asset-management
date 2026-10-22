@@ -348,7 +348,9 @@ Your team has no devices from which to generate a provisioning profile
 `validate` → `apply` → 사람이 Deploy → TestFlight 순서. `apply` 가 초록이어도 로그를 읽는다
 — [08 · 187번](08-feedback.md).)*
 
-### ⚠️ 관리 토큰은 만료된다 — 첫 토큰은 2026-10-06 까지
+*(2026-10-23 현재: 마지막 Production Deploy 는 **10-15**(1.0.6 전, 계좌 `올해 납입액의 해`). 그 뒤 1.0.8 · 1.0.9 · 1.0.10 은 스키마를 바꾸지 않았다. 모델은 `SlowRich 2` 판.)*
+
+### ⚠️ 관리 토큰은 만료된다 — ~~첫 토큰은 2026-10-06 까지~~ 2026-09-29 갱신
 
 CloudKit Console → Tokens 의 관리 토큰 `github-actions-slowrich` 에 **만료일**이 있다
 (2026-09-28 사용자가 콘솔에서 확인: `Expires: 2026. 10. 06.`). 이 토큰은 저장소 시크릿

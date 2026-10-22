@@ -121,7 +121,7 @@ App Store Connect → TestFlight(부모) · App Store(아이들 · 모두)
 | `Tools/coredata/*` · `Tools/cloudkit/*` | 모델 경로 · 이름 | 모델 · `@NSManaged` · `.ckdb` 3중 대조, 런타임 검사, 마이그레이션 시험 |
 | `Tools/site/build.py` · `docs/privacy-policy.md` | 앱 이름 · 수집 항목 | 지원 · 처리방침 URL |
 | `Tools/store/compose.py` · `Tools/preview/*` · `Tools/promo/*` | 문구 · 장면 | 스토어 스크린샷 캡션 · 미리 보기 편집 · 홍보 영상 |
-| `Tools/make-icon.py` + 서체 파일 | 아이콘 원본 | 결과물과 **만드는 법을 함께** 커밋 |
+| `Tools/make-icon.py` (아이콘에 글자를 넣을 때만 + 서체 파일 — 지금 아이콘은 글자 없음) | 아이콘 원본 | 결과물과 **만드는 법을 함께** 커밋 |
 | `docs/` 틀 — `08-feedback` (번호 · 상태 이모지) · `05-roadmap` (출시 일정 블록 · 동결 표) · `adr/` · `14-daily-test-routine` · `15` 제출 시트 | 내용 비우고 틀만 | 세션을 넘는 기억 |
 
 `slowrich` · `SlowRich` · 브랜치 이름이 박힌 곳은 `grep -rl "slowrich\|SlowRich\|7aafjc" .github Tools project.yml` 로 찾는다

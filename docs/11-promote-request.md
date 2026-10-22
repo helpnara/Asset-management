@@ -1,7 +1,7 @@
 # 11. 에디터 추천 신청서 초안 — App Store 프로모션 요청
 
 ~~출시 2주 전에~~ **1.0 은 10-07 공개됐다 — 다음 큰 업데이트 · 연초 시즌 2주 전에** <https://developer.apple.com/contact/app-store/promote/> 에서 낸다
-(docs/10 §5). 양식은 영어가 안전하다. 아래 영어를 붙여 넣고, 한국어는 뜻을
+(docs/10 §5). **12-21 에 상기한다** — 신년 프로모션 텍스트와 함께 연초 시즌 전에 낸다. 양식은 영어가 안전하다. 아래 영어를 붙여 넣고, 한국어는 뜻을
 맞추기 위한 것이다. 실제 금액 · 가족 이름은 어디에도 없다.
 
 ## 기본 정보
@@ -13,7 +13,8 @@
 | Platform | iPhone · iPad |
 | Price | Free, no ads, no in-app purchases |
 | Category | Finance (secondary: Productivity) |
-| Release date | ~~2026년 10월 셋째 주~~ ~~10월 하순 이후~~ ~~10월 둘째 주 이후~~ **10월 첫째 주 제출 · 수동 출시** — 10-03 사용자 결정 (App Store 로 내면서 고친다) (심사 통과 뒤 수동 출시, [로드맵](05-roadmap.md) 최신) |
+| Release date | ~~2026년 10월 셋째 주~~ ~~10월 하순 이후~~ ~~10월 둘째 주 이후~~ **10월 첫째 주 제출 · 수동 출시** — 10-03 사용자 결정 (App Store 로 내면서 고친다) (심사 통과 뒤 수동 출시, [로드맵](05-roadmap.md) 최신) → **10-07 공개**. 지금 공개된 판 1.0.9(10-20), 1.0.10 심사 중 |
+| App Store | <https://apps.apple.com/kr/app/id6809116693> |
 | Storefront | Korea (한국어) |
 | Contact | kyunglagkwon@gmail.com |
 
@@ -24,7 +25,7 @@ Slow Rich turns retirement planning into a weekly habit. Every Saturday,
 the family writes down their asset balances by hand — the app deliberately does
 not fetch quotes or connect to banks — and those numbers are drawn as a single
 trajectory against the plan line, all the way past retirement to age 100.
-Up to four family members share one plan through CloudKit sharing: each sees
+Family members share one plan through CloudKit sharing: each sees
 their own line and the household total on the same screen. There is no server,
 no analytics, no advertising; data lives only on the device and in the user's
 own iCloud. Built-in diagnostics (the 4% rule, real-estate share, country
@@ -64,7 +65,7 @@ something needs action — with the reasoning behind each rule one tap away.
 - 스크린샷 5장 (`screenshots/appstore/store/iphone/`, `…/ipad/`) —
   `Actions → App Store 스크린샷` 워크플로가 만든다 (docs/07 4단계).
 - 앱 아이콘 1024 (`App/Assets.xcassets/AppIcon.appiconset/icon-1024.png` — `Tools/make-icon.py` 산출물).
-- 미리보기 영상 15초는 선택 — 있으면 좋다.
+- ~~미리보기 영상 15초는 선택 — 있으면 좋다.~~ **있다** — 아이폰 886×1920 · 아이패드 1200×1600 (10-12 올림, 1.0.6 과 함께 공개 · [Tools/preview](../Tools/preview/README.md)).
 
 ## 출시한 뒤에도 낼 수 있나 (2026-09-29 사용자 질문)
 
