@@ -195,6 +195,15 @@ struct RootView: View {
                         }
                 }
             }
+            // 가로면 사이드바, 세로면 탭 (161번) — 화면을 다시 만들지 않고 사이드바만 (206번).
+            // 탭 컨트롤러가 놓인 다음 턴에 바꾼다.
+            .onChange(of: usesSidebar, initial: true) { _, shows in
+                guard Self.isPad else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(50))
+                    TabSidebar.setVisible(shows)
+                }
+            }
             .familyRole(role, participantID: sharing.state.participantID)
             .safeAreaInset(edge: .top, spacing: 0) { notices }
             // 역할은 앱이 뜰 때와 앞으로 돌아올 때 다시 읽는다. 관리자가 권한을
@@ -363,13 +372,14 @@ struct RootView: View {
     /// **`.sidebarAdaptable` 은 iOS 18 부터다.** 배포 타깃(17)은 그대로 두고
     /// 되는 기기에서만 켠다 — 17 기기는 지금과 똑같이 동작한다.
     ///
-    /// **대가 하나.** 스타일이 바뀌면 `TabView` 가 통째로 다시 만들어져
-    /// 화면 안의 스크롤 위치 같은 것이 처음으로 돌아간다. 고른 탭은
-    /// `AppRoute` 가 들고 있으므로 유지된다.
+    /// **돌려도 `TabView` 를 다시 만들지 않는다** (206번). 예전에는 가로 · 세로로 갈래를 나눠, 돌리는 순간
+    /// 탭 안의 화면이 통째로 새로 만들어졌다 — 편집 시트가 닫히고 안쪽 화면이 첫 화면으로 돌아갔다.
+    /// 이제 아이패드(iOS 18 이상)는 늘 `.sidebarAdaptable` 한 벌이고, 사이드바만 `TabSidebar` 로 여닫는다.
+    /// 갈래를 정하는 값(기기 종류)은 실행 내내 안 바뀐다. 아이폰 · iOS 17 아이패드는 예전 그대로 아래 탭.
     @ViewBuilder
     private var tabs: some View {
         if #available(iOS 18.0, *) {
-            if usesSidebar {
+            if Self.isPad {
                 tabContent.tabViewStyle(.sidebarAdaptable)
             } else {
                 tabContent
@@ -378,6 +388,8 @@ struct RootView: View {
             tabContent
         }
     }
+
+    private static let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
     private var tabContent: some View {
         TabView(selection: $route.selectedTab) {

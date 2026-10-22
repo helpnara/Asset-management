@@ -23,16 +23,16 @@ struct ReadableWidth: ViewModifier {
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    /// **갈래를 나누지 않는다** (206번). `if sizeClass == .regular` 로 나누면 아이패드 화면 나누기 ·
+    /// 스테이지 매니저로 폭이 바뀌는 순간 화면 내용이 통째로 새로 만들어져, 폼에 치던 글자 · 커서가 날아간다
+    /// (돌리면 편집 시트가 닫히던 것과 같은 꼴). 값만 바꾸고 모양(같은 세 겹)은 늘 같게 둔다.
     func body(content: Content) -> some View {
-        if sizeClass == .regular {
-            // 안쪽 프레임이 폭을 묶고, 바깥 프레임이 남은 자리에서 가운데로 민다.
-            content
-                .frame(maxWidth: maxWidth)
-                .frame(maxWidth: .infinity)
-                .background(background)
-        } else {
-            content
-        }
+        let isWide = sizeClass == .regular
+        // 안쪽 프레임이 폭을 묶고, 바깥 프레임이 남은 자리에서 가운데로 민다. 좁은 화면은 묶지 않는다.
+        content
+            .frame(maxWidth: isWide ? maxWidth : .infinity)
+            .frame(maxWidth: .infinity)
+            .background(isWide ? background : Color.clear)
     }
 }
 
