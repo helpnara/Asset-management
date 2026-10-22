@@ -28,21 +28,25 @@
 project.yml                 XcodeGen 명세 → SlowRich.xcodeproj (생성물)
 App/                        앱 타깃 "SlowRich" (표시 이름: 느린 부자)
 ├─ SlowRichApp.swift        @main, 저장소 구성, 공유 수락
-├─ RootView.swift           탭 다섯 · 가로/iPad 좌측 메뉴 · 상태 띠(StatusBand)
-├─ SlowRich.xcdatamodeld    ★ 모델의 원본
+├─ RootView.swift           탭 다섯 · 가로/iPad 좌측 메뉴 · 상태 띠(StatusBand) ·
+│                           탭 바깥의 전체 화면 창 — 주간 점검(199번 C4) · 궤적 크게 보기(204번)
+├─ AppRoute.swift           그 창들을 여는 신호(`showReview` · `expandedTrajectory`) · 알림 · 현황판에서 다른 탭으로 보내는 경로
+├─ SlowRich.xcdatamodeld    ★ 모델의 원본 — 판을 쌓는다, 지금 판은 `SlowRich 2`(.xccurrentversion)
 ├─ Persistence/             저장소 · Generated/(@NSManaged) · 모델 확장 · 자동 저장 · 체험 자료
 ├─ Services/                알림 · 백업 · 가족 공유 · 동기화 감시 · 앱 잠금 · 계획선(PlanTrack) · 회고
-├─ DesignSystem/            색 · 글자(Typography) · 읽을 수 있는 너비
+├─ DesignSystem/            색 · 글자(Typography) · 읽을 수 있는 너비(`readableWidth` — 남은 양옆 바탕도 칠한다, 205번)
 └─ Features/                화면 — Dashboard · Assets · Review · Plan · Simulation ·
                             Diagnostics · History · Notes · Diary · More · Settings · Onboarding · Shared
+AppTests/                   앱 테스트 `SlowRichTests` — Core Data 가 있어야 시험되는 것만(인메모리 저장소)
+AppUITests/                 App Store 미리 보기 녹화 대본(`SlowRichPreview` 스킴만)
 Packages/Core/              ★ 순수 Swift. Foundation 외 의존 없음
 ├─ Money/                   Money · Ratio · Decimals(반올림 한 곳) · 한국식 금액 포맷
-├─ Domain/ · Portfolio/     분류 · 평가 · 비중 · 증감 분해(ChangeAttribution)
+├─ Domain/ · Portfolio/     분류 · 평가 · 비중 · 앱 달력(`Calendar.app`)
 ├─ Projection/              결정론 궤적 + 몬테카를로
 ├─ Diagnostics/             자산 진단 일곱 규칙
 ├─ Retirement/              국민연금 추정 등
-└─ Review/                  주 계산 · 연속 기록 · 원칙 돌리기 · 일기 연속
-Tools/                      아이콘 · CloudKit 스키마 생성/대조 · 검증용 파이썬
+└─ Review/                  주 계산 · 연속 기록 · 원칙 돌리기 · 증감 분해(ChangeAttribution)
+Tools/                      아이콘 · CloudKit 스키마 생성/대조 · 모델 대조 · 마이그레이션 시험(coredata/) · 검증용 파이썬
 ```
 
 ~~`Widgets/` (WidgetKit)~~ — 위젯은 2026-09-22 뺐다.
@@ -187,9 +191,9 @@ App Store 제출 시 개인정보 처리방침과 App Privacy(“데이터 미�
 | Core (Money/Portfolio/Rules) | Swift Testing 단위 테스트 | 커버리지 높게. 경계값(0, 음수, 대금액) 필수 |
 | Projection | 알려진 입력 → 손계산 기대값 비교, 몬테카를로는 통계적 성질 검증 | 회귀 방지 |
 | Review | 연속 기록 계산(건너뛴 주, 총액만 기록한 주, 시간대 경계) | 경계 조건 필수 |
-| Persistence | ~~인메모리 `ModelContainer`~~ — 원격 세션은 컴파일을 못 하므로 **CI 의 3중 대조**(모델 · `@NSManaged` · CloudKit 스키마)가 심판 | 칸 하나 빠짐 방지 |
+| Persistence | ~~인메모리 `ModelContainer`~~ — 원격 세션은 컴파일을 못 하므로 **CI 의 3중 대조**(모델 · `@NSManaged` · CloudKit 스키마)가 심판. *(2026-10-10~)* 앱 테스트 `SlowRichTests`(인메모리 저장소 — 같은 주 정리 · 편집 취소 · 백업 왕복 · 올해 납입액)와 **마이그레이션 시험**(`migration-baselines.txt` 의 출시 판 저장소를 지금 모델로 열기, [18](18-stage5-foundation.md))이 더해졌다 | 칸 하나 빠짐 · 업데이트 뒤 못 엶 방지 |
 | Services | 프로토콜 목(mock) · 알림 등록은 가짜 스케줄러로 | 시간 관련은 `Clock` 주입 |
-| Features | **CI 시뮬레이터 스크린샷** 30여 장(라이트 · 다크 · 큰 글씨 · 보기 전용 · iPad)을 브랜치로 되돌려 사람이 본다 | 레이아웃 회귀 방지 |
+| Features | **CI 시뮬레이터 스크린샷** 36장 + 다크 · iPad 묶음(라이트 · 다크 · 큰 글씨 · 보기 전용 · iPad)을 브랜치로 되돌려 사람이 본다 | 레이아웃 회귀 방지 |
 | E2E | 온보딩 → 입력 → 현황판 확인 1개 시나리오 | 최소한만 |
 
 ~~CI는 `Core` 패키지 테스트만 먼저 돌립니다. 시뮬레이터 빌드는 PR 머지 전 1회.~~

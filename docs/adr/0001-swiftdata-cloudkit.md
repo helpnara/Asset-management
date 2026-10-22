@@ -84,3 +84,6 @@ CloudKit 미러링을 켜면 스키마에 강한 제약이 걸립니다. **처�
 - **검증 과제 결과** — 1) 실기기 둘(아이폰 · 아이패드)과 가족 기기 사이 동기화 확인
   (빌드 26 · 55). 2) iCloud 없이 로컬로 여는 길은 위 후속 1 대로 유지. 3) 마이그레이션은
   경량 이전만 쓰고, 칸을 더할 때마다 CloudKit 스키마를 다시 올린다 ([06](../06-testflight.md)).
+  *(2026-10-15 덧붙임)* 칸을 바꾸는 판부터는 **모델 판을 쌓는다** — 1.0.6 에서 `SlowRich 2.xcdatamodel`
+  (`Account.annualContributionYear`, 199번 B2). CI 가 출시한 판들(`Tools/coredata/migration-baselines.txt`)의
+  저장소를 지금 모델로 열어 보는 시험을 막는 검사로 돌린다 ([18](../18-stage5-foundation.md)).

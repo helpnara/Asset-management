@@ -3,10 +3,12 @@
 > **원본은 `App/SlowRich.xcdatamodeld` 다** (Core Data, 4차에서 SwiftData 에서 옮겼다 —
 > [09](09-family-sharing.md)). `@NSManaged` 선언(`App/Persistence/Generated/`)과
 > CloudKit 스키마(`Tools/cloudkit/slowrich.ckdb`)가 거기서 파생되고, CI 가 셋을 대조한다.
+> **지금 판은 `SlowRich 2.xcdatamodel`** 이다(`.xccurrentversion` 이 가리킨다 — 1.0.6 에서 `Account.annualContributionYear`
+> 를 더하며 판을 쌓았다, 199번 B2). 옛 판 `SlowRich.xcdatamodel` 은 마이그레이션의 원본이라 지우지 않는다 — 3.5.
 > 아래 **3.1 이 지금 모델**이고(2026-09-27 전수 조사로 다시 썼다), **3.3 은 처음
 > 설계할 때의 SwiftData 스케치**라 이름·칸이 다르다 — 무엇이 왜 바뀌었는지 보는 기록으로 남긴다.
 
-## 3.1 엔티티 개요 — 지금 모델 (19개)
+## 3.1 엔티티 개요 — 지금 모델 (19개 · 속성 177, 2판)
 
 ```
 Household (가구, 공유의 뿌리 — 모든 엔티티가 household 로 매달린다)
@@ -26,7 +28,7 @@ Household (가구, 공유의 뿌리 — 모든 엔티티가 household 로 매달
 |---|---:|---|---|
 | Household | 4 | 공유 단위(`CKShare` 의 뿌리) | 제목 · 기준 시점 · 선언문은 `Plan` 으로 갔다 |
 | Member | 16 | 이름 · 생년월 · 세적 · 은퇴 나이 · 월 적립 · 회사 매칭 · 월급 · `editorIDs`(편집 권한) · 색 번호 | 기대수명 · 색 코드 대신 색 번호 |
-| Account | 14 | 종류 · 기관 · 연 납입 한도 · 만기 · 월세 · 매매가 | **통화 없음** (전부 원화) |
+| Account | 15 | 종류 · 기관 · 연 납입 한도 · 연 납입액 + **그 납입액의 해**(`annualContributionYear`, 2판 · 199번 B2 — 0 이면 2판 전 값으로 2026년) · 만기 · 월세 · 매매가 | **통화 없음** (전부 원화) |
 | Holding | 15 | 자산군 · 상품 유형 · 상장 국가 · 상태 · 입력 주기 · 평가액 · 목표 비중 | 통화 · 수량 · 단가 · 원가 없음 |
 | HoldingNote | 4 | 종목 "왜 샀나" 한 줄 + 날짜 · 적은 사람 | 187번에서 새로 |
 | HoldingRecord | 7 | 종목별 주간 값 (이름 · 계좌 이름을 함께 적어 종목을 지워도 남는다) | A3 에서 새로 — 스케치는 "종목 단위로는 저장하지 않는다" 였다 |
@@ -48,7 +50,7 @@ Household (가구, 공유의 뿌리 — 모든 엔티티가 household 로 매달
 (적립 배분), `Assumptions`, 자동 점검 규칙이 달린 `Principle`, 통화 · 환율.
 
 **CloudKit 규칙** — 유니크 제약 없음, 모든 속성 기본값, 모든 관계 옵셔널
-([ADR-0001](adr/0001-swiftdata-cloudkit.md)). 관계는 구성원 → 계좌 → 종목 → 이력만
+([ADR-0001](adr/0001-swiftdata-cloudkit.md)). 관계는 구성원 → 계좌 → 종목 → 이력과 스냅샷 → 구성원별 분해만
 cascade 이고, 나머지는 `Household` 에 nullify 로 매달린다.
 
 ## 3.2 설계 원칙
@@ -535,6 +537,8 @@ member.taxResidency ∈ {usa, both}
 ## 3.5 마이그레이션
 
 *(현재: Core Data **경량 마이그레이션** 하나로 간다. 칸은 더하기만 하고 지우거나 이름을 바꾸지 않는다. 칸을 더하면 `.xcdatamodeld` · `Generated/` · `.ckdb` 를 함께 고치고 CloudKit 스키마를 다시 올린다 — [06](06-testflight.md). 아래 `VersionedSchema` 는 SwiftData 시절 계획이다.)*
+
+*(2026-10-09 ~ 10-15, [18](18-stage5-foundation.md) · 199번 B2: **칸을 바꾸는 판부터는 모델 판을 쌓는다.** 지금 판을 복사해 새 판(`SlowRich 2.xcdatamodel`)만 고치고 `.xccurrentversion` 을 돌린다 — 옛 판은 지우지 않는다. 대조 스크립트는 `.xccurrentversion` 이 가리키는 판을 읽는다. CI 의 **마이그레이션 시험**(`Tools/coredata/check-migration.swift`)이 `Tools/coredata/migration-baselines.txt` 에 적힌 출시 판 커밋마다 그 모델로 저장소를 만들어 지금 모델로 열어 본다 — App Store 에 낸 판의 커밋을 맨 위에 더한다. 아래 셋째 줄의 "마이그레이션 테스트" 가 이것이다.)*
 
 - ~~`VersionedSchema` + `SchemaMigrationPlan`을 처음부터 도입한다.~~ v1 출시 후에는
   경량 마이그레이션만으로 해결되지 않는 변경이 반드시 생긴다.
