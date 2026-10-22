@@ -36,6 +36,9 @@ final class AppRoute {
     var wantsPrinciples = false
     /// 현황판의 챙길 것 카드를 누르면 더보기 탭의 챙길 것 목록까지 밀어 넣는다 (172번).
     var wantsTodos = false
+    /// 순자산 궤적 **크게 보기** 창 (204번). 현황판 · 구성원 궤적의 돋보기가 세우고 `RootView` 가 탭 바깥에서
+    /// 띄운다 — 탭 안의 `@State` 로 띄우면 아이패드를 돌릴 때 닫힌다(199번 C4). 크게 볼 일이 많은 것이 가로다.
+    var expandedTrajectory: TrajectoryChart.Expanded?
     /// 알림에서 총액만 기록한 직후 보여줄 안내.
     var totalOnlyMessage: String?
 

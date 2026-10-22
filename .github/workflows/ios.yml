@@ -470,6 +470,9 @@ jobs:
           # 저장소를 끝내 못 열었을 때의 안내 화면 (docs/18 5-4). 실행 인자로 일부러 실패시킨다 —
           # 죽지 않고 이 화면이 뜨는지, 지우기 단추가 없는지 눈으로 본다.
           shoot 34-store-failure.png -skipOnboarding -simulateStoreFailure
+          # **순자산 궤적 크게 보기** (204번). 현황판 궤적의 돋보기 — 차트가 화면 높이를 다 쓰고
+          # 눈금 · 범례가 커졌는지, 닫기 단추가 있는지.
+          shoot 35-trajectory-detail.png -skipOnboarding -seedSampleData -startTab dashboard -startTrajectoryDetail
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL

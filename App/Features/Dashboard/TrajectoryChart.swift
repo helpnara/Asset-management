@@ -112,6 +112,24 @@ struct TrajectoryChart: View {
     /// 은퇴 시점. `은퇴까지` 창이 여기서 끊는다. 없으면 자르지 않는다.
     var retirementDate: Date? = nil
     var events: [EventMark] = []
+    /// 크게 보기 창의 제목 (204번). 현황판은 `순자산 궤적`, 구성원 화면은 `○○ 궤적`.
+    var title = "순자산 궤적"
+    /// **크게 보기 창 안에서 그리나** (204번). 차트가 남은 높이를 다 쓰고, 눈금 · 점 · 읽은 값 글씨가
+    /// 커지고, 손을 떼도 마지막에 짚은 시점의 값이 남는다. 창을 여는 돋보기는 숨는다.
+    var isLarge = false
+
+    /// 크게 보기 창에 건네는 것 (204번). 열 때의 값을 그대로 담는다 — 창은 `RootView` 가
+    /// **탭 바깥에서** 띄운다(199번 C4: 아이패드를 돌리면 탭 안의 창이 닫혔다). 기간 · 오늘 돈
+    /// 보기는 `@AppStorage` 라 카드와 창이 같은 값을 나눠 쓴다.
+    struct Expanded: Identifiable {
+        let id = UUID()
+        let title: String
+        let points: [Point]
+        let today: Date
+        let targetMinor: Int
+        let retirementDate: Date?
+        let events: [EventMark]
+    }
 
     /// 기본은 `은퇴까지` — 이 앱이 답하는 질문의 기본 범위다.
     /// 저장된 값이 있으면 그것을 따른다.
@@ -120,14 +138,26 @@ struct TrajectoryChart: View {
     /// **누른 시점** (docs/08-feedback.md 84번, C2). 차트가 예쁘지만 숫자를
     /// 읽을 수 없었다 — 누르거나 끌면 그 시점의 실제·예측·계획선 값을 적는다.
     @State private var scrubDate: Date?
+    /// 크게 보기에서 **손을 뗀 뒤에도 남기는** 시점 (204번). 카드에서는 손을 떼면 사라진다 —
+    /// 좁은 카드에 값이 계속 남으면 다음에 열었을 때 무슨 값인지 헷갈린다.
+    @State private var pinnedDate: Date?
+
+    /// 지금 짚은 시점 — 누르는 중이면 그 자리, 크게 보기에서는 마지막에 짚은 자리.
+    private var markedDate: Date? { scrubDate ?? (isLarge ? pinnedDate : nil) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("기간", selection: $span) {
-                ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
+            HStack(spacing: 8) {
+                Picker("기간", selection: $span) {
+                    ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: isLarge ? 360 : 260)
+                Spacer(minLength: 0)
+                if !isLarge {
+                    expandButton
+                }
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 260)
 
             // **폭을 묶지 않는다.** 위 세그먼트 컨트롤을 따라 260 으로 잘라 뒀더니
             // 스위치가 카드 한가운데 떠서 고장처럼 보였다. 스위치는 차트·범례의
@@ -147,19 +177,44 @@ struct TrajectoryChart: View {
                 readoutLine
             }
         }
+        .onChange(of: scrubDate) { _, date in
+            if let date { pinnedDate = date }
+        }
+        // 기간을 바꾸면 짚어 둔 시점이 창 밖일 수 있다 — 지운다.
+        .onChange(of: span) { _, _ in pinnedDate = nil }
+    }
+
+    /// **돋보기** (204번, 10-22 사용자: *"순자산궤적에 돋보기 같은 버튼을 하나 만들어서 크게 자세히 볼 수 있는
+    /// 기능"*). 카드의 차트는 168pt 라 은퇴까지를 보면 지금의 몇 년이 바닥에 눌리고 눈금 글씨가 8pt 다.
+    /// 누르는 자리는 44pt 너비로.
+    private var expandButton: some View {
+        Button {
+            AppRoute.shared.expandedTrajectory = Expanded(
+                title: title, points: points, today: today, targetMinor: targetMinor,
+                retirementDate: retirementDate, events: events)
+        } label: {
+            Image(systemName: "plus.magnifyingglass")
+                .font(.scaled(16, weight: .medium))
+                .foregroundStyle(Color.ink)
+                .frame(width: 44, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) 크게 보기")
     }
 
     /// 차트 아래 한 줄. 누르기 전에는 누르라고 알려 준다.
     @ViewBuilder
     private var readoutLine: some View {
-        if let scrubDate, let readout = readout(at: scrubDate) {
+        if let markedDate, let readout = readout(at: markedDate) {
             Text(readout)
-                .font(.figure(10.5, weight: .medium))
+                .font(.figure(isLarge ? 13 : 10.5, weight: .medium))
                 .foregroundStyle(Color.dad)
                 .lineLimit(2)
         } else {
-            Text("차트를 누르거나 끌면 그 시점의 값이 보입니다")
-                .font(.scaled(9.5))
+            Text(isLarge ? "차트를 누르거나 끌면 그 시점의 값이 보이고, 손을 떼도 남습니다"
+                         : "차트를 누르거나 끌면 그 시점의 값이 보입니다")
+                .font(.scaled(isLarge ? 11.5 : 9.5))
                 .foregroundStyle(Color.faint)
         }
     }
@@ -206,7 +261,7 @@ struct TrajectoryChart: View {
                         y: .value("순자산", point.value(real: showsReal))
                     )
                     .foregroundStyle(Color.ink)
-                    .symbolSize(20)
+                    .symbolSize(isLarge ? 34 : 20)
                 }
             }
 
@@ -228,7 +283,7 @@ struct TrajectoryChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     .annotation(position: .bottom, alignment: .center, spacing: 1) {
                         Text(event.label)
-                            .font(.scaled(7.5))
+                            .font(.scaled(isLarge ? 9.5 : 7.5))
                             .foregroundStyle(Color.faint)
                             .lineLimit(1)
                     }
@@ -239,8 +294,8 @@ struct TrajectoryChart: View {
                 .lineStyle(StrokeStyle(lineWidth: 1))
 
             // 누른 자리 (84번).
-            if let scrubDate {
-                RuleMark(x: .value("선택", scrubDate))
+            if let markedDate {
+                RuleMark(x: .value("선택", markedDate))
                     .foregroundStyle(Color.dad.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 2]))
             }
@@ -250,14 +305,14 @@ struct TrajectoryChart: View {
         // 궤적을 벗어난 선이 아래 카드 위에 그려지지 않게 한다.
         .chartPlotStyle { plot in plot.clipped() }
         .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+            AxisMarks(position: .leading, values: .automatic(desiredCount: isLarge ? 6 : 4)) { value in
                 AxisGridLine().foregroundStyle(Color.rule)
                 AxisValueLabel {
                     if let raw = value.as(Double.self) {
                         // 금액 가리기를 켜면 축 눈금도 함께 가려진다.
                         // 예전 눈금은 자체 포맷터를 써서 이것만 새어 나갔다.
                         Text(axisLabel(raw))
-                            .font(.figure(8))
+                            .font(.figure(isLarge ? 10 : 8))
                             .foregroundStyle(Color.faint)
                     }
                 }
@@ -271,13 +326,14 @@ struct TrajectoryChart: View {
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
                         Text(verbatim: "\(Calendar.app.component(.year, from: date))")
-                            .font(.figure(8))
+                            .font(.figure(isLarge ? 10 : 8))
                             .foregroundStyle(Color.faint)
                     }
                 }
             }
         }
-        .frame(height: 168)
+        // 크게 보기는 남은 높이를 다 쓴다 (204번).
+        .frame(minHeight: isLarge ? 240 : 168, maxHeight: isLarge ? .infinity : 168)
     }
 
     private var placeholder: some View {

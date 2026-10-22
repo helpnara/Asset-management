@@ -86,7 +86,8 @@ struct MemberTrajectoryView: View {
                     retirementYear: retirementYear,
                     notBefore: Calendar.app.startOfDay(for: .now)
                 ),
-                events: events
+                events: events,
+                title: "\(member.name.isEmpty ? "이름 없음" : member.name) 궤적"
             )
         }
         .padding(14)

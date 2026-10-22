@@ -671,6 +671,19 @@ struct DashboardView: View {
         if ProcessInfo.processInfo.arguments.contains("-startRoadmapNow"), selectedStop == nil {
             selectedStop = roadmapStops.first { $0.isNow }
         }
+        // 궤적 크게 보기가 찍히게 (204번) — 점이 있어야 그려지므로 여기서.
+        if ProcessInfo.processInfo.arguments.contains("-startTrajectoryDetail"),
+           AppRoute.shared.expandedTrajectory == nil {
+            AppRoute.shared.expandedTrajectory = TrajectoryChart.Expanded(
+                title: "순자산 궤적", points: trajectoryPoints,
+                today: Calendar.app.startOfDay(for: .now),
+                targetMinor: plan?.targetAmountMinor ?? 0,
+                retirementDate: plan.map {
+                    Plan.endDate(retirementYear: $0.retirementYear,
+                                 notBefore: Calendar.app.startOfDay(for: .now))
+                },
+                events: milestoneMarks)
+        }
         // 진단은 관리 객체를 읽으므로 주 스레드에서 — 다만 **입력이 바뀔 때
         // 한 번**이지, 그릴 때마다가 아니다.
         diagnosis = plan.map {

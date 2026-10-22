@@ -165,6 +165,14 @@ struct RootView: View {
                     .tint(Color.ink)
                     .scrollDismissesKeyboard(.interactively)
             }
+            // 순자산 궤적 크게 보기 (204번) — 점검 창과 같은 까닭으로 탭 바깥에.
+            .fullScreenCover(item: Binding(
+                get: { route.expandedTrajectory },
+                set: { route.expandedTrajectory = $0 }
+            )) { content in
+                TrajectoryDetailView(content: content)
+                    .tint(Color.ink)
+            }
             // 제목은 사람이 누른 알림 동작의 이름 (196번). 예전에는 "이번 주 점검 완료" 라서
             // 보기 전용 폰의 "기록하지 않았습니다" 안내에도 완료라는 제목이 붙었다.
             .alert("총액만 기록",
