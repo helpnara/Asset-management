@@ -284,30 +284,18 @@ struct TrajectoryChart: View {
             }
 
             // **목표** (208번). 목표는 오늘 돈이라(194번 E3) 오늘 돈 보기에서는 그 값에 가로선을, 명목 보기에서는
-            // 은퇴 시점에 그해 돈으로 점 하나를 찍는다. 카드는 글씨 없이(범례가 이름을 단다), 크게 보기는 값까지.
-            // 글씨는 그림 안쪽에 맞춘다(`.fit(to: .plot)`) — 가장자리에서 잘리던 까닭.
+            // 은퇴 시점에 그해 돈으로 점 하나를 찍는다. 글씨는 여기서 붙이지 않는다 — 아래 `labelLayer` 가
+            // 다른 글씨와 견주어 자리를 정한다 (209번).
             if showsTarget && showsReal {
                 RuleMark(y: .value("목표", Double(targetMinor)))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
-                    .annotation(position: .top, alignment: .leading, spacing: 2,
-                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                        if isLarge {
-                            markLabel("목표 \(money(Double(targetMinor))) · 오늘 돈", color: .ink)
-                        }
-                    }
             }
             if let target = nominalTarget {
                 PointMark(x: .value("시점", target.date), y: .value("목표", target.value))
                     .symbol(.diamond)
                     .symbolSize(isLarge ? 90 : 46)
                     .foregroundStyle(Color.ink.opacity(0.7))
-                    .annotation(position: .top, alignment: .center, spacing: 4,
-                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                        if isLarge {
-                            markLabel("목표 \(money(target.value))\n오늘 돈 \(money(Double(targetMinor)))", color: .ink)
-                        }
-                    }
             }
 
             // **크게 보기의 이정표** (208번) — 지금 · 은퇴 · 목표에 닿는 해 · 고갈. 카드는 그대로 둔다(좁아서 겹친다).
@@ -316,68 +304,35 @@ struct TrajectoryChart: View {
                     PointMark(x: .value("시점", now.date), y: .value("순자산", now.value(real: showsReal)))
                         .symbolSize(70)
                         .foregroundStyle(Color.ink)
-                        .annotation(position: .top, alignment: .center, spacing: 4,
-                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            markLabel("마지막 기록 \(money(now.value(real: showsReal)))", color: .ink)
-                        }
                 }
                 if let retirementDate, inWindow(retirementDate) {
-                    // 은퇴 해와 그때 값을 **한 글씨로** — 둘로 나눴더니 `은퇴까지` 창의 오른쪽 위에서 겹쳤다(CI 스크린샷).
-                    let peak = projectedPoint(near: retirementDate)
                     RuleMark(x: .value("은퇴", retirementDate))
                         .foregroundStyle(Color.dad.opacity(0.45))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                        .annotation(position: .trailing, alignment: .top, spacing: 4,
-                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            if peak == nil {
-                                markLabel("은퇴 \(year(retirementDate))", color: .dad)
-                            }
-                        }
-                    if let peak {
+                    if let peak = projectedPoint(near: retirementDate) {
                         PointMark(x: .value("시점", peak.date), y: .value("순자산", peak.value(real: showsReal)))
                             .symbolSize(60)
                             .foregroundStyle(Color.dad)
-                            .annotation(position: .top, alignment: .center, spacing: 4,
-                                        overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                                markLabel("은퇴 \(year(retirementDate)) · \(money(peak.value(real: showsReal)))", color: .dad)
-                            }
                     }
                 }
                 if let reach = targetReached, inWindow(reach.date) {
                     PointMark(x: .value("시점", reach.date), y: .value("순자산", reach.value(real: showsReal)))
                         .symbolSize(60)
                         .foregroundStyle(Color.gain)
-                        .annotation(position: .bottom, alignment: .center, spacing: 4,
-                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            markLabel("목표 닿음 \(year(reach.date))", color: .gain)
-                        }
                 }
                 if let depletionDate, inWindow(depletionDate) {
                     RuleMark(x: .value("고갈", depletionDate))
                         .foregroundStyle(Color.loss.opacity(0.6))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                        .annotation(position: .trailing, alignment: .center, spacing: 4,
-                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            markLabel("고갈 \(year(depletionDate))", color: .loss)
-                        }
                 }
             }
 
             // 인생 이벤트는 x축에 눈금으로 선다. 개수가 늘어도 눈금이 촘촘해질
-            // 뿐, 로드맵의 여섯 칸은 그대로다.
+            // 뿐, 로드맵의 여섯 칸은 그대로다. 이름은 `labelLayer` 가 단다.
             ForEach(visibleEvents) { event in
                 RuleMark(x: .value("이벤트", event.date))
                     .foregroundStyle(Color.muted.opacity(0.35))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    // 크게 보기는 그림 안쪽 아래에 세운다 — 바깥(아래)에 두면 잘라 낸 그림 밖이라 안 보였다 (208번).
-                    .annotation(position: isLarge ? .trailing : .bottom,
-                                alignment: isLarge ? .bottom : .center, spacing: isLarge ? 3 : 1,
-                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                        Text(event.label)
-                            .font(.scaled(isLarge ? 10 : 7.5))
-                            .foregroundStyle(isLarge ? Color.muted : Color.faint)
-                            .lineLimit(1)
-                    }
             }
 
             RuleMark(x: .value("오늘", today))
@@ -393,6 +348,17 @@ struct TrajectoryChart: View {
         }
         .chartXSelection(value: $scrubDate)
         .chartYScale(domain: domain)
+        // **글씨는 그림 위 한 겹에서 한꺼번에 놓는다** (209번). 표시마다 제 글씨를 붙이면 서로를 몰라 포갰다.
+        // 누르기 · 끌기는 아래 차트가 받는다.
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    labelLayer(proxy: proxy, plot: geometry[plotFrame])
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         // 궤적을 벗어난 선이 아래 카드 위에 그려지지 않게 한다.
         .chartPlotStyle { plot in plot.clipped() }
         .chartYAxis {
@@ -428,6 +394,156 @@ struct TrajectoryChart: View {
         }
         // 크게 보기는 남은 높이를 다 쓴다 (204번).
         .frame(minHeight: isLarge ? 240 : 168, maxHeight: isLarge ? .infinity : 168)
+    }
+
+    // MARK: - 글씨 (209번)
+
+    /// 그림 위 글씨 하나 — 무엇을, 어디에 붙이나.
+    private struct ChartLabel: Identifiable {
+        enum Style { case mark, event }
+        let id: String
+        let text: String
+        let color: Color
+        let style: Style
+        let anchor: LabelPlacement.Anchor
+    }
+
+    /// 값 → 화면 좌표. `ChartProxy` 는 그림 안쪽 기준이라 그림이 놓인 자리를 더한다.
+    @MainActor
+    private struct ScreenMap {
+        let proxy: ChartProxy
+        let plot: CGRect
+        func x(_ date: Date) -> Double? { proxy.position(forX: date).map { Double(plot.minX + $0) } }
+        func y(_ value: Double) -> Double? { proxy.position(forY: value).map { Double(plot.minY + $0) } }
+    }
+
+    /// **글씨 한 겹** (209번, 10-25 사용자: *"글자 겹침 여부를 체크하는 로직을 만들던가 해서 글자들이 겹치지
+    /// 않도록 점검 후 새로운 내용을 추가하는 방식"*). 글씨를 실제로 재서 `LabelPlacement` 가 중요한 순서대로
+    /// 놓는다 — 이미 놓인 글씨와는 절대 안 겹치고, 선 · 점은 되도록 덜 가린다. 놓을 곳이 없는 글씨는 빠진다.
+    private func labelLayer(proxy: ChartProxy, plot: CGRect) -> some View {
+        let map = ScreenMap(proxy: proxy, plot: plot)
+        let layout = LabelLayout(
+            bounds: LabelPlacement.Box(minX: Double(plot.minX), minY: Double(plot.minY),
+                                       width: Double(plot.width), height: Double(plot.height)),
+            ink: labelInk(map)
+        )
+        return layout {
+            ForEach(chartLabels(map)) { label in
+                labelView(label)
+                    .layoutValue(key: LabelAnchorKey.self, value: label.anchor)
+            }
+        }
+        .clipped()
+    }
+
+    /// 놓을 글씨 — **중요한 순서로**: 은퇴 · 목표 · 마지막 기록 · 목표 닿음 · 고갈 · 인생 이벤트(날짜순).
+    /// 자리가 모자라면 뒤의 것부터 빠진다. 카드는 좁아서 인생 이벤트 이름만 단다(이정표는 크게 보기 몫).
+    private func chartLabels(_ map: ScreenMap) -> [ChartLabel] {
+        var labels: [ChartLabel] = []
+        func add(_ id: String, _ text: String, _ color: Color, _ anchor: LabelPlacement.Anchor?) {
+            guard let anchor else { return }
+            labels.append(ChartLabel(id: id, text: text, color: color, style: .mark, anchor: anchor))
+        }
+        func point(_ date: Date, _ value: Double) -> LabelPlacement.Anchor? {
+            guard let x = map.x(date), let y = map.y(value) else { return nil }
+            return .point(x: x, y: y)
+        }
+        if isLarge {
+            if let retirementDate, inWindow(retirementDate) {
+                // 은퇴 해와 그때 값을 **한 글씨로** (208번) — 값이 없으면 세로선 위에 해만.
+                if let peak = projectedPoint(near: retirementDate) {
+                    let value = peak.value(real: showsReal)
+                    add("retirement", "은퇴 \(year(retirementDate)) · \(money(value))", .dad, point(peak.date, value))
+                } else {
+                    add("retirement", "은퇴 \(year(retirementDate))", .dad,
+                        map.x(retirementDate).map { LabelPlacement.Anchor.verticalTop(x: $0) })
+                }
+            }
+            if showsTarget && showsReal {
+                add("target", "목표 \(money(Double(targetMinor))) · 오늘 돈", .ink,
+                    map.y(Double(targetMinor)).map { LabelPlacement.Anchor.horizontal(y: $0) })
+            }
+            if let target = nominalTarget {
+                add("target", "목표 \(money(target.value))\n오늘 돈 \(money(Double(targetMinor)))", .ink,
+                    point(target.date, target.value))
+            }
+            if let now = latestActual {
+                let value = now.value(real: showsReal)
+                add("latest", "마지막 기록 \(money(value))", .ink, point(now.date, value))
+            }
+            if let reach = targetReached, inWindow(reach.date) {
+                add("reach", "목표 닿음 \(year(reach.date))", .gain, point(reach.date, reach.value(real: showsReal)))
+            }
+            if let depletionDate, inWindow(depletionDate) {
+                add("depletion", "고갈 \(year(depletionDate))", .loss,
+                    map.x(depletionDate).map { LabelPlacement.Anchor.verticalTop(x: $0) })
+            }
+        }
+        for event in visibleEvents.sorted(by: { $0.date < $1.date }) {
+            guard let x = map.x(event.date) else { continue }
+            // 바닥부터 쌓는 줄 수 — 카드는 높이가 168 이라 셋까지.
+            labels.append(ChartLabel(id: event.id, text: event.label, color: .muted, style: .event,
+                                     anchor: .verticalBottom(x: x, lanes: isLarge ? 5 : 3)))
+        }
+        return labels
+    }
+
+    /// 글씨가 피해 갈 그림 — 선은 몇 포인트마다 끊어 점으로, 점 표시는 둘레까지. 실제 기록이 가장 무겁다.
+    private func labelInk(_ map: ScreenMap) -> [LabelPlacement.Ink] {
+        var ink: [LabelPlacement.Ink] = []
+        let weights: [(Point.Series, Double)] = [(.actual, 4), (.projected, 3), (.plan, 1.5)]
+        for (series, weight) in weights {
+            let line = visiblePoints
+                .filter { $0.series == series }
+                .sorted { $0.date < $1.date }
+                .compactMap { point -> (x: Double, y: Double)? in
+                    guard let x = map.x(point.date), let y = map.y(point.value(real: showsReal)) else { return nil }
+                    return (x, y)
+                }
+            ink += LabelPlacement.trace(line, weight: weight)
+        }
+        func vertical(_ date: Date, weight: Double) {
+            guard let x = map.x(date) else { return }
+            ink += LabelPlacement.trace([(x: x, y: Double(map.plot.minY)), (x: x, y: Double(map.plot.maxY))],
+                                        weight: weight)
+        }
+        func marker(_ date: Date, _ value: Double) {
+            guard let x = map.x(date), let y = map.y(value) else { return }
+            ink += LabelPlacement.marker(x: x, y: y)
+        }
+        // 오늘 세로선은 진하다 — 글씨가 꿰이면 눈에 걸린다(빌드 135 사진의 목표 글씨).
+        vertical(today, weight: 2)
+        for event in visibleEvents { vertical(event.date, weight: 1) }
+        if showsTarget && showsReal, let y = map.y(Double(targetMinor)) {
+            ink += LabelPlacement.trace([(x: Double(map.plot.minX), y: y), (x: Double(map.plot.maxX), y: y)], weight: 1)
+        }
+        if let target = nominalTarget { marker(target.date, target.value) }
+        if isLarge {
+            if let now = latestActual { marker(now.date, now.value(real: showsReal)) }
+            if let retirementDate, inWindow(retirementDate) {
+                vertical(retirementDate, weight: 1)
+                if let peak = projectedPoint(near: retirementDate) { marker(peak.date, peak.value(real: showsReal)) }
+            }
+            if let reach = targetReached, inWindow(reach.date) { marker(reach.date, reach.value(real: showsReal)) }
+            if let depletionDate, inWindow(depletionDate) { vertical(depletionDate, weight: 1) }
+        }
+        return ink
+    }
+
+    @ViewBuilder
+    private func labelView(_ label: ChartLabel) -> some View {
+        switch label.style {
+        case .mark:
+            markLabel(label.text, color: label.color)
+        case .event:
+            // 바탕을 깐다 — 이제 다른 선 위에도 놓일 수 있다.
+            Text(label.text)
+                .font(.scaled(isLarge ? 10 : 7.5))
+                .foregroundStyle(isLarge ? Color.muted : Color.faint)
+                .lineLimit(1)
+                .padding(.horizontal, 2)
+                .background(Color.raised.opacity(0.85), in: RoundedRectangle(cornerRadius: 2))
+        }
     }
 
     private var placeholder: some View {
@@ -611,3 +727,37 @@ struct TrajectoryChart: View {
         }
     }
 }
+
+/// 글씨가 붙을 곳 — `LabelLayout` 이 글씨마다 읽는다.
+private struct LabelAnchorKey: LayoutValueKey {
+    static let defaultValue: LabelPlacement.Anchor? = nil
+}
+
+/// **글씨를 실제로 재서 놓는 자리** (209번). 글자 수로 크기를 어림하면 큰 글씨 설정에서 어긋난다 —
+/// `Layout` 은 놓기 전에 글씨마다 제 크기를 물을 수 있어서, 잰 크기를 `LabelPlacement` 에 넘기고
+/// 돌려받은 자리에 놓는다. 놓을 곳이 없는 글씨는 그림 밖 멀리 두고 겉을 잘라(`clipped`) 감춘다 —
+/// `Layout` 에는 감추기가 없다.
+private struct LabelLayout: Layout {
+    /// 그림 안쪽 — 이 겹의 좌표로.
+    let bounds: LabelPlacement.Box
+    let ink: [LabelPlacement.Ink]
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in rect: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let requests = zip(subviews, sizes).map { subview, size in
+            LabelPlacement.Request(anchor: subview[LabelAnchorKey.self] ?? .point(x: 0, y: 0),
+                                   width: Double(size.width), height: Double(size.height))
+        }
+        let boxes = LabelPlacement.place(requests, in: bounds, ink: ink)
+        for (index, subview) in subviews.enumerated() {
+            let origin = boxes[index].map { CGPoint(x: rect.minX + $0.minX, y: rect.minY + $0.minY) }
+                ?? CGPoint(x: rect.minX - 10_000, y: rect.minY - 10_000)
+            subview.place(at: origin, anchor: .topLeading, proposal: ProposedViewSize(sizes[index]))
+        }
+    }
+}
+

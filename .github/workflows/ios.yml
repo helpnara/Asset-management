@@ -473,6 +473,9 @@ jobs:
           # **순자산 궤적 크게 보기** (204번). 현황판 궤적의 돋보기 — 차트가 화면 높이를 다 쓰고
           # 눈금 · 범례가 커졌는지, 닫기 단추가 있는지.
           shoot 35-trajectory-detail.png -skipOnboarding -seedSampleData -startTab dashboard -startTrajectoryDetail
+          # 오늘 돈 보기 — 목표 가로선과 그 글씨가 다른 글씨를 비켜 가는지 (209번). 값은 `@AppStorage` 의 열쇠라
+          # 실행 인자(UserDefaults 인자 영역)로 켠다.
+          shoot 36-trajectory-detail-real.png -skipOnboarding -seedSampleData -startTab dashboard -startTrajectoryDetail -trajectory.real YES
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL

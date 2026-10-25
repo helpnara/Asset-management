@@ -150,6 +150,9 @@ enum SampleData {
         plan.annualMedicalMinor = 3_000_000
         plan.monthlyIncomeMinor = 9_000_000
         plan.horizonYear = plan.retirementYear + 35
+        // 계획 탭은 열리는 순간 위 셋으로 목표를 계산해 써 넣는다(154번). 스크린샷은 계획 탭을 안 거치고
+        // 현황판 · 크게 보기를 찍으므로 **같은 셈을 여기서 한 번** 돌려 둔다 — 손으로 적은 값이 아니다 (209번).
+        plan.targetAmountMinor = plan.autoTargetAmount?.minorUnits ?? 0
 
         // 은퇴 후 소득 — 전부 예시 수치다.
         // 하나는 물가연동(국민연금), 하나는 확정형이라 갈수록 힘이 빠진다.
@@ -200,6 +203,9 @@ enum SampleData {
         // 함께 적는지 스크린샷으로 본다 (docs/08-feedback.md 32번).
         let college = UserMilestone(context: context, year: Calendar.app.component(.year, from: .now) + 14,
                                     label: "첫째 대학 입학", sortIndex: 0, memberID: son.id)
+        // 한 해 뒤 둘째 — 붙어 있는 이벤트 이름이 크게 보기에서 서로 비켜 가는지 스크린샷으로 본다 (209번).
+        _ = UserMilestone(context: context, year: Calendar.app.component(.year, from: .now) + 15,
+                          label: "둘째 대학 입학", sortIndex: 1, memberID: daughter.id)
 
         let calendar = Calendar.app
         let deposit = CashEvent(context: context,
