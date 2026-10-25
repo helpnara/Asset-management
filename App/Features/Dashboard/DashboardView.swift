@@ -752,8 +752,14 @@ struct DashboardView: View {
         // 차트의 기간 선택이 한다 — 여기서 미리 잘라 버리면 `전체` 를 골라도
         // 은퇴 이후에 자산이 줄어드는 구간을 볼 수 없다.
         if let projection {
+            // 석 달마다 한 점 + 끝 점 + **은퇴 해의 마지막 점** (208번) — 크게 보기의 `은퇴 · 값` 이 아래 표의
+            // `은퇴 때` 와 같은 점(`point(inYear:)`)을 읽게. 석 달 점만이면 몇 달 앞의 값이라 표와 달랐다.
+            let retirementIndex = plan.flatMap { plan in
+                projection.points.lastIndex { Calendar.app.component(.year, from: $0.date) == plan.retirementYear }
+            }
             let monthly = projection.points.enumerated()
-                .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1 }
+                .filter { $0.offset % 3 == 0 || $0.offset == projection.points.count - 1
+                    || $0.offset == retirementIndex }
                 .map { TrajectoryChart.Point(date: $0.element.date,
                                              minor: $0.element.nominal.minorUnits,
                                              realMinor: $0.element.real.minorUnits,

@@ -322,20 +322,24 @@ struct TrajectoryChart: View {
                         }
                 }
                 if let retirementDate, inWindow(retirementDate) {
+                    // 은퇴 해와 그때 값을 **한 글씨로** — 둘로 나눴더니 `은퇴까지` 창의 오른쪽 위에서 겹쳤다(CI 스크린샷).
+                    let peak = projectedPoint(near: retirementDate)
                     RuleMark(x: .value("은퇴", retirementDate))
                         .foregroundStyle(Color.dad.opacity(0.45))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
                         .annotation(position: .trailing, alignment: .top, spacing: 4,
                                     overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            markLabel("은퇴 \(year(retirementDate))", color: .dad)
+                            if peak == nil {
+                                markLabel("은퇴 \(year(retirementDate))", color: .dad)
+                            }
                         }
-                    if let peak = projectedPoint(near: retirementDate) {
+                    if let peak {
                         PointMark(x: .value("시점", peak.date), y: .value("순자산", peak.value(real: showsReal)))
                             .symbolSize(60)
                             .foregroundStyle(Color.dad)
                             .annotation(position: .top, alignment: .center, spacing: 4,
                                         overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                                markLabel(money(peak.value(real: showsReal)), color: .dad)
+                                markLabel("은퇴 \(year(retirementDate)) · \(money(peak.value(real: showsReal)))", color: .dad)
                             }
                     }
                 }
