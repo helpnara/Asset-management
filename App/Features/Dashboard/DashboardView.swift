@@ -682,7 +682,10 @@ struct DashboardView: View {
                     Plan.endDate(retirementYear: $0.retirementYear,
                                  notBefore: Calendar.app.startOfDay(for: .now))
                 },
-                events: milestoneMarks)
+                events: milestoneMarks,
+                targetAtRetirementMinor: targetAtRetirementMinor,
+                depletionDate: projection?.depletion,
+                facts: trajectoryFacts)
         }
         // 진단은 관리 객체를 읽으므로 주 스레드에서 — 다만 **입력이 바뀔 때
         // 한 번**이지, 그릴 때마다가 아니다.
@@ -913,7 +916,10 @@ struct DashboardView: View {
                     Plan.endDate(retirementYear: $0.retirementYear,
                                  notBefore: Calendar.app.startOfDay(for: .now))
                 },
-                events: milestoneMarks
+                events: milestoneMarks,
+                targetAtRetirementMinor: targetAtRetirementMinor,
+                depletionDate: projection?.depletion,
+                facts: trajectoryFacts
             )
             .padding(.horizontal, 16)
 
@@ -926,7 +932,7 @@ struct DashboardView: View {
                 if chartSpan == .retirement || chartSpan == .all,
                    let target = plan?.targetAmount, !target.isZero {
                     legend(color: .ink.opacity(0.55), dashed: true,
-                           label: "목표 \(Won.compact(target))")
+                           label: "목표 \(Won.compact(target)) · 오늘 돈")
                 }
                 Spacer()
             }
@@ -985,6 +991,50 @@ struct DashboardView: View {
             line += " · \(String(Calendar.app.component(.year, from: depletion)))년 고갈"
         }
         return line
+    }
+
+    /// 목표(오늘 돈)를 **은퇴 해의 돈으로** (208번). 예상선이 그해에 쓰는 물가 비율(명목 ÷ 실질)을 그대로 곱한다 —
+    /// 차트의 명목 축에 같은 돈으로 찍으려고.
+    private var targetAtRetirementMinor: Int? {
+        guard let plan, plan.targetAmountMinor > 0,
+              let end = projection?.point(inYear: plan.retirementYear), end.real.minorUnits > 0
+        else { return nil }
+        // 반올림은 `Money.scaled` 한 곳에서 (CLAUDE.md 규칙).
+        let factor = Decimal(end.nominal.minorUnits) / Decimal(end.real.minorUnits)
+        return plan.targetAmount.scaled(by: factor).minorUnits
+    }
+
+    /// **궤적 크게 보기 아래의 숫자 표** (208번). 사용자가 적은 계획에서 나오는 값만 — 지금 · 은퇴 때 · 목표 ·
+    /// 목표에 닿는 해 · 고갈 · 계획선 대비 · 가정. 현황판이 궤적 아래 한 줄로 적던 것과 같은 계산이다.
+    private var trajectoryFacts: [TrajectoryChart.Fact] {
+        guard let plan else { return [] }
+        var facts = [TrajectoryChart.Fact(label: "지금 순자산", value: Won.compact(rollup.netWorth))]
+        if let end = projection?.point(inYear: plan.retirementYear) {
+            facts.append(.init(label: "\(String(plan.retirementYear))년 은퇴 때",
+                               value: "\(Won.compact(end.nominal)) · 오늘 돈 \(Won.compact(end.real))"))
+            if plan.targetAmountMinor > 0 {
+                let ratio = Decimal(end.real.minorUnits) / Decimal(plan.targetAmountMinor)
+                facts.append(.init(label: "목표 (오늘 돈)",
+                                   value: "\(Won.compact(plan.targetAmount)) · 은퇴 때 \(PercentFormatter.integer(ratio))%"))
+            }
+        }
+        if plan.targetAmountMinor > 0, let points = projection?.points {
+            let reach = points.first { $0.date > .now && $0.real.minorUnits >= plan.targetAmountMinor }
+            facts.append(.init(label: "목표에 닿는 해",
+                               value: reach.map { "\(String(Calendar.app.component(.year, from: $0.date)))년" }
+                                   ?? "예상 기간 안에는 못 닿음"))
+        }
+        if let depletion = projection?.depletion {
+            facts.append(.init(label: "자산 고갈", value: "\(String(Calendar.app.component(.year, from: depletion)))년"))
+        } else if let last = projection?.points.last {
+            facts.append(.init(label: "자산 고갈",
+                               value: "\(String(Calendar.app.component(.year, from: last.date)))년까지 안 바닥남"))
+        }
+        if let gap = planGap {
+            facts.append(.init(label: "계획선 대비", value: gap.compact))
+        }
+        facts.append(.init(label: "가정", value: "연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 은퇴 후 \(PercentFormatter.oneDecimal(plan.postRetirementReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))%"))
+        return facts
     }
 
     private var assumptionLine: String {

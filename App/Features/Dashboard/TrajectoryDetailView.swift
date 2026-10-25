@@ -27,9 +27,14 @@ struct TrajectoryDetailView: View {
                     retirementDate: content.retirementDate,
                     events: content.events,
                     title: content.title,
-                    isLarge: true
+                    isLarge: true,
+                    targetAtRetirementMinor: content.targetAtRetirementMinor,
+                    depletionDate: content.depletionDate
                 )
                 legend
+                if !content.facts.isEmpty {
+                    factTable
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -54,12 +59,34 @@ struct TrajectoryDetailView: View {
             if content.points.contains(where: { $0.series == .plan }) {
                 item(.plan)
             }
-            // 목표선은 넓은 창 · 명목 보기에서만 그린다(차트의 `showsTarget` 과 같은 조건).
-            if (span == .retirement || span == .all), content.targetMinor > 0, !showsReal {
+            // 목표는 넓은 창에서 그린다(차트의 `showsTarget` 과 같은 조건) — 오늘 돈 보기는 가로선,
+            // 명목 보기는 은퇴 시점의 ◆ (208번).
+            if (span == .retirement || span == .all), content.targetMinor > 0 {
                 swatch(color: Color.ink.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [1, 3]),
-                       label: "목표 \(Won.compact(Money(minorUnits: content.targetMinor, currency: .krw)))")
+                       label: "목표")
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    /// **차트 아래 숫자 표** (208번, 10-25 사용자: *"단순 궤적만 보여주니 너무 휑한 느낌"*). 지금 순자산 · 은퇴 때 ·
+    /// 목표 · 목표에 닿는 해 · 고갈 · 계획선 대비 · 가정 — 현황판이 한 줄로 적던 것을 표로 편다.
+    private var factTable: some View {
+        VStack(spacing: 0) {
+            ForEach(content.facts, id: \.self) { fact in
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(fact.label)
+                        .font(.scaled(12))
+                        .foregroundStyle(Color.muted)
+                    Spacer(minLength: 8)
+                    Text(fact.value)
+                        .font(.figure(12.5, weight: .medium))
+                        .foregroundStyle(Color.ink)
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding(.vertical, 6)
+                Rectangle().fill(Color.rule).frame(height: 1)
+            }
         }
     }
 

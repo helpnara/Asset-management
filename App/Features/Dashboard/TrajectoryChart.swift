@@ -117,6 +117,20 @@ struct TrajectoryChart: View {
     /// **크게 보기 창 안에서 그리나** (204번). 차트가 남은 높이를 다 쓰고, 눈금 · 점 · 읽은 값 글씨가
     /// 커지고, 손을 떼도 마지막에 짚은 시점의 값이 남는다. 창을 여는 돋보기는 숨는다.
     var isLarge = false
+    /// **은퇴 해의 목표를 그해 돈으로** (208번). 목표(`targetMinor`)는 오늘 돈이다(194번 E3). 오늘 돈 보기에서는
+    /// 목표 그대로 가로선을 긋고, 명목 보기에서는 은퇴 시점에 이 값으로 점 하나를 찍는다. 예전에는 명목 축에
+    /// 오늘 돈 목표를 가로선으로 그어 목표가 실제보다 낮아 보였고, 오늘 돈 보기에서는 목표가 사라졌다.
+    var targetAtRetirementMinor: Int? = nil
+    /// 자산이 바닥나는 때 — 있으면 크게 보기에 세로선으로 (208번).
+    var depletionDate: Date? = nil
+    /// 크게 보기 차트 아래의 숫자 표 (208번). 카드에서는 그리지 않고 창에 건네기만 한다.
+    var facts: [Fact] = []
+
+    /// 크게 보기 아래 표의 한 줄 (208번).
+    struct Fact: Hashable {
+        let label: String
+        let value: String
+    }
 
     /// 크게 보기 창에 건네는 것 (204번). 열 때의 값을 그대로 담는다 — 창은 `RootView` 가
     /// **탭 바깥에서** 띄운다(199번 C4: 아이패드를 돌리면 탭 안의 창이 닫혔다). 기간 · 오늘 돈
@@ -129,6 +143,9 @@ struct TrajectoryChart: View {
         let targetMinor: Int
         let retirementDate: Date?
         let events: [EventMark]
+        var targetAtRetirementMinor: Int? = nil
+        var depletionDate: Date? = nil
+        var facts: [Fact] = []
     }
 
     /// 기본은 `은퇴까지` — 이 앱이 답하는 질문의 기본 범위다.
@@ -191,7 +208,8 @@ struct TrajectoryChart: View {
         Button {
             AppRoute.shared.expandedTrajectory = Expanded(
                 title: title, points: points, today: today, targetMinor: targetMinor,
-                retirementDate: retirementDate, events: events)
+                retirementDate: retirementDate, events: events,
+                targetAtRetirementMinor: targetAtRetirementMinor, depletionDate: depletionDate, facts: facts)
         } label: {
             Image(systemName: "plus.magnifyingglass")
                 .font(.scaled(16, weight: .medium))
@@ -265,14 +283,80 @@ struct TrajectoryChart: View {
                 }
             }
 
-            // 목표선에는 주석을 달지 않는다. 차트 주석은 leading 이든 trailing 이든
-            // 가장자리에서 잘린다. 라벨은 범례 줄에 둔다.
-            if showsTarget {
-                // 목표는 **명목으로 적은 값**이다. 실질 축에서 그대로 그으면
-                // 선만 위로 뜬다. 그래서 실질 보기에서는 목표선을 접는다.
+            // **목표** (208번). 목표는 오늘 돈이라(194번 E3) 오늘 돈 보기에서는 그 값에 가로선을, 명목 보기에서는
+            // 은퇴 시점에 그해 돈으로 점 하나를 찍는다. 카드는 글씨 없이(범례가 이름을 단다), 크게 보기는 값까지.
+            // 글씨는 그림 안쪽에 맞춘다(`.fit(to: .plot)`) — 가장자리에서 잘리던 까닭.
+            if showsTarget && showsReal {
                 RuleMark(y: .value("목표", Double(targetMinor)))
                     .foregroundStyle(Color.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [1, 3]))
+                    .annotation(position: .top, alignment: .leading, spacing: 2,
+                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                        if isLarge {
+                            markLabel("목표 \(money(Double(targetMinor))) · 오늘 돈", color: .ink)
+                        }
+                    }
+            }
+            if let target = nominalTarget {
+                PointMark(x: .value("시점", target.date), y: .value("목표", target.value))
+                    .symbol(.diamond)
+                    .symbolSize(isLarge ? 90 : 46)
+                    .foregroundStyle(Color.ink.opacity(0.7))
+                    .annotation(position: .top, alignment: .center, spacing: 4,
+                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                        if isLarge {
+                            markLabel("목표 \(money(target.value))\n오늘 돈 \(money(Double(targetMinor)))", color: .ink)
+                        }
+                    }
+            }
+
+            // **크게 보기의 이정표** (208번) — 지금 · 은퇴 · 목표에 닿는 해 · 고갈. 카드는 그대로 둔다(좁아서 겹친다).
+            if isLarge {
+                if let now = latestActual {
+                    PointMark(x: .value("시점", now.date), y: .value("순자산", now.value(real: showsReal)))
+                        .symbolSize(70)
+                        .foregroundStyle(Color.ink)
+                        .annotation(position: .top, alignment: .center, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                            markLabel("지금 \(money(now.value(real: showsReal)))", color: .ink)
+                        }
+                }
+                if let retirementDate, inWindow(retirementDate) {
+                    RuleMark(x: .value("은퇴", retirementDate))
+                        .foregroundStyle(Color.dad.opacity(0.45))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        .annotation(position: .trailing, alignment: .top, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                            markLabel("은퇴 \(year(retirementDate))", color: .dad)
+                        }
+                    if let peak = projectedPoint(near: retirementDate) {
+                        PointMark(x: .value("시점", peak.date), y: .value("순자산", peak.value(real: showsReal)))
+                            .symbolSize(60)
+                            .foregroundStyle(Color.dad)
+                            .annotation(position: .top, alignment: .center, spacing: 4,
+                                        overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                                markLabel(money(peak.value(real: showsReal)), color: .dad)
+                            }
+                    }
+                }
+                if let reach = targetReached, inWindow(reach.date) {
+                    PointMark(x: .value("시점", reach.date), y: .value("순자산", reach.value(real: showsReal)))
+                        .symbolSize(60)
+                        .foregroundStyle(Color.gain)
+                        .annotation(position: .bottom, alignment: .center, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                            markLabel("목표 닿음 \(year(reach.date))", color: .gain)
+                        }
+                }
+                if let depletionDate, inWindow(depletionDate) {
+                    RuleMark(x: .value("고갈", depletionDate))
+                        .foregroundStyle(Color.loss.opacity(0.6))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                        .annotation(position: .trailing, alignment: .center, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
+                            markLabel("고갈 \(year(depletionDate))", color: .loss)
+                        }
+                }
             }
 
             // 인생 이벤트는 x축에 눈금으로 선다. 개수가 늘어도 눈금이 촘촘해질
@@ -281,10 +365,13 @@ struct TrajectoryChart: View {
                 RuleMark(x: .value("이벤트", event.date))
                     .foregroundStyle(Color.muted.opacity(0.35))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    .annotation(position: .bottom, alignment: .center, spacing: 1) {
+                    // 크게 보기는 그림 안쪽 아래에 세운다 — 바깥(아래)에 두면 잘라 낸 그림 밖이라 안 보였다 (208번).
+                    .annotation(position: isLarge ? .trailing : .bottom,
+                                alignment: isLarge ? .bottom : .center, spacing: isLarge ? 3 : 1,
+                                overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
                         Text(event.label)
-                            .font(.scaled(isLarge ? 9.5 : 7.5))
-                            .foregroundStyle(Color.faint)
+                            .font(.scaled(isLarge ? 10 : 7.5))
+                            .foregroundStyle(isLarge ? Color.muted : Color.faint)
                             .lineLimit(1)
                     }
             }
@@ -319,11 +406,14 @@ struct TrajectoryChart: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .year, count: xStride)) { value in
+            // **처음 해와 끝 해를 늘 적는다** (208번). 예전에는 해마다 몇 칸씩 건너뛴 눈금만 있어 시작 해가
+            // 안 보였고, 끝 눈금이 그림 오른쪽 끝에 붙으면 글씨가 반쯤 잘렸다("20…"). 양 끝 글씨는 안쪽으로 붙인다.
+            AxisMarks(values: xTicks) { value in
                 AxisGridLine().foregroundStyle(Color.rule.opacity(0.6))
                 // 한국어 로케일에서 .dateTime.year() 는 "2031년" 이 된다.
                 // 축 라벨은 8pt 라서 그 한 글자가 눈금끼리 부딪히게 만든다.
-                AxisValueLabel {
+                AxisValueLabel(anchor: value.index == 0 ? .topLeading
+                                       : (value.index == value.count - 1 ? .topTrailing : .top)) {
                     if let date = value.as(Date.self) {
                         Text(verbatim: "\(Calendar.app.component(.year, from: date))")
                             .font(.figure(isLarge ? 10 : 8))
@@ -382,7 +472,63 @@ struct TrajectoryChart: View {
     /// **목표선은 넓은 창에서만 그린다.** 좁은 창에서 수십억짜리 선을 그리면
     /// 그 하나 때문에 축이 늘어나 나머지가 전부 바닥에 눌린다.
     private var showsTarget: Bool {
-        (span == .retirement || span == .all) && targetMinor > 0 && !showsReal
+        (span == .retirement || span == .all) && targetMinor > 0
+    }
+
+    /// 명목 보기의 목표 점 — 은퇴 시점 · 그해 돈 (208번).
+    private var nominalTarget: (date: Date, value: Double)? {
+        guard showsTarget, !showsReal, let retirementDate, inWindow(retirementDate),
+              let nominal = targetAtRetirementMinor, nominal > 0 else { return nil }
+        return (retirementDate, Double(nominal))
+    }
+
+    /// 창 안의 날짜인가 — 실제 · 예측 점이 그리는 범위.
+    private func inWindow(_ date: Date) -> Bool {
+        guard let first = visiblePoints.map(\.date).min(), let last = visiblePoints.map(\.date).max()
+        else { return false }
+        return date >= first && date <= last
+    }
+
+    /// 가장 최근에 적은 기록.
+    private var latestActual: Point? {
+        visiblePoints.filter { $0.series == .actual }.max { $0.date < $1.date }
+    }
+
+    /// 그 날짜에 가장 가까운 예측 점(200일 안).
+    private func projectedPoint(near date: Date) -> Point? {
+        let candidates = visiblePoints.filter { $0.series == .projected }
+        guard let nearest = candidates.min(by: {
+            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+        }), abs(nearest.date.timeIntervalSince(date)) <= 200 * 86_400 else { return nil }
+        return nearest
+    }
+
+    /// 예측이 **오늘 돈으로** 목표에 처음 닿는 점 (목표가 오늘 돈이라 같은 돈끼리 견준다, 194번 E3).
+    private var targetReached: Point? {
+        guard targetMinor > 0 else { return nil }
+        return points
+            .filter { $0.series == .projected && $0.date > today }
+            .sorted { $0.date < $1.date }
+            .first { ($0.realMinor ?? $0.minor) >= targetMinor }
+    }
+
+    private func year(_ date: Date) -> String {
+        String(Calendar.app.component(.year, from: date))
+    }
+
+    private func money(_ raw: Double) -> String {
+        Won.compact(Money(minorUnits: SafeMath.clampedInt(raw), currency: .krw))
+    }
+
+    /// 그림 위 글씨 하나 — 바탕을 깔아 선 위에서도 읽힌다.
+    private func markLabel(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.figure(10, weight: .semibold))
+            .foregroundStyle(color)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(Color.raised.opacity(0.85), in: RoundedRectangle(cornerRadius: 3))
     }
 
     // MARK: - 축
@@ -393,7 +539,8 @@ struct TrajectoryChart: View {
     private var domain: ClosedRange<Double> {
         let values = visiblePoints.map { $0.value(real: showsReal) }
         var upper = values.max() ?? 0
-        if showsTarget { upper = max(upper, Double(targetMinor)) }
+        if showsTarget && showsReal { upper = max(upper, Double(targetMinor)) }
+        if let target = nominalTarget { upper = max(upper, target.value) }
         let lower = min(0, values.min() ?? 0)
         // 위쪽에 숨 쉴 틈을 둔다. 최고점이 천장에 닿으면 선이 잘려 보인다.
         return lower...max(upper * 1.08, lower + 1_000_000)
@@ -417,6 +564,31 @@ struct TrajectoryChart: View {
         let tenths = (value + eok / 20) / (eok / 10)
         let text = tenths % 10 == 0 ? "\(tenths / 10)억" : "\(tenths / 10).\(tenths % 10)억"
         return AmountPrivacy.mask(text)
+    }
+
+    /// **x 눈금** (208번) — 첫 점 · 끝 점의 해와, 그 사이 `xStride` 해마다 딱 떨어지는 해(2030 · 2040 …).
+    /// 양 끝 해와 같은 해이거나 반 칸보다 가까운 안쪽 눈금은 뺀다 — 글씨가 겹친다.
+    private var xTicks: [Date] {
+        let dates = visiblePoints.map(\.date)
+        guard let first = dates.min(), let last = dates.max(), first < last else { return [] }
+        let calendar = Calendar.app
+        let firstYear = calendar.component(.year, from: first)
+        let lastYear = calendar.component(.year, from: last)
+        let step = max(1, xStride)
+        let minGap = Double(step) * 365.25 * 86_400 / 2
+        var ticks = [first]
+        var year = (firstYear / step + 1) * step
+        while year < lastYear {
+            if let date = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
+               date > first,
+               date.timeIntervalSince(first) >= minGap,
+               last.timeIntervalSince(date) >= minGap {
+                ticks.append(date)
+            }
+            year += step
+        }
+        if lastYear != firstYear { ticks.append(last) }
+        return ticks
     }
 
     /// 기간이 길면 눈금을 성기게 둔다.
