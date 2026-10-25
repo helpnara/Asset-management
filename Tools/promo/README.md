@@ -9,7 +9,7 @@
 | `fonts/` | Pretendard (SIL OFL 1.1 — `Pretendard-LICENSE.txt`) |
 | `out/slowrich-promo.mp4` | 구운 결과 — **10-10 판이라 옛 아이콘**이다. 202번 새 아이콘(10-18) 뒤로 다시 굽지 않았다 |
 | `whatif.html` · `clips.mjs` | **쇼츠 2편** (10-25) — 아래 |
-| `out/slowrich-shorts-whatif.mp4` | 2편 구운 결과 — 1080×1920, 29초, 새 아이콘 |
+| `out/slowrich-shorts-whatif.mp4` | 2편 구운 결과 — 1080×1920, 29초, 새 아이콘 · **10-25 유튜브에 올림** (사용자) |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
