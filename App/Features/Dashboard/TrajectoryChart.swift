@@ -318,7 +318,7 @@ struct TrajectoryChart: View {
                         .foregroundStyle(Color.ink)
                         .annotation(position: .top, alignment: .center, spacing: 4,
                                     overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))) {
-                            markLabel("지금 \(money(now.value(real: showsReal)))", color: .ink)
+                            markLabel("마지막 기록 \(money(now.value(real: showsReal)))", color: .ink)
                         }
                 }
                 if let retirementDate, inWindow(retirementDate) {
@@ -482,11 +482,12 @@ struct TrajectoryChart: View {
         return (retirementDate, Double(nominal))
     }
 
-    /// 창 안의 날짜인가 — 실제 · 예측 점이 그리는 범위.
+    /// 창 안의 날짜인가 — 실제 · 예측 점이 그리는 범위. 예측 점은 석 달마다라 끝 점이 은퇴 해 마지막 날보다
+    /// 몇 달 앞에서 멈춘다 — `은퇴까지` 창에서 은퇴 표시가 빠지지 않게 끝에 200일을 둔다 (208번 CI 스크린샷).
     private func inWindow(_ date: Date) -> Bool {
         guard let first = visiblePoints.map(\.date).min(), let last = visiblePoints.map(\.date).max()
         else { return false }
-        return date >= first && date <= last
+        return date >= first && date <= last.addingTimeInterval(200 * 86_400)
     }
 
     /// 가장 최근에 적은 기록.
