@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 매달 얼마 더 넣으면</title>
+<!--
+  느린 부자 유튜브 쇼츠 2편 (2026-10-25). 1080×1920 세로, 30.5초, 소리 없음.
+  1편(promo.html, 10-10)은 기능 다섯을 차례로 보여 줬다. 2편은 물음 하나로 시작한다 —
+  "매달 얼마를 더 넣으면 은퇴 때 얼마가 될까?" — 그리고 **실제 앱 녹화**로 답한다.
+
+  화면은 render(t) 하나로 그려진다(render.mjs 가 1/30초씩 찍는다). 앱 녹화는 clips.mjs 가 풀어 둔 그림을
+  시간에 맞춰 갈아 끼운다. 녹화 · 스크린샷은 모두 체험 자료(가상의 가족)라 실제 금액이 아니다.
+
+  쇼츠 화면은 아래쪽(제목 · 채널)과 오른쪽(좋아요 · 댓글 단추)을 가린다 — 꼭 읽혀야 할 글은 위쪽 · 가운데에 둔다.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 0. 물음 -->
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">매달 얼마를 더 넣으면</div>
+    <div class="center q2" id="q2">은퇴 때 얼마가 될까?</div>
+    <div class="center q3" id="q3">손잡이 하나로 30년 뒤를 봅니다</div>
+  </div>
+
+  <!-- 1. 만약에 — 시뮬레이션 녹화 -->
+  <div id="s-sim" class="layer">
+    <div class="title" id="sim-title">손잡이를 끌면, 바로</div>
+    <div class="sub" id="sim-sub">매달 넣는 돈을 바꾸면 은퇴 때 예상이 따라옵니다</div>
+    <div class="window" id="sim-win">
+      <!-- 녹화 원본(1206 폭) 330px 아래부터 — 예상 금액 · 그래프 · 월 적립 손잡이가 한 창에 든다 -->
+      <img id="sim-img" style="top:-257px" alt="">
+      <div class="ring" id="sim-ring-num" style="left:10px;top:112px;width:560px;height:96px"></div>
+      <div class="ring" id="sim-ring-knob" style="left:640px;top:925px;width:250px;height:80px"></div>
+    </div>
+    <div class="card" id="sim-card" style="left:120px;top:880px;width:840px">
+      <div style="font-size:38px;font-weight:700;color:var(--muted)">매달 260만원을 더 넣으면</div>
+      <div style="margin-top:10px;font-size:88px;font-weight:800;color:var(--gain);letter-spacing:-2px">은퇴 때 +25.8억</div>
+      <div style="margin-top:8px;font-size:30px;font-weight:500;color:var(--muted)">2049년 예상 61.9억 → 87.7억 · 체험 자료 기준</div>
+    </div>
+  </div>
+
+  <!-- 2. 궤적 크게 보기 — 스크린샷 -->
+  <div id="s-traj" class="layer">
+    <div class="title" id="traj-title">목표에 언제 닿을지까지</div>
+    <div class="sub" id="traj-sub">기록 · 예측 · 계획선 · 목표를 한 그림에</div>
+    <div class="window" id="traj-win">
+      <!-- 스크린샷(1206 폭) 585px 아래부터(위 스위치는 뺀다) — 궤적 그림 전체와 범례. 확대하지 않는다(테두리가 글씨에서 어긋난다) -->
+      <img id="traj-img" src="../../screenshots/36-trajectory-detail-real.png" style="top:-456px" alt="">
+      <div class="ring" id="traj-r1" style="left:70px;top:500px;width:300px;height:62px"></div>
+      <div class="tag" id="traj-t1" style="left:60px;top:410px">목표선</div>
+      <div class="ring" id="traj-r2" style="left:300px;top:442px;width:260px;height:62px"></div>
+      <div class="tag" id="traj-t2" style="left:300px;top:352px">목표에 닿는 해</div>
+      <div class="ring" id="traj-r3" style="left:612px;top:38px;width:320px;height:62px"></div>
+      <div class="tag" id="traj-t3" style="left:640px;top:120px">은퇴 때</div>
+    </div>
+  </div>
+
+  <!-- 3. 주간 점검 — 녹화 -->
+  <div id="s-review" class="layer">
+    <div class="title" id="rev-title">매주 토요일, 3분이면 끝</div>
+    <div class="sub" id="rev-sub">잔고를 끌어오지 않고 직접 적습니다</div>
+    <div class="window" id="rev-win">
+      <!-- 녹화 원본 180px 아래부터 — 제목 줄 · 종목 칸들 · 숫자 키보드 윗부분 -->
+      <img id="rev-img" style="top:-140px" alt="">
+      <!-- 적자마자 뜨는 지난주 대비 증감(+450,000 · 0.9%) -->
+      <div class="ring" id="rev-ring" style="left:690px;top:392px;width:220px;height:50px"></div>
+      <div class="tag" id="rev-tag" style="left:330px;top:390px">지난주 대비 바로 →</div>
+    </div>
+  </div>
+
+  <!-- 4. 하지 않는 것 -->
+  <div id="s-promise" class="layer">
+    <div class="center" id="pr-head" style="top:470px;font-size:70px;font-weight:800;color:#fff;letter-spacing:-1.5px">일부러 안 만들었습니다</div>
+    <div class="chip" id="chip1" style="top:700px"><span class="x">✕</span>서버 · 광고</div>
+    <div class="chip" id="chip2" style="top:880px"><span class="x">✕</span>회원가입</div>
+    <div class="chip" id="chip3" style="top:1060px"><span class="x">✕</span>잔고 자동 연동</div>
+    <div class="center" id="pr-foot" style="top:1290px;font-size:44px;font-weight:700;color:var(--gold)">자료는 내 폰과 내 iCloud 에만</div>
+  </div>
+
+  <!-- 5. 마무리 -->
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">노후 준비를 매주의 습관으로</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다<br>화면은 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+// ── 시간표 (초) ───────────────────────────────────────────────
+const T = {
+  hook:    [0.0, 2.9],
+  sim:     [2.9, 9.2],    // 녹화 4.87초(가운데 4초를 잘라 냄) — 손잡이 1.0~1.9초, 금액이 바뀌는 때 3.1초
+  traj:    [9.2, 15.4],
+  review:  [15.4, 21.2],  // 녹화 5.53초
+  promise: [21.2, 24.2],
+  cta:     [24.2, 29.0],
+};
+const DURATION = 29.0;
+// 녹화 그림 — clips.mjs 가 푼 장수
+const CLIPS = { sim: 146, review: 166 };
+
+// ── 도움 함수 (1편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+/** 테두리 — 커지며 나타나 잠깐 머물고 빠진다. */
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.25 - 0.25 * easeOut(p)})`;
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 녹화 그림 한 장 — 장면 안의 시간에 맞는 것을 끼우고 다 그려질 때까지 기다린다. */
+async function frame(img, clip, local) {
+  const index = clamp(Math.floor(local * 30), 0, CLIPS[clip] - 1) + 1;
+  const src = `out/clips/${clip}/${String(index).padStart(4, "0")}.jpg`;
+  if (img.getAttribute("src") !== src) {
+    img.setAttribute("src", src);
+    await img.decode().catch(() => {});
+  }
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+async function render(t) {
+  // 배경: 물음 · 약속 · 마무리는 짙은 숲색, 앱 장면은 밝은 바탕
+  const darkA = t < (T.hook[1] + T.sim[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.promise[0] - OUT, T.promise[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+
+  // 0. 물음
+  const hookA = sceneAlpha(t, T.hook);
+  show($("s-hook"), hookA);
+  if (hookA) {
+    rise($("q1"), t, 0.15);
+    pop($("q2"), t, 0.75, 0.5);
+    rise($("q3"), t, 1.6, 0.5, 30);
+  }
+
+  // 1. 만약에
+  const simA = sceneAlpha(t, T.sim);
+  show($("s-sim"), simA);
+  if (simA) {
+    const a = T.sim[0];
+    rise($("sim-title"), t, a + 0.05);
+    rise($("sim-sub"), t, a + 0.25, 0.5, 30);
+    const winIn = easeOut(prog(t, a, a + 0.6));
+    $("sim-win").style.transform = `translateY(${(1 - winIn) * 300}px)`;
+    await frame($("sim-img"), "sim", t - a);
+    ring($("sim-ring-knob"), t, a + 0.8, 1.5);
+    ring($("sim-ring-num"), t, a + 3.1, 0.9);
+    pop($("sim-card"), t, a + 3.7, 0.5);
+  }
+
+  // 2. 궤적
+  const trA = sceneAlpha(t, T.traj);
+  show($("s-traj"), trA);
+  if (trA) {
+    const a = T.traj[0];
+    rise($("traj-title"), t, a + 0.05);
+    rise($("traj-sub"), t, a + 0.25, 0.5, 30);
+    const winIn = easeOut(prog(t, a, a + 0.6));
+    $("traj-win").style.transform = `translateY(${(1 - winIn) * 300}px)`;
+    [["traj-r1", "traj-t1", 1.0], ["traj-r2", "traj-t2", 2.4], ["traj-r3", "traj-t3", 3.8]].forEach(([r, g, at]) => {
+      ring($(r), t, a + at, 1.6);
+      const p = prog(t, a + at + 0.15, a + at + 0.5), out = prog(t, a + at + 1.6, a + at + 1.9);
+      $(g).style.opacity = p * (1 - out);
+    });
+  }
+
+  // 3. 점검
+  const rvA = sceneAlpha(t, T.review);
+  show($("s-review"), rvA);
+  if (rvA) {
+    const a = T.review[0];
+    rise($("rev-title"), t, a + 0.05);
+    rise($("rev-sub"), t, a + 0.25, 0.5, 30);
+    const winIn = easeOut(prog(t, a, a + 0.6));
+    $("rev-win").style.transform = `translateY(${(1 - winIn) * 300}px)`;
+    await frame($("rev-img"), "review", t - a);
+    // 다 적힌 때(1.1초) 뒤에 두르고, 다음 칸으로 넘어가 줄이 밀리기(2.67초) 전에 걷는다.
+    ring($("rev-ring"), t, a + 1.2, 1.05);
+    $("rev-tag").style.opacity = prog(t, a + 1.35, a + 1.6) * (1 - prog(t, a + 2.25, a + 2.55));
+  }
+
+  // 4. 하지 않는 것
+  const prA = sceneAlpha(t, T.promise);
+  show($("s-promise"), prA);
+  if (prA) {
+    const a = T.promise[0];
+    rise($("pr-head"), t, a + 0.05);
+    ["chip1", "chip2", "chip3"].forEach((id, i) => rise($(id), t, a + 0.4 + i * 0.3, 0.45, 60));
+    rise($("pr-foot"), t, a + 1.5, 0.5, 30);
+  }
+
+  // 5. 마무리 — 끝까지 남는다
+  const ctaA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), ctaA);
+  if (ctaA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].filter(i => i.src).map(img => img.decode().catch(() => {}))]);
+
+// 브라우저로 그냥 열면 실시간 재생 (render.mjs 는 ?frames 로 연다)
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = async now => { await render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>

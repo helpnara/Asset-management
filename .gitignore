@@ -29,5 +29,8 @@ _site/
 # CloudKit 스키마 도구 — 워크플로가 매번 npm install 한다 (docs/18 5-1)
 Tools/cloudkit/node_modules/
 
+# 홍보 영상에 넣는 녹화 그림 — clips.mjs 로 다시 만든다
+Tools/promo/out/clips/
+
 # 파이썬 산출물
 __pycache__/

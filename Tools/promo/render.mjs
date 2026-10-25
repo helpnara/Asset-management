@@ -2,6 +2,7 @@
 //
 //   node Tools/promo/render.mjs                 # → Tools/promo/out/slowrich-promo.mp4
 //   node Tools/promo/render.mjs --stills 2,10,15  # 그 초의 한 장씩 PNG 로 (확인용)
+//   node Tools/promo/render.mjs --page whatif.html --out slowrich-shorts-whatif.mp4   # 쇼츠 2편 (먼저 clips.mjs)
 //
 // 필요한 것: Node, Playwright(Chromium), ffmpeg. 원격 세션에는 셋 다 있다.
 // 화면은 render(t) 하나로 그려지므로 찍을 때마다 같은 그림이 나온다.
@@ -22,18 +23,21 @@ mkdirSync(out, { recursive: true });
 
 const FPS = 30;
 const args = process.argv.slice(2);
-const stillsArg = args.includes("--stills") ? args[args.indexOf("--stills") + 1] : null;
+const option = name => args.includes(name) ? args[args.indexOf(name) + 1] : null;
+const stillsArg = option("--stills");
+const pageName = option("--page") ?? "promo.html";
+const outName = option("--out") ?? "slowrich-promo.mp4";
 
 const browser = await playwright.chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
-await page.goto(pathToFileURL(path.join(here, "promo.html")).href + "?frames");
+await page.goto(pathToFileURL(path.join(here, pageName)).href + "?frames");
 await page.evaluate(() => window.ready);
 const duration = await page.evaluate(() => window.DURATION);
 
 if (stillsArg) {
   for (const s of stillsArg.split(",").map(Number)) {
     await page.evaluate(t => window.render(t), s);
-    const file = path.join(out, `still-${String(s).replace(".", "_")}.png`);
+    const file = path.join(out, `still-${path.parse(pageName).name}-${String(s).replace(".", "_")}.png`);
     await page.screenshot({ path: file });
     console.log("찍음:", file);
   }
@@ -41,7 +45,7 @@ if (stillsArg) {
   process.exit(0);
 }
 
-const file = path.join(out, "slowrich-promo.mp4");
+const file = path.join(out, outName);
 const ffmpeg = spawn("ffmpeg", [
   "-y", "-loglevel", "error",
   "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
