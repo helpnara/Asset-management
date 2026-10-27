@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 1년에 52번</title>
+<!--
+  느린 부자 유튜브 쇼츠 3편 (2026-10-27). 1080×1920 세로, 29.5초, 소리 없음.
+  1편(promo.html)은 기능 다섯, 2편(whatif.html)은 "매달 얼마를 더 넣으면" 물음과 시뮬레이션 녹화.
+  3편은 **쌓이는 기록**이 주제다 — 토요일 3분이 한 주 → 한 달 → 가족 → A4 한 장으로 모이는 것.
+
+  화면은 CI 가 체험 자료(가상의 가족)로 찍은 지금 판 스크린샷(screenshots/)을 그대로 쓴다 — 녹화는 쓰지 않는다.
+  render(t) 하나로 그려지고 render.mjs --page habit.html 로 굽는다.
+  테두리 좌표는 스크린샷(1206 폭)을 화면 창(940 폭, ×0.779)으로 옮긴 값이다. 스크린샷이 바뀌면 다시 맞춘다.
+  쇼츠 화면은 아래쪽(제목 · 채널)과 오른쪽(단추)을 가린다 — 꼭 읽혀야 할 글은 위쪽 · 가운데.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+</style>
+
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 0. 물음 -->
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">노후 준비,</div>
+    <div class="center q2" id="q2">1년에 52번 들여다보면</div>
+    <div class="center q3" id="q3">토요일 3분이 쌓여 생기는 일</div>
+  </div>
+
+  <!-- 1. 한 주 — 점검 완료 -->
+  <div id="s-week" class="layer">
+    <div class="title" id="week-title">토요일마다 3분</div>
+    <div class="sub" id="week-sub">이번 주 변화와 연속 기록이 쌓입니다</div>
+    <div class="window" id="week-win">
+      <!-- screenshots/05 — 원본 150px 아래부터 -->
+      <img src="../../screenshots/05-review-done.png" style="top:-117px" alt="">
+      <div class="ring" id="week-r1" style="left:30px;top:250px;width:330px;height:100px"></div>
+      <div class="tag" id="week-t1" style="left:400px;top:268px">이번 주 변화</div>
+      <div class="ring" id="week-r2" style="left:20px;top:600px;width:900px;height:118px"></div>
+      <div class="tag" id="week-t2" style="left:400px;top:525px">연속 기록</div>
+      <div class="tag" id="week-t3" style="left:330px;top:790px">가족 넷, 각자의 몫</div>
+    </div>
+  </div>
+
+  <!-- 2. 한 달 — 회고 -->
+  <div id="s-month" class="layer">
+    <div class="title" id="month-title">한 달이 모이면</div>
+    <div class="sub" id="month-sub">얼마 넣고 얼마 자랐는지 한눈에 — 1년도</div>
+    <div class="window" id="month-win">
+      <!-- screenshots/23 — 원본 360px 아래부터(위 제목 줄은 뺀다) -->
+      <img src="../../screenshots/23-retrospective.png" style="top:-280px" alt="">
+      <div class="ring" id="month-r1" style="left:55px;top:309px;width:330px;height:100px"></div>
+      <div class="tag" id="month-t1" style="left:420px;top:326px">이번 달</div>
+      <div class="ring" id="month-r2" style="left:45px;top:559px;width:860px;height:82px"></div>
+      <div class="tag" id="month-t2" style="left:560px;top:474px">넣은 돈 · 자란 돈</div>
+      <div class="ring" id="month-r3" style="left:75px;top:1089px;width:380px;height:72px"></div>
+      <div class="tag" id="month-t3" style="left:490px;top:1094px">이정표</div>
+    </div>
+  </div>
+
+  <!-- 3. 가족 — 가족 자산 배분 -->
+  <div id="s-family" class="layer">
+    <div class="title" id="fam-title">가족 넷이 함께</div>
+    <div class="sub" id="fam-sub">가족 안의 비중 · 국가 · 자산군 배분까지</div>
+    <div class="window" id="fam-win">
+      <!-- screenshots/15 — 원본 330px 아래부터(위 제목 줄은 뺀다) -->
+      <img src="../../screenshots/15-family-allocation.png" style="top:-257px" alt="">
+      <div class="ring" id="fam-r1" style="left:25px;top:101px;width:890px;height:490px"></div>
+      <div class="tag" id="fam-t1" style="left:560px;top:606px">구성원별 비중</div>
+      <div class="ring" id="fam-r2" style="left:25px;top:846px;width:890px;height:290px"></div>
+      <div class="tag" id="fam-t2" style="left:620px;top:766px">국가 배분</div>
+    </div>
+  </div>
+
+  <!-- 4. A4 한 장 — 1페이지 -->
+  <div id="s-paper" class="layer">
+    <div class="title" id="paper-title">1년이면 A4 한 장 계획서</div>
+    <div class="sub" id="paper-sub">현황 · 로드맵 · 구성원별을 PDF 한 장에</div>
+    <div class="window" id="paper-win">
+      <!-- screenshots/16 — 원본 400px 아래부터. 테두리가 없어 천천히 다가가도 된다 -->
+      <img id="paper-img" src="../../screenshots/16-one-pager.png" style="top:-312px" alt="">
+      <div class="tag" id="paper-t1" style="left:560px;top:1150px">PDF로 저장 · 인쇄</div>
+    </div>
+  </div>
+
+  <!-- 5. 마무리 -->
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">느리게, 그래도 꾸준히</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad · 서버 · 광고 · 회원가입 없음</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다<br>화면은 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+// ── 시간표 (초) ───────────────────────────────────────────────
+const T = {
+  hook:   [0.0, 3.0],
+  week:   [3.0, 8.6],
+  month:  [8.6, 14.2],
+  family: [14.2, 19.6],
+  paper:  [19.6, 24.8],
+  cta:    [24.8, 29.5],
+};
+const DURATION = 29.5;
+
+// ── 도움 함수 (2편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`;
+}
+function tag(el, t, at, stay = 1.4) {
+  el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3));
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 앱 화면 장면 하나 — 제목 · 부제가 오르고 창이 아래서 올라온다. */
+function screenScene(t, key, prefix) {
+  const [a] = T[key];
+  rise($(`${prefix}-title`), t, a + 0.05);
+  rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const winIn = easeOut(prog(t, a, a + 0.6));
+  $(`${prefix}-win`).style.transform = `translateY(${(1 - winIn) * 300}px)`;
+  return a;
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+function render(t) {
+  const darkA = t < (T.hook[1] + T.week[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.cta[0] - OUT, T.cta[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+
+  // 0. 물음
+  const hookA = sceneAlpha(t, T.hook);
+  show($("s-hook"), hookA);
+  if (hookA) {
+    rise($("q1"), t, 0.15);
+    pop($("q2"), t, 0.7, 0.5);
+    rise($("q3"), t, 1.6, 0.5, 30);
+  }
+
+  // 1. 한 주
+  const wA = sceneAlpha(t, T.week);
+  show($("s-week"), wA);
+  if (wA) {
+    const a = screenScene(t, "week", "week");
+    ring($("week-r1"), t, a + 0.8, 1.3); tag($("week-t1"), t, a + 0.8, 1.3);
+    ring($("week-r2"), t, a + 2.2, 1.3); tag($("week-t2"), t, a + 2.2, 1.3);
+    tag($("week-t3"), t, a + 3.6, 1.6);
+  }
+
+  // 2. 한 달
+  const mA = sceneAlpha(t, T.month);
+  show($("s-month"), mA);
+  if (mA) {
+    const a = screenScene(t, "month", "month");
+    ring($("month-r1"), t, a + 0.8, 1.2); tag($("month-t1"), t, a + 0.8, 1.2);
+    ring($("month-r2"), t, a + 2.1, 1.2); tag($("month-t2"), t, a + 2.1, 1.2);
+    ring($("month-r3"), t, a + 3.4, 1.6); tag($("month-t3"), t, a + 3.4, 1.6);
+  }
+
+  // 3. 가족
+  const fA = sceneAlpha(t, T.family);
+  show($("s-family"), fA);
+  if (fA) {
+    const a = screenScene(t, "family", "fam");
+    ring($("fam-r1"), t, a + 0.8, 1.5); tag($("fam-t1"), t, a + 0.8, 1.5);
+    ring($("fam-r2"), t, a + 2.7, 1.8); tag($("fam-t2"), t, a + 2.7, 1.8);
+  }
+
+  // 4. A4 한 장
+  const pA = sceneAlpha(t, T.paper);
+  show($("s-paper"), pA);
+  if (pA) {
+    const a = screenScene(t, "paper", "paper");
+    $("paper-img").style.transform = `scale(${1 + 0.06 * easeInOut(prog(t, a + 0.6, T.paper[1]))})`;
+    pop($("paper-t1"), t, a + 1.6, 0.45);
+  }
+
+  // 5. 마무리 — 끝까지 남는다
+  const cA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), cA);
+  if (cA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>
