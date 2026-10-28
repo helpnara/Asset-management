@@ -11,7 +11,7 @@
 | `whatif.html` · `clips.mjs` | **쇼츠 2편** (10-25) — 아래 |
 | `out/slowrich-shorts-whatif.mp4` | 2편 구운 결과 — 1080×1920, 29초, 새 아이콘 · **10-25 유튜브에 올림** (사용자) |
 | `habit.html` · `out/slowrich-shorts-habit.mp4` | **쇼츠 3편** (10-27) — 1080×1920, 29.5초 · **10-28 유튜브에 올림** (사용자). 아래 |
-| `story.html` · `out/slowrich-shorts-story.mp4` | **쇼츠 4편** (10-28) — 1080×1920, 30초. 아래 |
+| `story.html` · `out/slowrich-shorts-story.mp4` | **쇼츠 4편** (10-28) — 1080×1920, 30초 · **10-28 유튜브에 올림** (사용자). 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
