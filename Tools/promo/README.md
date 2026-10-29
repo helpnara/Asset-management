@@ -14,6 +14,8 @@
 | `story.html` · `out/slowrich-shorts-story.mp4` | **쇼츠 4편** (10-28) — 1080×1920, 30초 · **10-28 유튜브에 올림** (사용자). 아래 |
 | `inflation.html` · `out/slowrich-shorts-inflation.mp4` | **쇼츠 5편** (10-29, 후보 A 물가의 함정) — 29초. 아래 |
 | `nestegg.html` · `out/slowrich-shorts-nestegg.mp4` | **쇼츠 6편** (10-29, 후보 B 노후 자금 얼마면) — 30초. 아래 |
+| `principle.html` · `out/slowrich-shorts-principle.mp4` | **쇼츠 7편** (10-29, 후보 F 하루 한 줄 원칙) — 29초. 아래 |
+| `saturday.html` · `out/slowrich-shorts-saturday.mp4` | **쇼츠 8편** (10-29, 후보 G 토요일 아침 9시) — 30초. 아래 (먼저 `clips.mjs`) |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
@@ -135,6 +137,37 @@ node Tools/promo/render.mjs --page nestegg.html --out slowrich-shorts-nestegg.mp
 ```
 
 - 계획 탭 테두리는 처음에 한 줄씩 어긋났다 — 스크린샷 좌표를 어림한 탓. **`--stills` 로 한 장을 보고 잰 값으로** 맞췄다.
-- 다음 후보: C(확률)는 체험 자료에서 확률이 100% 로 나와 그대로 쓰면 설득력이 없다 · D(금액 가리기)와 E(국민연금 · 은퇴 후 소득)는
-  CI 스크린샷이 아직 없다(앱 실행 인자 · 스크린샷 줄을 더하고 CI 를 한 번 돌려야 한다) · F(운용 원칙 `13`) · G(미리 보기 녹화 + 알림 `27`)는 지금 화면으로 된다.
+- 남은 후보: C(확률)는 체험 자료에서 확률이 100% 로 나와 그대로 쓰면 설득력이 없다 · D(금액 가리기)와 E(국민연금 · 은퇴 후 소득)는
+  CI 스크린샷이 아직 없다. **10-29 사용자: C · D · E 는 빼고 F · G 만** — 아래 7 · 8편.
+
+## 쇼츠 7 · 8편 — 후보 F · G (2026-10-29)
+
+**7편 `principle.html` — "노후 투자, 원칙 하나만 지킨다면?"** (29초)
+
+| 장면 | 화면 |
+|---|---|
+| 물음 | 짙은 숲색 · 열여섯 가지 중 오늘의 한 줄 |
+| 우리 집 투자 원칙 16 | 카드 한 장에 원칙이 1.3초씩 넘어간다 — 01 · 02 · 05 · 06 · 11 · 16 (앱 기본 원칙 `DefaultPrinciples` 의 번호 · 문장 그대로) |
+| 현황판에 매일 한 줄 | `02` 현황판의 `오늘의 운용 원칙` 카드 — 날짜로 골라 가족 모두 같은 날 같은 문장(`PrincipleRotation`) |
+| 우리 집 말로 고칩니다 | `13` 운용 원칙 화면 — `편집` · "1페이지 PDF 에도 이번 주 다섯 줄" |
+| 앱은 문장을 다듬지 않습니다 | 적어 온 말 그대로 |
+
+- 기본 원칙 열여섯은 **사용자가 강의 · 세미나에서 적어 온 원문**이다(Principles.swift 주석). 앱이 문장을 지어내지 않는다는 점이 이 편의 말이다.
+
+**8편 `saturday.html` — "토요일 아침 9시, 3분이면 끝나는 일"** (30초)
+
+| 장면 | 화면 |
+|---|---|
+| 물음 | 짙은 숲색 |
+| 잠금 화면 알림 | **그린** 잠금 화면(10월 31일 토요일 9:00)에 알림이 내려온다 — 글은 앱이 보내는 문장 그대로(`ReviewNotifications.scheduleWeekly`)에 체험 자료 14건 · 12주 |
+| 눌러서, 적고 | 미리 보기 녹화(점검) — 적자마자 뜨는 지난주 대비에 테두리 |
+| 3분이면 이번 주 끝 | `05` 점검 완료 — +53만원 · 12주 연속 |
+| 요일 · 시각은 우리 집에 맞게 | `27` 알림 — 토요일 · 9시 · 다음날 한 번 더(두 번째도 놓치면 조용히 넘어간다 — `scheduleFollowUp`) |
+
+- 점검 완료 녹화(raw.mp4 181.9~185.9초)도 써 보려 했으나 움직임이 없는 정지 화면이라 지금 판 스크린샷 `05` 를 썼다.
+
+```bash
+node Tools/promo/render.mjs --page principle.html --out slowrich-shorts-principle.mp4
+node Tools/promo/clips.mjs && node Tools/promo/render.mjs --page saturday.html --out slowrich-shorts-saturday.mp4
+```
 

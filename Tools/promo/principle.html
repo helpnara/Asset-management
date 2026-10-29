@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 하루 한 줄 원칙</title>
+<!--
+  느린 부자 유튜브 쇼츠 7편 (2026-10-29) — 후보 F "하루 한 줄 원칙". 1080×1920, 29초, 소리 없음.
+  원칙 문장은 앱의 기본 원칙 열여섯(App/Persistence/Principles.swift `DefaultPrinciples` — 사용자가 준 원문 그대로)에서
+  번호와 함께 그대로 옮겼다. 현황판은 날짜로 하나를 골라 하루 종일 같은 문장을 보여 준다(PrincipleRotation — 가족 기기가 같은 날
+  같은 문장). 운용 원칙 화면에서 고치고 더한다(`편집`). 화면: CI 스크린샷 02 현황판 · 13 운용 원칙.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+
+  .pcard { position: absolute; left: 90px; right: 90px; top: 640px; height: 560px; border-radius: 44px; background: #fff;
+           box-shadow: 0 30px 80px rgba(11,16,23,.16); padding: 70px 70px; }
+  .pcard .no { font-size: 40px; font-weight: 800; color: var(--gain); letter-spacing: 1px; }
+  .pcard .tx { margin-top: 40px; font-size: 84px; font-weight: 800; line-height: 1.22; letter-spacing: -2.5px; word-break: keep-all; }
+  .lock { position: absolute; inset: 0; background: linear-gradient(180deg, #2A3B4C 0%, #121A22 100%); }
+  .clock { position: absolute; left: 0; right: 0; text-align: center; color: #fff; }
+  .banner { position: absolute; left: 60px; right: 60px; top: 760px; border-radius: 44px; background: rgba(245,247,248,.92);
+            padding: 34px 40px; display: flex; gap: 30px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .banner img { width: 96px; height: 96px; border-radius: 22px; }
+  .banner .app { font-size: 30px; font-weight: 700; color: var(--muted); display: flex; justify-content: space-between; }
+  .banner .bt { margin-top: 6px; font-size: 40px; font-weight: 800; }
+  .banner .bb { margin-top: 6px; font-size: 34px; font-weight: 500; line-height: 1.35; color: #2B333A; }
+</style>
+
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">노후 투자,</div>
+    <div class="center q2" id="q2">원칙 하나만 지킨다면?</div>
+    <div class="center q3" id="q3">열여섯 가지 중 오늘의 한 줄</div>
+  </div>
+
+  <!-- 1. 원칙이 넘어간다 -->
+  <div id="s-flip" class="layer">
+    <div class="title" id="fl-title">우리 집 투자 원칙 16</div>
+    <div class="sub" id="fl-sub">강의 · 세미나에서 적어 온 문장들</div>
+    <div class="pcard" id="pc"><div class="no" id="pc-no"></div><div class="tx" id="pc-tx"></div></div>
+  </div>
+
+  <!-- 2. 현황판 -->
+  <div id="s-dash" class="layer">
+    <div class="title" id="ds-title">현황판에 매일 한 줄</div>
+    <div class="sub" id="ds-sub">날짜로 고릅니다 — 가족 모두 같은 날 같은 문장</div>
+    <div class="window" id="ds-win">
+      <!-- screenshots/02 — 원본 250px 아래부터 -->
+      <img src="../../screenshots/02-dashboard.png" style="top:-195px" alt="">
+      <div class="ring" id="ds-r1" style="left:12px;top:105px;width:916px;height:200px"></div>
+      <div class="tag" id="ds-t1" style="left:470px;top:320px">오늘의 운용 원칙</div>
+    </div>
+  </div>
+
+  <!-- 3. 운용 원칙 화면 -->
+  <div id="s-list" class="layer">
+    <div class="title" id="ls-title">우리 집 말로 고칩니다</div>
+    <div class="sub" id="ls-sub">기본 열여섯을 넣고 · 고치고 · 더하고</div>
+    <div class="window" id="ls-win">
+      <!-- screenshots/13 — 원본 150px 아래부터 -->
+      <img src="../../screenshots/13-principles.png" style="top:-117px" alt="">
+      <div class="ring" id="ls-r1" style="left:760px;top:38px;width:150px;height:80px"></div>
+      <div class="tag" id="ls-t1" style="left:640px;top:135px">직접 편집</div>
+      <div class="tag" id="ls-t2" style="left:330px;top:760px">1페이지 PDF 에도 이번 주 다섯 줄</div>
+    </div>
+  </div>
+
+  <!-- 4. 한 줄 -->
+  <div id="s-line" class="layer">
+    <div class="center" id="ln1" style="top:640px;font-size:66px;font-weight:800;color:#fff;letter-spacing:-1.5px">앱은 문장을</div>
+    <div class="center" id="ln2" style="top:760px;font-size:80px;font-weight:800;color:var(--gold);letter-spacing:-2px">다듬지 않습니다</div>
+    <div class="center" id="ln3" style="top:930px;font-size:40px;font-weight:500;color:rgba(255,255,255,.8);line-height:1.5">적어 온 말 그대로,<br>날마다 한 번 다시 읽게</div>
+  </div>
+
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">원칙을 매일 한 줄씩</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">원칙 문장은 앱의 기본값이며 직접 고칠 수 있습니다<br>화면은 가상의 체험 자료입니다</div>
+  </div>
+</div>
+<script>
+const T = { hook: [0, 3.0], flip: [3.0, 11.4], dash: [11.4, 16.8], list: [16.8, 22.2], line: [22.2, 25.0], cta: [25.0, 29.0] };
+const DURATION = 29.0;
+// 앱 기본 원칙(DefaultPrinciples) 가운데 여섯 — 번호도 그대로
+const P = [[1, "시간에 투자하라"], [2, "빚내서 투자하지 마라"], [5, "하락을 두려워하지 마라"],
+           [6, "남을 따라 투자하지 마라"], [11, "복리는 시간과 함께 커진다"], [16, "투자는 돈을 버는 기술이 아니라 삶을 설계하는 철학이다"]];
+
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) { if (t < a || t > b) return 0; return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b)); }
+function rise(el, t, at, dur = 0.5, dy = 50) { const p = easeOut(prog(t, at, at + dur)); el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * dy}px)`; }
+function pop(el, t, at, dur = 0.45) { const p = prog(t, at, at + dur); el.style.opacity = clamp(p * 2); el.style.transform = `scale(${0.6 + 0.4 * back(p)})`; }
+function ring(el, t, at, stay = 1.4) { const p = prog(t, at, at + 0.35), out = prog(t, at + stay, at + stay + 0.3); el.style.opacity = clamp(p * 2) * (1 - out); el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`; }
+function tag(el, t, at, stay = 1.4) { el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3)); }
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+function screenScene(t, a, prefix) {
+  rise($(`${prefix}-title`), t, a + 0.05); rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const w = easeOut(prog(t, a, a + 0.6)); $(`${prefix}-win`).style.transform = `translateY(${(1 - w) * 300}px)`;
+}
+function cta(t, a) {
+  pop($("cta-icon"), t, a + 0.05, 0.6); rise($("cta-name"), t, a + 0.45); rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+  pop($("cta-store"), t, a + 1.3, 0.5); rise($("cta-free"), t, a + 1.7, 0.5, 20); rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+}
+
+
+function render(t) {
+  const light = prog(t, T.flip[0] - OUT, T.flip[0] + 0.1) * (1 - prog(t, T.line[0] - OUT, T.line[0] + 0.1));
+  show($("bg-dark"), 1); show($("bg-light"), light);
+
+  const hA = sceneAlpha(t, T.hook); show($("s-hook"), hA);
+  if (hA) { rise($("q1"), t, 0.15); pop($("q2"), t, 0.7, 0.5); rise($("q3"), t, 1.6, 0.5, 30); }
+
+  const fA = sceneAlpha(t, T.flip); show($("s-flip"), fA);
+  if (fA) {
+    const a = T.flip[0];
+    rise($("fl-title"), t, a + 0.05); rise($("fl-sub"), t, a + 0.25, 0.5, 30);
+    rise($("pc"), t, a + 0.3, 0.5, 80);
+    const each = 1.3, local = Math.max(0, t - a - 0.4);
+    const i = Math.min(P.length - 1, Math.floor(local / each)), within = local - i * each;
+    $("pc-no").textContent = `${String(P[i][0]).padStart(2, "0")} / 16`;
+    $("pc-tx").textContent = P[i][1];
+    // 장마다 아래서 올라와 머물고, 마지막 장은 남는다
+    const inP = easeOut(prog(within, 0, 0.3)), outP = i < P.length - 1 ? prog(within, each - 0.2, each) : 0;
+    $("pc-tx").style.opacity = inP * (1 - outP); $("pc-no").style.opacity = inP * (1 - outP);
+    $("pc-tx").style.transform = `translateY(${(1 - inP) * 40 - outP * 30}px)`;
+  }
+
+  const dA = sceneAlpha(t, T.dash); show($("s-dash"), dA);
+  if (dA) { const a = T.dash[0]; screenScene(t, a, "ds"); ring($("ds-r1"), t, a + 0.8, 3.6); tag($("ds-t1"), t, a + 0.8, 3.6); }
+
+  const lA = sceneAlpha(t, T.list); show($("s-list"), lA);
+  if (lA) {
+    const a = T.list[0]; screenScene(t, a, "ls");
+    ring($("ls-r1"), t, a + 0.8, 1.8); tag($("ls-t1"), t, a + 0.8, 1.8);
+    tag($("ls-t2"), t, a + 2.9, 2.0);
+  }
+
+  const nA = sceneAlpha(t, T.line); show($("s-line"), nA);
+  if (nA) { const a = T.line[0]; rise($("ln1"), t, a + 0.1); pop($("ln2"), t, a + 0.5, 0.5); rise($("ln3"), t, a + 1.2, 0.5, 30); }
+
+  const eA = sceneAlpha(t, [T.cta[0], DURATION + 1]); show($("s-cta"), eA);
+  if (eA) cta(t, T.cta[0]);
+}
+
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].filter(i => i.src).map(img => img.decode().catch(() => {}))]);
+if (!location.search.includes("frames")) {
+  window.ready.then(() => { const start = performance.now();
+    const tick = async now => { await render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+}
+</script>
+</body>
+</html>
