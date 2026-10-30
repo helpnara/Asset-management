@@ -13,7 +13,7 @@
 | `habit.html` · `out/slowrich-shorts-habit.mp4` | **쇼츠 3편** (10-27) — 1080×1920, 29.5초 · **10-28 유튜브에 올림** (사용자). 아래 |
 | `story.html` · `out/slowrich-shorts-story.mp4` | **쇼츠 4편** (10-28) — 1080×1920, 30초 · **10-28 유튜브에 올림** (사용자). 아래 |
 | `inflation.html` · `out/slowrich-shorts-inflation.mp4` | **쇼츠 5편** (10-29, 후보 A 물가의 함정) — 29초. 아래 |
-| `nestegg.html` · `out/slowrich-shorts-nestegg.mp4` | **쇼츠 6편** (10-29, 후보 B 노후 자금 얼마면) — 30초. 아래 |
+| `nestegg.html` · `out/slowrich-shorts-nestegg.mp4` | **쇼츠 6편** (10-29, 후보 B 노후 자금 얼마면) — 30초 · **10-30 유튜브에 올림** (사용자). 아래 |
 | `principle.html` · `out/slowrich-shorts-principle.mp4` | **쇼츠 7편** (10-29, 후보 F 하루 한 줄 원칙) — 29초 · **10-29 유튜브에 올림** (사용자). 아래 |
 | `saturday.html` · `out/slowrich-shorts-saturday.mp4` | **쇼츠 8편** (10-29, 후보 G 토요일 아침 9시) — 30초. 아래 (먼저 `clips.mjs`) |
 
