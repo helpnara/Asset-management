@@ -324,50 +324,66 @@ struct ExportView: View {
     }
 }
 
+/// **공유는 파일로 한다** (212번, 빌드 137 기기 · 11-01 사용자: *"메시지로 보내기는 잘 되는데 파일로 저장하면
+/// 로딩 중 상황이 발생"*).
+///
+/// 예전에는 CSV · PDF · 백업을 모두 `DataRepresentation`(데이터 덩어리)으로 넘겼다. 메시지처럼 내용을 받아
+/// 붙이는 곳은 그걸로 되지만, `파일에 저장` 은 **이름 붙은 파일**을 기다리다 `로드 중` 에서 멈췄다 — CSV 에서
+/// 드러났고, 같은 꼴인 1페이지 PDF 와 전체 백업도 같은 위험이었다. 백업은 "파일 앱에 보관해 두세요" 가
+/// 안내라 막히면 안 되는 길이다.
+///
+/// 그래서 **임시 폴더에 실제 파일을 쓰고 그 주소를 건넨다**(`FileRepresentation` — 문서 파일의 정석).
+/// 내보낼 때마다 새 폴더를 써서 같은 이름이 겹쳐도 앞의 것을 덮지 않는다. 임시 폴더는 시스템이 치운다.
+/// 글로 받는 곳(메시지 본문 · 메모)을 위한 길은 CSV 에만 따로 둔다 — PDF · 백업은 파일 말고는 뜻이 없다.
+enum ExportFile {
+    static func write(_ data: Data, named name: String) throws -> SentTransferredFile {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("export-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent(name)
+        try data.write(to: url, options: .atomic)
+        return SentTransferredFile(url)
+    }
+}
+
 /// `ShareLink` 에 넘길 CSV. 엑셀이 한글을 깨지 않도록 BOM 을 붙인다.
 ///
-/// **데이터가 아니라 파일로 넘긴다** (212번, 빌드 137 기기). `DataRepresentation` 으로 넘기던 때는 공유 창이
-/// `로드 중` 에서 넘어가지 않았다 — `지난 일기` 의 공유 단추와 `내보내기` 의 `목 · 실 · 감 일기 CSV` 둘 다.
-/// 같은 `CSVFile` 을 쓰는 주간 기록 · 보유 종목 CSV 도 같았을 것이다(기기에서 써 본 기록이 없었다).
-/// 문서 파일은 임시 폴더에 실제 파일을 쓰고 그 주소를 건네는 `FileRepresentation` 이 정석이다 —
-/// `파일에 저장` · 엑셀 · 메일이 이름 붙은 `.csv` 파일로 받는다. 내보낼 때마다 새 폴더를 써서 이름이 겹쳐도 덮지 않는다.
+/// 길이 둘이다 — **먼저 파일**(`파일에 저장` · 엑셀 · 메일 첨부가 `.csv` 로 받는다), **그다음 글**(파일을 못 받는
+/// 곳이 내용을 글로 붙인다). 순서가 우선순위다: 공유 창은 받는 쪽이 다룰 수 있는 첫 길을 고른다.
 struct CSVFile: Transferable {
     let text: String
     let name: String
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .commaSeparatedText) { file in
-            let folder = FileManager.default.temporaryDirectory
-                .appendingPathComponent("csv-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let url = folder.appendingPathComponent(file.name)
             // BOM 없이 보내면 엑셀이 한글을 깨서 연다. 실제로 흔한 실패다.
-            try (Data([0xEF, 0xBB, 0xBF]) + Data(file.text.utf8)).write(to: url, options: .atomic)
-            return SentTransferredFile(url)
+            try ExportFile.write(Data([0xEF, 0xBB, 0xBF]) + Data(file.text.utf8), named: file.name)
         }
         .suggestedFileName { $0.name }
+        ProxyRepresentation(exporting: { $0.text })
     }
 }
 
 /// 1페이지 PDF. 이미지가 아니라 PDF 인 이유는 인쇄가 선명하고 글자를
-/// 고를 수 있기 때문이다 (docs/08-feedback.md 10번).
+/// 고를 수 있기 때문이다 (docs/08-feedback.md 10번). 파일로 넘긴다 (212번 — 위 `ExportFile`).
 struct PDFFile: Transferable {
     let data: Data
     let name: String
 
     static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .pdf) { $0.data }
+        FileRepresentation(exportedContentType: .pdf) { try ExportFile.write($0.data, named: $0.name) }
             .suggestedFileName { $0.name }
     }
 }
 
 /// 전체 백업 파일. 되살리는 기능은 없지만, **꺼내 둘 수는 있어야 한다.**
+/// 파일로 넘긴다 (212번) — `파일에 저장` 이 막히면 백업을 보관할 길이 없다.
 struct JSONFile: Transferable {
     let data: Data
     let name: String
 
     static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .json) { $0.data }
+        FileRepresentation(exportedContentType: .json) { try ExportFile.write($0.data, named: $0.name) }
             .suggestedFileName { $0.name }
     }
 }
