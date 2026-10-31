@@ -325,14 +325,25 @@ struct ExportView: View {
 }
 
 /// `ShareLink` 에 넘길 CSV. 엑셀이 한글을 깨지 않도록 BOM 을 붙인다.
+///
+/// **데이터가 아니라 파일로 넘긴다** (212번, 빌드 137 기기). `DataRepresentation` 으로 넘기던 때는 공유 창이
+/// `로드 중` 에서 넘어가지 않았다 — `지난 일기` 의 공유 단추와 `내보내기` 의 `목 · 실 · 감 일기 CSV` 둘 다.
+/// 같은 `CSVFile` 을 쓰는 주간 기록 · 보유 종목 CSV 도 같았을 것이다(기기에서 써 본 기록이 없었다).
+/// 문서 파일은 임시 폴더에 실제 파일을 쓰고 그 주소를 건네는 `FileRepresentation` 이 정석이다 —
+/// `파일에 저장` · 엑셀 · 메일이 이름 붙은 `.csv` 파일로 받는다. 내보낼 때마다 새 폴더를 써서 이름이 겹쳐도 덮지 않는다.
 struct CSVFile: Transferable {
     let text: String
     let name: String
 
     static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .commaSeparatedText) { file in
+        FileRepresentation(exportedContentType: .commaSeparatedText) { file in
+            let folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent("csv-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let url = folder.appendingPathComponent(file.name)
             // BOM 없이 보내면 엑셀이 한글을 깨서 연다. 실제로 흔한 실패다.
-            Data([0xEF, 0xBB, 0xBF]) + Data(file.text.utf8)
+            try (Data([0xEF, 0xBB, 0xBF]) + Data(file.text.utf8)).write(to: url, options: .atomic)
+            return SentTransferredFile(url)
         }
         .suggestedFileName { $0.name }
     }
