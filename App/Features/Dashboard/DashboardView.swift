@@ -344,6 +344,15 @@ struct DashboardView: View {
         let id: String
         let label: String
         let split: ChangeAttribution?
+        /// 이 줄의 넣은 돈에 든 목돈 (213번).
+        var lumps: [LumpNote] = []
+    }
+
+    /// 넣은 돈에 든 목돈 하나 — 이름과 날짜만. 금액은 위 칸에 이미 들어 있고, 적지 않으면 가리기와 부딪히지 않는다.
+    private struct LumpNote: Hashable {
+        let id: UUID
+        let label: String
+        let date: Date
     }
 
     /// **기록끼리 견준다.** 끝은 마지막 점검의 스냅샷, 시작은 그 창 앞의 마지막
@@ -372,18 +381,19 @@ struct DashboardView: View {
             let baseText = sameYear ? DateText.short(base.weekAnchor) : DateText.full(base.weekAnchor)
             let shown = before == nil || farBefore ? "\(label) · \(baseText)부터" : label
             let days = calendar.dateComponents([.day], from: base.weekAnchor, to: latest.weekAnchor).day ?? 0
-            let lumps = cashEvents
+            let lumpEvents = cashEvents
                 // **날짜로 견준다** (199번 B4) — 월간 회고(194번 3단계)와 같은 규칙. 목돈은 만든 시각을
                 // 들고 있어서, 점검한 토요일 오전에 넣은 목돈이 그 주에서 빠지고 다음 주로 넘어갔다.
                 .filter {
                     let day = calendar.startOfDay(for: $0.date)
                     return day > base.weekAnchor && day <= latest.weekAnchor
                 }
-                .reduce(Money.zero(.krw)) { $0 + $1.amount }
+            let lumps = lumpEvents.reduce(Money.zero(.krw)) { $0 + $1.amount }
             let split = ChangeAttribution.estimate(
                 from: Money(minorUnits: base.netWorthMinor, currency: .krw), to: end,
                 monthlyContribution: monthly, days: days, lumpSums: lumps)
-            return AttributionRow(id: label, label: shown, split: split)
+            return AttributionRow(id: label, label: shown, split: split,
+                                  lumps: lumpEvents.map { LumpNote(id: $0.id, label: $0.label, date: $0.date) })
         }
 
         // **이번 달 · 올해는 지금 달력으로** (194번 D5). 마지막 점검의 달로 잡으면 달이 바뀐 첫 주
@@ -447,8 +457,40 @@ struct DashboardView: View {
                     .lineSpacing(3)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
+                if let line = lumpLine(rows) {
+                    Text(line)
+                        .font(.scaled(10.5))
+                        .foregroundStyle(Color.muted)
+                        .lineSpacing(3)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                }
             }
         }
+    }
+
+    /// **넣은 돈에 든 목돈을 이름으로** (213번, 11-01). `올해` 의 자란 돈이 크게 마이너스로 나와 목돈 화면까지 열어 봐야
+    /// 까닭(퇴직금이 넣은 돈에 들어 있었다)을 알았다. 카드만 봐서는 목돈이 들어갔는지 몰랐다 — 일반 설명 한 줄뿐이었다.
+    /// 목돈마다 어느 줄에 들었는지 함께 적는다: `넣은 돈에 든 목돈 — 퇴직금 09.18 (올해)`. 잘못 적은 목돈(210번)도 여기서 눈에 띈다.
+    private func lumpLine(_ rows: [AttributionRow]) -> String? {
+        var found: [LumpNote] = []
+        var inRows: [LumpNote: [String]] = [:]
+        for row in rows where row.split != nil {
+            for lump in row.lumps {
+                if inRows[lump] == nil { found.append(lump) }
+                inRows[lump, default: []].append(row.id)
+            }
+        }
+        guard !found.isEmpty else { return nil }
+        let calendar = Calendar.app
+        let parts = found.sorted { $0.date < $1.date }.map { lump -> String in
+            let name = lump.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            let sameYear = calendar.isDate(lump.date, equalTo: .now, toGranularity: .year)
+            let day = sameYear ? DateText.short(lump.date) : DateText.full(lump.date)
+            let rowNames = (inRows[lump] ?? []).joined(separator: " · ")
+            return "\(name.isEmpty ? "목돈" : name) \(day) (\(rowNames))"
+        }
+        return "넣은 돈에 든 목돈 — " + parts.joined(separator: ", ")
     }
 
     /// 글자 배율을 따른다 (135번) — 고정 78pt 면 큰 글자에서 숫자가 잘린다.

@@ -94,7 +94,7 @@ struct PrincipleListView: View {
                             .font(.scaled(13))
                     }
                 } footer: {
-                    Text("투자 원칙 열여섯 개를 그대로 넣습니다. 넣은 뒤에 고치고 지울 수 있고, 이미 적어 둔 것과 같은 문장은 건너뜁니다.")
+                    Text("투자 원칙 스물여섯 개를 설명까지 그대로 넣습니다. 넣은 뒤에 고치고 지울 수 있고, 이미 적어 둔 것과 같은 문장은 건너뜁니다.")
                 }
             }
         }
@@ -107,7 +107,7 @@ struct PrincipleListView: View {
                 Text("아직 적은 원칙이 없습니다")
                     .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
-                Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 기본 원칙 넣기 를 누르면 열여섯 개로 시작할 수 있습니다.")
+                Text("\"동결 종목에는 신규 자금을 넣지 않는다\" 처럼\n지키기로 한 것을 적어 두면 1페이지에 함께 나갑니다.\n\n위의 기본 원칙 넣기 를 누르면 스물여섯 개로 시작할 수 있습니다.")
                     .font(.scaled(12))
                     .foregroundStyle(Color.muted)
                     .multilineTextAlignment(.center)
@@ -134,16 +134,16 @@ struct PrincipleListView: View {
     }
 
     /// 아직 없는 기본 원칙들. 전부 있으면 버튼 자체가 사라진다.
-    private var missingDefaults: [String] {
+    private var missingDefaults: [DefaultPrinciples.Item] {
         DefaultPrinciples.missing(from: principles)
     }
 
     /// 있는 것 뒤에 이어 붙인다. 적어 둔 순서를 흔들지 않는다.
     private func addDefaults() {
         var order = principles.count
-        for title in missingDefaults {
+        for item in missingDefaults {
             order += 1
-            _ = Principle(context: context, order: order, title: title)
+            _ = Principle(context: context, order: order, title: item.title, detail: item.detail)
         }
     }
 

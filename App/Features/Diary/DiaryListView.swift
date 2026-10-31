@@ -38,6 +38,18 @@ struct DiaryListView: View {
         .readableWidth()
         .navigationTitle("목 · 실 · 감")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // **엑셀로 내보내기** (212번) — 일기를 보는 자리에서 바로. `내보내기` 화면의 것과 같은 파일이다.
+            if !entries.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(item: DiaryExport.csv(entries),
+                              preview: SharePreview("목실감 일기.csv")) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("엑셀로 내보내기")
+                }
+            }
+        }
         .sheet(item: $editing) { entry in DiaryEditView(entry: entry) }
     }
 }

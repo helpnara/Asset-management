@@ -18,6 +18,8 @@ struct ExportView: View {
     @Fetched(sort: \IncomeStream.sortIndex) private var incomes: [IncomeStream]
     @Fetched(sort: \Principle.order) private var principles: [Principle]
     @Fetched(sort: \TodoItem.sortIndex) private var todos: [TodoItem]
+    /// 목 · 실 · 감 (212번). 일기는 이 사람의 것이라 가족 공유와 상관없이 내보낸다.
+    @Fetched(sort: \DiaryEntry.day) private var diaryEntries: [DiaryEntry]
 
     @Environment(\.managedObjectContext) private var context
     /// **되돌리기는 관리자만이다.** iCloud 는 삭제까지 퍼뜨리므로, 참가자가
@@ -96,10 +98,16 @@ struct ExportView: View {
                           preview: SharePreview("보유 종목.csv")) {
                     Label("보유 종목 CSV", systemImage: "list.bullet.rectangle")
                 }
+                if !diaryEntries.isEmpty {
+                    ShareLink(item: DiaryExport.csv(diaryEntries),
+                              preview: SharePreview("목실감 일기.csv")) {
+                        Label("목 · 실 · 감 일기 CSV", systemImage: "book.closed")
+                    }
+                }
             } header: {
                 Text("보기용 백업")
             } footer: {
-                Text("스프레드시트로 열어 보는 용도입니다. 주간 기록과 보유 종목만 담깁니다.")
+                Text("스프레드시트(엑셀 · Numbers)로 열어 보는 용도입니다. 주간 기록 · 보유 종목 · 목 · 실 · 감 일기만 담깁니다.")
             }
 
             Section {

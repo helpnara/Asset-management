@@ -176,11 +176,11 @@ enum SampleData {
         let leaseTodo = TodoItem(context: context, title: "전세 만기 6개월 전 알아보기", category: .deadline, sortIndex: 2)
         leaseTodo.dueDate = Calendar.app.date(byAdding: .day, value: 120, to: .now)
 
-        // 운용 원칙 — **기본 열여섯을 그대로 넣는다.** 1페이지가 가장 꽉 차는
+        // 운용 원칙 — **기본 스물여섯을 설명까지 그대로 넣는다.** 1페이지가 가장 꽉 차는
         // 경우라, CI 스크린샷이 "한 장에 들어가나" 를 최악의 조건에서 보여준다
-        // (docs/08-feedback.md 24번).
-        for (index, title) in DefaultPrinciples.titles.enumerated() {
-            _ = Principle(context: context, order: index + 1, title: title)
+        // (docs/08-feedback.md 24번 · 211번).
+        for (index, item) in DefaultPrinciples.items.enumerated() {
+            _ = Principle(context: context, order: index + 1, title: item.title, detail: item.detail)
         }
 
         // 변경 이력 — 비어 있으면 CI 스크린샷이 빈 화면만 찍어서, 이력이
@@ -208,9 +208,11 @@ enum SampleData {
                           label: "둘째 대학 입학", sortIndex: 1, memberID: daughter.id)
 
         let calendar = Calendar.app
-        let deposit = CashEvent(context: context,
+        // 밖에서 들어오는 돈만 목돈이다 (210번) — 예전 이름 `전월세보증금 투자 전환` 은 자산 탭의 보증금과 겹쳐
+        // 두 번 세는 쓰임을 보여 줬다. 금액 · 날짜는 그대로 두어 다른 스크린샷 숫자를 흔들지 않는다.
+        let bonus = CashEvent(context: context,
             date: calendar.date(byAdding: .month, value: 3, to: .now) ?? .now,
-            label: "전월세보증금 투자 전환", amountMinor: 100_000_000, sortIndex: 0
+            label: "상여금 유입", amountMinor: 100_000_000, sortIndex: 0
         )
 
         let severance = CashEvent(context: context,
