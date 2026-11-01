@@ -16,6 +16,7 @@
 | `nestegg.html` · `out/slowrich-shorts-nestegg.mp4` | **쇼츠 6편** (10-29, 후보 B 노후 자금 얼마면) — 30초 · **10-30 유튜브에 올림** (사용자). 아래 |
 | `principle.html` · `out/slowrich-shorts-principle.mp4` | **쇼츠 7편** (10-29, 후보 F 하루 한 줄 원칙) — 29초 · **10-29 유튜브에 올림** (사용자). 아래 |
 | `saturday.html` · `out/slowrich-shorts-saturday.mp4` | **쇼츠 8편** (10-29, 후보 G 토요일 아침 9시) — 30초 · **10-31(토) 유튜브에 올림** (사용자). 아래 (먼저 `clips.mjs`) |
+| `money-works.html` · `out/slowrich-shorts-money-works.mp4` | **쇼츠 9편** (11-01, 새 각도 — 내 돈이 나보다 더 버는 해) — 31.5초 · 11-02 올릴 예정. 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
@@ -171,3 +172,24 @@ node Tools/promo/render.mjs --page principle.html --out slowrich-shorts-principl
 node Tools/promo/clips.mjs && node Tools/promo/render.mjs --page saturday.html --out slowrich-shorts-saturday.mp4
 ```
 
+
+## 쇼츠 9편 — "내 돈이 나보다 더 버는 해, 언제일까?" (2026-11-01)
+
+1~8편이 기능 · 시뮬레이션 · 기록 · 이야기 · 물가 · 목표 금액 · 원칙 · 루틴이었다면, 9편은 **현황판 로드맵의 이정표**
+`수익 > 적립금` · `수익 > 연봉` 을 물음으로 쓴다. 녹화 없이 지금 판 스크린샷(체험 자료)과 그 숫자를 크게 다시 그린 장면으로 만든다.
+
+| 장면 | 길이 | 화면 |
+|---|---|---|
+| 물음 — 내 돈이 나보다 / 더 버는 해, 언제일까? | 3.2초 | 짙은 숲색 |
+| 지금은 내가 더 법니다 | 5.2초 | `33` 로드맵 `지금` 시트 — 올해 말까지 넣을 돈 +820만 · 자랄 돈 +239만에 테두리 |
+| 그런데 언젠가 뒤집힙니다 | 3.6초 | `02` 현황판 — `전체 자산 로드맵` 줄에 테두리 |
+| 돈이 일하기 시작하는 해 | 7.6초 | 로드맵 줄을 세로로 크게 — 2026 지금 3.1억 · 2028 자산 2배 6.5억 · **2031 수익 > 적립금 9.7억** · 2037 목표 달성 19.3억 · **2039 수익 > 연봉 23.7억** · 2049 은퇴 61.9억 (`02` 그대로) |
+| 앱이 해마다 견줍니다 | 4.4초 | 판정 규칙 두 장 — `Projection.milestones(in:)` 그대로(첫 해 제외 · 연봉 = 구성원 월급 · 기타 수입 × 12, 적립 증가율만큼 해마다 올림) |
+| 처음엔 내가 돈을 벌고 / 언젠가는 돈이 나를 법니다 | 3.0초 | 짙은 숲색 |
+| 마무리 | 4.5초 | 새 아이콘 · App Store · 안내 두 줄 |
+
+```bash
+node Tools/promo/render.mjs --page money-works.html --out slowrich-shorts-money-works.mp4   # 원격 세션에서 1분쯤
+```
+
+- **CI 스크린샷 `02` · `33` 이 바뀌면** 장면 4 의 숫자(연도 · 금액)도 손으로 맞춘다 — 그림이 아니라 글로 다시 그렸다.
