@@ -16,7 +16,7 @@
 | `nestegg.html` · `out/slowrich-shorts-nestegg.mp4` | **쇼츠 6편** (10-29, 후보 B 노후 자금 얼마면) — 30초 · **10-30 유튜브에 올림** (사용자). 아래 |
 | `principle.html` · `out/slowrich-shorts-principle.mp4` | **쇼츠 7편** (10-29, 후보 F 하루 한 줄 원칙) — 29초 · **10-29 유튜브에 올림** (사용자). 아래 |
 | `saturday.html` · `out/slowrich-shorts-saturday.mp4` | **쇼츠 8편** (10-29, 후보 G 토요일 아침 9시) — 30초 · **10-31(토) 유튜브에 올림** (사용자). 아래 (먼저 `clips.mjs`) |
-| `money-works.html` · `out/slowrich-shorts-money-works.mp4` | **쇼츠 9편** (11-01, 새 각도 — 내 돈이 나보다 더 버는 해) — 31.5초 · 11-02 올릴 예정. 아래 |
+| `money-works.html` · `out/slowrich-shorts-money-works.mp4` | **쇼츠 9편** (11-01, 새 각도 — 내 돈이 나보다 더 버는 해) — 31.5초 · **11-01 유튜브에 올림** (사용자). 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
