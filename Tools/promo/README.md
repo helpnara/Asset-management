@@ -18,7 +18,7 @@
 | `saturday.html` · `out/slowrich-shorts-saturday.mp4` | **쇼츠 8편** (10-29, 후보 G 토요일 아침 9시) — 30초 · **10-31(토) 유튜브에 올림** (사용자). 아래 (먼저 `clips.mjs`) |
 | `money-works.html` · `out/slowrich-shorts-money-works.mp4` | **쇼츠 9편** (11-01, 새 각도 — 내 돈이 나보다 더 버는 해) — 31.5초 · **11-01 유튜브에 올림** (사용자). 아래 |
 | `checkup.html` · `out/slowrich-shorts-checkup.mp4` | **쇼츠 10편** (11-02, 새 각도 — 우리 집 자산 건강검진) — 32.5초 · **11-02 유튜브에 올림** (사용자) — 1~10편 모두 올림. 아래 |
-| `start.html` · `out/slowrich-shorts-start.mp4` | **쇼츠 11편** (11-03, 새 각도 — 가입 없이 열자마자 둘러보기 · 설치 문턱 낮추기) — 31초. 아래 |
+| `start.html` · `out/slowrich-shorts-start.mp4` | **쇼츠 11편** (11-03, 새 각도 — 가입 없이 열자마자 둘러보기 · 설치 문턱 낮추기) — 31초 · **11-03 유튜브에 올림** (사용자) — 1~11편 모두 올림. 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
