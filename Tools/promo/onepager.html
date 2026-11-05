@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — A4 한 장 계획서</title>
+<!--
+  느린 부자 유튜브 쇼츠 13편 (2026-11-05). 1080×1920 세로, 31초, 소리 없음.
+  새 각도 — **1페이지 계획서(A4 한 장)**. 3편에서 한 장면으로 스친 것을 한 편으로: 매주 적은 숫자가
+  현황 · 로드맵 · 구성원별 · 원칙 · 목돈 · 챙길 것이 든 A4 한 장 PDF 가 된다.
+
+  화면은 CI 가 체험 자료로 찍은 screenshots/ipad/16-one-pager.png(2064×2752) 하나를 창 안에서 천천히 당겨 본다.
+  **확대 · 이동하는 장면에는 테두리를 두지 않는다**(2편 교훈 — 확대하면 테두리가 글씨에서 어긋난다). 설명은 창 밖 글로.
+  아래 KB 의 좌표는 그 그림의 원본 픽셀이다. 경로는 ExportView 그대로(더보기 → 내보내기 → 1페이지 PDF 만들기 → 공유 · 저장).
+  render.mjs --page onepager.html 로 굽는다.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+
+    body { word-break: keep-all; }
+  .phone { position: absolute; border-radius: 40px; overflow: hidden; background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .phone img { display: block; width: 100%; }
+  .phone { position: absolute; border-radius: 40px; overflow: hidden; background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .phone img { display: block; width: 100%; }
+  .chips { position: absolute; left: 70px; right: 70px; display: flex; flex-wrap: wrap; gap: 18px; }
+  .chips span { padding: 16px 28px; border-radius: 22px; background: #fff; font-size: 38px; font-weight: 800;
+                box-shadow: 0 12px 30px rgba(11,16,23,.10); }
+  .chips span i { font-style: normal; color: var(--forest-2); margin-right: 10px; }
+  .card2 { position: absolute; left: 70px; right: 70px; padding: 40px 50px; border-radius: 36px; background: #fff;
+           box-shadow: 0 26px 70px rgba(11,16,23,.16); }
+  .card2 .k { font-size: 34px; font-weight: 700; color: var(--forest-2); }
+  .card2 .v { margin-top: 12px; font-size: 46px; font-weight: 800; line-height: 1.35; letter-spacing: -.5px; }
+  .card2 .n { margin-top: 12px; font-size: 34px; font-weight: 500; color: var(--muted); line-height: 1.4; }
+  .kbimg { position: absolute; display: block; max-width: none; }
+
+  .msg1 { top: 700px; font-size: 76px; font-weight: 800; color: rgba(255,255,255,.9); letter-spacing: -1.5px; }
+  .msg2 { top: 830px; font-size: 84px; font-weight: 800; color: var(--gold); letter-spacing: -1.5px; }
+  .msg3 { top: 1010px; font-size: 42px; font-weight: 500; color: rgba(255,255,255,.75); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 0. 물음 -->
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">노후 계획,</div>
+    <div class="center q2" id="q2">A4 한 장에 담아 보셨나요?</div>
+    <div class="center q3" id="q3">냉장고에 붙여 둘 수 있는 계획서</div>
+  </div>
+
+  <!-- 1~3. 한 장을 당겨 보기 — 창은 하나, 제목만 바뀐다 -->
+  <div id="s-page" class="layer">
+    <div class="title" id="pg-title"></div>
+    <div class="sub" id="pg-sub"></div>
+    <div class="window" id="pg-win">
+      <img class="kbimg" id="pg-img" src="../../screenshots/ipad/16-one-pager.png" alt="">
+    </div>
+  </div>
+
+  <!-- 4. 만드는 법 -->
+  <div id="s-how" class="layer">
+    <div class="title" id="how-title">버튼 하나로 PDF</div>
+    <div class="sub" id="how-sub">더보기 → 내보내기 → 1페이지 PDF 만들기</div>
+    <div class="card2" id="how-c1" style="top:400px">
+      <div class="k">앱 화면의 안내 그대로</div>
+      <div class="v">현재 값으로 A4 한 장을 그립니다</div>
+      <div class="n">PDF 라 인쇄해도 선명하고 글자를 고를 수 있습니다. 화면이 어두운 모드여도 종이는 흰색으로 나옵니다.</div>
+    </div>
+    <div class="chips" id="how-chips" style="top:900px">
+      <span><i>✓</i>공유 · 저장</span><span><i>✓</i>인쇄</span><span><i>✓</i>가족 단톡방에</span><span><i>✓</i>제목 · 맨 밑 한 줄은 직접</span>
+    </div>
+  </div>
+
+  <!-- 5. 한 줄 -->
+  <div id="s-msg" class="layer">
+    <div class="center msg1" id="m1">매주 3분 적은 숫자가</div>
+    <div class="center msg2" id="m2">한 장의 계획서로</div>
+    <div class="center msg3" id="m3">출력해서 가족과 함께 보세요</div>
+  </div>
+
+  <!-- 6. 마무리 -->
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">느리게, 그래도 꾸준히</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad · 서버 · 광고 · 회원가입 없음</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다<br>화면과 숫자는 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+// ── 시간표 (초) ───────────────────────────────────────────────
+const T = {
+  hook: [0.0, 3.4],
+  page: [3.4, 19.4],
+  how:  [19.4, 24.2],
+  msg:  [24.2, 27.0],
+  cta:  [27.0, 31.0],
+};
+const DURATION = 31.0;
+
+// 한 장 당겨 보기 — 원본 픽셀 좌표의 가운데(cx, cy)와 배율(s). 창은 940 × 1300.
+// 페이지 영역은 원본 x 25~2039 · y 402~2713.
+const KB = [
+  { at: 0.0,  cx: 1032, cy: 1560, s: 0.465, g: 0, title: "매주 적은 숫자가 A4 한 장으로", sub: "체험 가족의 1페이지 — 더보기 → 내보내기" },
+  { at: 3.0,  cx: 600,  cy: 960,  s: 0.95,  g: 1, title: "현황과 은퇴까지의 로드맵", sub: "총자산 · 계획 대비 · 해마다의 이정표" },
+  { at: 6.8,  cx: 590,  cy: 1580, s: 0.80,  g: 2, title: "가족 넷, 각자의 몫", sub: "구성원마다 종목과 은퇴까지의 막대" },
+  { at: 9.2,  cx: 1480, cy: 1580, s: 0.80,  g: 2 },
+  { at: 11.8, cx: 600,  cy: 2150, s: 0.90,  g: 3, title: "이번 주 원칙 · 목돈 · 챙길 것", sub: "다음 점검일과 임박한 만기까지" },
+  { at: 14.2, cx: 1480, cy: 2150, s: 0.90,  g: 3 },
+];
+// ── 도움 함수 (2편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`;
+}
+function tag(el, t, at, stay = 1.4) {
+  el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3));
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 앱 화면 장면 하나 — 제목 · 부제가 오르고 창이 아래서 올라온다. */
+function screenScene(t, key, prefix) {
+  const [a] = T[key];
+  rise($(`${prefix}-title`), t, a + 0.05);
+  rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const winIn = easeOut(prog(t, a, a + 0.6));
+  $(`${prefix}-win`).style.transform = `translateY(${(1 - winIn) * 300}px)`;
+  return a;
+}
+
+function kbState(t) {
+  // 정거장 사이를 1.4초 동안 옮겨 간다.
+  let k = KB[0];
+  for (let i = 1; i < KB.length; i++) {
+    const s = KB[i], prev = KB[i - 1];
+    if (t >= s.at) { k = s; continue; }
+    const p = easeInOut(prog(t, s.at - 1.4, s.at));
+    if (p > 0) return { cx: prev.cx + (s.cx - prev.cx) * p, cy: prev.cy + (s.cy - prev.cy) * p, s: prev.s + (s.s - prev.s) * p, i: i - 1, p };
+    return { ...prev, i: i - 1, p: 0 };
+  }
+  return { ...k, i: KB.length - 1, p: 0 };
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+function render(t) {
+  const darkA = t < (T.hook[1] + T.page[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.msg[0] - OUT, T.msg[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+
+  const hookA = sceneAlpha(t, T.hook);
+  show($("s-hook"), hookA);
+  if (hookA) {
+    rise($("q1"), t, 0.15);
+    pop($("q2"), t, 0.7, 0.5);
+    rise($("q3"), t, 1.7, 0.5, 30);
+  }
+
+  const gA = sceneAlpha(t, T.page);
+  show($("s-page"), gA);
+  if (gA) {
+    const a = T.page[0], lt = t - a;
+    const winIn = easeOut(prog(t, a, a + 0.6));
+    $("pg-win").style.transform = `translateY(${(1 - winIn) * 300}px)`;
+    const k = kbState(lt);
+    const img = $("pg-img");
+    img.style.width = `${2064 * k.s}px`;
+    img.style.left = `${470 - k.cx * k.s}px`;
+    img.style.top = `${650 - k.cy * k.s}px`;
+    // 제목은 정거장마다 바꾼다 — 옮겨 가는 동안 나갔다 들어온다.
+    let idx = 0;
+    for (let i = 0; i < KB.length; i++) if (KB[i].title && lt >= KB[i].at - 0.7) idx = i;
+    const stopAt = Math.max(0, KB[idx].at - 0.7);
+    const title = $("pg-title"), sub = $("pg-sub");
+    if (title.dataset.i !== String(idx)) { title.textContent = KB[idx].title; sub.textContent = KB[idx].sub; title.dataset.i = String(idx); }
+    rise(title, lt, stopAt + 0.05, 0.45, 30);
+    rise(sub, lt, stopAt + 0.2, 0.45, 20);
+  }
+
+  const hA = sceneAlpha(t, T.how);
+  show($("s-how"), hA);
+  if (hA) {
+    const a = T.how[0];
+    rise($("how-title"), t, a + 0.05);
+    rise($("how-sub"), t, a + 0.25, 0.5, 30);
+    rise($("how-c1"), t, a + 0.6, 0.5, 60);
+    rise($("how-chips"), t, a + 1.8, 0.5, 40);
+  }
+
+  const mA = sceneAlpha(t, T.msg);
+  show($("s-msg"), mA);
+  if (mA) {
+    const a = T.msg[0];
+    rise($("m1"), t, a + 0.1);
+    pop($("m2"), t, a + 0.6, 0.5);
+    rise($("m3"), t, a + 1.4, 0.5, 30);
+  }
+
+  const cA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), cA);
+  if (cA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>
