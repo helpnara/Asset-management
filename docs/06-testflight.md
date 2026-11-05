@@ -348,7 +348,7 @@ Your team has no devices from which to generate a provisioning profile
 `validate` → `apply` → 사람이 Deploy → TestFlight 순서. `apply` 가 초록이어도 로그를 읽는다
 — [08 · 187번](08-feedback.md).)*
 
-*(2026-10-23 현재: 마지막 Production Deploy 는 **10-15**(1.0.6 전, 계좌 `올해 납입액의 해`). 그 뒤 1.0.8 · 1.0.9 · 1.0.10 은 스키마를 바꾸지 않았다. 모델은 `SlowRich 2` 판.)*
+*(2026-11-05 현재: 마지막 Production Deploy 는 **10-15**(1.0.6 전, 계좌 `올해 납입액의 해`). 그 뒤 1.0.8 ~ 1.0.13 은 스키마를 바꾸지 않았다(`Tools/coredata/migration-baselines.txt` 의 "모델 그대로"). 모델은 `SlowRich 2` 판.)*
 
 ### ⚠️ 관리 토큰은 만료된다 — ~~첫 토큰은 2026-10-06 까지~~ 2026-09-29 갱신
 

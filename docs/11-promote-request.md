@@ -13,7 +13,7 @@
 | Platform | iPhone · iPad |
 | Price | Free, no ads, no in-app purchases |
 | Category | Finance (secondary: Productivity) |
-| Release date | ~~2026년 10월 셋째 주~~ ~~10월 하순 이후~~ ~~10월 둘째 주 이후~~ **10월 첫째 주 제출 · 수동 출시** — 10-03 사용자 결정 (App Store 로 내면서 고친다) (심사 통과 뒤 수동 출시, [로드맵](05-roadmap.md) 최신) → **10-07 공개**. 지금 공개된 판 1.0.9(10-20), 1.0.10 심사 중 |
+| Release date | ~~2026년 10월 셋째 주~~ ~~10월 하순 이후~~ ~~10월 둘째 주 이후~~ **10월 첫째 주 제출 · 수동 출시** — 10-03 사용자 결정 (App Store 로 내면서 고친다) (심사 통과 뒤 수동 출시, [로드맵](05-roadmap.md) 최신) → **10-07 공개**. 지금 공개된 판 1.0.13(11-01) |
 | App Store | <https://apps.apple.com/kr/app/id6809116693> |
 | Storefront | Korea (한국어) |
 | Contact | kyunglagkwon@gmail.com |
