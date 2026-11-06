@@ -21,7 +21,7 @@
 | `start.html` · `out/slowrich-shorts-start.mp4` | **쇼츠 11편** (11-03, 새 각도 — 가입 없이 열자마자 둘러보기 · 설치 문턱 낮추기) — 31초 · **11-03 유튜브에 올림** (사용자) — 1~11편 모두 올림. 아래 |
 | `family.html` · `out/slowrich-shorts-family.mp4` | **쇼츠 12편** (11-04, 새 각도 — 가족 공유 · 부부가 같은 숫자를) — 30초 · **11-04 유튜브에 올림** (사용자) — 1~12편 모두 올림. 아래 |
 | `onepager.html` · `out/slowrich-shorts-onepager.mp4` | **쇼츠 13편** (11-05, 새 각도 — A4 한 장 계획서) — 31초 · **11-05 유튜브에 올림** (사용자) — 1~13편 모두 올림. 아래 |
-| `yearend.html` · `out/slowrich-shorts-yearend.mp4` | **쇼츠 14편** (11-06, 새 각도 — 연말 시즌 · 연금저축 · IRP · ISA 올해 한도) — 29.5초. 아래 |
+| `yearend.html` · `out/slowrich-shorts-yearend.mp4` | **쇼츠 14편** (11-06, 새 각도 — 연말 시즌 · 연금저축 · IRP · ISA 올해 한도) — 29.5초 · **11-07 유튜브에 올림** (사용자) — 1~14편 모두 올림. 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
