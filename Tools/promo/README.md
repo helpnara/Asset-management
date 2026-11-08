@@ -23,7 +23,7 @@
 | `onepager.html` · `out/slowrich-shorts-onepager.mp4` | **쇼츠 13편** (11-05, 새 각도 — A4 한 장 계획서) — 31초 · **11-05 유튜브에 올림** (사용자) — 1~13편 모두 올림. 아래 |
 | `yearend.html` · `out/slowrich-shorts-yearend.mp4` | **쇼츠 14편** (11-06, 새 각도 — 연말 시즌 · 연금저축 · IRP · ISA 올해 한도) — 29.5초 · **11-07 유튜브에 올림** (사용자) — 1~14편 모두 올림. 아래 |
 | `rebalance.html` · `out/slowrich-shorts-rebalance.mp4` | **쇼츠 15편** (11-07, 새 각도 — 리밸런싱을 팔지 않고 넣는 돈으로) — 29초 · **11-08 유튜브에 올림 · 고정 댓글** (사용자) — 1~15편 모두 올림. 아래 |
-| `reason.html` · `out/slowrich-shorts-reason.mp4` | **쇼츠 16편** (11-08, 새 각도 — 투자 일지 · 종목마다 "왜 샀나") — 29초. 아래 |
+| `reason.html` · `out/slowrich-shorts-reason.mp4` | **쇼츠 16편** (11-08, 새 각도 — 투자 일지 · 종목마다 "왜 샀나") — 29초 · **11-08 유튜브에 올림** (사용자) — 1~16편 모두 올림. 아래 |
 
 ```bash
 node Tools/promo/render.mjs                    # 영상 굽기 (원격 세션에서 몇 분)
