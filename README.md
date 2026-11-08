@@ -86,7 +86,7 @@
 
 [개인정보 처리방침](docs/privacy-policy.md) — 앱이 무엇을 모으지 않는지
 
-홍보 영상: [Tools/promo](Tools/promo/README.md) — 유튜브 쇼츠 1~13편(체험 자료) · 올릴 글은 [youtube-shorts.md](Tools/promo/youtube-shorts.md)
+홍보 영상: [Tools/promo](Tools/promo/README.md) — 유튜브 쇼츠 1~15편(체험 자료) · 올릴 글은 [youtube-shorts.md](Tools/promo/youtube-shorts.md)
 
 참고: [기존 1페이지 계획서 구조 분석](docs/reference/one-pager-analysis.md) ·
 [아키텍처 결정 기록(ADR)](docs/adr/)
