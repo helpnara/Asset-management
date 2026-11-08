@@ -225,8 +225,8 @@ struct PastRecordEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("시점", selection: $draft.date,
-                               in: ...Date.now, displayedComponents: .date)
+                    // 날짜 칸 (216번) — 오늘 뒤는 못 고른다(지난 기록).
+                    DateField("시점", date: $draft.date, latest: .now)
                         // **있던 기록의 날짜는 못 옮긴다** (199번 A3). 옮기면 원래 주의 기록은 그대로 남고
                         // 새 주에 하나가 더 생겼다(또는 남의 주를 덮었다). 옮기려면 지우고 새로 넣는다.
                         .disabled(!draft.isNew)

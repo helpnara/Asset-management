@@ -43,6 +43,8 @@ extension Color {
     static let onInk = Color(light: 0xFFFFFF, dark: 0x0E1216)
 
     static let dad = Color(light: 0x1D5E7F, dark: 0x6FB4D2)
+    /// 날짜 칸에서 고른 날 · 달 · 해의 옅은 바탕 (216번) — 강조색(`dad`)의 아주 옅은 판.
+    static let dadSoft = Color(light: 0xE4EFF5, dark: 0x1A2D38)
     static let mom = Color(light: 0x8E4650, dark: 0xD98C97)
     static let son = Color(light: 0x2A7A66, dark: 0x63C6AC)
     static let daughter = Color(light: 0x7A5A2E, dark: 0xC9A469)

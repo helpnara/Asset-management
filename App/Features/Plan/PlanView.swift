@@ -282,10 +282,9 @@ struct PlanView: View {
             // **맨 아래로 내렸다** (152번 2-6) — 자주 보는 값이 아니다.
             Section {
                 if canManageHousehold {
-                    DatePicker("최초 계획 수립일",
-                               selection: Binding(get: { plan.startedOn ?? .now },
-                                                  set: { plan.startedOn = $0 }),
-                               displayedComponents: .date)
+                    DateField("최초 계획 수립일",
+                              date: Binding(get: { plan.startedOn ?? .now },
+                                            set: { plan.startedOn = $0 }))
                 } else {
                     readOnlyRow("최초 계획 수립일",
                                 DateText.full(plan.startedOn ?? .now))

@@ -309,7 +309,7 @@ struct TodoEditView: View {
                 Section {
                     Toggle("기한이 있다", isOn: $hasDue)
                     if hasDue {
-                        DatePicker("기한", selection: dueDate, displayedComponents: .date)
+                        DateField("기한", date: dueDate)
                         Toggle("해마다 되돌아온다", isOn: $item.repeatsYearly)
                     }
                 } footer: {

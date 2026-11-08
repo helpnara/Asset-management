@@ -29,7 +29,7 @@ struct CashEventEditView: View {
             Form {
                 Section {
                     TextField("이름 (퇴직금 · 상여 · 상속 …)", text: $event.label)
-                    DatePicker("시점", selection: date, displayedComponents: .date)
+                    DateField("시점", date: date)
                 }
 
                 Section {

@@ -186,7 +186,7 @@ struct DiaryEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("날짜", selection: day, displayedComponents: .date)
+                    DateField("날짜", date: day)
                 } footer: {
                     if dayTaken {
                         Text("그날은 이미 일기가 있어 옮기지 않았습니다.")

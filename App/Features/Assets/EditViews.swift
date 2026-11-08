@@ -16,7 +16,7 @@ struct MemberEditView: View {
     /// (docs/08-feedback.md 29번). 만들자마자 기록하면 취소한 것까지 남는다.
     @State private var nameOnOpen: String?
 
-    private let years = Array((1930...Calendar.app.component(.year, from: .now)).reversed())
+    private let birthYears = 1930...Calendar.app.component(.year, from: .now)
 
     /// 폼이 보여 주는 은퇴 목표 **연도** — 적어 둔 나이를 그대로 더한 값이다.
     ///
@@ -89,12 +89,10 @@ struct MemberEditView: View {
                 }
 
                 Section {
-                    Picker("태어난 해", selection: $member.birthYear) {
-                        ForEach(years, id: \.self) { Text(verbatim: "\($0)년").tag($0) }
-                    }
-                    Picker("태어난 달", selection: $member.birthMonth) {
-                        ForEach(1...12, id: \.self) { Text("\($0)월").tag($0) }
-                    }
+                    // 해 · 달 칸 하나 (216번) — 칩을 누르면 열두 달(제목을 누르면 열두 해), 달을 누르는 순간 닫힌다.
+                    // 예전에는 해 · 달이 따로 돌림판이었다.
+                    YearMonthField(title: "태어난 해 · 달", year: $member.birthYear, month: $member.birthMonth,
+                                   years: birthYears)
                     // **시점은 연도로 받는다** (151번 A-1). 계획 탭 · 은퇴 후 소득 ·
                     // 마일스톤이 전부 연도 스테퍼인데 여기만 나이였다. 바로 위가
                     // `1990년` 인데 아래가 `65세` 라 읽는 사람이 둘을 섞었다.
@@ -367,7 +365,7 @@ struct AccountEditView: View {
                 Section {
                     Toggle("만기가 있다", isOn: hasMaturity)
                     if account.maturesOn != nil {
-                        DatePicker("만기일", selection: maturityDate, displayedComponents: .date)
+                        DateField("만기일", date: maturityDate)
                     }
                 } header: {
                     Text("만기")
