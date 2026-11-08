@@ -158,6 +158,16 @@ struct TrajectoryChart: View {
     /// 크게 보기에서 **손을 뗀 뒤에도 남기는** 시점 (204번). 카드에서는 손을 떼면 사라진다 —
     /// 좁은 카드에 값이 계속 남으면 다음에 열었을 때 무슨 값인지 헷갈린다.
     @State private var pinnedDate: Date?
+    /// **크게 보기에서 두 손가락으로 좁힌 구간** (215번). `nil` 이면 고른 기간 전체 — 지금까지와 같다.
+    /// 기간을 바꾸면 지운다. 카드에서는 쓰지 않는다(카드는 화면을 위아래로 쓸어야 해서 좌우 손짓을 빼앗지 않는다).
+    @State private var zoom: ClosedRange<Date>?
+    /// 손짓이 시작될 때의 구간 — 손짓 값은 시작부터 쌓인 양이라 시작점에서 다시 센다.
+    @State private var zoomBase: ClosedRange<Date>?
+    @State private var panBase: ClosedRange<Date>?
+    /// 두 손가락이 닿아 있는 동안은 넘기기를 쉰다 — 둘이 같은 구간을 동시에 움직이면 튄다.
+    @State private var isPinching = false
+    /// 그림 안쪽 폭 — 점을 찍을 만큼 성긴지 재는 데 쓴다(215번).
+    @State private var plotWidth: Double = 320
 
     /// 지금 짚은 시점 — 누르는 중이면 그 자리, 크게 보기에서는 마지막에 짚은 자리.
     private var markedDate: Date? { scrubDate ?? (isLarge ? pinnedDate : nil) }
@@ -173,6 +183,11 @@ struct TrajectoryChart: View {
                 Spacer(minLength: 0)
                 if !isLarge {
                     expandButton
+                } else if zoom != nil {
+                    // 좁혀 본 것을 한 번에 되돌린다 (215번). 기간 칸을 다시 눌러도 같다.
+                    Button("전체 보기") { zoom = nil }
+                        .font(.scaled(12, weight: .medium))
+                        .foregroundStyle(Color.dad)
                 }
             }
 
@@ -197,8 +212,12 @@ struct TrajectoryChart: View {
         .onChange(of: scrubDate) { _, date in
             if let date { pinnedDate = date }
         }
-        // 기간을 바꾸면 짚어 둔 시점이 창 밖일 수 있다 — 지운다.
-        .onChange(of: span) { _, _ in pinnedDate = nil }
+        // 기간을 바꾸면 짚어 둔 시점이 창 밖일 수 있다 — 지운다. 좁혀 본 구간도 새 기간 전체로.
+        .onChange(of: span) { _, _ in
+            pinnedDate = nil
+            zoom = nil
+        }
+        .onAppear(perform: applyLaunchZoom)
     }
 
     /// **돋보기** (204번, 10-22 사용자: *"순자산궤적에 돋보기 같은 버튼을 하나 만들어서 크게 자세히 볼 수 있는
@@ -230,7 +249,7 @@ struct TrajectoryChart: View {
                 .foregroundStyle(Color.dad)
                 .lineLimit(2)
         } else {
-            Text(isLarge ? "차트를 누르거나 끌면 그 시점의 값이 보이고, 손을 떼도 남습니다"
+            Text(isLarge ? "두 손가락으로 벌려 확대 · 끌어서 넘기기 · 누르거나 길게 눌러 끌면 그 시점의 값"
                          : "차트를 누르거나 끌면 그 시점의 값이 보입니다")
                 .font(.scaled(isLarge ? 11.5 : 9.5))
                 .foregroundStyle(Color.faint)
@@ -273,7 +292,7 @@ struct TrajectoryChart: View {
 
                 // 은퇴까지를 보면 과거 몇 달은 전체 폭의 1%도 안 되어 선이 사라진다.
                 // 점을 함께 찍어야 "실제로 적어 온 기록"이 눈에 남는다.
-                if point.series == .actual {
+                if point.series == .actual && (!isLarge || marksVisible) {
                     PointMark(
                         x: .value("시점", point.date),
                         y: .value("순자산", point.value(real: showsReal))
@@ -346,18 +365,32 @@ struct TrajectoryChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 2]))
             }
         }
-        .chartXSelection(value: $scrubDate)
+        // 카드는 누르거나 끌면 값을 읽는다. 크게 보기는 끌기가 넘기기라 아래 손짓 겹이 값 읽기를 맡는다 (215번).
+        .modifier(CardSelection(enabled: !isLarge, date: $scrubDate))
+        // 좁혀 본 구간이 있으면 그 구간이 x 범위다. 없으면 지금까지처럼 점이 정한다.
+        .modifier(ZoomedXScale(domain: isLarge ? zoom : nil))
         .chartYScale(domain: domain)
         // **글씨는 그림 위 한 겹에서 한꺼번에 놓는다** (209번). 표시마다 제 글씨를 붙이면 서로를 몰라 포갰다.
-        // 누르기 · 끌기는 아래 차트가 받는다.
+        // 카드에서는 누르기 · 끌기를 아래 차트가 받는다. 크게 보기에서는 글씨 밑에 손짓 겹을 하나 더 깐다.
         .chartOverlay { proxy in
             GeometryReader { geometry in
                 if let plotFrame = proxy.plotFrame {
-                    labelLayer(proxy: proxy, plot: geometry[plotFrame])
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    let plot = geometry[plotFrame]
+                    ZStack(alignment: .topLeading) {
+                        if isLarge {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .gesture(largeGestures(proxy: proxy, plot: plot))
+                                .onAppear { plotWidth = Double(plot.width) }
+                                .onChange(of: plot.width) { _, width in plotWidth = Double(width) }
+                        }
+                        labelLayer(proxy: proxy, plot: plot)
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .allowsHitTesting(false)
+                    }
                 }
             }
-            .allowsHitTesting(false)
+            .allowsHitTesting(isLarge)
         }
         // 궤적을 벗어난 선이 아래 카드 위에 그려지지 않게 한다.
         .chartPlotStyle { plot in plot.clipped() }
@@ -385,7 +418,8 @@ struct TrajectoryChart: View {
                 AxisValueLabel(anchor: value.index == 0 ? .topLeading
                                        : (value.index == value.count - 1 ? .topTrailing : .top)) {
                     if let date = value.as(Date.self) {
-                        Text(verbatim: "\(Calendar.app.component(.year, from: date))")
+                        Text(verbatim: usesMonthTicks ? DateText.yearMonth(date)
+                                                      : "\(Calendar.app.component(.year, from: date))")
                             .font(.figure(isLarge ? 10 : 8))
                             .foregroundStyle(Color.faint)
                     }
@@ -562,15 +596,117 @@ struct TrajectoryChart: View {
 
     // MARK: - 보는 창
 
-    /// 창 안에 드는 점만 그린다.
-    private var visiblePoints: [Point] {
+    /// 고른 기간 안의 점.
+    private var spanPoints: [Point] {
         guard let range = dateRange else { return points }
         return points.filter { range.contains($0.date) }
     }
 
+    /// **그리는 점** — 좁혀 보고 있으면 그 구간 안의 점과, 계열마다 양 끝 바로 바깥 점 하나씩(215번).
+    /// 바깥 점이 있어야 선이 구간 끝까지 이어진다 — 넘친 부분은 그림 테두리에서 잘린다.
+    private var visiblePoints: [Point] {
+        guard isLarge, let zoom else { return spanPoints }
+        var result: [Point] = []
+        for series in [Point.Series.actual, .projected, .plan] {
+            let line = spanPoints.filter { $0.series == series }.sorted { $0.date < $1.date }
+            guard !line.isEmpty else { continue }
+            let start = line.lastIndex { $0.date < zoom.lowerBound } ?? 0
+            let end = line.firstIndex { $0.date > zoom.upperBound } ?? (line.count - 1)
+            if start <= end { result += line[start...end] }
+        }
+        return result
+    }
+
     private var visibleEvents: [EventMark] {
-        guard let range = dateRange else { return events }
-        return events.filter { range.contains($0.date) }
+        var shown = events
+        if let range = dateRange { shown = shown.filter { range.contains($0.date) } }
+        if isLarge, let zoom { shown = shown.filter { zoom.contains($0.date) } }
+        return shown
+    }
+
+    // MARK: - 넓히고 좁히기 (215번)
+
+    /// 좁혀 볼 수 있는 가장 넓은 구간 — 고른 기간의 첫 점부터 끝 점까지.
+    private var fullBounds: ClosedRange<Date>? {
+        let dates = spanPoints.map(\.date)
+        guard let first = dates.min(), let last = dates.max(), first < last else { return nil }
+        return first...last
+    }
+
+    /// 가장 좁게는 석 달 — 주간 점이 열서너 개 보인다.
+    private static let minZoomSeconds: Double = 91 * 86_400
+
+    /// 실제 기록 점을 찍을 만큼 성긴가 — 주마다 하나라 그 간격이 4pt 보다 좁으면 선만.
+    private var marksVisible: Bool {
+        guard let window = zoom ?? fullBounds else { return true }
+        return ChartWindow.showsMarks(step: 7 * 86_400, window: Self.seconds(window), width: plotWidth)
+    }
+
+    private static func seconds(_ range: ClosedRange<Date>) -> ChartWindow.Span {
+        ChartWindow.Span(lower: range.lowerBound.timeIntervalSinceReferenceDate,
+                         upper: range.upperBound.timeIntervalSinceReferenceDate)
+    }
+
+    private static func dates(_ span: ChartWindow.Span) -> ClosedRange<Date> {
+        Date(timeIntervalSinceReferenceDate: span.lower)...Date(timeIntervalSinceReferenceDate: span.upper)
+    }
+
+    /// 크게 보기의 손짓 — **두 손가락으로 넓히고 좁히기 · 끌어서 넘기기 · 누르거나 길게 눌러 끌면 값**.
+    /// 길게 누르기가 먼저 이기면 값 읽기, 그 전에 손가락이 움직이면 넘기기(주식 앱과 같은 약속, 11-08 사용자).
+    private func largeGestures(proxy: ChartProxy, plot: CGRect) -> some Gesture {
+        let select = LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                if case .second(true, let drag?) = value {
+                    scrubDate = proxy.value(atX: drag.location.x - plot.minX, as: Date.self)
+                }
+            }
+            .onEnded { _ in scrubDate = nil }
+        let sweep = DragGesture(minimumDistance: 10)
+            .onChanged { value in panWindow(by: value.translation.width, width: plot.width) }
+            .onEnded { _ in panBase = nil }
+        let pinch = MagnifyGesture()
+            .onChanged { value in zoomWindow(by: value.magnification, anchor: value.startAnchor.x) }
+            .onEnded { _ in
+                zoomBase = nil
+                isPinching = false
+            }
+        let tap = SpatialTapGesture()
+            .onEnded { value in
+                if let date = proxy.value(atX: value.location.x - plot.minX, as: Date.self) { pinnedDate = date }
+            }
+        return select.exclusively(before: sweep).simultaneously(with: pinch).simultaneously(with: tap)
+    }
+
+    private func zoomWindow(by scale: CGFloat, anchor: CGFloat) {
+        guard let bounds = fullBounds else { return }
+        isPinching = true
+        let base = zoomBase ?? zoom ?? bounds
+        if zoomBase == nil { zoomBase = base }
+        let result = ChartWindow.zoomed(Self.seconds(base), by: Double(scale), anchor: Double(anchor),
+                                        bounds: Self.seconds(bounds), minLength: Self.minZoomSeconds)
+        // 기간 전체까지 넓혔으면 좁힌 것이 없는 것과 같다 — `전체 보기` 단추도 사라진다.
+        zoom = result.length >= Self.seconds(bounds).length ? nil : Self.dates(result)
+    }
+
+    private func panWindow(by points: CGFloat, width: CGFloat) {
+        guard !isPinching, let current = zoom, let bounds = fullBounds else { return }
+        let base = panBase ?? current
+        if panBase == nil { panBase = base }
+        let delta = ChartWindow.panDelta(points: Double(points), width: Double(width), window: Self.seconds(base))
+        zoom = Self.dates(ChartWindow.panned(Self.seconds(base), by: delta, bounds: Self.seconds(bounds)))
+    }
+
+    /// CI 스크린샷이 **좁혀 본 모습**을 찍게 (215번) — 실행 인자 `-trajectory.zoomMonths 6` 이면 오늘을 가운데 두고 그 달 수만큼.
+    /// 손짓은 스크린샷으로 못 찍는다.
+    private func applyLaunchZoom() {
+        let months = UserDefaults.standard.integer(forKey: "trajectory.zoomMonths")
+        guard isLarge, zoom == nil, months > 0, let bounds = fullBounds else { return }
+        let half = Double(months) * 30.44 * 86_400 / 2
+        let center = today.timeIntervalSinceReferenceDate
+        let window = ChartWindow.clamp(ChartWindow.Span(lower: center - half, upper: center + half),
+                                       to: Self.seconds(bounds))
+        zoom = Self.dates(window)
     }
 
     private var dateRange: ClosedRange<Date>? {
@@ -592,7 +728,8 @@ struct TrajectoryChart: View {
     /// **목표선은 넓은 창에서만 그린다.** 좁은 창에서 수십억짜리 선을 그리면
     /// 그 하나 때문에 축이 늘어나 나머지가 전부 바닥에 눌린다.
     private var showsTarget: Bool {
-        (span == .retirement || span == .all) && targetMinor > 0
+        // 몇 달로 좁혀 본 동안은 빼다 — 수십억 목표 하나가 세로 축을 늘여 지금 몇 달이 바닥에 붙는다 (215번).
+        (span == .retirement || span == .all) && targetMinor > 0 && !(isLarge && zoom != nil)
     }
 
     /// 명목 보기의 목표 점 — 은퇴 시점 · 그해 돈 (208번).
@@ -605,6 +742,7 @@ struct TrajectoryChart: View {
     /// 창 안의 날짜인가 — 실제 · 예측 점이 그리는 범위. 예측 점은 석 달마다라 끝 점이 은퇴 해 마지막 날보다
     /// 몇 달 앞에서 멈춘다 — `은퇴까지` 창에서 은퇴 표시가 빠지지 않게 끝에 200일을 둔다 (208번 CI 스크린샷).
     private func inWindow(_ date: Date) -> Bool {
+        if isLarge, let zoom { return zoom.contains(date) }
         guard let first = visiblePoints.map(\.date).min(), let last = visiblePoints.map(\.date).max()
         else { return false }
         return date >= first && date <= last.addingTimeInterval(200 * 86_400)
@@ -612,7 +750,7 @@ struct TrajectoryChart: View {
 
     /// 가장 최근에 적은 기록.
     private var latestActual: Point? {
-        visiblePoints.filter { $0.series == .actual }.max { $0.date < $1.date }
+        visiblePoints.filter { $0.series == .actual && inWindow($0.date) }.max { $0.date < $1.date }
     }
 
     /// 그 날짜에 가장 가까운 예측 점(200일 안).
@@ -690,8 +828,9 @@ struct TrajectoryChart: View {
     /// **x 눈금** (208번) — 첫 점 · 끝 점의 해와, 그 사이 `xStride` 해마다 딱 떨어지는 해(2030 · 2040 …).
     /// 양 끝 해와 같은 해이거나 반 칸보다 가까운 안쪽 눈금은 뺀다 — 글씨가 겹친다.
     private var xTicks: [Date] {
-        let dates = visiblePoints.map(\.date)
-        guard let first = dates.min(), let last = dates.max(), first < last else { return [] }
+        guard let bounds = tickBounds else { return [] }
+        let (first, last) = bounds
+        if usesMonthTicks { return monthTicks(from: first, to: last) }
         let calendar = Calendar.app
         let firstYear = calendar.component(.year, from: first)
         let lastYear = calendar.component(.year, from: last)
@@ -712,10 +851,47 @@ struct TrajectoryChart: View {
         return ticks
     }
 
+    /// 눈금을 세울 양 끝 — 좁혀 보고 있으면 그 구간, 아니면 그리는 점의 처음과 끝.
+    private var tickBounds: (Date, Date)? {
+        if isLarge, let zoom { return (zoom.lowerBound, zoom.upperBound) }
+        let dates = visiblePoints.map(\.date)
+        guard let first = dates.min(), let last = dates.max(), first < last else { return nil }
+        return (first, last)
+    }
+
+    /// **좁혀 본 구간이 2년 안이면 달 눈금** (215번). 해 눈금만 두면 석 달을 볼 때 눈금이 하나도 없다.
+    private var usesMonthTicks: Bool {
+        guard isLarge, zoom != nil, let bounds = tickBounds else { return false }
+        return bounds.1.timeIntervalSince(bounds.0) < 2 * 365 * 86_400
+    }
+
+    /// 양 끝과, 그 사이 1 · 2 · 3 · 6 달마다 딱 떨어지는 달의 1일. 끝에 반 칸보다 가까운 안쪽 눈금은 뺀다.
+    private func monthTicks(from first: Date, to last: Date) -> [Date] {
+        let calendar = Calendar.app
+        let months = calendar.dateComponents([.month], from: first, to: last).month ?? 0
+        let step = ChartWindow.monthStride(months: months)
+        let minGap = Double(step) * 30.44 * 86_400 / 2
+        var ticks = [first]
+        let start = calendar.dateComponents([.year, .month], from: first)
+        guard var cursor = calendar.date(from: start) else { return [first, last] }
+        while cursor < last {
+            let parts = calendar.dateComponents([.year, .month], from: cursor)
+            let index = (parts.year ?? 0) * 12 + (parts.month ?? 1) - 1
+            if index % step == 0, cursor > first,
+               cursor.timeIntervalSince(first) >= minGap, last.timeIntervalSince(cursor) >= minGap {
+                ticks.append(cursor)
+            }
+            guard let next = calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        ticks.append(last)
+        return ticks
+    }
+
     /// 기간이 길면 눈금을 성기게 둔다.
     private var xStride: Int {
-        guard let first = visiblePoints.first?.date, let last = visiblePoints.last?.date
-        else { return 5 }
+        guard let bounds = tickBounds else { return 5 }
+        let (first, last) = bounds
         let years = Calendar.app.dateComponents([.year], from: first, to: last).year ?? 0
         switch years {
         case ..<3: return 1
@@ -761,3 +937,29 @@ private struct LabelLayout: Layout {
     }
 }
 
+/// 카드에서만 누르기 · 끌기로 값을 읽는다 (215번). 크게 보기는 끌기가 넘기기라 손짓 겹이 따로 받는다.
+private struct CardSelection: ViewModifier {
+    let enabled: Bool
+    @Binding var date: Date?
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.chartXSelection(value: $date)
+        } else {
+            content
+        }
+    }
+}
+
+/// 좁혀 본 구간이 있을 때만 x 범위를 못 박는다 (215번). 없으면 지금까지처럼 점이 정한다 — 카드 모양이 그대로다.
+private struct ZoomedXScale: ViewModifier {
+    let domain: ClosedRange<Date>?
+
+    func body(content: Content) -> some View {
+        if let domain {
+            content.chartXScale(domain: domain)
+        } else {
+            content
+        }
+    }
+}

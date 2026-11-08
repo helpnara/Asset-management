@@ -24,6 +24,12 @@ enum DateText {
         return "\(parts.year ?? 0).\(twoDigits(parts.month))." + twoDigits(parts.day)
     }
 
+    /// `2026.11` — 궤적 크게 보기를 몇 달로 좁혔을 때의 x 눈금 (215번).
+    static func yearMonth(_ date: Date, calendar: Calendar = .app) -> String {
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        return "\(parts.year ?? 0)." + twoDigits(parts.month)
+    }
+
     /// `09.29`
     static func short(_ date: Date, calendar: Calendar = .app) -> String {
         let parts = calendar.dateComponents([.month, .day], from: date)

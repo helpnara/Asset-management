@@ -4,6 +4,10 @@ import SwiftUI
 
 /// **지난 일기.** 날짜 내림차순. 항목을 누르면 고치고, 밀어서 지운다.
 ///
+/// **단어로 찾기** (214번, 2026-11-08 사용자: *"지난 일기를 누르면 아래에 검색 입력 창이 나오고 거기서 단어 검색이
+/// 가능하게"*). 자산 탭의 찾기(`AssetsView`)와 같은 시스템 칸이라 자리는 시스템이 정한다(iOS 26 아이폰은 아래쪽).
+/// 목표 · 실적 · 감사 세 칸 어디에든 그 말이 있으면 남긴다. 일기는 기기 안에 다 있어 가진 목록을 거르기만 한다.
+///
 /// 일기는 이 사람의 것이라 `\.canEdit` 을 보지 않는다 (`DiaryCard` 참고).
 struct DiaryListView: View {
     @Environment(\.managedObjectContext) private var context
@@ -11,9 +15,36 @@ struct DiaryListView: View {
     @State private var editing: DiaryEntry?
     /// 지우기를 기다리는 일기 (199번 C9 — 180번에서 빠진 자리).
     @State private var pendingDelete = PendingDelete<DiaryEntry>()
+    @State private var query = ""
+
+    /// 찾는 말 — 앞뒤 빈칸은 뺀다(빈칸 하나만 친 것은 찾지 않은 것).
+    private var term: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// 보이는 일기 — 찾는 말이 없으면 전부.
+    private var shown: [DiaryEntry] {
+        guard !term.isEmpty else { return entries }
+        return entries.filter { entry in
+            [entry.goal, entry.result, entry.gratitude].contains { $0.localizedCaseInsensitiveContains(term) }
+        }
+    }
 
     var body: some View {
         List {
+            if !term.isEmpty && !entries.isEmpty {
+                Section {
+                    if shown.isEmpty {
+                        Text("‘\(term)’ 이(가) 든 날이 없습니다.")
+                            .font(.scaled(12.5))
+                            .foregroundStyle(Color.muted)
+                    }
+                } header: {
+                    // 몇 날이 걸렸나 — 결과가 길면 아래까지 내려 보지 않아도 안다.
+                    Text("‘\(term)’ — \(shown.count)일")
+                        .font(.scaled(11.5, weight: .medium))
+                        .foregroundStyle(Color.muted)
+                        .textCase(nil)
+                }
+            }
             if entries.isEmpty {
                 Section {
                     Text("아직 적은 날이 없습니다. 현황판 맨 위 칸에 오늘 한 줄을 적으면 여기 쌓입니다.")
@@ -21,11 +52,11 @@ struct DiaryListView: View {
                         .foregroundStyle(Color.muted)
                 }
             }
-            ForEach(entries) { entry in
+            ForEach(shown) { entry in
                 Button {
                     editing = entry
                 } label: {
-                    DiaryRow(entry: entry)
+                    DiaryRow(entry: entry, highlight: term)
                 }
                 .buttonStyle(.plain)
                 // 밀어서 지우기 + 확인 창 — 다른 목록과 같은 꼴 (180 · 181번). 예전에는 밀기 한 번에 사라졌다.
@@ -35,6 +66,7 @@ struct DiaryListView: View {
         .confirmsDelete(pendingDelete, title: "이 날의 일기를 삭제할까요?",
                         message: { _ in "목 · 실 · 감 세 줄이 함께 사라집니다. 되돌릴 수 없습니다." },
                         perform: { context.delete($0) })
+        .searchable(text: $query, prompt: "목표 · 실적 · 감사에서 찾기")
         .readableWidth()
         .navigationTitle("목 · 실 · 감")
         .navigationBarTitleDisplayMode(.inline)
@@ -66,6 +98,8 @@ struct DiaryListView: View {
 /// 목록에는 이 꼴을 쓴다.
 private struct DiaryRow: View {
     @ObservedObject var entry: DiaryEntry
+    /// 찾는 말 — 줄 안에서 굵게 (214번). 비어 있으면 그대로.
+    var highlight = ""
 
     var body: some View {
         // 다른 기기에서 지운 줄이 빠지기 전에 한 번 더 그려질 수 있다 (189번 계열).
@@ -88,6 +122,23 @@ private struct DiaryRow: View {
         .padding(.vertical, 2)
     }
 
+    /// 찾는 말이 나오는 자리마다 굵게. 대소문자 · 전각반각은 찾을 때와 같은 규칙(`localizedCaseInsensitive`)으로.
+    private func marked(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
+        guard !highlight.isEmpty else { return result }
+        var searchStart = text.startIndex
+        while searchStart < text.endIndex,
+              let found = text.range(of: highlight, options: [.caseInsensitive, .widthInsensitive],
+                                     range: searchStart..<text.endIndex, locale: .current) {
+            if let range = Range(found, in: result) {
+                result[range].inlinePresentationIntent = .stronglyEmphasized
+                result[range].foregroundColor = Color.dad
+            }
+            searchStart = found.upperBound
+        }
+        return result
+    }
+
     @ViewBuilder
     private func line(_ label: String, _ text: String) -> some View {
         if !text.isEmpty {
@@ -96,7 +147,7 @@ private struct DiaryRow: View {
                     .font(.scaled(11, weight: .medium))
                     .foregroundStyle(Color.muted)
                     .frame(width: Font.scaledLength(26), alignment: .leading)
-                Text(text)
+                Text(marked(text))
                     .font(.scaled(13))
                     .foregroundStyle(Color.ink)
             }
