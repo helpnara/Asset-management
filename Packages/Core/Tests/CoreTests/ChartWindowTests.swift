@@ -66,6 +66,7 @@ struct ChartWindowTests {
     @Test("짧은 창의 눈금은 1 · 2 · 3 · 6 달 간격")
     func monthStride() {
         #expect(ChartWindow.monthStride(months: 3) == 1)
+        #expect(ChartWindow.monthStride(months: 5) == 2)
         #expect(ChartWindow.monthStride(months: 8) == 2)
         #expect(ChartWindow.monthStride(months: 12) == 3)
         #expect(ChartWindow.monthStride(months: 23) == 6)

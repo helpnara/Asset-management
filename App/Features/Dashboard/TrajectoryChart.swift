@@ -415,8 +415,10 @@ struct TrajectoryChart: View {
                 AxisGridLine().foregroundStyle(Color.rule.opacity(0.6))
                 // 한국어 로케일에서 .dateTime.year() 는 "2031년" 이 된다.
                 // 축 라벨은 8pt 라서 그 한 글자가 눈금끼리 부딪히게 만든다.
-                AxisValueLabel(anchor: value.index == 0 ? .topLeading
-                                       : (value.index == value.count - 1 ? .topTrailing : .top)) {
+                // 달 눈금은 모두 안쪽 달의 1일이라 가운데에 단다 — 양 끝 붙임은 해 눈금(첫 점 · 끝 점) 몫이다.
+                AxisValueLabel(anchor: usesMonthTicks ? .top
+                                       : (value.index == 0 ? .topLeading
+                                          : (value.index == value.count - 1 ? .topTrailing : .top))) {
                     if let date = value.as(Date.self) {
                         Text(verbatim: usesMonthTicks ? DateText.yearMonth(date)
                                                       : "\(Calendar.app.component(.year, from: date))")
@@ -797,6 +799,13 @@ struct TrajectoryChart: View {
     /// 순자산이 음수인 구간이 있으면 그때만 0 아래로 내린다.
     private var domain: ClosedRange<Double> {
         let values = visiblePoints.map { $0.value(real: showsReal) }
+        // **좁혀 본 동안만 바닥을 띄운다** (215번, 11-08 CI 스크린샷 37). 몇 달을 크게 보려고 좁혔는데 바닥이 0이면
+        // 주간 기록이 위쪽 한 줄로 납작해져 "자세히" 가 안 된다. 보이는 값의 위아래에 여유를 두고 맞춘다 —
+        // 좁히지 않은 그림은 아래 규칙(바닥 0) 그대로라 처음 보는 모양은 정직하다. `전체 보기` 로 언제든 돌아간다.
+        if isLarge, zoom != nil, let low = values.min(), let high = values.max() {
+            let pad = max((high - low) * 0.15, abs(high) * 0.02, 1_000_000)
+            return (low - pad)...(high + pad)
+        }
         var upper = values.max() ?? 0
         if showsTarget && showsReal { upper = max(upper, Double(targetMinor)) }
         if let target = nominalTarget { upper = max(upper, target.value) }
@@ -865,15 +874,17 @@ struct TrajectoryChart: View {
         return bounds.1.timeIntervalSince(bounds.0) < 2 * 365 * 86_400
     }
 
-    /// 양 끝과, 그 사이 1 · 2 · 3 · 6 달마다 딱 떨어지는 달의 1일. 끝에 반 칸보다 가까운 안쪽 눈금은 뺀다.
+    /// 1 · 2 · 3 · 6 달마다 딱 떨어지는 달의 1일만 — 구간 끝 날짜는 세우지 않는다. 처음에는 양 끝도 세웠더니
+    /// 구간 첫날(`2026.08`)과 바로 다음 달 1일(`2026.09`)이 붙어 글씨가 포갰다(11-08 CI 스크린샷 37).
+    /// 끝에서 보름 안쪽은 글씨가 그림 밖으로 반쯤 나가므로 뺀다.
     private func monthTicks(from first: Date, to last: Date) -> [Date] {
         let calendar = Calendar.app
         let months = calendar.dateComponents([.month], from: first, to: last).month ?? 0
         let step = ChartWindow.monthStride(months: months)
-        let minGap = Double(step) * 30.44 * 86_400 / 2
-        var ticks = [first]
+        let minGap: Double = 15 * 86_400
+        var ticks: [Date] = []
         let start = calendar.dateComponents([.year, .month], from: first)
-        guard var cursor = calendar.date(from: start) else { return [first, last] }
+        guard var cursor = calendar.date(from: start) else { return [] }
         while cursor < last {
             let parts = calendar.dateComponents([.year, .month], from: cursor)
             let index = (parts.year ?? 0) * 12 + (parts.month ?? 1) - 1
@@ -884,7 +895,6 @@ struct TrajectoryChart: View {
             guard let next = calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
             cursor = next
         }
-        ticks.append(last)
         return ticks
     }
 

@@ -68,11 +68,12 @@ public enum ChartWindow {
         return step / window.length * width >= minSpacing
     }
 
-    /// 짧은 창의 눈금 간격(달). 눈금이 다섯 개 안팎이 되도록 1 · 2 · 3 · 6 달 중에서 고른다.
+    /// 짧은 창의 눈금 간격(달). 눈금이 네다섯 개 안팎이 되도록 1 · 2 · 3 · 6 달 중에서 고른다.
+    /// 아이폰 폭에서 `2026.11` 글씨가 여섯 개면 붙는다(11-08 CI 스크린샷 37) — 반년부터 두 달 간격.
     public static func monthStride(months: Int) -> Int {
         switch months {
-        case ..<6: return 1
-        case ..<11: return 2
+        case ..<4: return 1
+        case ..<9: return 2
         case ..<16: return 3
         default: return 6
         }
