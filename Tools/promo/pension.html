@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 국민연금 월 100만원</title>
+<!--
+  느린 부자 유튜브 쇼츠 18편 (2026-11-10). 1080×1920 세로, 34.5초, 소리 없음.
+  17편 첫날(조회 75 · 조회율 51.4%)에서 배운 것 — 쇼츠 피드는 0초부터 튼다. **답의 큰 숫자를 첫 물음에** 넣는다("3억").
+  새 각도: **국민연금을 자산으로 바꿔 보기** — 많이 찾는 주제.
+
+  숫자는 일반 셈(파이썬으로 대조, 11-10). 4% 규칙 · 세금 빼기 전 · 은퇴하자마자 받는다고 칠 때:
+    월 연금 × 12 ÷ 4%  = 월 연금 × 300 → 60만 1.8억 · 100만 3억 · 150만 4.5억
+    6편과 같은 집: (월 생활비 400만 × 12 + 취미 · 여행 600만 + 병원비 300만) × 25 = 14억 2,500만
+      연금 100만이 생활비를 덜어 주면 (300만 × 12 + 900만) × 25 = 11억 2,500만 → 3억 덜
+    물가 연 2% · 확정형 월 100만원의 오늘 돈: 20년 뒤 67만 3천 · 30년 뒤 55만 2천(거의 절반)
+  앱 화면은 CI 체험 자료 screenshots/06(계획) 하나. 길 이름은 PlanView `은퇴 후 소득` ·
+  IncomeStreamEditView `국민연금 얼마나 받을까 — 추정해서 채우기` 그대로다.
+  앱은 은퇴 목표 금액에서 연금을 빼지 않는다 — 궤적의 인출 구간에서 생활비에서 빼고 꺼낸다. 그래서 영상도 "자산 고갈" 줄에 테두리를 두른다.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+
+  /* 셈 줄 */
+  .calc { position: absolute; left: 70px; right: 70px; top: 400px; padding: 50px 56px; border-radius: 40px; background: #fff;
+          box-shadow: 0 26px 70px rgba(11,16,23,.14); }
+  .ln { display: flex; justify-content: space-between; align-items: baseline; font-size: 50px; font-weight: 700; padding: 14px 0;
+        font-variant-numeric: tabular-nums; }
+  .ln .l { color: var(--muted); }
+  .ln.sum { border-top: 4px solid #E3E8EB; margin-top: 12px; padding-top: 30px; }
+  .ln.sum .r { font-size: 110px; font-weight: 800; color: var(--forest-2); letter-spacing: -2px; }
+  .pills { position: absolute; left: 70px; right: 70px; top: 1120px; display: flex; flex-direction: column; gap: 22px; }
+  .pill { display: flex; justify-content: space-between; padding: 30px 46px; border-radius: 30px; background: #fff;
+          box-shadow: 0 16px 40px rgba(11,16,23,.10); font-size: 48px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .pill .r { color: var(--forest-2); }
+  .pill.hi { background: #FFF4CF; border: 4px solid var(--gold); }
+
+  .row { position: absolute; left: 70px; right: 70px; padding: 40px 50px; border-radius: 36px; background: #fff;
+         box-shadow: 0 26px 70px rgba(11,16,23,.16); }
+  .row .k { font-size: 40px; font-weight: 700; color: var(--muted); line-height: 1.35; }
+  .row .v { margin-top: 8px; font-size: 92px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+  .row.big { background: #FFF4CF; border: 5px solid var(--gold); }
+  .row.big .v { color: var(--gain); }
+  .row.warn .v { color: #9A2B2B; }
+
+  .path { position: absolute; left: 70px; right: 70px; top: 1300px; padding: 40px 48px; border-radius: 34px; background: var(--forest);
+          color: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.25); }
+  .path .k { font-size: 34px; font-weight: 700; color: rgba(255,255,255,.7); }
+  .path .v { margin-top: 12px; font-size: 44px; font-weight: 800; line-height: 1.35; }
+  .path .v b { color: var(--gold); }
+
+  .msg1 { top: 700px; font-size: 76px; font-weight: 800; color: rgba(255,255,255,.9); letter-spacing: -1.5px; }
+  .msg2 { top: 830px; font-size: 84px; font-weight: 800; color: var(--gold); letter-spacing: -1.5px; }
+  .msg3 { top: 1010px; font-size: 42px; font-weight: 500; color: rgba(255,255,255,.75); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 0. 물음 — 답의 큰 숫자를 물음에 -->
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">국민연금 월 100만원,</div>
+    <div class="center q2" id="q2">3억짜리 자산일까?</div>
+    <div class="center q3" id="q3">4% 규칙으로 거꾸로 셈하면</div>
+  </div>
+
+  <!-- 1. 셈 -->
+  <div id="s-math" class="layer">
+    <div class="title" id="math-title">4% 규칙을 거꾸로</div>
+    <div class="sub" id="math-sub">3억에서 해마다 4%를 꺼내면 1년 1,200만원</div>
+    <div class="calc" id="calc">
+      <div class="ln" id="l0"><span class="l">월 연금</span><span>100만원</span></div>
+      <div class="ln" id="l1"><span class="l">× 12개월</span><span>1,200만원</span></div>
+      <div class="ln" id="l2"><span class="l">÷ 4% (= × 25)</span><span></span></div>
+      <div class="ln sum" id="l3"><span class="l">자산으로 치면</span><span class="r">3억</span></div>
+    </div>
+    <div class="pills">
+      <div class="pill" id="p0"><span>월 60만원</span><span class="r">1.8억</span></div>
+      <div class="pill hi" id="p1"><span>월 100만원</span><span class="r">3억</span></div>
+      <div class="pill" id="p2"><span>월 150만원</span><span class="r">4.5억</span></div>
+    </div>
+  </div>
+
+  <!-- 2. 덜 모아도 되는 돈 — 6편과 같은 집 -->
+  <div id="s-less" class="layer">
+    <div class="title" id="less-title">그만큼 덜 모아도 됩니다</div>
+    <div class="sub" id="less-sub">월 생활비 400만원 · 취미 · 여행 600만 · 병원비 300만</div>
+    <div class="row" id="r0" style="top:400px"><div class="k">연금 없이 모을 돈</div><div class="v">14억 2,500만</div></div>
+    <div class="row" id="r1" style="top:720px"><div class="k">연금 100만원이 생활비를 덜어 주면</div><div class="v">11억 2,500만</div></div>
+    <div class="row big" id="r2" style="top:1040px"><div class="k">덜 모아도 되는 돈</div><div class="v">3억</div></div>
+    <div class="center" id="less-foot" style="top:1380px;font-size:34px;font-weight:500;color:var(--muted)">은퇴하자마자 받는다고 칠 때 · 세금 빼기 전</div>
+  </div>
+
+  <!-- 3. 물가 -->
+  <div id="s-infl" class="layer">
+    <div class="title" id="infl-title">단, 물가를 따라가야</div>
+    <div class="sub" id="infl-sub">물가 연 2% · 오늘 돈으로 바꾼 월 100만원</div>
+    <div class="row big" id="i0" style="top:400px"><div class="k">국민연금 — 물가를 따라 오른다</div><div class="v">30년 뒤에도 100만</div></div>
+    <div class="row warn" id="i1" style="top:740px"><div class="k">확정형 연금 — 액면 그대로</div><div class="v">20년 뒤 67만</div></div>
+    <div class="row warn" id="i2" style="top:1060px"><div class="k">30년 뒤면 거의 절반</div><div class="v">55만</div></div>
+  </div>
+
+  <!-- 4. 앱 — 계획 (screenshots/06, 1206 폭 → 창 940 폭 ×0.7794) -->
+  <div id="s-app" class="layer">
+    <div class="title" id="app-title">우리 집 연금으로는?</div>
+    <div class="sub" id="app-sub">연금을 적으면 생활비에서 빼고 나머지만 꺼냅니다</div>
+    <div class="window" id="app-win" style="height:880px">
+      <img src="../../screenshots/06-plan.png" style="top:-348px" alt="">
+      <div class="ring" id="app-r1" style="left:24px;top:378px;width:892px;height:130px"></div>
+      <div class="tag" id="app-t1" style="left:400px;top:520px">연금까지 넣고 셈한 고갈 해</div>
+    </div>
+    <div class="path" id="app-path">
+      <div class="k">계획 탭</div>
+      <div class="v">은퇴 후 소득 → <b>국민연금 얼마나 받을까</b><br>가입 기간 · 평균 소득으로 추정해서 채우기</div>
+    </div>
+  </div>
+
+  <!-- 5. 한 줄 -->
+  <div id="s-msg" class="layer">
+    <div class="center msg1" id="m1">연금은</div>
+    <div class="center msg2" id="m2">매달 들어오는 자산입니다</div>
+    <div class="center msg3" id="m3">모을 돈을 셈할 때 꼭 함께 적으세요</div>
+  </div>
+
+  <!-- 6. 마무리 -->
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">느리게, 그래도 꾸준히</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad · 서버 · 광고 · 회원가입 없음</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">4% 규칙 · 세금 빼기 전 · 물가 연 2% 가정의 계산이며 미래 수익을 보장하지 않습니다<br>실제 연금액은 국민연금공단에서 확인하세요 · 앱 화면은 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+// ── 시간표 (초) ───────────────────────────────────────────────
+const T = {
+  hook: [0.0, 3.2],
+  math: [3.2, 10.4],
+  less: [10.4, 16.2],
+  infl: [16.2, 21.6],
+  app:  [21.6, 27.6],
+  msg:  [27.6, 30.4],
+  cta:  [30.4, 34.5],
+};
+const DURATION = 34.5;
+// ── 도움 함수 (9편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`;
+}
+function tag(el, t, at, stay = 1.4) {
+  el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3));
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 앱 화면 장면 하나 — 제목 · 부제가 오르고 창이 아래서 올라온다. */
+function screenScene(t, key, prefix) {
+  const [a] = T[key];
+  rise($(`${prefix}-title`), t, a + 0.05);
+  rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const winIn = easeOut(prog(t, a, a + 0.6));
+  $(`${prefix}-win`).style.transform = `translateY(${(1 - winIn) * 300}px)`;
+  return a;
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+function render(t) {
+  const darkA = t < (T.hook[1] + T.math[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.msg[0] - OUT, T.msg[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+
+  const hookA = sceneAlpha(t, T.hook);
+  show($("s-hook"), hookA);
+  if (hookA) { rise($("q1"), t, 0.1); pop($("q2"), t, 0.45, 0.5); rise($("q3"), t, 1.3, 0.5, 30); }
+
+  const mA = sceneAlpha(t, T.math);
+  show($("s-math"), mA);
+  if (mA) {
+    const a = T.math[0];
+    rise($("math-title"), t, a + 0.05);
+    rise($("math-sub"), t, a + 0.25, 0.5, 30);
+    rise($("calc"), t, a + 0.4, 0.5, 60);
+    [0, 1, 2].forEach(i => rise($(`l${i}`), t, a + 0.7 + i * 0.6, 0.4, 20));
+    pop($("l3"), t, a + 2.6, 0.55);
+    [0, 1, 2].forEach(i => (i === 1 ? pop : rise)($(`p${i}`), t, a + 3.8 + i * 0.5, 0.45));
+  }
+
+  const lA = sceneAlpha(t, T.less);
+  show($("s-less"), lA);
+  if (lA) {
+    const a = T.less[0];
+    rise($("less-title"), t, a + 0.05);
+    rise($("less-sub"), t, a + 0.25, 0.5, 30);
+    rise($("r0"), t, a + 0.6, 0.5, 60);
+    rise($("r1"), t, a + 1.5, 0.5, 60);
+    pop($("r2"), t, a + 2.5, 0.55);
+    rise($("less-foot"), t, a + 3.3, 0.5, 20);
+  }
+
+  const iA = sceneAlpha(t, T.infl);
+  show($("s-infl"), iA);
+  if (iA) {
+    const a = T.infl[0];
+    rise($("infl-title"), t, a + 0.05);
+    rise($("infl-sub"), t, a + 0.25, 0.5, 30);
+    rise($("i0"), t, a + 0.6, 0.5, 60);
+    rise($("i1"), t, a + 1.6, 0.5, 60);
+    pop($("i2"), t, a + 2.6, 0.55);
+  }
+
+  const aA = sceneAlpha(t, T.app);
+  show($("s-app"), aA);
+  if (aA) {
+    const a = screenScene(t, "app", "app");
+    ring($("app-r1"), t, a + 1.0, 4.4); tag($("app-t1"), t, a + 1.0, 4.4);
+    rise($("app-path"), t, a + 1.8, 0.5, 60);
+  }
+
+  const gA = sceneAlpha(t, T.msg);
+  show($("s-msg"), gA);
+  if (gA) { const a = T.msg[0]; rise($("m1"), t, a + 0.1); pop($("m2"), t, a + 0.6, 0.5); rise($("m3"), t, a + 1.4, 0.5, 30); }
+
+  const cA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), cA);
+  if (cA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>
