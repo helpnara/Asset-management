@@ -1322,6 +1322,7 @@ struct DashboardView: View {
             }
             .padding(.vertical, 6)
             .cardSurface()
+        }
     }
 
     @ViewBuilder
