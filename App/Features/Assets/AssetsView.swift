@@ -391,17 +391,23 @@ struct AssetsView: View {
                     Image(systemName: isExpanded(member) ? "chevron.down" : "chevron.right")
                         .font(.scaled(9, weight: .semibold))
                         .foregroundStyle(Color.faint)
+                    // 이름 · 나이도 한 줄로 (217번) — 띠지를 한 줄로 묶자 남은 자리가 줄어
+                    // 이름이 "아 / 빠", 나이가 "4 / 2 / 세" 로 접혔다(CI 330).
                     Text(member.name.isEmpty ? "이름 없음" : member.name)
-                        .font(.scaled(12, weight: .bold))
+                        .font(.scaled(12.5, weight: .bold))
                         .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                        .fixedSize()
                     // **맨 위 사람이 가족 대표다** (168번). 순서가 곧 대표라 이
                     // 띠지가 "누가 대표인지" 를 보여 주는 자리다.
                     if members.count > 1, member.objectID == members.familyHead?.objectID {
                         HeadBadge()
                     }
                     Text("\(member.age)세")
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
             }
             .buttonStyle(.plain)
@@ -415,9 +421,13 @@ struct AssetsView: View {
                 .fixedSize()
                 .layoutPriority(1)
             if let share = familyShare(member) {
+                // 자리가 모자라면 이 줄이 먼저 줄어든다 — 이름 · 금액은 지킨다.
                 Text(share)
-                    .font(.figure(10))
+                    .font(.figure(11))
                     .foregroundStyle(Color.faint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .layoutPriority(-1)
             }
 
             NavigationLink {
