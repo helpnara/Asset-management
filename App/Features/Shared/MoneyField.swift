@@ -47,7 +47,7 @@ struct MoneyField: View {
             if isFocused && currentValue >= 10_000 {
                 Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: currentValue, currency: .krw), suffix: "원"))
                     .font(.figure(11, weight: .medium))
-                    .foregroundStyle(Color.dad)
+                    .foregroundStyle(Color.brand)
                     .transition(.opacity)
             }
             if let note {

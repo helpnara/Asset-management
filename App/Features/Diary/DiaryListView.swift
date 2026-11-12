@@ -132,7 +132,7 @@ private struct DiaryRow: View {
                                      range: searchStart..<text.endIndex, locale: .current) {
             if let range = Range(found, in: result) {
                 result[range].inlinePresentationIntent = .stronglyEmphasized
-                result[range].foregroundColor = Color.dad
+                result[range].foregroundColor = Color.brand
             }
             searchStart = found.upperBound
         }

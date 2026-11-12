@@ -3,8 +3,9 @@ import SwiftUI
 extension View {
     /// 자간을 넓힌 소문자 라벨. `가 족 총 자 산` 처럼 쓴다.
     func eyebrowStyle() -> some View {
-        self.font(.scaled(9, weight: .medium))
-            .tracking(2)
+        // 9pt · 자간 2 였다 — 원칙 4(11pt 아래 안 씀, 217번).
+        self.font(.scaled(11, weight: .medium))
+            .tracking(1)
             .foregroundStyle(Color.muted)
     }
 }

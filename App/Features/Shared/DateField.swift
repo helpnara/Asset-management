@@ -105,7 +105,7 @@ struct DateChip: View {
     var body: some View {
         Text(verbatim: text)
             .font(.figure(15))
-            .foregroundStyle(enabled ? Color.dad : Color.faint)
+            .foregroundStyle(enabled ? Color.brand : Color.faint)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.neutralSoft, in: RoundedRectangle(cornerRadius: 8))
@@ -174,9 +174,9 @@ private struct GridCell: View {
         Button(action: action) {
             Text(verbatim: text)
                 .font(.scaled(15, weight: selected ? .semibold : .regular))
-                .foregroundStyle(!enabled ? Color.faint : (selected ? Color.dad : Color.ink))
+                .foregroundStyle(!enabled ? Color.faint : (selected ? Color.brand : Color.ink))
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(selected ? Color.dadSoft : Color.neutralSoft, in: RoundedRectangle(cornerRadius: 10))
+                .background(selected ? Color.brandSoft : Color.neutralSoft, in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -206,7 +206,7 @@ private struct PagerHeader: View {
                 Button(action: onTitle) {
                     HStack(spacing: 4) {
                         Text(verbatim: title).font(.scaled(16, weight: .semibold)).foregroundStyle(Color.ink)
-                        Image(systemName: "chevron.down").font(.scaled(11, weight: .semibold)).foregroundStyle(Color.dad)
+                        Image(systemName: "chevron.down").font(.scaled(11, weight: .semibold)).foregroundStyle(Color.brand)
                     }
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
@@ -223,7 +223,7 @@ private struct PagerHeader: View {
             .disabled(!canGoForward)
             .accessibilityLabel("다음")
         }
-        .foregroundStyle(Color.dad)
+        .foregroundStyle(Color.brand)
     }
 }
 
@@ -461,9 +461,9 @@ private struct DayCell: View {
         Button(action: action) {
             Text(verbatim: "\(day)")
                 .font(.figure(15, weight: selected || isToday ? .semibold : .regular))
-                .foregroundStyle(!enabled ? Color.faint : (selected || isToday ? Color.dad : Color.ink))
+                .foregroundStyle(!enabled ? Color.faint : (selected || isToday ? Color.brand : Color.ink))
                 .frame(maxWidth: .infinity, minHeight: 40)
-                .background(selected ? Color.dadSoft : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                .background(selected ? Color.brandSoft : Color.clear, in: RoundedRectangle(cornerRadius: 10))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

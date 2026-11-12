@@ -255,7 +255,7 @@ private struct TodoRow: View {
                         Text(item.dueText)
                             .font(.figure(10.5))
                             .foregroundStyle(days < 0 ? Color.loss
-                                             : (days <= 14 ? Color.dad : Color.faint))
+                                             : (days <= 14 ? Color.brand : Color.faint))
                     }
                 }
             }

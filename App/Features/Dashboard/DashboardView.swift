@@ -65,7 +65,6 @@ struct DashboardView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     header
-                    Rectangle().fill(Color.ink).frame(height: 2)
 
                     if members.isEmpty {
                         // 오늘 한 줄은 자산이 없어도 쓴다 (마지막 묶음 1).
@@ -84,6 +83,7 @@ struct DashboardView: View {
                             cardView(card)
                         }
                     }
+                    Color.clear.frame(height: 28)
                 }
             }
             .fullScreenCover(item: $completedToShow) { session in
@@ -130,8 +130,6 @@ struct DashboardView: View {
             DiaryCard(embedsTitle: false)
         case .hero:
             hero
-            Rectangle().fill(Color.rule).frame(height: 1)
-                .padding(.horizontal, 20)
         case .weekly:
             // 보조 글은 카드 안(연속 기록)에 이미 있다 — 소제목에는 점검일만.
             sectionHeader("이번 주 점검",
@@ -198,32 +196,36 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("느 린 부 자").eyebrowStyle()
+        // 자간 벌린 9pt `느 린 부 자` 와 그 아래 굵은 검은 줄은 종이의 머리였다(217번 D2 · D4).
+        // 앱 이름은 브랜드 색 한 줄, 계획 제목은 큰 제목으로.
+        VStack(alignment: .leading, spacing: 4) {
+            Text("느린 부자")
+                .font(.scaled(12, weight: .semibold))
+                .foregroundStyle(Color.brand)
             Text(planTitle)
-                .font(.scaled(16, weight: .bold))
+                .font(.scaled(24, weight: .bold))
                 .foregroundStyle(Color.ink)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 혼자 쓰면 "가족" 이 어색하다 (docs/10 §3-2).
             sectionHeader(members.count > 1 ? "가족 총자산" : "총자산")
+            VStack(alignment: .leading, spacing: 0) {
             Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                 .font(.figure(38, weight: .semibold))
                 .foregroundStyle(Color.ink)
-                .padding(.horizontal, 20)
+                .contentTransition(.numericText())
             if !rollup.liabilities.isZero {
                 Text("자산 \(Won.abbreviated(rollup.assets)) · 부채 \(Won.abbreviated(rollup.liabilities))")
-                    .font(.scaled(11.5))
+                    .font(.scaled(12))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
-                    .padding(.horizontal, 20)
             }
             // **계획선 위인가 아래인가** (docs/08-feedback.md 37번).
             // 총액만 보면 하락장에 앱을 열 이유가 없다. `계획보다 위` 라는
@@ -231,29 +233,31 @@ struct DashboardView: View {
             // 이유가 된다. 로드맵 M2 의 완료 기준이 이 줄이다.
             if let gap = planGap {
                 Text(gap.text)
-                    .font(.figure(12.5, weight: .medium))
+                    .font(.figure(13, weight: .medium))
                     .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
-                    .padding(.top, 7)
-                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
             }
+            }
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 18)
+            .cardSurface()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 20)
     }
 
     /// 루틴으로 되돌리는 자리. 헤더 바로 아래, 궤적보다 위 (설계 2.2.0).
     private var weeklyBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: didReviewThisWeek ? "checkmark.circle" : "calendar")
-                .font(.scaled(15, weight: .regular))
-                .foregroundStyle(didReviewThisWeek ? Color.gain : Color.ink)
+            Image(systemName: didReviewThisWeek ? "checkmark.circle.fill" : "calendar")
+                .font(.scaled(17, weight: .regular))
+                .foregroundStyle(didReviewThisWeek ? Color.gain : Color.brand)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(weeklyTitle)
-                    .font(.scaled(12, weight: .medium))
+                    .font(.scaled(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text(weeklySubtitle)
-                    .font(.scaled(10))
+                    .font(.scaled(11.5))
                     .foregroundStyle(Color.muted)
             }
             Spacer(minLength: 0)
@@ -265,26 +269,26 @@ struct DashboardView: View {
                     // 창은 RootView 가 탭 바깥에서 띄운다 (199번 C4 — 아이패드를 돌려도 안 닫히게).
                     AppRoute.shared.showReview = true
                 } label: {
+                    // 각진 검은 테두리였다 — 주 단추는 채운 캡슐, 끝낸 주는 옅은 캡슐(217번, 원칙 6).
                     Text(didReviewThisWeek ? "다시 열기" : "지금 입력")
-                        .font(.scaled(11.5, weight: .medium))
-                        .foregroundStyle(didReviewThisWeek ? Color.muted : Color.ink)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 7)
-                        .overlay(Rectangle().stroke(didReviewThisWeek ? Color.ruleStrong : Color.ink, lineWidth: 1))
+                        .font(.scaled(13, weight: .semibold))
+                        .foregroundStyle(didReviewThisWeek ? Color.brand : Color.onBrand)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(didReviewThisWeek ? Color.brandSoft : Color.brand, in: Capsule())
                         // 단추 모양은 그대로, 누르는 자리만 넓힌다 (199번 C6).
                         .padding(.vertical, 6)
                         .contentShape(Rectangle())
                 }
             }
         }
-        .padding(13)
+        .padding(.horizontal, Card.inset)
+        .padding(.vertical, 10)
         // **카드 아무 데나 눌러도 연다** (199번 C6). 매주 누르는 자리인데 단추가 작았다.
         .contentShape(Rectangle())
         .onTapGesture { if canEdit { AppRoute.shared.showReview = true } }
-        // 바탕이 `surface` 가 됐으므로 이 카드는 한 겹 위(`raised`)로 올린다.
-        // 그러지 않으면 카드가 바탕에 묻혀 사라진다 (35번).
-        .background(Color.raised)
-        .padding(.horizontal, 20)
+        // 바탕(`ground`) 위 둥근 카드 한 장 (35 · 217번).
+        .cardSurface()
     }
 
     /// 소제목이 "이번 주 점검" 을 이미 말하므로 카드 안에는 상태만 (89번).
@@ -331,10 +335,10 @@ struct DashboardView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 11)
-            .background(Color.alertSoft)
-            .padding(.top, 12)
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 12)
+            .cardSurface(.alertSoft)
+            .padding(.top, 10)
         }
     }
 
@@ -418,12 +422,13 @@ struct DashboardView: View {
                               trailing: "마지막 점검 \(DateText.short(latest.weekAnchor)) 기준")
                 // 세 숫자 칸은 폭을 고정하고 라벨이 나머지를 다 가진다 — `Grid` 는
                 // 내용에 맞춰 줄어들어 화면 폭의 절반에서 끝났다.
+                VStack(alignment: .leading, spacing: 0) {
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
                         Spacer(minLength: 0)
                         ForEach(["증감", "넣은 돈", "자란 돈"], id: \.self) { title in
                             Text(title)
-                                .font(.scaled(9.5))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                                 .frame(width: Self.attributionColumn, alignment: .trailing)
                         }
@@ -442,7 +447,7 @@ struct DashboardView: View {
                                 figure(split.gained, tone: true)
                             } else {
                                 Text("기록 없음")
-                                    .font(.scaled(10.5))
+                                    .font(.scaled(11))
                                     .foregroundStyle(Color.faint)
                             }
                         }
@@ -450,21 +455,22 @@ struct DashboardView: View {
                         Rectangle().fill(Color.rule).frame(height: 1)
                     }
                 }
-                .padding(.horizontal, 20)
                 Text("넣은 돈은 계획의 월 적립을 날수로 나눠 어림한 값이고, 목돈 이벤트는 날짜대로 더했습니다. 자란 돈은 증감에서 그것을 뺀 나머지입니다.")
-                    .font(.scaled(10))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
                     .lineSpacing(3)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.top, 10)
                 if let line = lumpLine(rows) {
                     Text(line)
-                        .font(.scaled(10.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                         .lineSpacing(3)
-                        .padding(.horizontal, 20)
                         .padding(.top, 4)
                 }
+                }
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 14)
+                .cardSurface()
             }
         }
     }
@@ -523,7 +529,7 @@ struct DashboardView: View {
             } label: {
                 HStack(spacing: 10) {
                     Text(monthlyLine(summary))
-                        .font(.figure(11.5))
+                        .font(.figure(12.5))
                         .foregroundStyle(Color.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -532,9 +538,10 @@ struct DashboardView: View {
                         .font(.scaled(11, weight: .semibold))
                         .foregroundStyle(Color.faint)
                 }
-                .padding(13)
-                .background(Color.raised)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+                .cardSurface()
             }
             .buttonStyle(.plain)
         }
@@ -639,22 +646,27 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("전체 자산 로드맵",
                               trailing: plan.map { "\($0.yearsToRetirement)년 남음" } ?? "")
+                VStack(alignment: .leading, spacing: 0) {
                 if let depletionYear {
                     // **제목 바로 아래 빨간 부제** (158번). 예전에는 이 줄에만
                     // 좌우 여백이 없어 화면 맨 왼쪽 끝에 닿아 있었다 — 위(제목)도
                     // 아래(정거장 · 각주)도 20 인데 여기만 0 이었다.
                     Text("\(String(depletionYear))년에 바닥납니다")
-                        .font(.scaled(11.5, weight: .medium))
+                        .font(.scaled(12, weight: .medium))
                         .foregroundStyle(Color.loss)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Card.inset)
                         .padding(.bottom, 6)
                 }
+                // 정거장 줄은 제 안에 20 을 두르고 그린다 — 카드 안에서는 그대로 둔다(줄이 카드 끝까지 닿지 않게).
                 RoadmapStrip(stops: roadmapStops) { selectedStop = $0 }
                     .padding(.bottom, 4)
                 Text("정거장을 누르면 그때까지의 적립 · 수익과 구성원별 예상이 보입니다")
-                    .font(.scaled(9.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Card.inset)
+                }
+                .padding(.vertical, 14)
+                .cardSurface()
             }
         }
     }
@@ -746,25 +758,24 @@ struct DashboardView: View {
         if let years = PlanTrack.yearsSincePlanReview(plan) {
             HStack(spacing: 10) {
                 Image(systemName: "calendar.badge.clock")
-                    .font(.scaled(15))
-                    .foregroundStyle(Color.ink)
+                    .font(.scaled(16))
+                    .foregroundStyle(Color.brand)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("계획을 \(years)년째 안 고쳤습니다")
-                        .font(.scaled(12, weight: .medium))
+                        .font(.scaled(13, weight: .semibold))
                         .foregroundStyle(Color.ink)
                     Text("기대수익률 · 물가 · 목표 금액을 지금도 그렇게 보시나요?")
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                 }
                 Spacer(minLength: 0)
                 Button("계획 열기") { AppRoute.shared.selectedTab = RootView.Tab.plan }
-                    .font(.scaled(11.5, weight: .medium))
-                    .foregroundStyle(Color.ink)
+                    .buttonStyle(SecondaryCapsule())
             }
-            .padding(13)
-            .background(Color.raised)
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 12)
+            .cardSurface()
+            .padding(.top, 10)
         }
     }
 
@@ -846,7 +857,9 @@ struct DashboardView: View {
                         lifeEventRow(event)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 6)
+                .cardSurface()
             }
         }
     }
@@ -952,9 +965,10 @@ struct DashboardView: View {
                 Spacer()
             }
             .padding(.horizontal, 20)
-            .padding(.top, 22)
+            .padding(.top, 26)
             .padding(.bottom, 10)
 
+            VStack(alignment: .leading, spacing: 0) {
             // 기간 선택은 차트가 들고 있다. 창을 좁히면 목표선도 차트가 스스로 뺀다.
             TrajectoryChart(
                 points: trajectoryPoints,
@@ -969,7 +983,7 @@ struct DashboardView: View {
                 depletionDate: projection?.depletion,
                 facts: trajectoryFacts
             )
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
 
             HStack(spacing: 14) {
                 legend(color: .ink, dashed: false, label: "실제 기록")
@@ -984,22 +998,25 @@ struct DashboardView: View {
                 }
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Card.inset)
             .padding(.top, 8)
 
             if let summary = trajectorySummary {
                 Text(summary)
-                    .font(.scaled(12.5))
+                    .font(.scaled(13))
                     .foregroundStyle(Color.bodyText)
                     .lineSpacing(4)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Card.inset)
                     .padding(.top, 12)
                 Text(assumptionLine)
-                    .font(.scaled(10))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Card.inset)
                     .padding(.top, 5)
             }
+            }
+            .padding(.vertical, 14)
+            .cardSurface()
         }
     }
 
@@ -1093,7 +1110,7 @@ struct DashboardView: View {
     private var memberBreakdown: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader("구성원", trailing: "\(members.count)명")
-            Rectangle().fill(Color.rule).frame(height: 1)
+            VStack(spacing: 0) {
             ForEach(members) { member in
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -1102,13 +1119,13 @@ struct DashboardView: View {
                                 .font(.scaled(13.5, weight: .bold))
                                 .foregroundStyle(Color.ink)
                             Text("\(member.roleNote.isEmpty ? "" : member.roleNote + " · ")\(member.age)세")
-                                .font(.scaled(10))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                         }
                         // **사람마다 연속 주** (C8). 안정화 기준 2 "넷이 각자
                         // 4주 연속" 을 앱이 직접 센다.
                         Text(memberStreakText(member))
-                            .font(.scaled(9.5))
+                            .font(.scaled(11))
                             .foregroundStyle(Color.faint)
                     }
                     Spacer(minLength: 0)
@@ -1116,10 +1133,16 @@ struct DashboardView: View {
                         .font(.figure(15, weight: .semibold))
                         .foregroundStyle(Color.member(member.colorIndex))
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Card.inset)
                 .padding(.vertical, 13)
-                Rectangle().fill(Color.rule).frame(height: 1)
+                // 줄 사이에만 — 카드의 맨 아래에는 줄을 긋지 않는다.
+                if member.id != members.last?.id {
+                    Rectangle().fill(Color.rule).frame(height: 1)
+                        .padding(.leading, Card.inset)
+                }
             }
+            }
+            .cardSurface()
         }
     }
 
@@ -1142,14 +1165,12 @@ struct DashboardView: View {
         // 본문 밖에서 한 번씩만 돈다.
         if let result = diagnosis {
 
+            sectionHeader("자산 진단")
             Button {
                 AppRoute.shared.wantsDiagnostics = true
                 AppRoute.shared.selectedTab = RootView.Tab.more
             } label: {
                 VStack(alignment: .leading, spacing: 0) {
-                    sectionHeader("자산 진단")
-                    Rectangle().fill(Color.rule).frame(height: 1)
-
                     HStack(spacing: 14) {
                         diagnosisTally("조치", result.count(.act), .loss)
                         diagnosisTally("주의", result.count(.watch), Color.dad)
@@ -1162,20 +1183,20 @@ struct DashboardView: View {
                             .font(.scaled(11, weight: .semibold))
                             .foregroundStyle(Color.faint)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
 
                     if let first = result.sorted.first, first.status != .pass {
                         Text(first.title + " — " + first.headline)
-                            .font(.scaled(11))
+                            .font(.scaled(12))
                             .foregroundStyle(Color.muted)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 20)
                             .padding(.top, 8)
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+                .cardSurface()
             }
             .buttonStyle(.plain)
         }
@@ -1196,15 +1217,12 @@ struct DashboardView: View {
         if let index = PrincipleRotation.index(count: principles.count, on: .now),
            principles.indices.contains(index) {
             let principle = principles[index]
+            sectionHeader("오늘의 운용 원칙",
+                          trailing: "\(index + 1) / \(principles.count)")
             Button {
                 AppRoute.shared.wantsPrinciples = true
                 AppRoute.shared.selectedTab = RootView.Tab.more
             } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    sectionHeader("오늘의 운용 원칙",
-                                  trailing: "\(index + 1) / \(principles.count)")
-                    Rectangle().fill(Color.rule).frame(height: 1)
-
                     HStack(alignment: .top, spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(principle.title)
@@ -1214,7 +1232,7 @@ struct DashboardView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             if !principle.detail.isEmpty {
                                 Text(principle.detail)
-                                    .font(.scaled(11.5))
+                                    .font(.scaled(12.5))
                                     .foregroundStyle(Color.muted)
                                     .multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -1225,10 +1243,10 @@ struct DashboardView: View {
                             .font(.scaled(11, weight: .semibold))
                             .foregroundStyle(Color.faint)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
-                }
+                    .padding(.horizontal, Card.inset)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                    .cardSurface()
             }
             .buttonStyle(.plain)
         }
@@ -1243,16 +1261,14 @@ struct DashboardView: View {
             .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
         if !due.isEmpty {
             let overdue = due.filter { ($0.daysRemaining ?? 0) < 0 }.count
+            sectionHeader("챙길 것",
+                          trailing: overdue > 0
+                            ? "30일 안 \(due.count - overdue) · 지난 것 \(overdue)"
+                            : "30일 안 \(due.count)")
             Button {
                 AppRoute.shared.wantsTodos = true
                 AppRoute.shared.selectedTab = RootView.Tab.more
             } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    sectionHeader("챙길 것",
-                                  trailing: overdue > 0
-                                    ? "30일 안 \(due.count - overdue) · 지난 것 \(overdue)"
-                                    : "30일 안 \(due.count)")
-                    Rectangle().fill(Color.rule).frame(height: 1)
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(due.prefix(3)) { item in
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -1262,7 +1278,7 @@ struct DashboardView: View {
                                     .lineLimit(1)
                                 Spacer(minLength: 8)
                                 Text(item.dueText)
-                                    .font(.figure(11))
+                                    .font(.figure(12))
                                     .foregroundStyle((item.daysRemaining ?? 0) < 0 ? Color.loss : Color.muted)
                                     .fixedSize()
                             }
@@ -1273,10 +1289,10 @@ struct DashboardView: View {
                                 .foregroundStyle(Color.faint)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
-                }
+                    .padding(.horizontal, Card.inset)
+                    .padding(.vertical, 14)
+                    .contentShape(Rectangle())
+                    .cardSurface()
             }
             .buttonStyle(.plain)
         }
@@ -1288,7 +1304,7 @@ struct DashboardView: View {
                 .font(.figure(15, weight: .bold))
                 .foregroundStyle(count > 0 ? color : Color.faint)
             Text(label)
-                .font(.scaled(10.5))
+                .font(.scaled(11.5))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -1296,15 +1312,16 @@ struct DashboardView: View {
     private var totals: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader("자산 · 부채 나눠 보기")
-            Rectangle().fill(Color.rule).frame(height: 1)
+            VStack(alignment: .leading, spacing: 0) {
             totalRow("투자자산", rollup.investable)
-            totalRow("총자산", rollup.assets, emphasized: true)
+            totalRow("총자산", rollup.assets, emphasized: true, ruled: !rollup.liabilities.isZero)
             if !rollup.liabilities.isZero {
-                totalRow("부채", rollup.liabilities)
+                totalRow("부채", rollup.liabilities, ruled: false)
             }
             countrySplit
-        }
-        .padding(.bottom, 28)
+            }
+            .padding(.vertical, 6)
+            .cardSurface()
     }
 
     @ViewBuilder
@@ -1321,7 +1338,7 @@ struct DashboardView: View {
                     Spacer()
                     Text("미국 \(split[1])")
                 }
-                .font(.scaled(10.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
 
                 GeometryReader { proxy in
@@ -1332,9 +1349,11 @@ struct DashboardView: View {
                     }
                 }
                 .frame(height: 5)
+                .clipShape(Capsule())
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
+            .padding(.horizontal, Card.inset)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
         }
     }
 
@@ -1343,7 +1362,7 @@ struct DashboardView: View {
     }
 
 
-    private func totalRow(_ label: String, _ money: Money, emphasized: Bool = false) -> some View {
+    private func totalRow(_ label: String, _ money: Money, emphasized: Bool = false, ruled: Bool = true) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text(label)
@@ -1354,25 +1373,29 @@ struct DashboardView: View {
                     .font(.figure(12.5, weight: emphasized ? .bold : .medium))
                     .foregroundStyle(Color.ink)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 9)
-            Rectangle().fill(Color.rule).frame(height: 1)
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 10)
+            if ruled {
+                Rectangle().fill(Color.rule).frame(height: 1)
+                    .padding(.leading, Card.inset)
+            }
         }
     }
 
     private func sectionHeader(_ title: String, trailing: String = "") -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.scaled(14, weight: .bold))
+                .font(.scaled(15, weight: .bold))
                 .foregroundStyle(Color.ink)
             Spacer()
             Text(trailing)
-                .font(.scaled(10))
-                .foregroundStyle(Color.faint)
+                .font(.scaled(11.5))
+                .foregroundStyle(Color.muted)
         }
+        // 카드 밖, 바탕 위의 머리글 — 카드(가장자리 16)보다 4 안쪽에서 시작한다 (217번).
         .padding(.horizontal, 20)
-        .padding(.top, 22)
-        .padding(.bottom, 8)
+        .padding(.top, 26)
+        .padding(.bottom, 10)
     }
 
     /// 빈 상태는 다음 한 걸음을 **누를 수 있게** 둔다 (설계 2.7).
@@ -1393,12 +1416,12 @@ struct DashboardView: View {
             } label: {
                 Label("구성원 추가하기", systemImage: "person.badge.plus")
                     .font(.scaled(14, weight: .semibold))
-                    .foregroundStyle(Color.onInk)
+                    .foregroundStyle(Color.onBrand)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 8)
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color.ink)
+            .tint(Color.brand)
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

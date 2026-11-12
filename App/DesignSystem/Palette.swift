@@ -42,9 +42,24 @@ extension Color {
     /// `ink` 가 뒤집히므로 이것도 같이 뒤집혀야 읽힌다.
     static let onInk = Color(light: 0xFFFFFF, dark: 0x0E1216)
 
+    // MARK: 브랜드 (217번, 11-12 사용자: "숲 초록 · 금으로")
+    //
+    // 아이콘의 새싹(숲 초록)과 동전(금)이 앱 안의 강조색이 된다 — 그전에는 아빠 파랑 · 검정 ·
+    // 각진 검은 테두리 셋이 강조를 나눠 가졌다(docs/23 D5). **강조는 `brand` 하나**이고,
+    // 금은 이정표 · 축하처럼 드문 순간에만 쓴다(원칙 3). 구성원 색(`dad` …)은 그 사람을 가리킬 때만.
+
+    /// 앱의 강조색 — 주 단추 · 링크 · 고른 것 · 앱 틴트. 흰 바탕 위 글자로도 읽힌다.
+    static let brand = Color(light: 0x1F5640, dark: 0x6CC59A)
+    /// `brand` 로 칠한 면 위의 글자.
+    static let onBrand = Color(light: 0xFFFFFF, dark: 0x0E1216)
+    /// `brand` 의 옅은 판 — 보조 단추 바탕 · 띠지 · 고른 칸.
+    static let brandSoft = Color(light: 0xE6F0EA, dark: 0x1B2E25)
+    /// 금 — 면 · 점 · 아이콘에만(흰 바탕 위 작은 글자로는 흐리다).
+    static let gold = Color(light: 0xD9A82E, dark: 0xE2B33E)
+    /// 금의 옅은 판 — 이정표 · 축하 줄의 바탕.
+    static let goldSoft = Color(light: 0xFBF1D3, dark: 0x33291A)
+
     static let dad = Color(light: 0x1D5E7F, dark: 0x6FB4D2)
-    /// 날짜 칸에서 고른 날 · 달 · 해의 옅은 바탕 (216번) — 강조색(`dad`)의 아주 옅은 판.
-    static let dadSoft = Color(light: 0xE4EFF5, dark: 0x1A2D38)
     static let mom = Color(light: 0x8E4650, dark: 0xD98C97)
     static let son = Color(light: 0x2A7A66, dark: 0x63C6AC)
     static let daughter = Color(light: 0x7A5A2E, dark: 0xC9A469)

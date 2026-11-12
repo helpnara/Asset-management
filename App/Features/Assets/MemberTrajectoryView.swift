@@ -154,7 +154,7 @@ struct MemberTrajectoryView: View {
                 ),
                 in: 0...5_000_000, step: 100_000
             )
-            .tint(Color.dad)
+            .tint(Color.brand)
 
             if monthlyMinor != nil, monthlyMinor != plannedMonthly {
                 Button("계획값으로 되돌리기") { monthlyMinor = nil }

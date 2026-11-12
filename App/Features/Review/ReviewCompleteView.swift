@@ -326,15 +326,16 @@ struct ReviewCompleteView: View {
             Button {
                 close()
             } label: {
+                // 각진 검은 단추였다 — 주 단추는 채운 캡슐 하나(217번, 원칙 6).
                 Text("현황판에서 보기")
-                    .font(.scaled(13.5, weight: .medium))
-                    .foregroundStyle(Color.onInk)
+                    .font(.scaled(14, weight: .semibold))
+                    .foregroundStyle(Color.onBrand)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
-                    .background(Color.ink, in: RoundedRectangle(cornerRadius: 3))
+                    .background(Color.brand, in: Capsule())
             }
             Text("다음 점검 \(nextReviewText) \(ReviewSettings.weekdayName)")
-                .font(.scaled(10))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
         }
         .padding(20)

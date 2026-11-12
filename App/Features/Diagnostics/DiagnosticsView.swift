@@ -207,7 +207,7 @@ struct DiagnosticsView: View {
                     if canManageHousehold {
                         Button("순서 바꾸기") { isEditingCriteria = true }
                             .font(.scaled(11, weight: .medium))
-                            .foregroundStyle(Color.dad)
+                            .foregroundStyle(Color.brand)
                             .buttonStyle(.plain)
                     }
                 }
@@ -227,7 +227,7 @@ struct DiagnosticsView: View {
                         .font(.scaled(9))
                 }
                 .font(.scaled(11))
-                .foregroundStyle(Color.dad)
+                .foregroundStyle(Color.brand)
             }
 
             if expanded.contains(diagnosis.id) {

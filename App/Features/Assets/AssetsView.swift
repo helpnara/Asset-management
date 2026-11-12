@@ -430,7 +430,7 @@ struct AssetsView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.dad)
+            .foregroundStyle(Color.brand)
             .accessibilityLabel("\(member.name) 궤적 보기")
 
             if mayEdit(member) {
@@ -440,7 +440,7 @@ struct AssetsView: View {
                         .contentShape(Rectangle())
                 }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.dad)
+                    .foregroundStyle(Color.brand)
             }
         }
         .textCase(nil)
@@ -577,7 +577,7 @@ struct AssetsView: View {
                                 .font(.scaled(12))
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(Color.dad)
+                        .foregroundStyle(Color.brand)
                     }
 
                     if account.canSetTargets {
@@ -588,7 +588,7 @@ struct AssetsView: View {
                                 .font(.scaled(12))
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(Color.dad)
+                        .foregroundStyle(Color.brand)
                     }
                 }
                 .padding(.leading, 12)

@@ -67,13 +67,13 @@ struct WelcomeView: View {
                         if isAsking { ProgressView().controlSize(.small).tint(.white) }
                         Text("토요일 알림 받기")
                             .font(.scaled(15, weight: .semibold))
-                            .foregroundStyle(Color.onInk)
+                            .foregroundStyle(Color.onBrand)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color.ink)
+                .tint(Color.brand)
                 .disabled(isAsking || didAsk)
 
                 Button("나중에 하기") { onFinish() }
@@ -88,7 +88,7 @@ struct WelcomeView: View {
                 } label: {
                     Label("체험 자료로 둘러보기", systemImage: "sparkles")
                         .font(.scaled(13, weight: .medium))
-                        .foregroundStyle(Color.dad)
+                        .foregroundStyle(Color.brand)
                 }
                 .disabled(isAsking)
                 .padding(.top, 4)
@@ -109,7 +109,7 @@ struct WelcomeView: View {
     private func point(_ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Circle()
-                .fill(Color.dad)
+                .fill(Color.brand)
                 .frame(width: 7, height: 7)
                 .padding(.top, 5)
             VStack(alignment: .leading, spacing: 3) {

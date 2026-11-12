@@ -162,7 +162,7 @@ struct RootView: View {
                     // 점검 창은 탭 위 알림 줄을 덮는다 — 저장 실패를 여기서도 보인다 (199번 C3).
                     .saveFailureBand()
                     // 탭 안에 달려 있을 때 물려받던 둘 — 탭 바깥으로 나오며 직접 준다.
-                    .tint(Color.ink)
+                    .tint(Color.brand)
                     .scrollDismissesKeyboard(.interactively)
             }
             // 순자산 궤적 크게 보기 (204번) — 점검 창과 같은 까닭으로 탭 바깥에.
@@ -171,7 +171,7 @@ struct RootView: View {
                 set: { route.expandedTrajectory = $0 }
             )) { content in
                 TrajectoryDetailView(content: content)
-                    .tint(Color.ink)
+                    .tint(Color.brand)
             }
             // 제목은 사람이 누른 알림 동작의 이름 (196번). 예전에는 "이번 주 점검 완료" 라서
             // 보기 전용 폰의 "기록하지 않았습니다" 안내에도 완료라는 제목이 붙었다.
@@ -423,7 +423,7 @@ struct RootView: View {
                 .tabItem { Label("더보기", systemImage: "ellipsis") }
                 .tag(Tab.more)
         }
-        .tint(Color.ink)
+        .tint(Color.brand)
         // 숫자 키패드에는 return 키가 없다. `완료` 버튼(MoneyField)에 더해
         // **쓸어내려도 닫히게** 한다. 이 값은 환경으로 내려가므로 여기 한 번이면
         // 아래의 모든 Form·List·ScrollView 에 걸린다 (docs/08-feedback.md 2번).

@@ -497,7 +497,7 @@ struct WeeklyReviewView: View {
                 if isActive && holding.valueMinor >= 10_000 {
                     Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: holding.valueMinor, currency: .krw), suffix: "원"))
                         .font(.figure(10.5, weight: .medium))
-                        .foregroundStyle(Color.dad)
+                        .foregroundStyle(Color.brand)
                 }
                 HStack(spacing: 4) {
                     if isLargeChange(holding) {

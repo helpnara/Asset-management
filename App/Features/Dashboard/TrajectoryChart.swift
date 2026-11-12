@@ -187,7 +187,7 @@ struct TrajectoryChart: View {
                     // 좁혀 본 것을 한 번에 되돌린다 (215번). 기간 칸을 다시 눌러도 같다.
                     Button("전체 보기") { zoom = nil }
                         .font(.scaled(12, weight: .medium))
-                        .foregroundStyle(Color.dad)
+                        .foregroundStyle(Color.brand)
                 }
             }
 
@@ -246,7 +246,7 @@ struct TrajectoryChart: View {
         if let markedDate, let readout = readout(at: markedDate) {
             Text(readout)
                 .font(.figure(isLarge ? 13 : 10.5, weight: .medium))
-                .foregroundStyle(Color.dad)
+                .foregroundStyle(Color.brand)
                 .lineLimit(2)
         } else {
             Text(isLarge ? "두 손가락으로 벌려 확대 · 끌어서 넘기기 · 누르거나 길게 눌러 끌면 그 시점의 값"

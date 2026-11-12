@@ -106,9 +106,10 @@ struct DiaryCard: View {
                 .onTapGesture { beginEditing() }
             }
         }
-        .padding(13)
-        .background(Color.raised)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Card.inset)
+        .padding(.vertical, 14)
+        // 둥근 카드 한 장 (217번) — 각진 흰 상자였다.
+        .cardSurface()
         .padding(.top, embedsTitle ? 12 : 0)
         .navigationDestination(for: DiaryDestination.self) { _ in DiaryListView() }
         .onAppear(perform: load)

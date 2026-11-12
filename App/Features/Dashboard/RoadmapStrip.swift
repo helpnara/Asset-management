@@ -89,7 +89,7 @@ struct RoadmapStrip: View {
                         let emphasized = stop.isNow || stop.isGoal
                         Text(Won.compact(amount))
                             .font(.figure(emphasized ? 11 : 9.5, weight: emphasized ? .bold : .medium))
-                            .foregroundStyle(stop.isNow ? Color.dad : (emphasized ? Color.ink : Color.muted))
+                            .foregroundStyle(stop.isNow ? Color.brand : (emphasized ? Color.ink : Color.muted))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
@@ -113,7 +113,7 @@ struct RoadmapStrip: View {
     @ViewBuilder
     private func segment(filled: Bool) -> some View {
         Rectangle()
-            .fill(filled ? Color.dad.opacity(0.55) : Color.rule)
+            .fill(filled ? Color.brand.opacity(0.55) : Color.rule)
             .frame(height: 1.5)
     }
 
@@ -122,7 +122,7 @@ struct RoadmapStrip: View {
             .fill(dotFill(stop))
             .frame(width: stop.isNow ? 11 : 8, height: stop.isNow ? 11 : 8)
             .overlay(
-                Circle().stroke(stop.state == .never ? Color.ruleStrong : Color.dad,
+                Circle().stroke(stop.state == .never ? Color.ruleStrong : Color.brand,
                                 lineWidth: stop.state == .never ? 1 : 0)
             )
     }

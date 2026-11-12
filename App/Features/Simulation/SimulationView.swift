@@ -168,7 +168,7 @@ struct SimulationView: View {
                     .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.dad)
+            .foregroundStyle(Color.brand)
         }
     }
 
@@ -348,7 +348,7 @@ struct SimulationView: View {
                             .font(.scaled(9))
                     }
                     .font(.scaled(11))
-                    .foregroundStyle(Color.dad)
+                    .foregroundStyle(Color.brand)
                 }
                 .buttonStyle(.plain)
 
@@ -488,7 +488,7 @@ struct SimulationView: View {
                     HStack(spacing: 4) {
                         Text(display(value.wrappedValue))
                             .font(.figure(14, weight: .semibold))
-                            .foregroundStyle(value.wrappedValue == baselineValue ? Color.ink : Color.dad)
+                            .foregroundStyle(value.wrappedValue == baselineValue ? Color.ink : Color.brand)
                         Image(systemName: "keyboard")
                             .font(.scaled(9))
                             .foregroundStyle(Color.faint)
@@ -503,7 +503,7 @@ struct SimulationView: View {
                 ),
                 in: Double(range.lowerBound)...Double(range.upperBound)
             )
-            .tint(Color.dad)
+            .tint(Color.brand)
         }
     }
 
@@ -673,7 +673,7 @@ struct SimulationView: View {
                 HStack(spacing: 6) {
                     Text(row.name)
                         .font(.scaled(11.5, weight: row.isCurrent ? .semibold : .regular))
-                        .foregroundStyle(row.isCurrent ? Color.dad : Color.ink)
+                        .foregroundStyle(row.isCurrent ? Color.brand : Color.ink)
                         .lineLimit(1)
                         .frame(minWidth: Font.scaledLength(56), alignment: .leading)
                     Spacer(minLength: 0)

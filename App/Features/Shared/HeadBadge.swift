@@ -7,12 +7,15 @@ import SwiftUI
 /// 두 곳의 모양이 다르면 같은 뜻인지 헷갈린다.
 struct HeadBadge: View {
     var body: some View {
+        // **한 줄로** (217번 D1). 자산 탭 머리글에서 자리가 모자라면 "대 / 표" 로 접혔다.
         Text("대표")
-            .font(.scaled(9, weight: .semibold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 6)
+            .font(.scaled(11, weight: .semibold))
+            .foregroundStyle(Color.brand)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .background(Color.brandSoft, in: Capsule())
             .accessibilityLabel("가족 대표")
     }
 }
