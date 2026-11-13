@@ -238,4 +238,12 @@ jobs:
             exit 0
           fi
           git commit -m "chore: App Store 제출용 스크린샷 (6.9\" · iPad 13\") [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
+          # 찍는 동안 누가 같은 브랜치에 밀어 넣으면(문서 커밋 등) "fetch first" 로 거절된다 —
+          # 11-14 6번 실행이 그렇게 실패했다. 최신 위로 다시 얹어 세 번까지 민다.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:${{ github.ref_name }}; then exit 0; fi
+            git pull --rebase origin ${{ github.ref_name }}
+            sleep $((attempt * 5))
+          done
+          echo "::error::스크린샷을 올리지 못했습니다 — 아티팩트에는 있습니다"
+          exit 1
