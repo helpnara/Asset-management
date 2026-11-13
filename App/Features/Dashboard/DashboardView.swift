@@ -220,7 +220,9 @@ struct DashboardView: View {
             Text(Won.abbreviated(rollup.netWorth, suffix: "원"))
                 .font(.figure(38, weight: .semibold))
                 .foregroundStyle(Color.ink)
+                // 숫자가 바뀌면 자리 숫자만 넘어간다 — 조용한 움직임 (원칙 8, 217번 2차).
                 .contentTransition(.numericText())
+                .animation(.easeInOut(duration: 0.35), value: rollup.netWorth.minorUnits)
             if !rollup.liabilities.isZero {
                 Text("자산 \(Won.abbreviated(rollup.assets)) · 부채 \(Won.abbreviated(rollup.liabilities))")
                     .font(.scaled(12))
@@ -330,7 +332,7 @@ struct DashboardView: View {
                         .font(.scaled(12, weight: .medium))
                         .foregroundStyle(Color.ink)
                     Text(violations.map(\.name).joined(separator: " · ") + " · PFIC 대상")
-                        .font(.scaled(10.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                 }
                 Spacer(minLength: 0)
@@ -871,7 +873,7 @@ struct DashboardView: View {
                     .font(.figure(14, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text(event.yearsAway == 0 ? "올해" : "\(event.yearsAway)년 뒤")
-                    .font(.scaled(9.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
             .frame(width: Font.scaledLength(54), alignment: .leading)
@@ -887,14 +889,14 @@ struct DashboardView: View {
                                 .fill(Color.member(event.colorIndex))
                                 .frame(width: 6, height: 6)
                             Text(event.age.map { "\(owner) \($0)세" } ?? owner)
-                                .font(.scaled(10))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.muted)
                         }
                     }
                 }
                 if !event.note.isEmpty {
                     Text(event.note)
-                        .font(.scaled(10.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                 }
@@ -907,7 +909,7 @@ struct DashboardView: View {
                         .font(.figure(13, weight: .semibold))
                         .foregroundStyle(Color.ink)
                     Text("그때 예상")
-                        .font(.scaled(9))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                 }
             }
@@ -1032,7 +1034,7 @@ struct DashboardView: View {
                 }
                 .frame(width: 14, height: 2)
             Text(label)
-                .font(.scaled(9.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -1173,7 +1175,7 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 14) {
                         diagnosisTally("조치", result.count(.act), .loss)
-                        diagnosisTally("주의", result.count(.watch), Color.dad)
+                        diagnosisTally("주의", result.count(.watch), Color.caution)
                         diagnosisTally("지킴", result.count(.pass), .gain)
                         if result.count(.unknown) > 0 {
                             diagnosisTally("입력 필요", result.count(.unknown), .faint)

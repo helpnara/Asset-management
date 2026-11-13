@@ -385,7 +385,7 @@ struct WeeklyReviewView: View {
                 .foregroundStyle(Color.ink)
             Spacer()
             Text("\(visitedCount(member)) / \(count)")
-                .font(.figure(10))
+                .font(.figure(11))
                 .foregroundStyle(Color.muted)
         }
         .padding(.horizontal, 20)
@@ -397,11 +397,11 @@ struct WeeklyReviewView: View {
     private func accountLabel(_ account: Account) -> some View {
         HStack(spacing: 6) {
             Text(account.name.isEmpty ? account.kind.label : account.name)
-                .font(.scaled(10, weight: .medium))
+                .font(.scaled(11, weight: .medium))
                 .foregroundStyle(Color.muted)
             if !account.institution.isEmpty {
                 Text(account.institution)
-                    .font(.scaled(9.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
             if account.kind.isLiability {
@@ -464,7 +464,7 @@ struct WeeklyReviewView: View {
                 // 같은 주에 다시 열었으면 기준은 지난주가 아니라 **이번 주에 먼저
                 // 적은 값**이다 (90번). 끝낼 때 기준값이 그 값으로 바뀌어 있다.
                 Text("\(baselineLabel(holding)) \(Won.grouped(holding.lastEnteredValueMinor))")
-                    .font(.scaled(9.5))
+                    .font(.scaled(11))
                     // 매주 견주는 기준값이라 한 단계 진하게 (199번 C7) — `faint` 는 흰 바탕에서 2.6:1 이었다.
                     .foregroundStyle(Color.muted)
                 // **왜 샀나 — 지금 적고 있는 줄에서만** (186번). 숫자를 적는
@@ -473,7 +473,7 @@ struct WeeklyReviewView: View {
                 // 어려워진다 — `읽는 값`(80번)과 같은 이유로 활성 행만.
                 if isActive, let reason = holding.latestNoteLine {
                     Text(reason)
-                        .font(.scaled(9.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                         .lineLimit(2)
                 }
@@ -496,7 +496,7 @@ struct WeeklyReviewView: View {
                 // 더 붙었는지 치는 순간 보인다. 입력 칸이라 가리기를 안 거친다.
                 if isActive && holding.valueMinor >= 10_000 {
                     Text(KoreanAmountFormatter.abbreviated(Money(minorUnits: holding.valueMinor, currency: .krw), suffix: "원"))
-                        .font(.figure(10.5, weight: .medium))
+                        .font(.figure(11, weight: .medium))
                         .foregroundStyle(Color.brand)
                 }
                 HStack(spacing: 4) {
@@ -504,7 +504,7 @@ struct WeeklyReviewView: View {
                         StatusBadge(text: "30%↑", foreground: .loss, background: Color.lossSoft)
                     }
                     Text(deltaText(holding))
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(deltaColor(holding))
                 }
             }
@@ -556,7 +556,7 @@ struct WeeklyReviewView: View {
     private var finishFooter: some View {
         VStack(spacing: 12) {
             Text("값을 바꾸지 않고 넘기면 변동 없음으로 기록됩니다.\n고정 항목은 목록에서 빠지고, 월 1회 항목은 그 달에 값을 적고 나면 빠집니다.")
-                .font(.scaled(10.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)

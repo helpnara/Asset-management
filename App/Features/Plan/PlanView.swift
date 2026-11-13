@@ -213,7 +213,7 @@ struct PlanView: View {
                 // 셈법은 **말로** 적는다. 금액을 적으면 가리기를 켠 사람에게
                 // 가려야 하고, 가리면 무슨 말인지 알 수 없게 된다 (13번).
                 Text(plan.autoTargetExplanation)
-                    .font(.scaled(10.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
                     .fixedSize(horizontal: false, vertical: true)
             } footer: {
@@ -437,7 +437,7 @@ struct PlanView: View {
                     Text(verbatim: stream.endYear > 0
                          ? "\(stream.startYear)~\(stream.endYear)년"
                          : "\(stream.startYear)년부터 종신")
-                        .font(.figure(10))
+                        .font(.figure(11))
                         .foregroundStyle(Color.faint)
                     if !stream.isInflationLinked {
                         StatusBadge(text: "물가 미연동")
@@ -491,7 +491,7 @@ struct PlanView: View {
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 5) {
                     Text(DateText.full(event.date))
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                     if let note = forwardExclusion(event) {
                         StatusBadge(text: note)

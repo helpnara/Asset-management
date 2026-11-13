@@ -64,7 +64,7 @@ struct RoadmapStrip: View {
             ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
                 VStack(spacing: 4) {
                     Text(stop.year.map { String($0) } ?? "—")
-                        .font(.figure(9))
+                        .font(.figure(10))
                         .foregroundStyle(yearColor(stop))
 
                     // 점과 점 사이를 잇는 선. 지나온 구간은 진하게 남긴다.
@@ -78,7 +78,7 @@ struct RoadmapStrip: View {
                     .frame(height: 12)
 
                     Text(stop.label)
-                        .font(.scaled(8.5, weight: stop.isNow ? .semibold : .regular))
+                        .font(.scaled(10, weight: stop.isNow ? .semibold : .regular))
                         .foregroundStyle(labelColor(stop))
                         .lineLimit(2)
                         .multilineTextAlignment(.center)

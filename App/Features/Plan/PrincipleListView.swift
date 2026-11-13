@@ -188,7 +188,7 @@ private struct PrincipleRow: View {
                 }
                 if !principle.reviewNote.isEmpty {
                     Text(principle.reviewNote)
-                        .font(.scaled(10.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                 }

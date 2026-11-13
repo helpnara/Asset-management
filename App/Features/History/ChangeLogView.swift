@@ -47,7 +47,7 @@ struct ChangeLogView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(log.kind.label)
-                        .font(.scaled(9, weight: .medium))
+                        .font(.scaled(11, weight: .medium))
                         .foregroundStyle(Color.muted)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -64,7 +64,7 @@ struct ChangeLogView: View {
             // **누가** (74번). 가족 넷이 쓰면 이것 없이는 이력이 반쪽이다.
             if !log.actor.isEmpty {
                 Text(log.actor)
-                    .font(.scaled(10))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
                     .lineLimit(1)
             }

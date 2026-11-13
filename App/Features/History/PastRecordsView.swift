@@ -93,7 +93,7 @@ struct PastRecordsView: View {
                 if snapshot.liabilitiesMinor != 0 {
                     Text("부채 " + Won.abbreviated(
                         Money(minorUnits: snapshot.liabilitiesMinor, currency: .krw), suffix: "원"))
-                        .font(.figure(10))
+                        .font(.figure(11))
                         .foregroundStyle(Color.faint)
                 }
             }

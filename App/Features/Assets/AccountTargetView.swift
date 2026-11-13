@@ -44,7 +44,7 @@ struct AccountTargetView: View {
                                 .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Text(Won.abbreviated(holding.value, suffix: "원"))
-                                .font(.figure(10))
+                                .font(.figure(11))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer(minLength: 6)
@@ -130,7 +130,7 @@ struct AccountTargetView: View {
         let sum = account.targetSumBP
         let isHundred = sum == 10_000
         return Text("목표 합 \(PercentFormatter.integer(Decimal(sum) / 10_000))%")
-            .font(.figure(10, weight: isHundred ? .regular : .semibold))
+            .font(.figure(11, weight: isHundred ? .regular : .semibold))
             .foregroundStyle(isHundred ? Color.gain : Color.loss)
     }
 

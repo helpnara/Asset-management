@@ -106,7 +106,7 @@ struct DiagnosticsView: View {
 
             HStack(spacing: 18) {
                 tally("조치", result.count(.act), .loss)
-                tally("주의", result.count(.watch), Color.dad)
+                tally("주의", result.count(.watch), Color.caution)
                 tally("지킴", result.count(.pass), .gain)
                 if result.count(.unknown) > 0 {
                     tally("입력 필요", result.count(.unknown), .faint)
@@ -121,7 +121,7 @@ struct DiagnosticsView: View {
 
             // 상시 고지 (docs/10 §2-2, 규제 R6). 맨 아래 긴 고지는 스크롤해야 보인다.
             Text("널리 쓰이는 경험칙이며 투자 조언이 아닙니다. 기준은 전부 직접 고칠 수 있습니다.")
-                .font(.scaled(10.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -136,7 +136,7 @@ struct DiagnosticsView: View {
                 .font(.figure(22, weight: .bold))
                 .foregroundStyle(count > 0 ? color : Color.faint)
             Text(label)
-                .font(.scaled(10.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -284,8 +284,10 @@ struct DiagnosticsView: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.rule)
+                // 막대는 한 톤 누른다 — 판정 색은 띠지가 이미 말하고, 카드마다 진한 빨강 막대가 서면
+                // 화면 전체가 다급해 보였다 (217번 D6).
                 Capsule()
-                    .fill(color)
+                    .fill(color.opacity(0.7))
                     .frame(width: geometry.size.width * min(max(progress, 0), 1.5) / 1.5)
                 // 기준선. 이 선을 넘었는지 못 미쳤는지가 규칙의 전부다.
                 Rectangle()
@@ -300,7 +302,7 @@ struct DiagnosticsView: View {
     private func color(_ status: DiagnosisStatus) -> Color {
         switch status {
         case .pass: return .gain
-        case .watch: return .dad
+        case .watch: return .caution
         case .act: return .loss
         case .unknown: return .faint
         }
@@ -320,13 +322,13 @@ struct DiagnosticsView: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.bordered)
-            .tint(Color.ink)
+            .tint(Color.brand)
         }
     }
 
     private var disclaimer: some View {
         Text("여기 기준은 널리 쓰이는 원칙일 뿐 정답이 아니고, 전부 직접 고칠 수 있습니다. 이 앱은 세법을 따라가지 않습니다 — 계좌 한도는 직접 확인해 넣으세요. 금액은 모두 세전입니다. 투자 권유가 아닙니다.")
-            .font(.scaled(10.5))
+            .font(.scaled(11))
             .foregroundStyle(Color.faint)
             .lineSpacing(3)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,12 +336,9 @@ struct DiagnosticsView: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        // 현황판 카드와 같은 모양 — 테두리 없이 바탕 위 둥근 면 하나 (217번 2차).
+        RoundedRectangle(cornerRadius: Card.radius, style: .continuous)
             .fill(Color.raised)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.rule, lineWidth: 1)
-            )
     }
 
     private var rollup: Rollup {

@@ -278,11 +278,11 @@ struct SimulationView: View {
     @ViewBuilder
     private func legendTrail(_ plan: Plan, knobs: Knobs) -> some View {
         Text(verbatim: "│ 은퇴 \(knobs.retirementYear)")
-            .font(.figure(9.5))
+            .font(.figure(11))
             .foregroundStyle(Color.muted)
         if plan.targetAmountMinor > 0 {
             Text("목표 " + Won.compact(plan.targetAmount))
-                .font(.figure(9.5))
+                .font(.figure(11))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -293,7 +293,7 @@ struct SimulationView: View {
                 .fill(color)
                 .frame(width: dashed ? 6 : 12, height: 2.5)
             Text(label)
-                .font(.scaled(9.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
         }
     }
@@ -330,7 +330,7 @@ struct SimulationView: View {
                 // 무엇을 센 숫자인지 같이 적는다. 횟수는 상수로 적지 않고
                 // 실제로 굴린 경로 수를 그대로 쓴다 — 둘이 어긋나면 거짓말이 된다.
                 Text(hitCountText(probability, of: outcome.paths))
-                    .font(.figure(10.5))
+                    .font(.figure(11))
                     .foregroundStyle(Color.faint)
 
                 // 무엇을 어떻게 센 숫자인지 한 문단. "70%면 괜찮은 건가" 에
@@ -659,10 +659,10 @@ struct SimulationView: View {
         // 옆으로 밀어 보게 한다 — 줄이지도 자르지도 않는다.
         let table = VStack(spacing: 0) {
             HStack(spacing: 6) {
-                Text("나란히").font(.scaled(9.5)).foregroundStyle(Color.faint)
+                Text("나란히").font(.scaled(11)).foregroundStyle(Color.faint)
                 Spacer(minLength: 0)
                 ForEach(["월 적립", "은퇴", "수익률", "은퇴 때"], id: \.self) { title in
-                    Text(title).font(.scaled(9.5)).foregroundStyle(Color.faint)
+                    Text(title).font(.scaled(11)).foregroundStyle(Color.faint)
                         .frame(width: column, alignment: .trailing)
                 }
             }
@@ -689,7 +689,7 @@ struct SimulationView: View {
                             let real = todayMoney(row.projected, retirementYear: row.retirementYear, plan: plan)
                             let ratio = Decimal(real.minorUnits) / Decimal(plan.targetAmountMinor)
                             Text("목표의 \(PercentFormatter.integer(ratio))%")
-                                .font(.figure(8.5))
+                                .font(.figure(11))
                                 .foregroundStyle(Color.faint)
                         }
                     }
@@ -699,7 +699,7 @@ struct SimulationView: View {
                 Rectangle().fill(Color.rule).frame(height: 1)
             }
             Text("은퇴 때 금액은 저장할 당시의 계산값입니다. 계획을 고친 뒤에는 다시 불러 저장하세요.")
-                .font(.scaled(9.5))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -739,7 +739,7 @@ struct SimulationView: View {
                         .font(.scaled(12.5))
                         .foregroundStyle(Color.ink)
                     Text(verbatim: "월 \(Won.abbreviated(Money(minorUnits: scenario.monthlyMinor, currency: .krw), suffix: "원")) · \(scenario.retirementYear)년 · \(PercentFormatter.oneDecimal(Decimal(scenario.returnBP) / 10000))%")
-                        .font(.figure(10))
+                        .font(.figure(11))
                         .foregroundStyle(Color.faint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -788,7 +788,7 @@ struct SimulationView: View {
         // 변동성은 밴드에만 쓰고 계획에는 저장하지 않는다. 이걸 적어 두지 않으면
         // "반영을 눌렀는데 변동성이 안 남는다"는 오해가 생긴다.
         Text("입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다. 밴드는 변동성을 넣고 여러 번 굴린 결과이고, 변동성은 계획에 저장되지 않습니다.")
-            .font(.scaled(10.5))
+            .font(.scaled(11))
             .foregroundStyle(Color.faint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 2)

@@ -63,7 +63,7 @@ struct MemberTrajectoryView: View {
             }
             if retirementYear != householdRetirementYear {
                 Text("가구 은퇴 연도는 \(String(householdRetirementYear))년입니다. 이 사람은 은퇴 나이를 따로 적어 두었습니다.")
-                    .font(.scaled(10.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
         }
@@ -167,7 +167,7 @@ struct MemberTrajectoryView: View {
 
     private var disclaimer: some View {
         Text("손잡이를 돌려도 계획은 바뀌지 않습니다. 얼마를 더 넣으면 어떻게 되는지 보는 곳입니다.")
-            .font(.scaled(10.5))
+            .font(.scaled(11))
             .foregroundStyle(Color.faint)
     }
 

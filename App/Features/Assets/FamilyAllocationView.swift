@@ -132,7 +132,7 @@ struct FamilyAllocationView: View {
         let tone: Color = sum == 0 ? .faint : (sum == 10_000 ? .gain : .loss)
         return Text(sum == 0 ? "목표 없음"
                     : "목표 합 \(PercentFormatter.integer(Decimal(sum) / 10_000))%")
-            .font(.figure(10, weight: sum == 10_000 || sum == 0 ? .regular : .semibold))
+            .font(.figure(11, weight: sum == 10_000 || sum == 0 ? .regular : .semibold))
             .foregroundStyle(tone)
     }
 

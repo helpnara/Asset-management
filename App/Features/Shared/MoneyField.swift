@@ -52,7 +52,7 @@ struct MoneyField: View {
             }
             if let note {
                 Text(note)
-                    .font(.scaled(10.5, weight: .medium))
+                    .font(.scaled(11, weight: .medium))
                     .foregroundStyle(Color.loss)
                     .transition(.opacity)
             }

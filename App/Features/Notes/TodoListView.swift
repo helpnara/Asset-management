@@ -253,7 +253,7 @@ private struct TodoRow: View {
                     }
                     if let days = item.daysRemaining, !item.isDone {
                         Text(item.dueText)
-                            .font(.figure(10.5))
+                            .font(.figure(11))
                             .foregroundStyle(days < 0 ? Color.loss
                                              : (days <= 14 ? Color.brand : Color.faint))
                     }

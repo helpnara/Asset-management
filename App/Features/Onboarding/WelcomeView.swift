@@ -95,7 +95,7 @@ struct WelcomeView: View {
 
                 // 거절해도 막다른 길이 아니라는 것을 먼저 알려 준다.
                 Text("나중에 [더보기 → 알림]에서 켤 수 있습니다.")
-                    .font(.scaled(10.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
         }

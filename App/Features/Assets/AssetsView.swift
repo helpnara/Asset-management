@@ -308,7 +308,7 @@ struct AssetsView: View {
                                 .font(.scaled(12.5))
                                 .foregroundStyle(Color.bodyText)
                             Text("구성원 · 지역 · 자산군 비중")
-                                .font(.scaled(9.5))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
@@ -496,7 +496,7 @@ struct AssetsView: View {
                 // 금액을 못 민다 — 금액이 우선순위를 갖는다.
                 if !account.institution.isEmpty {
                     Text(account.institution)
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -516,7 +516,7 @@ struct AssetsView: View {
                 // 계좌 잔고는 급여와 납입 한도가 정하는 값이다.
                 if let share = memberShare(of: account) {
                     Text(share)
-                        .font(.figure(10))
+                        .font(.figure(11))
                         .foregroundStyle(Color.faint)
                 }
                 Text(signedAmount(accountTotal(account).minorUnits, account.kind.isLiability))
@@ -709,14 +709,14 @@ struct AssetsView: View {
                 // 자산군 라벨("주식 · ETF")에 이미 가운뎃점이 있어 네 항목처럼 읽혔다.
                 // 목록에서 실제로 궁금한 것은 상품 종류다.
                 Text("\(holding.instrumentType.label) · \(holding.listingCountryCode) · \(holding.cadence.label)")
-                    .font(.scaled(9.5))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
                 // **왜 샀나 — 가장 최근 줄** (186번). 적어 두고 다시 못 보던
                 // 것을 여기로 꺼낸다. 아무리 길어도 한 줄에서 접는다 (170번) —
                 // 금액이 폭을 먼저 가져간다.
                 if let reason = holding.latestNoteLine {
                     Text(reason)
-                        .font(.scaled(9.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -735,7 +735,7 @@ struct AssetsView: View {
                     let isLiability = holding.account?.kind.isLiability ?? false
                     let isGood = isLiability ? delta < 0 : delta > 0
                     Text(Won.compact(Money(minorUnits: delta, currency: .krw), sign: .always))
-                        .font(.figure(9.5))
+                        .font(.figure(11))
                         .foregroundStyle(isGood ? Color.gain : Color.loss)
                 }
             }
@@ -922,7 +922,7 @@ struct MemberOrderView: View {
                                 .font(.scaled(13))
                                 .foregroundStyle(Color.ink)
                             Text(member.roleNote)
-                                .font(.scaled(10))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                             // **맨 위가 가족 대표다** (168번). 순서가 곧 대표라
                             // 여기 표시가 "정하는 자리" 다. 따로 고르는 칸은 없다.

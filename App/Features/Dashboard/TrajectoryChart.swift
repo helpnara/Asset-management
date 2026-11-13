@@ -588,7 +588,7 @@ struct TrajectoryChart: View {
                 .font(.scaled(12))
                 .foregroundStyle(Color.muted)
             Text("계획 탭에서 월 적립액과 기대수익률을 넣으면 예측선이 먼저 나타납니다")
-                .font(.scaled(10))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
                 .multilineTextAlignment(.center)
         }

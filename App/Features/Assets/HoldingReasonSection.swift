@@ -63,7 +63,7 @@ struct HoldingReasonSection: View {
     private func row(_ note: HoldingNote) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(note.stamp)
-                .font(.figure(10))
+                .font(.figure(11))
                 .foregroundStyle(Color.faint)
             Text(note.body)
                 .font(.scaled(12.5))
@@ -81,7 +81,7 @@ struct HoldingReasonSection: View {
     private var legacy: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("예전 메모")
-                .font(.scaled(10))
+                .font(.scaled(11))
                 .foregroundStyle(Color.faint)
             Text(holding.note)
                 .font(.scaled(12.5))

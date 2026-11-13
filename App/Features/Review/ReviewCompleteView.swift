@@ -110,21 +110,26 @@ struct ReviewCompleteView: View {
     /// 계획선 대비. **본문 밖에서 한 번** 굴린다 (169번 B1) — 예전에는 계산
     /// 속성이라 화면이 다시 그려질 때마다 궤적을 굴렸다. 재료가 바뀌면 다시.
     @State private var planGap: PlanTrack.Gap?
+    /// 점검을 막 끝내고 들어왔을 때만 한 번 켠다 — 성공 햅틱의 방아쇠 (217번 2차, 11-13 사용자: "넣기").
+    /// 현황판에서 지난 점검을 다시 열 때(`onClose == nil`)는 울리지 않는다.
+    @State private var didArrive = false
 
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 headline
-                Rectangle().fill(Color.rule).frame(height: 1)
                 celebrations
                 streakSection
                 memberSection
                 footer
             }
         }
-        .background(Color.canvas)
+        // 종이(`canvas`)였다 — 탭 화면과 같은 바탕 위 둥근 카드로 (217번 2차).
+        .background(Color.ground)
         .task(id: gapStamp) { planGap = computePlanGap() }
-        .readableWidth(background: .canvas)
+        .readableWidth(background: .ground)
+        .onAppear { if onClose != nil { didArrive = true } }
+        .sensoryFeedback(.success, trigger: didArrive)
         .navigationTitle("점검 완료")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -136,14 +141,17 @@ struct ReviewCompleteView: View {
 
     private var headline: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("이 번 주 변 화").eyebrowStyle().padding(.bottom, 7)
+            Text("이번 주 변화")
+                .font(.scaled(13, weight: .semibold))
+                .foregroundStyle(Color.muted)
+                .padding(.bottom, 6)
 
             if isFirstEver {
                 Text(Won.abbreviated(total, suffix: "원"))
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(Color.ink)
                 Text("첫 기록입니다. 다음 주부터 증감이 보입니다.")
-                    .font(.scaled(11.5))
+                    .font(.scaled(12.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
             } else {
@@ -151,7 +159,7 @@ struct ReviewCompleteView: View {
                     .font(.figure(34, weight: .semibold))
                     .foregroundStyle(session.changeMinor < 0 ? Color.loss : Color.gain)
                 Text("\(driftMembers.count > 1 ? "가족 총자산" : "총자산") \(Won.abbreviated(total)) · \(session.enteredCount)건 입력")
-                    .font(.scaled(11.5))
+                    .font(.scaled(12.5))
                     .foregroundStyle(Color.muted)
                     .padding(.top, 9)
 
@@ -161,7 +169,7 @@ struct ReviewCompleteView: View {
                 // 37번에서는 현황판에만 붙이고 여기를 빠뜨렸다.
                 if let gap = planGap {
                     Text(gap.text)
-                        .font(.figure(12.5, weight: .medium))
+                        .font(.figure(13, weight: .medium))
                         .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
                         .padding(.top, 6)
                 }
@@ -171,7 +179,7 @@ struct ReviewCompleteView: View {
                     // 말한다. 점검을 마치고 나가는 길목이라 놓치기 어렵다
                     // (docs/08-feedback.md 14번).
                     Text("비중이 어긋난 종목 \(driftCount)개")
-                        .font(.scaled(11.5, weight: .medium))
+                        .font(.scaled(12.5, weight: .medium))
                         .foregroundStyle(Color.loss)
                         .padding(.top, 4)
                 }
@@ -179,7 +187,8 @@ struct ReviewCompleteView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.vertical, 24)
+        .padding(.top, 24)
+        .padding(.bottom, 8)
     }
 
     /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
@@ -225,10 +234,10 @@ struct ReviewCompleteView: View {
                     }
                 }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.gainSoft)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 14)
+            // 축하는 금 — 드문 순간에만 쓰는 색 (원칙 3).
+            .cardSurface(.goldSoft)
             .padding(.top, 16)
         }
     }
@@ -245,27 +254,29 @@ struct ReviewCompleteView: View {
                     .foregroundStyle(Color.ink)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 22)
-            .padding(.bottom, 12)
+            .padding(.top, 26)
+            .padding(.bottom, 10)
 
-            HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 5) {
                 ForEach(0..<min(max(streak, 1), 16), id: \.self) { offset in
-                    Rectangle()
-                        .fill(Color.ink.opacity(0.25 + 0.75 * Double(offset + 1) / Double(max(streak, 1))))
-                        .frame(width: 9, height: 9)
-                        .cornerRadius(1.5)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Color.brand.opacity(0.25 + 0.75 * Double(offset + 1) / Double(max(streak, 1))))
+                        .frame(width: 11, height: 11)
                 }
                 Spacer()
             }
-            .padding(.horizontal, 20)
 
             Text(streak <= 1
                  ? "다음 \(ReviewSettings.weekdayName)에 또 적으면 연속 기록이 시작됩니다."
                  : "\(streak)주째 거르지 않았습니다.")
-                .font(.scaled(10))
-                .foregroundStyle(Color.faint)
-                .padding(.horizontal, 20)
-                .padding(.top, 9)
+                .font(.scaled(12))
+                .foregroundStyle(Color.muted)
+                .padding(.top, 10)
+            }
+            .padding(.horizontal, Card.inset)
+            .padding(.vertical, 16)
+            .cardSurface()
         }
     }
 
@@ -280,35 +291,40 @@ struct ReviewCompleteView: View {
                         .foregroundStyle(Color.ink)
                     Spacer()
                     Text("이 점검 시점 기준")
-                        .font(.scaled(10))
-                        .foregroundStyle(Color.faint)
+                        .font(.scaled(11.5))
+                        .foregroundStyle(Color.muted)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 22)
-                .padding(.bottom, 8)
+                .padding(.top, 26)
+                .padding(.bottom, 10)
 
-                Rectangle().fill(Color.rule).frame(height: 1)
-
+                VStack(spacing: 0) {
                 ForEach(lines) { line in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(line.memberName.isEmpty ? "이름 없음" : line.memberName)
-                                .font(.scaled(12.5))
+                                .font(.scaled(13.5, weight: .semibold))
                                 .foregroundStyle(Color.ink)
                             // 이 주에 그 사람 몫이 적혔나, 몇 주째인가 (C8).
                             Text(memberLine(line.memberID))
-                                .font(.scaled(9.5))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()
                         Text(Won.abbreviated(Money(minorUnits: line.valueMinor, currency: .krw)))
-                            .font(.figure(12.5, weight: .medium))
+                            .font(.figure(13.5, weight: .semibold))
                             .foregroundStyle(Color.member(line.sortIndex))
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 11)
-                    Rectangle().fill(Color.rule).frame(height: 1)
+                    .padding(.horizontal, Card.inset)
+                    .padding(.vertical, 12)
+                    // 줄 사이에만 (217번) — 카드 맨 아래에는 긋지 않는다.
+                    if line.id != lines.last?.id {
+                        Rectangle().fill(Color.rule).frame(height: 1)
+                            .padding(.leading, Card.inset)
+                    }
                 }
+                }
+                .cardSurface()
             }
         }
     }

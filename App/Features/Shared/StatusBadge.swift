@@ -9,7 +9,7 @@ struct StatusBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.scaled(10, weight: .medium))
+            .font(.scaled(11, weight: .medium))
             // 큰 글자에서 "동결" 이 "동/결" 두 줄로 꺾였다 (132번). 배지는 한 줄이다.
             .lineLimit(1)
             .fixedSize()

@@ -75,7 +75,7 @@ struct RetrospectiveView: View {
                 .disabled(!summary.hasRecords)
 
                 Text("넣은 돈은 계획의 월 적립을 날수로 나눠 어림한 값입니다. 그림에는 금액이 그대로 나옵니다 — 가리기가 켜져 있어도요.")
-                    .font(.scaled(10))
+                    .font(.scaled(11))
                     .foregroundStyle(Color.faint)
                     .lineSpacing(3)
             }
@@ -99,7 +99,7 @@ struct RetrospectiveView: View {
                     .foregroundStyle(Color.ink)
                 if period.isCurrent() {
                     Text("진행 중 · 오늘까지")
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.muted)
                 }
             }
@@ -233,7 +233,7 @@ struct RetrospectiveCard: View {
     private func stat(_ label: String, _ value: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.scaled(9.5))
+                .font(.scaled(11))
                 .foregroundStyle(muted)
             Text(value)
                 .font(.figure(14, weight: .semibold))
@@ -276,7 +276,7 @@ struct RetrospectiveCard: View {
                         .font(.scaled(12))
                         .foregroundStyle(ink)
                     Text("\(member.enteredWeeks)주 적음")
-                        .font(.scaled(9.5))
+                        .font(.scaled(11))
                         .foregroundStyle(muted)
                     Spacer()
                     if let change = member.change {
@@ -318,7 +318,7 @@ struct RetrospectiveCard: View {
         HStack {
             Spacer()
             Text("느린 부자")
-                .font(.scaled(9, weight: .medium))
+                .font(.scaled(11, weight: .medium))
                 .foregroundStyle(muted)
         }
         .padding(.top, 14)

@@ -102,7 +102,7 @@ private struct MilestoneRow: View {
                 }
                 if !milestone.note.isEmpty {
                     Text(milestone.note)
-                        .font(.scaled(10.5))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                         .lineLimit(1)
                 }
@@ -121,7 +121,7 @@ private struct MilestoneOwnerBadge: View {
                 .fill(Color.member(member.colorIndex))
                 .frame(width: 6, height: 6)
             Text(member.name.isEmpty ? "이름 없음" : member.name)
-                .font(.scaled(10))
+                .font(.scaled(11))
                 .foregroundStyle(Color.muted)
         }
     }

@@ -68,7 +68,7 @@ struct HoldingHistorySection: View {
                 AxisValueLabel {
                     if let minor = value.as(Int.self) {
                         Text(hideAmounts ? "••" : KoreanAmountFormatter.compact(Money(minorUnits: minor, currency: .krw)))
-                            .font(.figure(9))
+                            .font(.figure(10))
                     }
                 }
             }
@@ -78,7 +78,7 @@ struct HoldingHistorySection: View {
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
                         Text(DateText.short(date))
-                            .font(.figure(9))
+                            .font(.figure(10))
                     }
                 }
             }

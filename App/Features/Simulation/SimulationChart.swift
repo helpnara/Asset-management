@@ -133,7 +133,7 @@ struct SimulationChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading, spacing: 2) {
                         Text("바닥")
-                            .font(.scaled(8.5, weight: .semibold))
+                            .font(.scaled(10, weight: .semibold))
                             .foregroundStyle(Color.loss)
                     }
             }
@@ -148,7 +148,7 @@ struct SimulationChart: View {
                 AxisValueLabel {
                     if let raw = value.as(Double.self) {
                         Text(tickLabel(raw))
-                            .font(.figure(8))
+                            .font(.figure(10))
                             .foregroundStyle(Color.faint)
                     }
                 }
@@ -162,7 +162,7 @@ struct SimulationChart: View {
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
                         Text(verbatim: "\(Calendar.app.component(.year, from: date))")
-                            .font(.figure(8))
+                            .font(.figure(10))
                             .foregroundStyle(Color.faint)
                     }
                 }

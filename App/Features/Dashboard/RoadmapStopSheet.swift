@@ -31,7 +31,7 @@ struct RoadmapStopSheet: View {
                     thatYear
                     byMember
                     Text("입력한 가정(연 \(PercentFormatter.oneDecimal(plan.annualReturn.fraction))% · 물가 \(PercentFormatter.oneDecimal(plan.inflation.fraction))%)에 따른 계산이며 미래 수익을 보장하지 않습니다. 구성원별 합은 사람마다 따로 굴린 값이라 가족 예상과 조금 다를 수 있습니다.")
-                        .font(.scaled(10))
+                        .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                         .lineSpacing(3)
                         .padding(20)
@@ -132,7 +132,7 @@ struct RoadmapStopSheet: View {
                                 .font(.scaled(12.5))
                                 .foregroundStyle(Color.ink)
                             Text("\(max(0, year - member.birthYear))세")
-                                .font(.scaled(10))
+                                .font(.scaled(11))
                                 .foregroundStyle(Color.faint)
                         }
                         Spacer()

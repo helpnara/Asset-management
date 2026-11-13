@@ -58,6 +58,9 @@ extension Color {
     static let gold = Color(light: 0xD9A82E, dark: 0xE2B33E)
     /// 금의 옅은 판 — 이정표 · 축하 줄의 바탕.
     static let goldSoft = Color(light: 0xFBF1D3, dark: 0x33291A)
+    /// **주의** — 진단의 가운데 단계(조치 빨강 · 주의 금 · 지킴 초록, 217번 2차 · 11-13 사용자 "금색").
+    /// `gold` 를 글자로도 읽히게 한 단계 짙게 — 흰 바탕 위 작은 숫자 · 띠지 글자에 쓴다.
+    static let caution = Color(light: 0x9A6B05, dark: 0xE2B33E)
 
     static let dad = Color(light: 0x1D5E7F, dark: 0x6FB4D2)
     static let mom = Color(light: 0x8E4650, dark: 0xD98C97)
