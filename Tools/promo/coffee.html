@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 커피 한 잔 30년</title>
+<!--
+  느린 부자 유튜브 쇼츠 19편 (2026-11-14). 1080×1920 세로, 31.5초, 소리 없음.
+  17 · 18편에서 배운 것 — 피드에서는 0초부터 트므로 **답의 큰 숫자를 첫 물음에**("1.1억"). 새 각도: **작은 습관 돈**(커피 한 잔).
+  17편(10년 늦게 시작하면)과 같은 막대 틀을 쓰되, 시작 나이가 아니라 **기간**(10 · 20 · 30년)으로 나눈다.
+
+  숫자는 일반 셈(파이썬으로 대조, 11-14). 하루 4,500원 × 30일 = 매달 13만 5천원 · 연 5% · 월복리(월 5%/12) · 매달 말 · 세금 · 수수료 빼기 전:
+    10년 2,096만(넣은 돈 1,620만) · 20년 5,549만(3,240만) · 30년 1억 1,235만(4,860만) → 30년 자란 돈 6,375만
+  앱 화면은 CI 체험 자료 screenshots/07(시뮬레이션, 11-13 디자인 2차 판) 하나.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+
+  /* 막대 */
+  .bar { position: absolute; width: 230px; bottom: 420px; }
+  .bar .put { position: absolute; left: 0; right: 0; bottom: 0; background: #C9D3D9; border-radius: 0 0 22px 22px; }
+  .bar .grow { position: absolute; left: 0; right: 0; background: var(--gain); border-radius: 22px 22px 0 0; }
+  .bar .amt { position: absolute; left: -40px; right: -40px; text-align: center; font-size: 66px; font-weight: 800;
+              letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+  .bar .who { position: absolute; left: -40px; right: -40px; bottom: -86px; text-align: center; font-size: 44px; font-weight: 800; }
+  .bar .paid { position: absolute; left: -40px; right: -40px; bottom: -140px; text-align: center; font-size: 32px; font-weight: 500; color: var(--muted); }
+  #axis { position: absolute; left: 70px; right: 70px; bottom: 416px; height: 6px; border-radius: 3px; background: #9AA6AE; }
+  .legend { position: absolute; top: 1730px; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 700; color: var(--muted); }
+  .legend i { display: inline-block; width: 30px; height: 30px; border-radius: 8px; vertical-align: -4px; margin: 0 12px 0 34px; }
+
+  /* 차이 카드 */
+  .row { position: absolute; left: 70px; right: 70px; padding: 40px 50px; border-radius: 36px; background: #fff;
+         box-shadow: 0 26px 70px rgba(11,16,23,.16); }
+  .row .k { font-size: 42px; font-weight: 700; color: var(--muted); }
+  .row .v { margin-top: 8px; font-size: 96px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+  .row.big { background: #FFF4CF; border: 5px solid var(--gold); }
+  .row.big .v { color: var(--gain); }
+
+  .msg1 { top: 700px; font-size: 76px; font-weight: 800; color: rgba(255,255,255,.9); letter-spacing: -1.5px; }
+  .msg2 { top: 830px; font-size: 84px; font-weight: 800; color: var(--gold); letter-spacing: -1.5px; }
+  .msg3 { top: 1010px; font-size: 42px; font-weight: 500; color: rgba(255,255,255,.75); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 0. 물음 -->
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">하루 커피 한 잔 4,500원,</div>
+    <div class="center q2" id="q2">30년이면 1.1억?</div>
+    <div class="center q3" id="q3">매달 13만 5천원을 연 5%로 굴리면</div>
+  </div>
+
+  <!-- 1. 막대 셋 -->
+  <div id="s-bars" class="layer">
+    <div class="title" id="bars-title">커피값을 모아 굴리면</div>
+    <div class="sub" id="bars-sub">매달 13만 5천원 · 연 5% · 기간만 다르게</div>
+    <div id="axis"></div>
+    <div class="bar" id="b0" style="left:120px"><div class="put"></div><div class="grow"></div><div class="amt">1.1억</div><div class="who">30년</div><div class="paid">넣은 돈 4,860만</div></div>
+    <div class="bar" id="b1" style="left:425px"><div class="put"></div><div class="grow"></div><div class="amt">5,549만</div><div class="who">20년</div><div class="paid">넣은 돈 3,240만</div></div>
+    <div class="bar" id="b2" style="left:730px"><div class="put"></div><div class="grow"></div><div class="amt">2,096만</div><div class="who">10년</div><div class="paid">넣은 돈 1,620만</div></div>
+    <div class="legend" id="bars-legend"><i style="background:#C9D3D9"></i>넣은 돈<i style="background:var(--gain)"></i>자란 돈</div>
+  </div>
+
+  <!-- 2. 10년의 값 -->
+  <div id="s-gap" class="layer">
+    <div class="title" id="gap-title">30년, 커피값의 값</div>
+    <div class="sub" id="gap-sub">넣은 돈보다 자란 돈이 더 큽니다</div>
+    <div class="row" id="g0" style="top:420px"><div class="k">30년 동안 넣은 돈</div><div class="v">4,860만원</div></div>
+    <div class="row big" id="g1" style="top:720px"><div class="k">30년 뒤 모인 돈</div><div class="v">1억 1,235만원</div></div>
+    <div class="row" id="g2" style="top:1020px"><div class="k">그중 시간이 키운 돈</div><div class="v">6,375만원</div></div>
+    <div class="center" id="gap-foot" style="top:1350px;font-size:38px;font-weight:500;color:var(--muted);line-height:1.45">커피를 끊자는 이야기가 아닙니다<br>작은 돈이 어디로 가는지의 이야기입니다</div>
+  </div>
+
+  <!-- 3. 앱 — 시뮬레이션 (screenshots/07, 1206 폭 → 창 940 폭 ×0.7794) -->
+  <div id="s-sim" class="layer">
+    <div class="title" id="sim-title">우리 집 매달 적립으로는?</div>
+    <div class="sub" id="sim-sub">매월 적립 손잡이를 끌면 은퇴 때 금액이 바로 바뀝니다</div>
+    <div class="window" id="sim-win">
+      <div id="sim-pan" style="position:absolute;left:0;top:0;width:940px">
+        <img src="../../screenshots/07-simulation.png" style="top:-300px" alt="">
+        <div class="ring" id="sim-r1" style="left:24px;top:8px;width:892px;height:290px"></div>
+        <div class="tag" id="sim-t1" style="left:600px;top:250px">은퇴 때 예상</div>
+        <div class="ring" id="sim-r2" style="left:24px;top:1176px;width:892px;height:330px"></div>
+        <div class="tag" id="sim-t2" style="left:360px;top:1090px">적립 · 은퇴 연도</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 한 줄 -->
+  <div id="s-msg" class="layer">
+    <div class="center msg1" id="m1">부자를 만드는 건</div>
+    <div class="center msg2" id="m2">큰돈보다 긴 시간</div>
+    <div class="center msg3" id="m3">그래서 느리게, 그래도 꾸준히</div>
+  </div>
+
+  <!-- 5. 마무리 -->
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">느리게, 그래도 꾸준히</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad · 서버 · 광고 · 회원가입 없음</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">연 5% · 월복리 · 매달 말 13만 5천원 · 세금 · 수수료 빼기 전 가정의 계산이며<br>미래 수익을 보장하지 않습니다 · 앱 화면은 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+// ── 시간표 (초) ───────────────────────────────────────────────
+const T = {
+  hook: [0.0, 3.2],
+  bars: [3.2, 12.2],
+  gap:  [12.2, 18.0],
+  sim:  [18.0, 24.4],
+  msg:  [24.4, 27.4],
+  cta:  [27.4, 31.5],
+};
+const DURATION = 31.5;
+// 막대 — 만원 단위(위 주석의 셈). 1만원 = 0.072px → 1억 1,235만 = 809px
+const PX = 0.072;
+// 왼쪽부터 30 · 20 · 10년 — 큰 막대가 먼저 선다(17편과 같은 자리).
+const BARS = [ { put: 4860, total: 11235 }, { put: 3240, total: 5549 }, { put: 1620, total: 2096 } ];
+const won = v => v >= 10000 ? `${(v / 10000).toFixed(1)}억` : `${Math.round(v).toLocaleString("ko-KR")}만`;
+// ── 도움 함수 (9편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`;
+}
+function tag(el, t, at, stay = 1.4) {
+  el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3));
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 앱 화면 장면 하나 — 제목 · 부제가 오르고 창이 아래서 올라온다. */
+function screenScene(t, key, prefix) {
+  const [a] = T[key];
+  rise($(`${prefix}-title`), t, a + 0.05);
+  rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const winIn = easeOut(prog(t, a, a + 0.6));
+  $(`${prefix}-win`).style.transform = `translateY(${(1 - winIn) * 300}px)`;
+  return a;
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+function render(t) {
+  const darkA = t < (T.hook[1] + T.bars[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.msg[0] - OUT, T.msg[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+
+  // 0. 물음
+  const hookA = sceneAlpha(t, T.hook);
+  show($("s-hook"), hookA);
+  if (hookA) {
+    rise($("q1"), t, 0.15);
+    pop($("q2"), t, 0.6, 0.5);
+    rise($("q3"), t, 1.4, 0.5, 30);
+  }
+
+  // 1. 막대 — 넣은 돈이 먼저 쌓이고, 그 위로 자란 돈
+  const bA = sceneAlpha(t, T.bars);
+  show($("s-bars"), bA);
+  if (bA) {
+    const a = T.bars[0];
+    rise($("bars-title"), t, a + 0.05);
+    rise($("bars-sub"), t, a + 0.25, 0.5, 30);
+    rise($("bars-legend"), t, a + 0.6, 0.5, 20);
+    BARS.forEach((b, i) => {
+      const el = $(`b${i}`);
+      const at = a + 0.8 + i * 1.7;
+      const p = easeInOut(prog(t, at, at + 1.5));
+      const h = b.total * PX * p;
+      const put = Math.min(h, b.put * PX);
+      el.style.height = `${h}px`;
+      el.querySelector(".put").style.height = `${put}px`;
+      const g = el.querySelector(".grow");
+      g.style.bottom = `${put}px`; g.style.height = `${Math.max(0, h - put)}px`;
+      const amt = el.querySelector(".amt");
+      amt.style.bottom = `${h + 16}px`;
+      amt.textContent = won(b.total * p);
+      amt.style.opacity = clamp(p * 3);
+      el.querySelector(".who").style.opacity = prog(t, at - 0.2, at + 0.2);
+      el.querySelector(".paid").style.opacity = prog(t, at + 1.2, at + 1.6);
+    });
+  }
+
+  // 2. 10년의 값
+  const gA = sceneAlpha(t, T.gap);
+  show($("s-gap"), gA);
+  if (gA) {
+    const a = T.gap[0];
+    rise($("gap-title"), t, a + 0.05);
+    rise($("gap-sub"), t, a + 0.25, 0.5, 30);
+    rise($("g0"), t, a + 0.6, 0.5, 60);
+    pop($("g1"), t, a + 1.5, 0.55);
+    rise($("g2"), t, a + 2.7, 0.5, 60);
+    rise($("gap-foot"), t, a + 3.7, 0.5, 20);
+  }
+
+  // 3. 시뮬레이션 — 위(은퇴 때 예상) → 아래로 넘겨 손잡이
+  const sA = sceneAlpha(t, T.sim);
+  show($("s-sim"), sA);
+  if (sA) {
+    const a = screenScene(t, "sim", "sim");
+    $("sim-pan").style.transform = `translateY(${-440 * easeInOut(prog(t, a + 2.6, a + 3.4))}px)`;
+    ring($("sim-r1"), t, a + 0.8, 1.6); tag($("sim-t1"), t, a + 0.8, 1.6);
+    ring($("sim-r2"), t, a + 3.6, 2.4); tag($("sim-t2"), t, a + 3.6, 2.4);
+  }
+
+  // 4. 한 줄
+  const mA = sceneAlpha(t, T.msg);
+  show($("s-msg"), mA);
+  if (mA) {
+    const a = T.msg[0];
+    rise($("m1"), t, a + 0.1);
+    pop($("m2"), t, a + 0.7, 0.5);
+    rise($("m3"), t, a + 1.5, 0.5, 30);
+  }
+
+  // 5. 마무리
+  const cA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), cA);
+  if (cA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>
