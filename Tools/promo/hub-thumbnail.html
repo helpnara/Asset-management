@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>허브 영상 썸네일</title>
+<!-- 허브 영상(hub.html)의 맞춤 썸네일 (2026-11-15). 1280×720 — 유튜브 권장 크기 · 2MB 아래.
+     작게 보여도 읽히게 글은 두 줄 · 큰 글씨, 오른쪽에 새 디자인 현황판(CI 스크린샷 · 체험 자료). -->
+<style>
+@font-face{font-family:P;font-weight:500;src:url(fonts/Pretendard-Medium.woff2)}
+@font-face{font-family:P;font-weight:800;src:url(fonts/Pretendard-ExtraBold.woff2)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1280px;height:720px;overflow:hidden}
+body{font-family:P,sans-serif;background:radial-gradient(1100px 800px at 30% 30%,#1F5640,#173D2E 70%);color:#fff;-webkit-font-smoothing:antialiased;position:relative}
+.kicker{position:absolute;left:80px;top:96px;display:flex;align-items:center;gap:18px;font-size:34px;font-weight:800;color:rgba(255,255,255,.85)}
+.kicker img{width:64px;height:64px;border-radius:15px}
+.h{position:absolute;left:80px;top:190px;font-size:104px;font-weight:800;letter-spacing:-3px;line-height:1.08}
+.h b{color:#F2C94C;font-weight:800}
+.chips{position:absolute;left:80px;top:470px;display:flex;gap:14px}
+.chip{font-size:30px;font-weight:800;padding:12px 26px;border-radius:40px;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.22)}
+.chip.g{background:#F2C94C;color:#173D2E;border-color:#F2C94C}
+.dur{position:absolute;left:80px;top:580px;font-size:28px;font-weight:500;color:rgba(255,255,255,.7)}
+.phone{position:absolute;right:70px;top:46px;width:330px;height:716px;border-radius:52px;overflow:hidden;background:#fff;
+  box-shadow:0 40px 90px rgba(0,0,0,.45);transform:rotate(4deg);border:10px solid #0B1017}
+.phone img{width:100%;display:block}
+</style></head><body>
+<div class="kicker"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png">느린 부자</div>
+<div class="h">노후 준비 앱<br><b>5분 사용법</b></div>
+<div class="chips"><div class="chip g">가입 없이</div><div class="chip">무료</div><div class="chip">아이폰 · 아이패드</div></div>
+<div class="dur">매주 토요일 직접 적고, 은퇴까지 한 그림으로</div>
+<div class="phone"><img src="../../screenshots/02-dashboard.png"></div>
+</body></html>
