@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 — 5분 사용법 (허브 영상)</title>
+<!--
+  느린 부자 유튜브 허브 영상 (2026-11-15). 1920×1080 가로, 4분 45초, 소리 없음(음악은 올릴 때 스튜디오에서).
+  11-15 사용자: 긴 허브 영상 — "가) 자막과 음악, 5분". 쇼츠마다 `관련 동영상` 으로 이 영상을 잇는다.
+
+  왼쪽 = 자막(챕터 · 제목 · 한 줄씩 뜨는 설명), 오른쪽 = 폰 창(CI 스크린샷 · 체험 자료 · 11-13 디자인 2차 판).
+  장면은 아래 CHAPTERS 자료 하나로 그린다 — 테두리 좌표는 **스크린샷 원본(1206 폭) 픽셀**이고 창 배율(620/1206)을 곱해 얹는다.
+  화면의 이름 · 문구는 코드에서 확인한 것만 쓴다(`체험 자료로 둘러보기` · `내 자료로 시작` · `오늘 돈으로 보기` · `가족 초대` …).
+  render.mjs 는 `window.SIZE` 를 보고 가로로 찍는다.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+  :root { --ink:#0B1017; --muted:#5E6A75; --faint:#98A3AC; --surface:#F4F7F8; --forest:#173D2E; --forest-2:#1F5640; --gold:#F2C94C; --brand:#1F5640; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; }
+  #bg-dark { background: radial-gradient(1600px 1000px at 50% 35%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .55; }
+
+  /* 왼쪽 자막 */
+  #left { position: absolute; left: 130px; top: 0; width: 900px; height: 1080px; }
+  #chip { position: absolute; top: 130px; font-size: 30px; font-weight: 800; color: var(--brand); letter-spacing: .5px; }
+  #ctitle { position: absolute; top: 180px; font-size: 76px; font-weight: 800; letter-spacing: -2px; line-height: 1.12; }
+  #caps { position: absolute; top: 430px; width: 900px; }
+  .cap { font-size: 40px; font-weight: 700; line-height: 1.38; margin-bottom: 26px; letter-spacing: -.5px; word-break: keep-all; }
+  .cap code { font-family: inherit; color: var(--brand); background: #E6F0EA; border-radius: 10px; padding: 0 10px; }
+
+  /* 챕터 진행 */
+  #prog { position: absolute; left: 130px; bottom: 70px; display: flex; gap: 10px; }
+  .pg { font-size: 22px; font-weight: 700; color: var(--faint); padding: 8px 18px; border-radius: 30px; background: rgba(11,16,23,.04); white-space: nowrap; }
+  .pg.on { color: #fff; background: var(--brand); }
+
+  /* 오른쪽 폰 창 */
+  #win { position: absolute; left: 1170px; top: 60px; width: 620px; height: 960px; border-radius: 56px; overflow: hidden;
+         background: #fff; box-shadow: 0 50px 110px rgba(11,16,23,.22); }
+  .shot { position: absolute; inset: 0; }
+  .pan { position: absolute; left: 0; top: 0; width: 620px; }
+  .pan img { display: block; width: 620px; }
+  .ring { position: absolute; border: 6px solid var(--gold); border-radius: 20px; }
+
+  /* 어두운 장면 */
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+  .dk1 { font-size: 64px; font-weight: 800; color: rgba(255,255,255,.92); letter-spacing: -1.5px; }
+  .dk2 { font-size: 84px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .dk3 { font-size: 36px; font-weight: 500; color: rgba(255,255,255,.75); }
+  .toc { position: absolute; left: 560px; width: 800px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px 40px; top: 600px; }
+  .toc div { font-size: 32px; font-weight: 700; color: rgba(255,255,255,.88); }
+  .toc b { color: var(--gold); margin-right: 14px; }
+  .nochip { position: absolute; left: 610px; width: 700px; height: 104px; border-radius: 30px; background: rgba(255,255,255,.08);
+            border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 44px; font-weight: 800; display: flex; align-items: center; padding-left: 44px; }
+  .nochip i { font-style: normal; width: 56px; height: 56px; border-radius: 28px; background: var(--gold); color: var(--forest);
+              display: flex; align-items: center; justify-content: center; font-size: 34px; margin-right: 30px; }
+  .icon { position: absolute; width: 230px; height: 230px; left: 845px; top: 170px; border-radius: 52px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .pill { display: inline-block; padding: 26px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 46px; font-weight: 800; }
+  .fine { font-size: 24px; font-weight: 500; color: rgba(255,255,255,.55); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:900px;height:900px;left:-300px;top:-300px;background:#CFE8D6"></div>
+    <div class="blob" style="width:800px;height:800px;right:-260px;bottom:-320px;background:#FBE9B5"></div>
+  </div>
+
+  <!-- 들어가며 -->
+  <div id="s-intro" class="layer">
+    <div class="center dk1" id="i1" style="top:240px">노후 준비, 지금</div>
+    <div class="center dk2" id="i2" style="top:330px">계획선 위인가요, 아래인가요?</div>
+    <div class="center dk3" id="i3" style="top:480px">아이폰 앱 ‘느린 부자’ 5분 사용법 — 이것만 보면 됩니다</div>
+    <div class="toc" id="toc"></div>
+  </div>
+
+  <!-- 앱 장면 -->
+  <div id="s-app" class="layer">
+    <div id="left">
+      <div id="chip"></div>
+      <div id="ctitle"></div>
+      <div id="caps"></div>
+    </div>
+    <div id="prog"></div>
+    <div id="win"></div>
+  </div>
+
+  <!-- 일부러 안 만든 것 -->
+  <div id="s-no" class="layer">
+    <div class="center dk3" id="n0" style="top:120px;color:var(--gold);font-weight:800">7 · 일부러 안 만든 것</div>
+    <div class="center dk1" id="n1" style="top:180px">우리 가족 돈이라서</div>
+    <div class="nochip" id="n2" style="top:340px"><i>✕</i>서버</div>
+    <div class="nochip" id="n3" style="top:470px"><i>✕</i>광고 · 회원가입</div>
+    <div class="nochip" id="n4" style="top:600px"><i>✕</i>시세 · 잔고 자동 연동</div>
+    <div class="center dk3" id="n5" style="top:780px">자료는 내 폰과 내 iCloud 에만 있습니다</div>
+  </div>
+
+  <!-- 마무리 -->
+  <div id="s-end" class="layer">
+    <div class="icon" id="e0"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center" id="e1" style="top:440px;font-size:96px;font-weight:800;color:#fff;letter-spacing:-2px">느린 <span style="color:var(--gold)">부자</span></div>
+    <div class="center dk3" id="e2" style="top:580px">느리게, 그래도 꾸준히</div>
+    <div class="center" id="e3" style="top:660px"><span class="pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center dk3" id="e4" style="top:800px;font-size:34px">무료 · iPhone · iPad · 받는 링크는 고정 댓글에</div>
+    <div class="center fine" id="e5" style="top:900px">입력한 가정에 따른 계산이며 미래 수익을 보장하지 않습니다 · 화면과 숫자는 가상의 체험 자료입니다</div>
+  </div>
+</div>
+
+<script>
+const W = 1920, H = 1080;
+const SCALE = 620 / 1206;            // 스크린샷 원본 → 창
+const SHOTS = "../../screenshots/";
+
+// ── 장(章) 자료 ─────────────────────────────────────────────────────────
+// step: { img, dur, from, to?, panAt?, rings:[{x,y,w,h,at,stay}], caps:[...] }
+// from / to = 창 맨 위에 올 원본 y. rings 의 at · stay 는 그 step 안의 초.
+const CHAPTERS = [
+  { key: "1", name: "어떤 앱인가", title: "매주 토요일,\n직접 적는 노후 준비", steps: [
+    { img: "02-dashboard.png", dur: 15, from: 0,
+      rings: [{ x: 40, y: 1440, w: 1126, h: 180, at: 7.5, stay: 6.5 }],
+      caps: ["가족 자산을 매주 토요일 직접 적는 앱입니다",
+             "시세 · 잔고 자동 연동은 <b>일부러</b> 없습니다",
+             "손으로 적은 숫자가 기억에 남고, 계획이 몸에 붙습니다"] },
+    { img: "35-trajectory-detail.png", dur: 15, from: 120,
+      rings: [{ x: 30, y: 560, w: 1146, h: 1130, at: 1.5, stay: 12 }],
+      caps: ["그 숫자가 은퇴 계획선 위인지 아래인지",
+             "하나의 궤적으로 은퇴까지 이어 봅니다"] },
+  ]},
+  { key: "2", name: "가입 없이 시작", title: "가입 없이\n바로 둘러보기", steps: [
+    { img: "00-welcome.png", dur: 22, from: 0, to: 600, panAt: 6,
+      rings: [{ x: 330, y: 2290, w: 546, h: 110, at: 9, stay: 12 }],
+      caps: ["앱을 열면 가입 화면 대신 이 화면이 나옵니다",
+             "<code>체험 자료로 둘러보기</code> — 가상의 가족 넷과 12주 기록",
+             "남의 집 숫자로 먼저 마음껏 눌러 봅니다"] },
+    { img: "01-empty.png", dur: 18, from: 0,
+      rings: [{ x: 30, y: 900, w: 1146, h: 440, at: 5, stay: 12 }],
+      caps: ["마음에 들면 화면 위 띠의 <code>내 자료로 시작</code>",
+             "구성원 한 명, 종목 하나만 넣어도 합계가 그려집니다"] },
+  ]},
+  { key: "3", name: "토요일 점검", title: "토요일 점검,\n평가액만 적으면 끝", steps: [
+    { img: "04-review.png", dur: 21, from: 0,
+      rings: [{ x: 0, y: 520, w: 1206, h: 260, at: 6, stay: 6.5 },
+              { x: 0, y: 1570, w: 1206, h: 110, at: 13.5, stay: 6.5 }],
+      caps: ["현황판의 <code>지금 입력</code> 이나 토요일 알림으로 시작합니다",
+             "종목마다 지금 평가액만 — 지난주 대비 증감이 바로 붙습니다",
+             "<code>만</code> · <code>억</code> 단추로 빠르게, 그대로면 <code>변동 없음</code>"] },
+    { img: "05-review-done.png", dur: 19, from: 0,
+      rings: [{ x: 30, y: 400, w: 1146, h: 420, at: 1.5, stay: 6 },
+              { x: 40, y: 950, w: 1126, h: 240, at: 8.5, stay: 6 }],
+      caps: ["마치면 이번 주 변화와 계획선 위 · 아래가 바로",
+             "연속 기록 — 거르지 않은 주가 쌓입니다",
+             "마치는 순간 짧은 진동으로 알려 줍니다"] },
+  ]},
+  { key: "4", name: "궤적과 로드맵", title: "은퇴까지의 길,\n한눈에", steps: [
+    { img: "02-dashboard.png", dur: 15, from: 600,
+      rings: [{ x: 30, y: 2050, w: 1146, h: 330, at: 1.5, stay: 12 }],
+      caps: ["로드맵 — 자산 2배 · 수익이 적립금을 넘는 해 · 은퇴",
+             "정거장을 누르면 그때까지의 적립 · 수익이 보입니다"] },
+    { img: "37-trajectory-zoomed.png", dur: 14, from: 120,
+      rings: [],
+      caps: ["궤적은 돋보기로 크게 — 두 손가락으로 벌리면 확대",
+             "끌면 앞뒤로, 길게 눌러 끌면 그 시점의 값"] },
+    { img: "36-trajectory-detail-real.png", dur: 16, from: 120,
+      rings: [{ x: 20, y: 480, w: 1166, h: 100, at: 1.5, stay: 12.5 }],
+      caps: ["<code>오늘 돈으로 보기</code> — 30년 뒤 숫자를 지금 돈으로",
+             "물가를 빼고 보면 은퇴 자산이 실감 납니다"] },
+  ]},
+  { key: "5", name: "계획과 시뮬레이션", title: "만약에,\n손잡이로 바로", steps: [
+    { img: "06-plan.png", dur: 18, from: 450,
+      rings: [{ x: 40, y: 460, w: 1126, h: 640, at: 1.5, stay: 6.5 },
+              { x: 40, y: 1960, w: 1126, h: 340, at: 9, stay: 7.5 }],
+      caps: ["계획 — 이대로 가면 은퇴 때 얼마, 오늘 돈으로 얼마",
+             "생활비를 적으면 은퇴 목표 금액이 4% 규칙으로 계산됩니다"] },
+    { img: "07-simulation.png", dur: 22, from: 300, to: 620, panAt: 8,
+      rings: [{ x: 40, y: 385, w: 1126, h: 370, at: 1.5, stay: 6 },
+              { x: 40, y: 1900, w: 1126, h: 400, at: 9.5, stay: 11 }],
+      caps: ["시뮬레이션 — 손잡이를 끌면 은퇴 때 금액이 바로 바뀝니다",
+             "매월 적립 · 은퇴 연도 · 연 기대수익률 · 은퇴 후 수익률",
+             "보수적 · 이 설정 · 장미빛 세 갈래와 목표를 넘길 확률까지"] },
+  ]},
+  { key: "6", name: "진단과 가족", title: "진단과\n가족 공유", steps: [
+    { img: "10-diagnostics.png", dur: 13, from: 0,
+      rings: [{ x: 30, y: 380, w: 1146, h: 510, at: 1.5, stay: 10 }],
+      caps: ["자산 진단 — 부동산 비중 · 국가 배분 · 세제혜택 한도",
+             "조치 · 주의 · 지킴, 기준은 전부 직접 고칠 수 있습니다"] },
+    { img: "22-family-share.png", dur: 11, from: 0,
+      rings: [{ x: 30, y: 370, w: 1146, h: 180, at: 1.5, stay: 8.5 }],
+      caps: ["<code>더보기 → 가족 초대</code> — iCloud 로 가족을 부릅니다",
+             "부부가 같은 숫자를 보고 이야기합니다"] },
+    { img: "19-viewer-dashboard.png", dur: 11, from: 0,
+      rings: [{ x: 30, y: 1440, w: 1146, h: 175, at: 1.5, stay: 8.5 }],
+      caps: ["보기 전용으로 부르면 고치는 칸 없이 보기만",
+             "아이들 폰에는 <code>기록 대기 중</code> — 적는 사람은 따로 있습니다"] },
+  ]},
+];
+
+// ── 시간표 ─────────────────────────────────────────────────────────────
+const INTRO = 20, NO = 20, END = 15;
+let t0 = INTRO;
+const STEPS = [];
+CHAPTERS.forEach((c, ci) => c.steps.forEach((s, si) => {
+  STEPS.push({ ...s, ci, si, start: t0, end: t0 + s.dur, first: si === 0 });
+  t0 += s.dur;
+}));
+const APP_END = t0;                  // 250
+const DURATION = APP_END + NO + END; // 285
+const T = { intro: [0, INTRO], app: [INTRO, APP_END], no: [APP_END, APP_END + NO], end: [APP_END + NO, DURATION] };
+
+// ── 도움 함수 ─────────────────────────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+const IN = 0.4, OUT = 0.35;
+function sceneAlpha(t, [a, b]) { if (t < a || t > b) return 0; return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b)); }
+function rise(el, t, at, dur = 0.55, dy = 40) { const p = easeOut(prog(t, at, at + dur)); el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * dy}px)`; }
+function pop(el, t, at, dur = 0.5) { const p = prog(t, at, at + dur); el.style.opacity = clamp(p * 2); el.style.transform = `scale(${0.7 + 0.3 * back(p)})`; }
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+// ── DOM 만들기 ────────────────────────────────────────────────────────
+CHAPTERS.forEach(c => {
+  const d = document.createElement("div"); d.innerHTML = `<b>${c.key}</b>${c.name}`; $("toc").appendChild(d);
+  const p = document.createElement("div"); p.className = "pg"; p.textContent = `${c.key} ${c.name}`; $("prog").appendChild(p);
+});
+{ const d = document.createElement("div"); d.innerHTML = `<b>7</b>일부러 안 만든 것`; $("toc").appendChild(d); }
+STEPS.forEach((s, i) => {
+  const shot = document.createElement("div"); shot.className = "shot"; shot.id = `shot${i}`;
+  const pan = document.createElement("div"); pan.className = "pan"; pan.id = `pan${i}`;
+  const img = document.createElement("img"); img.src = SHOTS + s.img; pan.appendChild(img);
+  s.rings.forEach((r, k) => {
+    const el = document.createElement("div"); el.className = "ring"; el.id = `r${i}_${k}`;
+    Object.assign(el.style, { left: `${r.x * SCALE}px`, top: `${r.y * SCALE}px`, width: `${r.w * SCALE}px`, height: `${r.h * SCALE}px` });
+    pan.appendChild(el);
+  });
+  shot.appendChild(pan); $("win").appendChild(shot);
+});
+
+let shownCaps = -1;
+function setCaps(i) {
+  if (shownCaps === i) return;
+  shownCaps = i;
+  const s = STEPS[i];
+  $("caps").innerHTML = s.caps.map((c, k) => `<div class="cap" id="c${k}">${c}</div>`).join("");
+  $("chip").textContent = `${CHAPTERS[s.ci].key} · ${CHAPTERS[s.ci].name}`;
+  $("ctitle").innerHTML = CHAPTERS[s.ci].title.replace("\n", "<br>");
+  // 진행 칩 — 지금 장만 이름까지, 나머지는 번호만(폰 창을 넘지 않게).
+  [...$("prog").children].forEach((p, k) => {
+    p.classList.toggle("on", k === s.ci);
+    p.textContent = k === s.ci ? `${CHAPTERS[k].key} ${CHAPTERS[k].name}` : CHAPTERS[k].key;
+  });
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────────────
+function render(t) {
+  const lightA = sceneAlpha(t, [T.app[0] - 0.2, T.app[1] + 0.2]);
+  show($("bg-dark"), 1); show($("bg-light"), lightA);
+
+  // 들어가며
+  const iA = sceneAlpha(t, T.intro); show($("s-intro"), iA);
+  if (iA) {
+    rise($("i1"), t, 0.3); pop($("i2"), t, 1.0, 0.6); rise($("i3"), t, 2.6, 0.6, 20);
+    [...$("toc").children].forEach((d, k) => rise(d, t, 5 + k * 0.7, 0.5, 20));
+  }
+
+  // 앱 장면
+  const aA = sceneAlpha(t, T.app); show($("s-app"), aA);
+  if (aA) {
+    const i = Math.max(0, STEPS.findIndex(s => t >= s.start && t < s.end));
+    const idx = t >= APP_END ? STEPS.length - 1 : i;
+    setCaps(idx);
+    const s = STEPS[idx], local = t - s.start;
+    // 장이 바뀌면 제목이 오르고, 같은 장 안에서는 그대로
+    if (s.first) { rise($("chip"), t, s.start + 0.1, 0.5, 20); rise($("ctitle"), t, s.start + 0.25); }
+    else { $("chip").style.opacity = 1; $("ctitle").style.opacity = 1; $("chip").style.transform = $("ctitle").style.transform = "none"; }
+    // 자막 — 한 줄씩, 지난 줄은 흐리게
+    const n = s.caps.length, slot = (s.dur - 1.5) / n;
+    s.caps.forEach((_, k) => {
+      const el = $(`c${k}`); if (!el) return;
+      const at = 0.6 + k * slot;
+      rise(el, t, s.start + at, 0.5, 24);
+      const current = local >= at && (k === n - 1 || local < 0.6 + (k + 1) * slot);
+      el.style.color = local < at ? "" : (current ? "var(--ink)" : "var(--faint)");
+    });
+    // 폰 창 — 단계마다 서서히 바꿈
+    STEPS.forEach((st, j) => {
+      const a = j === 0 ? (t < st.end ? 1 : 1 - prog(t, st.end - 0.2, st.end + 0.4))
+                        : Math.min(prog(t, st.start - 0.2, st.start + 0.4), j === STEPS.length - 1 ? 1 : 1 - prog(t, st.end - 0.2, st.end + 0.4));
+      show($(`shot${j}`), a);
+      if (a) {
+        const from = st.from, to = st.to ?? st.from;
+        const y = from + (to - from) * easeInOut(prog(t, st.start + (st.panAt ?? 0), st.start + (st.panAt ?? 0) + 1.2));
+        $(`pan${j}`).style.transform = `translateY(${-y * SCALE}px)`;
+        st.rings.forEach((r, k) => {
+          const el = $(`r${j}_${k}`), at = st.start + r.at;
+          const p = prog(t, at, at + 0.35), out = prog(t, at + r.stay, at + r.stay + 0.35);
+          el.style.opacity = clamp(p * 2) * (1 - out);
+          el.style.transform = `scale(${1.06 - 0.06 * easeOut(p)})`;
+        });
+      }
+    });
+  }
+
+  // 일부러 안 만든 것
+  const nA = sceneAlpha(t, T.no); show($("s-no"), nA);
+  if (nA) { const a = T.no[0]; rise($("n0"), t, a + 0.2, 0.5, 20); rise($("n1"), t, a + 0.6); [2, 3, 4].forEach((k, j) => rise($(`n${k}`), t, a + 2 + j * 1.6, 0.5, 30)); rise($("n5"), t, a + 8, 0.6, 20); }
+
+  // 마무리
+  const eA = sceneAlpha(t, [T.end[0], DURATION + 1]); show($("s-end"), eA);
+  if (eA) { const a = T.end[0]; pop($("e0"), t, a + 0.1, 0.6); rise($("e1"), t, a + 0.6); rise($("e2"), t, a + 1.0, 0.5, 20); pop($("e3"), t, a + 1.6, 0.5); rise($("e4"), t, a + 2.2, 0.5, 20); rise($("e5"), t, a + 2.8, 0.5, 10); }
+}
+
+window.SIZE = { width: W, height: H };
+window.DURATION = DURATION;
+window.render = render;
+window.CHAPTER_TIMES = [0, ...CHAPTERS.map(c => STEPS.find(s => s.ci === CHAPTERS.indexOf(c)).start), APP_END, APP_END + NO];
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+if (!location.search.includes("frames")) {
+  window.ready.then(() => { const start = performance.now(); const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+}
+</script>
+</body>
+</html>

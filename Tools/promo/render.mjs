@@ -33,6 +33,9 @@ const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, de
 await page.goto(pathToFileURL(path.join(here, pageName)).href + "?frames");
 await page.evaluate(() => window.ready);
 const duration = await page.evaluate(() => window.DURATION);
+// 가로 영상(허브 영상 · 1920×1080)은 페이지가 `window.SIZE` 로 크기를 알린다. 없으면 쇼츠 세로 그대로.
+const size = await page.evaluate(() => window.SIZE ?? null);
+if (size) await page.setViewportSize(size);
 
 if (stillsArg) {
   for (const s of stillsArg.split(",").map(Number)) {
