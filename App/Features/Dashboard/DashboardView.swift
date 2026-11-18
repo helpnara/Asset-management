@@ -34,6 +34,8 @@ struct DashboardView: View {
     @State private var completedToShow: ReviewSession?
     /// 로드맵 정거장을 누르면 그 시점의 분해 시트 (85번).
     @State private var selectedStop: RoadmapStrip.Stop?
+    /// 인생 이벤트 카드에서 누른 줄 — `더보기 → 인생 이벤트` 와 같은 폼을 연다 (218번).
+    @State private var editingMilestone: UserMilestone?
     /// **마지막으로 끝난 궤적 계산** (157번). 예전에는 `projection` 이 계산
     /// 프로퍼티라, 본문에서 참조하는 자리마다 30년치를 처음부터 다시 굴렸다 —
     /// 그런 자리가 아홉 군데였고, 계획선까지 더하면 한 번 그릴 때 열한 번이었다.
@@ -94,6 +96,10 @@ struct DashboardView: View {
                     RoadmapStopSheet(stop: stop, plan: plan, projection: projection,
                                      members: members, rollup: rollup)
                 }
+            }
+            // 새 화면을 만들지 않는다 — 입력하는 곳과 같은 폼 하나 (218번, 168번 정책).
+            .sheet(item: $editingMilestone) { milestone in
+                MilestoneEditView(milestone: milestone).saveFailureBand()
             }
             // 넓은 화면에서 카드가 끝에서 끝까지 늘어나지 않게 (161번).
             .readableWidth()
@@ -631,7 +637,7 @@ struct DashboardView: View {
             else { return nil }
             return TrajectoryChart.EventMark(
                 date: date,
-                label: milestone.label.isEmpty ? "마일스톤" : milestone.label
+                label: milestone.label.isEmpty ? "인생 이벤트" : milestone.label
             )
         }
     }
@@ -856,7 +862,18 @@ struct DashboardView: View {
                                   ? "가까운 \(events.count)개" : "")
                 VStack(spacing: 0) {
                     ForEach(events, id: \.id) { event in
-                        lifeEventRow(event)
+                        // **누르면 자세히 보고 고친다** (218번, 11-18 사용자). 편집 권한이 없으면
+                        // `인생 이벤트` 목록과 같은 규칙으로 버튼을 두지 않는다 — 대신 메모를 더 보여 준다.
+                        if canEdit, let milestone = userMilestones.first(where: { $0.id == event.id }) {
+                            Button { editingMilestone = milestone } label: {
+                                lifeEventRow(event, tappable: true)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("눌러서 자세히 보고 고칩니다")
+                        } else {
+                            lifeEventRow(event, tappable: false)
+                        }
                     }
                 }
                 .padding(.horizontal, Card.inset)
@@ -866,7 +883,7 @@ struct DashboardView: View {
         }
     }
 
-    private func lifeEventRow(_ event: LifeEvent) -> some View {
+    private func lifeEventRow(_ event: LifeEvent, tappable: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: "\(event.year)")
@@ -898,7 +915,9 @@ struct DashboardView: View {
                     Text(event.note)
                         .font(.scaled(11))
                         .foregroundStyle(Color.faint)
-                        .lineLimit(1)
+                        // 누를 수 있으면 전문은 폼에서 — 보기 전용이면 세 줄까지 여기서.
+                        .lineLimit(tappable ? 1 : 3)
+                        .multilineTextAlignment(.leading)
                 }
             }
             Spacer(minLength: 6)
@@ -912,6 +931,11 @@ struct DashboardView: View {
                         .font(.scaled(11))
                         .foregroundStyle(Color.faint)
                 }
+            }
+            if tappable {
+                Image(systemName: "chevron.right")
+                    .font(.scaled(11, weight: .semibold))
+                    .foregroundStyle(Color.faint)
             }
         }
         .padding(.vertical, 9)

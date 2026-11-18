@@ -108,7 +108,7 @@ struct MoreView: View {
                         Label("운용 원칙", systemImage: "list.number")
                     }
                     NavigationLink(value: Destination.milestones) {
-                        Label("내 마일스톤", systemImage: "flag")
+                        Label("인생 이벤트", systemImage: "flag")
                     }
                     NavigationLink(value: Destination.todos) {
                         HStack {

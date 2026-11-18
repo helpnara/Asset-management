@@ -106,7 +106,7 @@ struct MemberTrajectoryView: View {
                   let date = calendar.date(from: DateComponents(year: milestone.year, month: 1, day: 1))
             else { return nil }
             return .init(date: date,
-                         label: milestone.label.isEmpty ? "마일스톤" : milestone.label)
+                         label: milestone.label.isEmpty ? "인생 이벤트" : milestone.label)
         }
     }
 
