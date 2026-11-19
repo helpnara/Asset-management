@@ -52,6 +52,8 @@ struct WeeklyReviewView: View {
     @State private var isConfirmingLargeChanges = false
     /// `나중에` 를 눌렀는데 적은 것이 있어 되묻는 중 (199번 C1).
     @State private var isConfirmingLater = false
+    /// `남은 n건 모두 변동 없음` 을 눌러 되묻는 중 (219번 A).
+    @State private var isConfirmingRest = false
 
     /// **활성 행에 친 글자** (144-A). 활성 행의 입력칸은 비어 있고 지난 값은 회색
     /// 자리표시로만 보인다 — 여덟 자리를 지우고 치는 수고를 없앤다. 어느 줄의
@@ -589,6 +591,7 @@ struct WeeklyReviewView: View {
                     .foregroundStyle(Color.loss)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            restBar
             accessory
         }
         .task(id: limitNote) {
@@ -603,6 +606,46 @@ struct WeeklyReviewView: View {
             .background(Color.surface)
             .overlay(Rectangle().fill(Color.rule).frame(height: 1), alignment: .top)
             .tint(Color.ink)
+    }
+
+    /// **아직 커서가 안 간 줄** — 지금 줄은 뺀다 (219번 A).
+    private var remainingCount: Int {
+        queue.filter { !shownVisited.contains($0.id) }.count
+    }
+
+    /// **남은 것을 한 번에 변동 없음으로** (219번 A, 11-19 사용자). 변동 없음은 이미 "값을 안 바꾸고 끝내면"
+    /// 그렇게 기록된다(`finish()`) — 그런데 끝내는 단추가 목록 맨 아래 · 마지막 줄에만 있어 30줄을 내려가야
+    /// 했다. 같은 끝내기를 어느 줄에서나 부른다. 한 줄 남았을 때는 `변동 없음` 단추가 그 일을 한다.
+    @ViewBuilder
+    private var restBar: some View {
+        let count = remainingCount
+        if count >= 2 {
+            HStack {
+                Spacer(minLength: 0)
+                Button("남은 \(count)건 모두 변동 없음") { isConfirmingRest = true }
+                    .font(.scaled(12, weight: .medium))
+                    .foregroundStyle(Color.brand)
+                    .lineLimit(1)
+                    // 확인 창은 이 단추에 단다 — 화면의 "크게 바뀐 항목" 창과 같은 사슬에 걸면 하나만 뜬다(빌드 127).
+                    .confirmationDialog("남은 \(count)건을 변동 없음으로 두고 점검을 끝낼까요?",
+                                        isPresented: $isConfirmingRest, titleVisibility: .visible) {
+                        Button("변동 없음으로 끝내기") { finishRest() }
+                        // 이름 있는 단추로 늘 보이게 (빌드 127 — `.cancel` 은 iOS 가 감춘다).
+                        Button("계속 적기") {}
+                    } message: {
+                        Text("아직 안 본 항목은 지난 값 그대로 기록됩니다. 지금까지 적은 값은 그대로 남습니다.")
+                    }
+            }
+        }
+    }
+
+    /// 이 창이 내려간 뒤에 끝낸다 — 크게 바뀐 항목이 있으면 그 확인 창이 이어서 떠야 한다.
+    private func finishRest() {
+        // 지금 줄에 친 값은 치는 대로 이미 저장돼 있다(`valueText`) — 따로 쓸 것이 없다.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            requestFinish()
+        }
     }
 
     private var accessory: some View {

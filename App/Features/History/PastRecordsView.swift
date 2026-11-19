@@ -40,20 +40,22 @@ struct PastRecordsView: View {
                 }
             }
 
-            ForEach(snapshots) { snapshot in
+            // 새 기록이 위다 — 바로 아래 줄이 직전 기록 (219번 H).
+            ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                let previous = snapshots.indices.contains(index + 1) ? snapshots[index + 1] : nil
                 // 보기 전용이면 버튼으로 두지 않는다 — 눌러도 아무 일이 없는
                 // 버튼은 잠긴 화면이 아니라 고장 난 화면으로 읽힌다.
                 if canManageHousehold {
-                    Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot) }
+                    Button { editing = PastRecordDraft(snapshot) } label: { row(snapshot, previous: previous) }
                         // 밀어 지우기 (180 · 181번). 확인 창은 화면에 한 장.
                         .swipeDelete { pendingDelete.item = snapshot }
                 } else {
-                    row(snapshot)
+                    row(snapshot, previous: previous)
                 }
             }
 
             Section {
-                Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.")
+                Text("여기 넣은 값은 궤적의 '실제 기록' 선에 그대로 찍힙니다. 매주 넣을 필요는 없습니다 — 분기에 한 점씩만 있어도 선은 그려집니다.\n금액 아래 숫자는 바로 아래 줄(직전 기록) 대비 증감입니다.")
                     .font(.scaled(11))
                     .foregroundStyle(Color.faint)
             }
@@ -84,8 +86,10 @@ struct PastRecordsView: View {
         }
     }
 
-    private func row(_ snapshot: Snapshot) -> some View {
-        HStack {
+    /// **직전 기록 대비 증감** 을 금액 아래에 (219번 H, 11-19 사용자). 예전에는 날짜 · 총자산 · 부채만
+    /// 있어 몇 주 치를 견주려면 숫자를 머릿속으로 빼야 했다. 가장 오래된 줄은 견줄 것이 없어 비운다.
+    private func row(_ snapshot: Snapshot, previous: Snapshot?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(DateText.full(snapshot.weekAnchor))
                     .font(.scaled(13))
@@ -98,10 +102,18 @@ struct PastRecordsView: View {
                 }
             }
             Spacer()
-            Text(Won.abbreviated(
-                Money(minorUnits: snapshot.netWorthMinor, currency: .krw), suffix: "원"))
-                .font(.figure(13.5, weight: .medium))
-                .foregroundStyle(Color.ink)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(Won.abbreviated(
+                    Money(minorUnits: snapshot.netWorthMinor, currency: .krw), suffix: "원"))
+                    .font(.figure(13.5, weight: .medium))
+                    .foregroundStyle(Color.ink)
+                if let previous {
+                    let delta = Money(minorUnits: snapshot.netWorthMinor - previous.netWorthMinor, currency: .krw)
+                    Text(delta.isZero ? "변동 없음" : Won.compact(delta, sign: .always))
+                        .font(.figure(11))
+                        .foregroundStyle(delta.isZero ? Color.faint : delta.isNegative ? Color.loss : Color.gain)
+                }
+            }
         }
     }
 

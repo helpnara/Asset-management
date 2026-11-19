@@ -27,6 +27,7 @@ struct ReviewCompleteView: View {
     var onClose: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var context
 
     private func close() {
         if let onClose { onClose() } else { dismiss() }
@@ -113,12 +114,15 @@ struct ReviewCompleteView: View {
     /// 점검을 막 끝내고 들어왔을 때만 한 번 켠다 — 성공 햅틱의 방아쇠 (217번 2차, 11-13 사용자: "넣기").
     /// 현황판에서 지난 점검을 다시 열 때(`onClose == nil`)는 울리지 않는다.
     @State private var didArrive = false
+    /// 이번 주 많이 움직인 종목과 견준 점검의 날짜 (219번 E). 본문 밖에서 한 번 읽는다.
+    @State private var movers: (result: WeeklyMovers.Result, since: Date)?
 
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 headline
                 celebrations
+                moverSection
                 streakSection
                 memberSection
                 footer
@@ -127,6 +131,7 @@ struct ReviewCompleteView: View {
         // 종이(`canvas`)였다 — 탭 화면과 같은 바탕 위 둥근 카드로 (217번 2차).
         .background(Color.ground)
         .task(id: gapStamp) { planGap = computePlanGap() }
+        .task(id: moverStamp) { movers = isFirstEver ? nil : computeMovers() }
         .readableWidth(background: .ground)
         .onAppear { if onClose != nil { didArrive = true } }
         .sensoryFeedback(.success, trigger: didArrive)
@@ -172,6 +177,12 @@ struct ReviewCompleteView: View {
                         .font(.figure(13, weight: .medium))
                         .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
                         .padding(.top, 6)
+                    // **계획선이 얼마인가** (219번 F). 1% 안쪽이면 위 줄이 금액 없이 "계획선 위에 있습니다"
+                    // 라서 얼마나 붙어 있는지 몰랐다. 1페이지의 `계획 대비 +…` 와 같은 값을 함께 적는다.
+                    Text(planLine(gap))
+                        .font(.figure(11))
+                        .foregroundStyle(Color.muted)
+                        .padding(.top, 2)
                 }
 
                 if driftCount > 0 {
@@ -191,6 +202,12 @@ struct ReviewCompleteView: View {
         .padding(.bottom, 8)
     }
 
+    /// `계획선 12억 3,400만 · 계획 대비 +30만` — 1% 안쪽이면 그렇다고 덧붙인다.
+    private func planLine(_ gap: PlanTrack.Gap) -> String {
+        "계획선 \(Won.abbreviated(gap.onPlan)) · 계획 대비 \(Won.compact(gap.delta, sign: .always))"
+            + (gap.isWithinBand ? " · 1% 안쪽" : "")
+    }
+
     /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
     /// **그때 기준**으로 맞게 나온다 — 화면의 다른 숫자와 같은 규칙이다.
     private func computePlanGap() -> PlanTrack.Gap? {
@@ -205,6 +222,76 @@ struct ReviewCompleteView: View {
         [Plan.primary(driftPlans)?.editFingerprint ?? "",
          "\(snapshots.count)", "\(cashEvents.count)", "\(incomes.count)", "\(driftMembers.count)",
          "\(session.totalValueMinor)", "\(session.weekAnchor.timeIntervalSince1970)"].joined(separator: "|")
+    }
+
+    /// 그 주 기록과 그 앞 마지막 점검의 기록을 견준다 (219번 E). 부채 종목은 부호를 뒤집는다.
+    private func computeMovers() -> (result: WeeklyMovers.Result, since: Date)? {
+        let liabilityIDs = Set(driftMembers
+            .flatMap(\.sortedAccounts)
+            .filter { $0.kind.isLiability }
+            .flatMap(\.sortedHoldings)
+            .map(\.id))
+        return HoldingRecord.movers(weekAnchor: session.weekAnchor, liabilityIDs: liabilityIDs, in: context)
+    }
+
+    /// 이 주의 총액 · 기록 수가 바뀌면 다시 읽는다 — 다른 식구가 이어서 끝낸 경우.
+    private var moverStamp: String {
+        "\(session.weekAnchor.timeIntervalSince1970)|\(session.totalValueMinor)|\(session.enteredCount)|\(snapshots.count)"
+    }
+
+    /// **이번 주 많이 움직인 종목** — 오른 것 위 셋 · 내린 것 아래 셋 (219번 E).
+    @ViewBuilder
+    private var moverSection: some View {
+        if let movers, !movers.result.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("많이 움직인 종목")
+                        .font(.scaled(14, weight: .bold))
+                        .foregroundStyle(Color.ink)
+                    Spacer()
+                    Text("\(DateText.short(movers.since)) 점검 대비")
+                        .font(.scaled(11.5))
+                        .foregroundStyle(Color.muted)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 26)
+                .padding(.bottom, 10)
+
+                let items = movers.result.gains + movers.result.losses
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.scaled(13.5, weight: .semibold))
+                                    .foregroundStyle(Color.ink)
+                                    .lineLimit(1)
+                                if !item.detail.isEmpty {
+                                    Text(item.detail)
+                                        .font(.scaled(11))
+                                        .foregroundStyle(Color.faint)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            Text(Won.compact(item.delta, sign: .always))
+                                .font(.figure(13.5, weight: .semibold))
+                                .foregroundStyle(item.delta.isNegative ? Color.loss : Color.gain)
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                        .padding(.horizontal, Card.inset)
+                        .padding(.vertical, 12)
+                        // 줄 사이에만 (217번) — 카드 맨 아래에는 긋지 않는다.
+                        if item.id != items.last?.id {
+                            Rectangle().fill(Color.rule).frame(height: 1)
+                                .padding(.leading, Card.inset)
+                        }
+                    }
+                }
+                .cardSurface()
+            }
+        }
     }
 
     /// 이 점검 주에 넘긴 선들. 지난 점검을 열어 봐도 그 주의 것이 나온다.
@@ -339,6 +426,22 @@ struct ReviewCompleteView: View {
 
     private var footer: some View {
         VStack(spacing: 10) {
+            // **그림으로 가족 단톡에** (219번 G). 주 단추는 `현황판에서 보기` 하나라 이것은 옅은 캡슐(원칙 6).
+            if !session.isGone {
+                Button {
+                    ReviewShareCard.share(shareContent)
+                } label: {
+                    Label("그림으로 공유", systemImage: "square.and.arrow.up")
+                        .font(.scaled(14, weight: .medium))
+                        .foregroundStyle(Color.brand)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.brandSoft, in: Capsule())
+                }
+                Text("그림에는 금액이 그대로 나옵니다 — 가리기가 켜져 있어도요.")
+                    .font(.scaled(11))
+                    .foregroundStyle(Color.faint)
+            }
             Button {
                 close()
             } label: {
@@ -355,6 +458,27 @@ struct ReviewCompleteView: View {
                 .foregroundStyle(Color.faint)
         }
         .padding(20)
+    }
+
+    /// 공유 그림에 넘길 값 — 화면과 같은 스냅샷 · 같은 계산에서 (219번 G).
+    private var shareContent: ReviewShareCard.Content {
+        let lines = snapshot?.sortedLines ?? []
+        return .init(
+            weekAnchor: session.weekAnchor,
+            isFirst: isFirstEver,
+            change: change,
+            total: total,
+            totalLabel: driftMembers.count > 1 ? "가족 총자산" : "총자산",
+            enteredCount: session.enteredCount,
+            gap: planGap,
+            streak: streak,
+            members: lines.map { line in
+                ReviewShareCard.MemberLine(id: line.memberID,
+                      name: line.memberName.isEmpty ? "이름 없음" : line.memberName,
+                      value: Money(minorUnits: line.valueMinor, currency: .krw),
+                      colorIndex: line.sortIndex)
+            },
+            movers: movers?.result)
     }
 
     private var nextReviewText: String {

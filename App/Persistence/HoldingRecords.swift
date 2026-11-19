@@ -51,4 +51,47 @@ extension HoldingRecord {
         var seen: Set<Int> = []
         return Array(newestFirst.filter { seen.insert(ReviewWeek.dayKey($0.weekAnchor)).inserted }.reversed())
     }
+
+    /// **그 주에 많이 움직인 종목** (219번 E). 그 주의 기록과 **그 앞 마지막 점검**의 기록을 견준다 —
+    /// 한 주를 걸렀으면 2주 치 변화다(화면에 견준 날짜를 적는다). 지난 점검을 다시 열어도 그때 기준.
+    /// `liabilityIDs` 는 부채 계좌의 종목 — 부호를 뒤집어 갚은 만큼이 오른 쪽에 서게 한다.
+    @MainActor
+    static func movers(weekAnchor: Date, liabilityIDs: Set<UUID>, in context: NSManagedObjectContext,
+                       limit: Int = 3) -> (result: WeeklyMovers.Result, since: Date)? {
+        let range = ReviewWeek.nearbyRange(of: weekAnchor)
+        let thisWeek = context.all(
+            HoldingRecord.self,
+            predicate: NSPredicate(format: "weekAnchor > %@ AND weekAnchor < %@",
+                                   range.lower as NSDate, range.upper as NSDate))
+            .filter { ReviewWeek.isSameWeek($0.weekAnchor, weekAnchor) }
+        guard !thisWeek.isEmpty,
+              let since = context.all(
+                HoldingRecord.self,
+                sortedBy: [NSSortDescriptor(key: "weekAnchor", ascending: false)],
+                predicate: NSPredicate(format: "weekAnchor < %@", range.lower as NSDate),
+                limit: 1).first?.weekAnchor
+        else { return nil }
+        let before = ReviewWeek.nearbyRange(of: since)
+        let lastWeek = context.all(
+            HoldingRecord.self,
+            predicate: NSPredicate(format: "weekAnchor > %@ AND weekAnchor < %@",
+                                   before.lower as NSDate, before.upper as NSDate))
+            .filter { ReviewWeek.isSameWeek($0.weekAnchor, since) }
+
+        func signed(_ record: HoldingRecord) -> Money {
+            let value = liabilityIDs.contains(record.holdingID) ? -record.valueMinor : record.valueMinor
+            return Money(minorUnits: value, currency: .krw)
+        }
+        // 같은 주가 두 기기에서 끝나 같은 종목이 둘이면 하나만.
+        var seen: Set<UUID> = []
+        let current: [WeeklyMovers.Entry] = thisWeek.compactMap { record in
+            guard seen.insert(record.holdingID).inserted else { return nil }
+            return .init(id: record.holdingID,
+                         name: record.holdingName.isEmpty ? "이름 없음" : record.holdingName,
+                         detail: record.accountName, value: signed(record))
+        }
+        let previous = Dictionary(lastWeek.map { ($0.holdingID, signed($0)) },
+                                  uniquingKeysWith: { first, _ in first })
+        return (WeeklyMovers.top(current: current, previous: previous, limit: limit), since)
+    }
 }

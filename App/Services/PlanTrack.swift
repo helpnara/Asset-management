@@ -63,6 +63,8 @@ enum PlanTrack {
         let actual: Money
         let delta: Money
         let isAhead: Bool
+        /// 차이가 1% 안쪽이라 "계획대로" 로 보는가 (219번 F — 점검 완료 화면이 그때도 금액을 적는다).
+        let isWithinBand: Bool
         /// `계획보다 2,300만원 앞서 있습니다`
         let text: String
         /// 종이에 적는 짧은 꼴 — `계획 대비 +2,300만`
@@ -80,12 +82,12 @@ enum PlanTrack {
         let size = Won.abbreviated(Money(minorUnits: abs(delta.minorUnits), currency: .krw),
                                    suffix: "원")
         if abs(delta.minorUnits) < threshold {
-            return Gap(onPlan: onPlan, actual: actual, delta: delta, isAhead: true,
+            return Gap(onPlan: onPlan, actual: actual, delta: delta, isAhead: true, isWithinBand: true,
                        text: "계획선 위에 있습니다", compact: "계획대로")
         }
         let ahead = delta.minorUnits > 0
         return Gap(
-            onPlan: onPlan, actual: actual, delta: delta, isAhead: ahead,
+            onPlan: onPlan, actual: actual, delta: delta, isAhead: ahead, isWithinBand: false,
             text: ahead ? "계획보다 \(size) 앞서 있습니다" : "계획보다 \(size) 뒤에 있습니다",
             compact: "계획 대비 \(ahead ? "+" : "−")\(Won.compact(Money(minorUnits: abs(delta.minorUnits), currency: .krw)))"
         )
