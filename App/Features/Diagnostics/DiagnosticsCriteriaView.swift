@@ -12,7 +12,8 @@ struct DiagnosticsCriteriaView: View {
     @Environment(\.dismiss) private var dismiss
     /// 미국 목표 줄을 누르면 가족 자산 배분을 이 시트 안에서 민다 (171번).
     /// `NavigationLink` 는 시트 안 `Form` 에서 눌러도 안 열렸다 (빌드 97 8번).
-    @State private var showsAllocation = false
+    /// `isPresented` 대신 `item` (docs/24 — iOS 27 SDK 빌드에서 `isPresented` 가 밀어 넣지 못했다).
+    @State private var allocationRoute: FamilyAllocationRoute?
 
     var body: some View {
         NavigationStack {
@@ -60,7 +61,7 @@ struct DiagnosticsCriteriaView: View {
                         // 하나다 — 지역 목표는 한국 · 미국 · 그 외가 합쳐 100 이라
                         // 여기서 미국만 고칠 수 없다. 대신 찾아가는 길을 한 번으로.
                         Button {
-                            showsAllocation = true
+                            allocationRoute = FamilyAllocationRoute()
                         } label: {
                             HStack {
                                 Text("미국 목표 비중")
@@ -155,7 +156,7 @@ struct DiagnosticsCriteriaView: View {
             // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
             .readableWidth()
             .navigationTitle("진단 기준")
-            .navigationDestination(isPresented: $showsAllocation) { FamilyAllocationView() }
+            .navigationDestination(item: $allocationRoute) { _ in FamilyAllocationView() }
             .navigationBarTitleDisplayMode(.inline)
             // 금액 칸의 `만 · 억 · 완료` 띠 (152번 3-1).
             .moneyKeyboardBar()

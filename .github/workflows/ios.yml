@@ -436,6 +436,14 @@ jobs:
           # 이번 묶음에서 가장 새롭고 계산이 많은 화면이다 (docs/08-feedback.md 14번).
           shoot 14-account-targets.png -skipOnboarding -seedSampleData -startTab assets -startAccountTargets
           shoot 15-family-allocation.png -skipOnboarding -seedSampleData -startTab assets -startFamilyAllocation
+          # **갈고리가 화면을 못 열면 자산 목록이 그대로 찍힌다** (docs/24, CI 341 — 14 · 15 가 03 과
+          # 한 바이트도 다르지 않았는데 "찍음" 으로 지나갔다). 빈 화면 검사로는 못 잡으니 따로 본다.
+          for f in 14-account-targets.png 15-family-allocation.png; do
+            if cmp -s "screenshots/$f" screenshots/03-assets.png; then
+              echo "::error::$f 가 자산 목록(03)과 똑같습니다 — 갈고리가 화면을 열지 못했습니다"
+              echo "$f" >> /tmp/shoot-failures
+            fi
+          done
           # **1페이지는 한 장에 들어가느냐가 전부다.** 그런데 정작 이 화면만
           # 안 찍고 있어서 원칙을 몇 개 실을지, 종목을 몇 줄까지 둘지를 감으로
           # 정할 뻔했다 (docs/08-feedback.md 24번). 미리보기가 종이 끝 선과
@@ -525,10 +533,12 @@ jobs:
             IPAD_READY=1
             perl -e 'alarm 300; exec @ARGV' xcrun simctl boot "$IPAD" || true
             perl -e 'alarm 300; exec @ARGV' xcrun simctl bootstatus "$IPAD" -b || IPAD_READY=0
+            # 상태 막대 고정은 꾸밈이다 — iOS 27.2 iPad 에서 이 명령만 멈춰(CI 341) 막지 않고 그대로 찍는다.
             [ "$IPAD_READY" = 1 ] && { perl -e 'alarm 90; exec @ARGV' xcrun simctl status_bar "$IPAD" override \
               --time "9:41" \
               --dataNetwork wifi --wifiMode active --wifiBars 3 \
-              --batteryState charged --batteryLevel 100 || IPAD_READY=0; }
+              --batteryState charged --batteryLevel 100 \
+              || echo "::warning::iPad 상태 막대를 고정하지 못했습니다 — 시계가 9:41 이 아닐 수 있습니다"; }
             [ "$IPAD_READY" = 1 ] && { perl -e 'alarm 300; exec @ARGV' xcrun simctl install "$IPAD" "$APP" || IPAD_READY=0; }
           fi
           if [ -n "$IPAD" ] && [ "$IPAD_READY" != 1 ]; then
@@ -547,11 +557,11 @@ jobs:
 
             # **가로로 눕힌 아이패드** (161번). 이 방향이라야 좌측 메뉴와
             # 줄의 너비 제한이 보인다 — 세로만 찍으면 둘 다 확인할 수 없다.
-            xcrun simctl status_bar "$IPAD" override --time "9:41"
-            if xcrun simctl ui "$IPAD" orientation landscape >/dev/null 2>&1; then
+            perl -e 'alarm 60; exec @ARGV' xcrun simctl status_bar "$IPAD" override --time "9:41" || true
+            if perl -e 'alarm 60; exec @ARGV' xcrun simctl ui "$IPAD" orientation landscape >/dev/null 2>&1; then
               shoot ipad/30-landscape-plan.png   -skipOnboarding -seedSampleData -startTab plan
               shoot ipad/31-landscape-assets.png -skipOnboarding -seedSampleData -startTab assets
-              xcrun simctl ui "$IPAD" orientation portrait >/dev/null 2>&1 || true
+              perl -e 'alarm 60; exec @ARGV' xcrun simctl ui "$IPAD" orientation portrait >/dev/null 2>&1 || true
             else
               echo "::warning::시뮬레이터가 방향 바꾸기를 지원하지 않아 가로 컷을 건너뜁니다"
             fi

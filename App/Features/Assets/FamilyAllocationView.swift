@@ -2,6 +2,12 @@ import Core
 import CoreData
 import SwiftUI
 
+/// `가족 자산 배분` 으로 밀어 넣는 표 (docs/24). `navigationDestination(isPresented:)` 는 iOS 27 SDK 빌드에서
+/// 밀어 넣지 못했다(CI 341 — 갈고리가 목록에 머묾). 폰에서 도는 것이 확인된 `navigationDestination(item:)` 으로 연다.
+struct FamilyAllocationRoute: Hashable, Identifiable {
+    var id: Int { 0 }
+}
+
 /// 가족 전체 자산을 세 가지로 갈라 본다 (docs/08-feedback.md 15번).
 ///
 /// 1. **구성원** — 각자의 자산이 가족 안에서 몇 %인가. 목표는 없다

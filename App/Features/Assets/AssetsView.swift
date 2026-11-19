@@ -62,10 +62,11 @@ struct AssetsView: View {
     @State private var route = AppRoute.shared
     /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
     /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
-    /// **처음부터 `true` 로 두지 않는다** (docs/24, iOS 27 SDK CI 339) — 첫 화면이 그려지기 전에
+    /// **처음부터 열어 두지 않는다** (docs/24, iOS 27 SDK CI 339) — 첫 화면이 그려지기 전에
     /// 밀어 넣으면 iOS 27 에서 흰 화면만 찍혔다(세 번 다). 사람이 단추를 누르는 순서처럼 목록이 뜬 뒤에 연다.
-    @State private var showFamilyAllocation = false
-    @State private var showAccountTargets = false
+    /// `isPresented` 로 열면 그래도 목록에 머물러(CI 341) **`item` 으로** 연다 — 목표 비중은 사람이 쓰는
+    /// `targetingAccount` 를 그대로 쓴다.
+    @State private var familyAllocationRoute: FamilyAllocationRoute?
 
     /// 펼쳐 둔 계좌·구성원의 UUID. 기기마다 따로 기억된다 — 접힘은 원래
     /// 기기별로 다른 게 자연스럽다.
@@ -284,7 +285,7 @@ struct AssetsView: View {
                             message: { "\($0.weightLabel) · 적어 온 평가액이 함께 사라집니다. 되돌릴 수 없습니다." }) { holding in
                 delete(holding)
             }
-            .navigationDestination(isPresented: $showFamilyAllocation) {
+            .navigationDestination(item: $familyAllocationRoute) { _ in
                 FamilyAllocationView()
             }
             .task {
@@ -292,12 +293,9 @@ struct AssetsView: View {
                 guard arguments.contains("-startFamilyAllocation") || arguments.contains("-startAccountTargets")
                 else { return }
                 try? await Task.sleep(for: .milliseconds(400))
-                showFamilyAllocation = arguments.contains("-startFamilyAllocation")
-                showAccountTargets = arguments.contains("-startAccountTargets")
-            }
-            .navigationDestination(isPresented: $showAccountTargets) {
-                if let account = members.first?.sortedAccounts.first(where: \.canSetTargets) {
-                    AccountTargetView(account: account)
+                if arguments.contains("-startFamilyAllocation") { familyAllocationRoute = FamilyAllocationRoute() }
+                if arguments.contains("-startAccountTargets") {
+                    targetingAccount = members.first?.sortedAccounts.first(where: \.canSetTargets)
                 }
             }
         }
