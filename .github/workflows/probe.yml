@@ -14,11 +14,18 @@ on:
         description: "macOS 러너에서 돌릴 셸 명령 (bash)"
         required: true
         type: string
+      runner:
+        # 다른 러너 이미지를 미리 볼 때 (docs/24 — Xcode 27 이미지 라벨 확인). 없는 라벨이면
+        # 잡이 "러너를 기다리는 중" 으로 멈춘다 — 몇 분 뒤 취소한다.
+        description: "러너 라벨 (기본 macos-26)"
+        required: false
+        default: "macos-26"
+        type: string
 
 jobs:
   probe:
     name: 명령 실행
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
