@@ -514,16 +514,27 @@ jobs:
           # 같은 .app 이 iPad 시뮬레이터에도 설치된다 (기기 계열 1,2). 넓은
           # 화면에서 늘어지는 자리를 보려는 것이라 주요 화면만 찍는다.
           IPAD="${{ steps.ipad.outputs.udid }}"
+          IPAD_READY=0
           if [ -n "$IPAD" ]; then
             echo "── iPad: ${{ steps.ipad.outputs.name }} ──"
             SHOOT_WAIT=12; SHOOT_ATTEMPTS=4
-            xcrun simctl boot "$IPAD" || true
-            xcrun simctl bootstatus "$IPAD" -b
-            xcrun simctl status_bar "$IPAD" override \
+            # **iPhone 을 내리고 iPad 를 띄운다** (docs/24, 2026-11-19). `xcode-27` 러너에서는 둘을 함께
+            # 켜 두면 iPad 의 상태 막대 · 설치에서 10분 넘게 멈췄고 잡이 취소됐다(CI 339 · 340).
+            # 준비 명령마다 시간 한도를 두고, 넘으면 iPad 장만 건너뛴다 — 나머지 커밋까지 막지 않게.
+            xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
+            IPAD_READY=1
+            perl -e 'alarm 300; exec @ARGV' xcrun simctl boot "$IPAD" || true
+            perl -e 'alarm 300; exec @ARGV' xcrun simctl bootstatus "$IPAD" -b || IPAD_READY=0
+            [ "$IPAD_READY" = 1 ] && { perl -e 'alarm 90; exec @ARGV' xcrun simctl status_bar "$IPAD" override \
               --time "9:41" \
               --dataNetwork wifi --wifiMode active --wifiBars 3 \
-              --batteryState charged --batteryLevel 100
-            xcrun simctl install "$IPAD" "$APP"
+              --batteryState charged --batteryLevel 100 || IPAD_READY=0; }
+            [ "$IPAD_READY" = 1 ] && { perl -e 'alarm 300; exec @ARGV' xcrun simctl install "$IPAD" "$APP" || IPAD_READY=0; }
+          fi
+          if [ -n "$IPAD" ] && [ "$IPAD_READY" != 1 ]; then
+            echo "::warning::iPad 시뮬레이터가 시간 안에 준비되지 않아 iPad 스크린샷을 건너뜁니다 (docs/24)"
+          fi
+          if [ -n "$IPAD" ] && [ "$IPAD_READY" = 1 ]; then
             mkdir -p screenshots/ipad
             UDID="$IPAD"
             shoot ipad/02-dashboard.png   -skipOnboarding -seedSampleData -startTab dashboard
@@ -544,7 +555,12 @@ jobs:
             else
               echo "::warning::시뮬레이터가 방향 바꾸기를 지원하지 않아 가로 컷을 건너뜁니다"
             fi
+          fi
+          if [ -n "$IPAD" ]; then
+            # 다음 단계(5년치 화면 시간)가 iPhone 을 쓴다 — iPad 를 내리고 iPhone 을 다시 띄운다.
+            xcrun simctl shutdown "$IPAD" >/dev/null 2>&1 || true
             UDID="${{ steps.sim.outputs.udid }}"
+            xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
           else
             echo "::warning::iPad 시뮬레이터가 없어 iPad 스크린샷을 건너뜁니다"
           fi
