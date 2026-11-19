@@ -62,10 +62,10 @@ struct AssetsView: View {
     @State private var route = AppRoute.shared
     /// CI 가 비중 화면들을 찍을 수 있게 하는 갈고리. 계산이 가장 많은 화면들인데
     /// 그림이 없으면 원격 세션에서 확인할 방법이 없다.
-    @State private var showFamilyAllocation = ProcessInfo.processInfo.arguments
-        .contains("-startFamilyAllocation")
-    @State private var showAccountTargets = ProcessInfo.processInfo.arguments
-        .contains("-startAccountTargets")
+    /// **처음부터 `true` 로 두지 않는다** (docs/24, iOS 27 SDK CI 339) — 첫 화면이 그려지기 전에
+    /// 밀어 넣으면 iOS 27 에서 흰 화면만 찍혔다(세 번 다). 사람이 단추를 누르는 순서처럼 목록이 뜬 뒤에 연다.
+    @State private var showFamilyAllocation = false
+    @State private var showAccountTargets = false
 
     /// 펼쳐 둔 계좌·구성원의 UUID. 기기마다 따로 기억된다 — 접힘은 원래
     /// 기기별로 다른 게 자연스럽다.
@@ -286,6 +286,14 @@ struct AssetsView: View {
             }
             .navigationDestination(isPresented: $showFamilyAllocation) {
                 FamilyAllocationView()
+            }
+            .task {
+                let arguments = ProcessInfo.processInfo.arguments
+                guard arguments.contains("-startFamilyAllocation") || arguments.contains("-startAccountTargets")
+                else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                showFamilyAllocation = arguments.contains("-startFamilyAllocation")
+                showAccountTargets = arguments.contains("-startAccountTargets")
             }
             .navigationDestination(isPresented: $showAccountTargets) {
                 if let account = members.first?.sortedAccounts.first(where: \.canSetTargets) {
