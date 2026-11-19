@@ -202,10 +202,13 @@ struct ReviewCompleteView: View {
         .padding(.bottom, 8)
     }
 
-    /// `계획선 12억 3,400만 · 계획 대비 +30만` — 1% 안쪽이면 그렇다고 덧붙인다.
+    /// `계획선 12억 3,400만` — 차이는 위 줄(`계획보다 … 뒤에 있습니다`)이 이미 말하므로 되풀이하지 않는다
+    /// (빌드 143 체크리스트 5, 11-19 사용자). 위 줄에 금액이 없는 1% 안쪽(`계획대로 가고 있습니다`)만
+    /// `· 계획 대비 −167만 · 1% 안쪽` 을 덧붙인다.
     private func planLine(_ gap: PlanTrack.Gap) -> String {
-        "계획선 \(Won.abbreviated(gap.onPlan)) · 계획 대비 \(Won.compact(gap.delta, sign: .always))"
-            + (gap.isWithinBand ? " · 1% 안쪽" : "")
+        let onPlan = "계획선 \(Won.abbreviated(gap.onPlan))"
+        guard gap.isWithinBand else { return onPlan }
+        return onPlan + " · 계획 대비 \(Won.compact(gap.delta, sign: .always)) · 1% 안쪽"
     }
 
     /// 이 점검 시점의 총액을 계획선과 견준다. 지난 점검을 열어 봐도
