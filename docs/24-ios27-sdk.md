@@ -55,6 +55,8 @@ GitHub 은 10-15 에 Xcode 27 러너 이미지를 정식으로 냈다(changelog)
 
 **2단계 — 워크플로 전환.** `ios.yml`(2 잡) · `testflight.yml` · `appstore-screenshots.yml` · `preview.yml` · `probe.yml`(기본값)의 `runs-on` 을 `xcode-27` 로, Xcode 고르기의 기준을 26 → **27**, TestFlight 안전장치는 **27 미만이면 멈춤**. 앱 코드는 손대지 않고 CI 한 번으로 컴파일러 · 화면을 본다.
 
+**2단계 결과 (CI 338, 11-19 18:32).** `xcode-27` 러너에서 **Core 테스트 · 앱 컴파일이 고칠 것 없이 통과**(Swift 6.4, `SWIFT_VERSION 6.0` 그대로). 11-19 사용자: *"CI 끝나면 TestFlight까지 진행해줘"* → 이 빌드는 다음 판으로 내므로 `MARKETING_VERSION` **1.0.17** (1.0.16 은 심사 중이라 그대로 둔다).
+
 ## 순서 (제안)
 
 | 단계 | 무엇 | 빌드? |
