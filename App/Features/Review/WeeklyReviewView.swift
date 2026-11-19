@@ -54,6 +54,9 @@ struct WeeklyReviewView: View {
     @State private var isConfirmingLater = false
     /// `남은 n건 모두 변동 없음` 을 눌러 되묻는 중 (219번 A).
     @State private var isConfirmingRest = false
+    /// 누른 순간의 남은 수와 커서 자리 — 확인 창이 뜨면 키보드가 내려가 커서가 빠지므로 그 전에 잡아 둔다.
+    @State private var restCount = 0
+    @State private var restReturnID: UUID?
 
     /// **활성 행에 친 글자** (144-A). 활성 행의 입력칸은 비어 있고 지난 값은 회색
     /// 자리표시로만 보인다 — 여덟 자리를 지우고 치는 수고를 없앤다. 어느 줄의
@@ -151,7 +154,22 @@ struct WeeklyReviewView: View {
                 }
             }
             .background(Color.canvas)
-            .safeAreaInset(edge: .top, spacing: 0) { progressBar }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                progressBar
+                    // **`남은 n건 모두 변동 없음` 의 확인 창은 늘 있는 진행 막대에 단다** (빌드 143 사용자:
+                    // "해당 항목만 변동 없음으로 넘어가고 … 다시 들어가면 개수만 줄어든다"). 처음에는 단추에
+                    // 달았는데, 창이 뜨며 키보드가 내려가 커서가 빠지면(`focusedID == nil`) 입력 띠가 통째로
+                    // 사라지고 창도 함께 닫혔다 — 커서가 있던 줄만 "다녀간 줄" 이 되고 끝내기는 안 불렸다.
+                    // 화면의 "크게 바뀐 항목" 창과는 다른 갈래라 둘이 엉키지 않는다(빌드 127).
+                    .confirmationDialog("남은 \(restCount)건을 변동 없음으로 두고 점검을 끝낼까요?",
+                                        isPresented: $isConfirmingRest, titleVisibility: .visible) {
+                        Button("변동 없음으로 끝내기") { finishRest() }
+                        // 이름 있는 단추로 늘 보이게 (빌드 127 — `.cancel` 은 iOS 가 감춘다).
+                        Button("계속 적기") { focus(restReturnID) }
+                    } message: {
+                        Text("아직 안 본 항목은 지난 값 그대로 기록됩니다. 지금까지 적은 값은 그대로 남습니다.")
+                    }
+            }
             // 넓은 화면에서 라벨과 값이 양 끝으로 벌어지지 않게 (161번).
             .readableWidth(background: .canvas)
             .navigationTitle("주간 점검")
@@ -622,19 +640,14 @@ struct WeeklyReviewView: View {
         if count >= 2 {
             HStack {
                 Spacer(minLength: 0)
-                Button("남은 \(count)건 모두 변동 없음") { isConfirmingRest = true }
-                    .font(.scaled(12, weight: .medium))
-                    .foregroundStyle(Color.brand)
-                    .lineLimit(1)
-                    // 확인 창은 이 단추에 단다 — 화면의 "크게 바뀐 항목" 창과 같은 사슬에 걸면 하나만 뜬다(빌드 127).
-                    .confirmationDialog("남은 \(count)건을 변동 없음으로 두고 점검을 끝낼까요?",
-                                        isPresented: $isConfirmingRest, titleVisibility: .visible) {
-                        Button("변동 없음으로 끝내기") { finishRest() }
-                        // 이름 있는 단추로 늘 보이게 (빌드 127 — `.cancel` 은 iOS 가 감춘다).
-                        Button("계속 적기") {}
-                    } message: {
-                        Text("아직 안 본 항목은 지난 값 그대로 기록됩니다. 지금까지 적은 값은 그대로 남습니다.")
-                    }
+                Button("남은 \(count)건 모두 변동 없음") {
+                    restCount = count
+                    restReturnID = focusedID
+                    isConfirmingRest = true
+                }
+                .font(.scaled(12, weight: .medium))
+                .foregroundStyle(Color.brand)
+                .lineLimit(1)
             }
         }
     }
@@ -908,6 +921,11 @@ struct WeeklyReviewView: View {
             session.setDiagnosis(result)
         }
 
+        // **끝낸 주는 모든 줄이 다녀간 줄이다** (219번 A, 빌드 143). 예전에는 커서가 떠난 줄만 남아,
+        // 같은 주에 `다시 열기` 하면 커서가 안 간 줄로 가고 `남은 n건` 이 그 수만큼 나왔다 — 기록은 다 됐는데
+        // 덜 끝난 것처럼 보였다. 다 다녀갔으면 맨 위에서 연다(144-C — 다시 보는 자리).
+        visited.formUnion(queue.map(\.id))
+        VisitedStore.save(visited, anchor: anchor)
         focusedID = nil
         completed = session
     }
