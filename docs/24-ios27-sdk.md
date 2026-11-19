@@ -114,3 +114,5 @@ GitHub 은 10-15 에 Xcode 27 러너 이미지를 정식으로 냈다(changelog)
 - Apple 공지(9-09)를 옮긴 글: [Xcode 27 requirement — DEV Community](https://dev.to/extensionbooster/xcode-27-requirement-what-breaks-before-april-2027-1kh1) · [Mac Observer](https://macobserver.com/news/xcode-27-rc-six-platforms-mismatched-build-numbers) · [iOS 15 최소 대상](https://www.macobserver.com/news/app-store-ios-13-minimum-target/)
 - GitHub: [Xcode 27 runner image generally available (2026-10-15)](https://github.blog/changelog/2026-10-15-xcode-27-runner-image-generally-available/) · [actions/runner-images](https://github.com/actions/runner-images)
 - 러너 확인: Actions → `macOS 탐침` 2번 실행 (11-19, run 44495129924)
+
+**5단계 — 11-19 1.0.17 = 빌드 147 심사 제출** (사용자: *"1.0.17 심사 제출 완료."*). 마이그레이션 기준 판에 `00fa571` 을 더했다. **iOS 27 SDK 전환 끝** — 공개되면 아이 폰에서 버전만 확인한다.
