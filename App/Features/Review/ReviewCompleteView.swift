@@ -177,7 +177,7 @@ struct ReviewCompleteView: View {
                         .font(.figure(13, weight: .medium))
                         .foregroundStyle(gap.isAhead ? Color.gain : Color.loss)
                         .padding(.top, 6)
-                    // **계획선이 얼마인가** (219번 F). 1% 안쪽이면 위 줄이 금액 없이 "계획선 위에 있습니다"
+                    // **계획선이 얼마인가** (219번 F). 1% 안쪽이면 위 줄이 금액 없이 "계획대로"(예전 "계획선 위에")
                     // 라서 얼마나 붙어 있는지 몰랐다. 1페이지의 `계획 대비 +…` 와 같은 값을 함께 적는다.
                     Text(planLine(gap))
                         .font(.figure(11))

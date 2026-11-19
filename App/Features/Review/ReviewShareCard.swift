@@ -111,7 +111,7 @@ struct ReviewShareCard: View {
     static func gapText(_ gap: PlanTrack.Gap) -> String {
         let size = KoreanAmountFormatter.abbreviated(
             Money(minorUnits: abs(gap.delta.minorUnits), currency: .krw), suffix: "원")
-        if gap.isWithinBand { return "계획선 위에 있습니다" }
+        if gap.isWithinBand { return "계획대로 가고 있습니다" }
         return gap.isAhead ? "계획보다 \(size) 앞서 있습니다" : "계획보다 \(size) 뒤에 있습니다"
     }
 

@@ -83,7 +83,9 @@ enum PlanTrack {
                                    suffix: "원")
         if abs(delta.minorUnits) < threshold {
             return Gap(onPlan: onPlan, actual: actual, delta: delta, isAhead: true, isWithinBand: true,
-                       text: "계획선 위에 있습니다", compact: "계획대로")
+                       // 예전에는 "계획선 위에 있습니다" — 1% 안쪽은 아래일 때도 있어서, 점검 완료 화면이
+                       // `계획 대비 −167만` 을 함께 적자 말이 어긋났다(219번 F, CI 334). 1페이지의 `계획대로` 와 같은 말로.
+                       text: "계획대로 가고 있습니다", compact: "계획대로")
         }
         let ahead = delta.minorUnits > 0
         return Gap(
