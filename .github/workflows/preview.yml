@@ -20,7 +20,7 @@ concurrency:
 jobs:
   record:
     name: 미리 보기 녹화
-    runs-on: macos-26
+    runs-on: xcode-27
     permissions:
       contents: write
     steps:
@@ -33,7 +33,7 @@ jobs:
           set -uo pipefail
 
           # 러너가 기본으로 선택해 둔 Xcode 에만 시뮬레이터 런타임이 갖춰져 있다.
-          # 그래서 **이미 26 이상이면 손대지 않는다.** 예전에 major 만 비교해
+          # 그래서 **이미 27 이상이면 손대지 않는다.** (2026-11-19 `macos-26` → `xcode-27` 이미지, docs/24) 예전에 major 만 비교해
           # 다른 26.x 로 바꿨다가 "iOS 26.0 is not installed" 로 막혔다.
           xcver() {
             [ -f "$1/Contents/version.plist" ] || return 1
@@ -49,7 +49,7 @@ jobs:
           NEED=1
           case "${CUR_V%%.*}" in
             ''|*[!0-9]*) ;;
-            *) [ "${CUR_V%%.*}" -ge 26 ] && NEED=0 ;;
+            *) [ "${CUR_V%%.*}" -ge 27 ] && NEED=0 ;;
           esac
 
           if [ "$NEED" -eq 1 ]; then

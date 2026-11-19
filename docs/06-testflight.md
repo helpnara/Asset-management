@@ -607,6 +607,7 @@ TestFlight 빌드는 **90일** 뒤 만료됩니다. 그 전에 새로 올리면 
 | `entitlement 누락: ...` (워크플로가 스스로 낸 오류) | 서명은 됐는데 자격이 안 붙었습니다. **업로드 전에 막아 둔 것이니 이 상태로는 올라가지 않습니다.** `아카이브 entitlement 확인` 단계는 통과했는데 여기서 걸렸다면 내보내기 문제, 아카이브 단계에서 이미 걸렸다면 `CODE_SIGN_ENTITLEMENTS` 문제입니다 |
 | `아카이브 단계에서 이미 iCloud 자격이 빠졌습니다` | 아카이브가 entitlements 를 안 박은 것입니다. 서명을 완전히 끄면(`CODE_SIGNING_ALLOWED=NO`) Xcode 의 `ProcessProductPackaging` 이 건너뛰어져 이렇게 됩니다 |
 | `Ad Hoc code signing is not allowed with SDK 'iOS 18.5'` | 애드혹(`CODE_SIGN_IDENTITY=-`)은 iOS 기기 빌드에 쓸 수 없습니다. 자동 서명을 쓰세요 |
+| `ITMS-90725: SDK version issue … built with the iOS 26.5 SDK. Starting April 2027 … iOS 27 SDK` (메일 · 업로드는 성공) | 2027-04 부터는 iOS 27 SDK(Xcode 27+) 빌드만 받는다는 예고. 러너를 `macos-26` 에서 **`xcode-27`** 이미지로 옮겼다(2026-11-19, [24](24-ios27-sdk.md)) — 워크플로 앞쪽 `Xcode 27 이상 선택` 이 27 미만을 업로드 전에 막는다 |
 | `SDK version issue. This app was built with the iOS 18.5 SDK` (업로드 409) | 애플이 **iOS 26 SDK(Xcode 26+)** 빌드만 받습니다. 서명 문제가 아니라 러너 이미지 문제입니다 — 워크플로의 `runs-on` 이 `macos-26` 인지 보세요. 워크플로 앞쪽 `Xcode 26 이상 선택` 단계가 이걸 업로드 전에 잡습니다 |
 | `Authentication credentials are missing or invalid` | 시크릿 세 개(`KEY_P8` · `KEY_ID` · `ISSUER_ID`)가 서로 맞는 짝인지 확인. 키를 새로 만들었으면 셋 중 둘이 바뀝니다 |
 | `Cloud signing permission error` | **API 키 액세스가 `Admin` 이 아닙니다.** App Manager 로는 서명 자산을 만들 수 없습니다. 5단계를 다시 보고 키를 새로 만드세요 |

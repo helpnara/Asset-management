@@ -42,6 +42,19 @@ GitHub 은 10-15 에 Xcode 27 러너 이미지를 정식으로 냈다(changelog)
 4. **macOS 27 러너의 도구** — `brew install xcodegen` · Node(CloudKit 스키마는 리눅스라 상관없음) · `simctl` 이 그대로 도는지.
 5. 저장 계층(Core Data · CloudKit)과 스키마는 SDK 와 상관없다 — CI 의 모델 대조 · CloudKit 런타임 검사 · 마이그레이션 시험이 그대로 지켜 준다.
 
+## 진행 (11-19 사용자: *"1단계 부터 순차적으로 해보자."*)
+
+**1단계 — 탐침 (끝).** `probe.yml` 에 `runner` 칸을 더해(`145c69c`) 두 라벨로 돌렸다.
+
+| 라벨 | 결과 |
+|---|---|
+| `macos-27` | **없는 라벨** — 러너를 못 받고 대기, 취소 |
+| **`xcode-27`** | **돈다** — macOS 27.0.1 (arm64) · 이미지 `20261104.0337.1` · Xcode **27.0 · 27.1(기본, 27A9275) · 27.2** · **iOS SDK 27.1** · Swift **6.4** · 시뮬레이터 런타임 iOS 27.0 · 27.2 (iPhone 17 · 17e · Air · 18 Pro · 18 Pro Max, iPad Pro 13/11 (M5) · Air (M4) · mini · iPad (A16)) · brew · node · python3 있음 |
+
+기본 Xcode 27.1 이 시뮬레이터 런타임을 갖춘 판이라 워크플로의 "이미 27 이상이면 그대로" 규칙이 그대로 맞다. 시뮬레이터 고르기는 가장 새 런타임의 가장 높은 번호 iPhone → **iPhone 18 Pro** 를 고를 것이다(`iPhone Duo` 는 번호가 없어 빠진다). 스크린샷 크기가 바뀔 수 있다.
+
+**2단계 — 워크플로 전환.** `ios.yml`(2 잡) · `testflight.yml` · `appstore-screenshots.yml` · `preview.yml` · `probe.yml`(기본값)의 `runs-on` 을 `xcode-27` 로, Xcode 고르기의 기준을 26 → **27**, TestFlight 안전장치는 **27 미만이면 멈춤**. 앱 코드는 손대지 않고 CI 한 번으로 컴파일러 · 화면을 본다.
+
 ## 순서 (제안)
 
 | 단계 | 무엇 | 빌드? |

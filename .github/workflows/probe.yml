@@ -17,15 +17,15 @@ on:
       runner:
         # 다른 러너 이미지를 미리 볼 때 (docs/24 — Xcode 27 이미지 라벨 확인). 없는 라벨이면
         # 잡이 "러너를 기다리는 중" 으로 멈춘다 — 몇 분 뒤 취소한다.
-        description: "러너 라벨 (기본 macos-26)"
+        description: "러너 라벨 (기본 xcode-27 — 옛 이미지는 macos-26)"
         required: false
-        default: "macos-26"
+        default: "xcode-27"
         type: string
 
 jobs:
   probe:
     name: 명령 실행
-    runs-on: ${{ inputs.runner || 'macos-26' }}
+    runs-on: ${{ inputs.runner || 'xcode-27' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

@@ -26,19 +26,19 @@ concurrency:
 jobs:
   upload:
     name: 빌드 · 서명 · TestFlight 업로드
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
-      # 애플은 2026년부터 **iOS 26 SDK(Xcode 26+)** 로 빌드한 바이너리만 받는다.
-      # 러너 이미지에 Xcode 가 여러 개 깔려 있으므로 가장 높은 것을 고르고,
-      # 26 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서 409 를
+      # 애플은 2026년부터 iOS 26 SDK, **2027-04 부터 iOS 27 SDK(Xcode 27+)** 로 빌드한 바이너리만 받는다
+      # (ITMS-90725 — docs/24). 러너 이미지에 Xcode 가 여러 개 깔려 있으므로 가장 높은 것을 고르고,
+      # 27 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서 409 를
       # 보는 것보다 낫다 (실제로 그렇게 한 번 돌았다).
-      - name: Xcode 26 이상 선택
+      - name: Xcode 27 이상 선택
         run: |
           set -uo pipefail
 
           # 러너가 기본으로 선택해 둔 Xcode 에만 시뮬레이터 런타임이 갖춰져 있다.
-          # 그래서 **이미 26 이상이면 손대지 않는다.** 예전에 major 만 비교해
+          # 그래서 **이미 27 이상이면 손대지 않는다.** (2026-11-19 `macos-26` → `xcode-27` 이미지, docs/24) 예전에 major 만 비교해
           # 다른 26.x 로 바꿨다가 "iOS 26.0 is not installed" 로 막혔다.
           xcver() {
             [ -f "$1/Contents/version.plist" ] || return 1
@@ -54,7 +54,7 @@ jobs:
           NEED=1
           case "${CUR_V%%.*}" in
             ''|*[!0-9]*) ;;
-            *) [ "${CUR_V%%.*}" -ge 26 ] && NEED=0 ;;
+            *) [ "${CUR_V%%.*}" -ge 27 ] && NEED=0 ;;
           esac
 
           if [ "$NEED" -eq 1 ]; then
@@ -78,15 +78,15 @@ jobs:
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
           echo "── 시뮬레이터 런타임 ──"; xcrun simctl list runtimes | grep -i ios || true
 
-          # 26 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서
+          # 27 미만이면 여기서 멈춘다 — 빌드·서명을 다 마친 뒤 업로드에서
           # 409 를 받는 것보다 낫다. 버전을 못 읽어도 멈춘다.
           case "${CUR_V%%.*}" in
             ''|*[!0-9]*)
               echo "::error::Xcode 버전을 읽지 못했습니다 (CUR_V='${CUR_V}')."
               exit 1 ;;
             *)
-              if [ "${CUR_V%%.*}" -lt 26 ]; then
-                echo "::error::Xcode 가 ${CUR_V} 입니다. App Store Connect 는 iOS 26 SDK(Xcode 26+) 빌드만 받습니다 — runs-on 러너 이미지를 올려야 합니다."
+              if [ "${CUR_V%%.*}" -lt 27 ]; then
+                echo "::error::Xcode 가 ${CUR_V} 입니다. App Store Connect 는 2027-04 부터 iOS 27 SDK(Xcode 27+) 빌드만 받습니다(ITMS-90725) — runs-on 러너 이미지를 올려야 합니다."
                 exit 1
               fi ;;
           esac
