@@ -64,7 +64,25 @@ def tokens(line):
 def placed_amounts(line):
     n = max(1, len(line["text"]))
     return [dict(value=v, x=line["x"] + line["width"] * s / n, top=line["top"],
-                 width=line["width"] * (e - s) / n, height=line["height"]) for v, s, e in amount_spans(line["text"])]
+                 width=line["width"] * (e - s) / n, height=line["height"], line=line, end=e)
+            for v, s, e in amount_spans(line["text"])]
+
+
+TAIL = re.compile(r"[ ,.]\d{3}(?!\d)")
+
+
+def with_tail(value, line, end, right_edge, rows):
+    """**총액의 끝 세 자리가 떨어져 읽혔을 때 붙인다** (11-21 빌드 152 — `10,833,023` 을 `10,833` 으로).
+    텍스트 인식이 마지막 쉼표를 빈칸 · 점으로 읽거나(`10,833 023`), 끝 묶음을 따로 읽었을 때(`10,833` | `023`).
+    총액에만 쓴다 — 표의 한 줄에서는 이웃 칸의 세 자리 숫자를 잘못 붙일 수 있다."""
+    text = digits_fixed(line["text"])
+    m = TAIL.match(text, end)
+    if m: return value * 1000 + int(m.group(0)[1:])
+    for l in rows:
+        if l is line or not same_row(l, line): continue
+        if right_edge - 0.005 <= l["x"] <= right_edge + 0.04 and re.fullmatch(r"[,.]?\d{3}(원)?", l["text"].strip()):
+            return value * 1000 + int(re.sub(r"\D", "", l["text"]))
+    return value
 
 
 def is_name(line):
@@ -105,14 +123,17 @@ def parse(lines):
             if u["top"] >= column["top"] or label(u["text"]) not in TOTAL_LABELS: continue
             right = [a for a in placed if same_row(a, u) and a["x"] >= u["x"] + u["width"] - 0.01]
             if right:
-                total = min(right, key=lambda a: a["x"])["value"]; break
+                a = min(right, key=lambda a: a["x"])
+                total = with_tail(a["value"], a["line"], a["end"], a["x"] + a["width"], rows); break
     if total is None:
         limit = column["top"] if column else 0.30
         head = [l for l in rows if l["top"] < min(0.30, limit) and amounts(l["text"])
                 and not any(m is not l and same_row(m, l) and is_name(m) for m in rows)]   # 첫 종목의 금액은 총액이 아니다
         if head:
             total_line = max(head, key=lambda l: l["height"])
-            total = amounts(total_line["text"])[0]
+            value, _, end = amount_spans(total_line["text"])[0]
+            right = total_line["x"] + total_line["width"] * end / max(1, len(total_line["text"]))
+            total = with_tail(value, total_line, end, right, rows)
     start = column["start"] if column else (bottom(total_line) if total_line else -1)
     edge = column["top"] if column else (total_line["top"] if total_line else 0.30)
     account = next((l["text"] for l in rows if l["top"] < edge and ("*" in l["text"] or ACCOUNT.search(l["text"]))), None)
@@ -172,6 +193,10 @@ def parse(lines):
                 cands.sort(key=lambda lv: (-lv[0]["height"], -lv[1]))
             value = cands[0][1]
         items.append(dict(name=n["text"], value=value))
+    # 총액이 가장 큰 종목보다 작을 수는 없다 — 잘못 읽은 총액으로 검산하지 않는다(총액 없음으로)
+    values = [i["value"] for i in items if i["value"] is not None]
+    if total is not None and values and total < max(values):
+        total = None
     return dict(account=account, total=total, items=items, cash=cash)
 
 

@@ -109,13 +109,9 @@ struct CaptureParserTests {
         #expect(CaptureParser.match("하늘로보틱스증권자투자신탁(주식-재간접형)-Ce 펀드", among: funds)?.index == 0)
     }
 
-    // 11-20 실제 화면(첫째)의 배치 — 2단 표. 숫자 · 이름 · 계좌는 지어낸 것.
-    // 위에 메뉴 · 탭 · 계좌 줄 · 단추 줄, 이름표 | 값 요약표, 머리줄 두 단, 한 칸에 평가금액(위) · 매입금액(아래).
-    // 평가금액 2,000,000 + 4,000,000 = 6,000,000 = 요약표 평가금액 (손으로 셈). 매입금액(3,000,000)이 평가금액보다
-    // 큰 손실 종목 · 부호 없는 이익(1,500,000) · 쉼표 든 수량(1,250) 을 일부러 넣었다 — 큰 값 고르기로는 틀린다.
-    @Test("2단 표 — 머리줄의 평가금액 열 · 위 단을 고르고, 메뉴 · 탭 · 단추는 종목이 아니다")
-    func twoTierTable() {
-        let lines = [
+    /// 2단 표 화면의 글자 줄 — 요약표 `평가금액` 의 값 칸(`summary`)만 바꿔 끼운다.
+    private func twoTier(summary: [CaptureParser.Line]) -> [CaptureParser.Line] {
+        [
             line("‹ 내자산", 0.05, 0.07, h: 0.022, w: 0.2),
             line("자산", 0.10, 0.13, h: 0.02, w: 0.08), line("국내주식", 0.38, 0.13, h: 0.02, w: 0.15),
             line("해외주식", 0.72, 0.13, h: 0.02, w: 0.15),
@@ -123,7 +119,7 @@ struct CaptureParserTests {
             line("전체", 0.03, 0.25, w: 0.06), line("담보", 0.37, 0.25, w: 0.06), line("체결", 0.48, 0.25, w: 0.06),
             line("매입금액", 0.03, 0.30, w: 0.12), line("5,500,000", 0.26, 0.30, w: 0.2),
             line("평가손익", 0.52, 0.30, w: 0.12), line("500,000", 0.80, 0.30, w: 0.15),
-            line("평가금액", 0.03, 0.35, w: 0.12), line("6,000,000", 0.26, 0.35, w: 0.2),
+            line("평가금액", 0.03, 0.35, w: 0.12),
             line("수익률(%)", 0.52, 0.35, w: 0.12), line("9.09", 0.85, 0.35, w: 0.1),
             line("매매비용", 0.03, 0.40, w: 0.12),
             line("종목명", 0.15, 0.45, h: 0.015, w: 0.1), line("평가손익", 0.43, 0.45, h: 0.015, w: 0.1),
@@ -144,13 +140,38 @@ struct CaptureParserTests {
             line("60.00", 0.45, 0.65, h: 0.017, w: 0.1), line("2,500,000", 0.60, 0.65, h: 0.017, w: 0.16),
             line("2,000", 0.85, 0.65, h: 0.017, w: 0.08),
             line("홈", 0.20, 0.92, w: 0.05), line("국내주식 잔고", 0.33, 0.92, w: 0.15), line("메뉴", 0.05, 0.93, w: 0.06),
-        ]
+        ] + summary
+    }
+
+    // 11-20 실제 화면(첫째)의 배치 — 2단 표. 숫자 · 이름 · 계좌는 지어낸 것.
+    // 위에 메뉴 · 탭 · 계좌 줄 · 단추 줄, 이름표 | 값 요약표, 머리줄 두 단, 한 칸에 평가금액(위) · 매입금액(아래).
+    // 평가금액 2,000,000 + 4,000,000 = 6,000,000 = 요약표 평가금액 (손으로 셈). 매입금액(3,000,000)이 평가금액보다
+    // 큰 손실 종목 · 부호 없는 이익(1,500,000) · 쉼표 든 수량(1,250) 을 일부러 넣었다 — 큰 값 고르기로는 틀린다.
+    @Test("2단 표 — 머리줄의 평가금액 열 · 위 단을 고르고, 메뉴 · 탭 · 단추는 종목이 아니다")
+    func twoTierTable() {
+        let lines = twoTier(summary: [line("6,000,000", 0.26, 0.35, w: 0.2)])
         let result = CaptureParser.parse(lines)
         #expect(result.totalMinor == 6_000_000)
         #expect(result.accountLine == "123-4567-8901-0 [종합_주식] 딸 일반주식")
         #expect(result.items.map(\.name) == ["가나전자", "다라화학"])
         #expect(result.items.map(\.valueMinor) == [2_000_000, 4_000_000])
         #expect(result.isBalanced == true)
+    }
+
+    // 11-21 빌드 152 실제 — 요약표 평가금액(총액)의 끝 세 자리를 떨어뜨려 읽어 `확인 필요` 가 됐다(종목은 다 맞음)
+    @Test("총액 끝 세 자리가 떨어져 읽혀도 붙이고, 앞 묶음만 읽히면 총액 없음으로")
+    func splitTotal() {
+        let spaced = CaptureParser.parse(twoTier(summary: [line("6,000 000", 0.26, 0.35, w: 0.2)]))
+        #expect(spaced.totalMinor == 6_000_000)
+        #expect(spaced.isBalanced == true)
+        let apart = CaptureParser.parse(twoTier(summary: [line("6,000", 0.26, 0.35, w: 0.12), line("000", 0.39, 0.35, w: 0.06)]))
+        #expect(apart.totalMinor == 6_000_000)
+        #expect(apart.isBalanced == true)
+        // 앞 묶음만 — 6,000 은 가장 큰 종목(4,000,000)보다 작아 총액일 수 없다
+        let cut = CaptureParser.parse(twoTier(summary: [line("6,000", 0.26, 0.35, w: 0.12)]))
+        #expect(cut.totalMinor == nil)
+        #expect(cut.items.map(\.valueMinor) == [2_000_000, 4_000_000])
+        #expect(cut.isBalanced == nil)
     }
 
     // 같은 표를 텍스트 인식이 칸을 붙여 한 줄로 읽었을 때 — 낱말 자리를 글자 수로 어림해도 열을 찾는다

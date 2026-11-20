@@ -167,6 +167,9 @@ public enum CaptureParser {
     struct Placed {
         let value: Int
         let box: Line
+        /// 읽어 낸 줄과 그 줄에서 금액이 끝나는 자리 — 총액의 떨어진 끝 세 자리를 붙일 때 쓴다(`withTail`).
+        let line: Line
+        let end: Int
     }
 
     static func placed(_ line: Line) -> [Placed] {
@@ -174,8 +177,32 @@ public enum CaptureParser {
         return amountSpans(in: line.text).map { span in
             Placed(value: span.value,
                    box: Line(text: "", x: line.x + line.width * Double(span.range.location) / count, top: line.top,
-                             width: line.width * Double(span.range.length) / count, height: line.height))
+                             width: line.width * Double(span.range.length) / count, height: line.height),
+                   line: line, end: NSMaxRange(span.range))
         }
+    }
+
+    /// **총액의 끝 세 자리가 떨어져 읽혔을 때 붙인다** (11-21 빌드 152 — `10,8xx,xxx` 를 앞 두 묶음만 읽음).
+    /// 텍스트 인식이 마지막 쉼표를 빈칸 · 점으로 읽거나(`6,000 000`), 끝 묶음을 따로 읽었을 때(`6,000` | `000`).
+    /// **총액에만 쓴다** — 표의 한 줄에서는 이웃 칸의 세 자리 숫자를 잘못 붙일 수 있다.
+    static func withTail(_ value: Int, line: Line, end: Int, rightEdge: Double, rows: [Line]) -> Int {
+        let text = digitsFixed(line.text) as NSString
+        if end < text.length,
+           let tail = try? NSRegularExpression(pattern: #"[ ,.]\d{3}(?!\d)"#),
+           let match = tail.firstMatch(in: text as String, options: .anchored,
+                                       range: NSRange(location: end, length: text.length - end)),
+           let digits = Int(text.substring(with: match.range).filter(\.isNumber)) {
+            return value * 1000 + digits
+        }
+        for other in rows where other != line && sameRow(other, line)
+            && other.x >= rightEdge - 0.005 && other.x <= rightEdge + 0.04 {
+            let trimmed = other.text.trimmingCharacters(in: .whitespaces)
+            if trimmed.range(of: #"^[,.]?\d{3}(원)?$"#, options: .regularExpression) != nil,
+               let digits = Int(trimmed.filter(\.isNumber)) {
+                return value * 1000 + digits
+            }
+        }
+        return value
     }
 
     static func isName(_ line: Line) -> Bool {
@@ -246,7 +273,8 @@ public enum CaptureParser {
             for token in tokens where token.top < column.top && totalLabels.contains(label(token.text)) {
                 let right = amountsPlaced.filter { sameRow($0.box, token) && $0.box.x >= token.x + token.width - 0.01 }
                 if let nearest = right.min(by: { $0.box.x < $1.box.x }) {
-                    total = nearest.value
+                    total = withTail(nearest.value, line: nearest.line, end: nearest.end,
+                                     rightEdge: nearest.box.x + nearest.box.width, rows: rows)
                     break
                 }
             }
@@ -258,9 +286,11 @@ public enum CaptureParser {
                 line.top < limit && !amounts(in: line.text).isEmpty
                     && !rows.contains { $0 != line && sameRow($0, line) && isName($0) }
             }
-            if let line = head.max(by: { $0.height < $1.height }) {
+            if let line = head.max(by: { $0.height < $1.height }), let first = amountSpans(in: line.text).first {
                 totalLine = line
-                total = amounts(in: line.text).first
+                let end = NSMaxRange(first.range)
+                let rightEdge = line.x + line.width * Double(end) / Double(max(1, (line.text as NSString).length))
+                total = withTail(first.value, line: line, end: end, rightEdge: rightEdge, rows: rows)
             }
         }
         let start = column?.start ?? totalLine?.bottom ?? -1
@@ -330,6 +360,10 @@ public enum CaptureParser {
                 }
                 items.append(Item(name: name.text, valueMinor: candidates.first?.value))
             }
+        }
+        // 총액이 가장 큰 종목보다 작을 수는 없다 — 잘못 읽은 총액으로 검산하지 않는다(총액 없음으로)
+        if let value = total, let largest = items.compactMap(\.valueMinor).max(), value < largest {
+            total = nil
         }
         return Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash)
     }
