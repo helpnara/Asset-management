@@ -967,5 +967,107 @@
     "visible": true
    }
   ]
+ },
+ {
+  "file": "g1",
+  "layout": "G",
+  "account_total": null,
+  "rows": [
+   {
+    "name": "VELT",
+    "value": 2430040,
+    "cost": 1971890,
+    "pl": 458150,
+    "rate": 23.234054637936193,
+    "qty": 1949,
+    "visible": true
+   },
+   {
+    "name": "NOVA",
+    "value": 2941919,
+    "cost": 3647877,
+    "pl": -705958,
+    "rate": -19.3525713723352,
+    "qty": 1243,
+    "visible": true
+   },
+   {
+    "name": "ARQ",
+    "value": 102302218,
+    "cost": 90479155,
+    "pl": 11823063,
+    "rate": 13.067167791299553,
+    "qty": 1623,
+    "visible": true
+   },
+   {
+    "name": "가온소프트",
+    "value": 51138499,
+    "cost": 67376112,
+    "pl": -16237613,
+    "rate": -24.099955485706865,
+    "qty": 2165,
+    "visible": true
+   },
+   {
+    "name": "로이반도체",
+    "value": 564932,
+    "cost": 442134,
+    "pl": 122798,
+    "rate": 27.77393278960677,
+    "qty": 124,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "g2",
+  "layout": "G",
+  "account_total": 89139430,
+  "rows": [
+   {
+    "name": "ARIA 미국S&P500TR",
+    "value": 89127085,
+    "cost": 70991787,
+    "pl": 18135298,
+    "rate": 25.545628256970065,
+    "qty": 2127,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "g3",
+  "layout": "G",
+  "account_total": 6168951,
+  "rows": [
+   {
+    "name": "사아금융지주",
+    "value": 2396200,
+    "cost": 2339130,
+    "pl": 57070,
+    "rate": 2.439795992527136,
+    "qty": 1140,
+    "visible": true
+   },
+   {
+    "name": "로이반도체",
+    "value": 2006153,
+    "cost": 1707820,
+    "pl": 298333,
+    "rate": 17.468644236512045,
+    "qty": 1292,
+    "visible": true
+   },
+   {
+    "name": "자차중공업",
+    "value": 1263288,
+    "cost": 1594790,
+    "pl": -331502,
+    "rate": -20.786561240037873,
+    "qty": 443,
+    "visible": true
+   }
+  ]
  }
 ]

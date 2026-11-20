@@ -210,6 +210,41 @@ def us(names, k, icons=()):
 
 US = ["ARQ", "VELT", "NOVA", "QQXM", "SPXM", "TLTX", "SOXQ", "DIVY"]
 
+# G. 줄 셋 목록형 (11-20 셋째 실제 화면들의 배치를 본뜸 — 이름 · 숫자 · 계좌는 지어낸 것)
+#    종목마다 이름 | 평가금(크게), 수량 | 손익(부호), `현재가` 또는 `현재가(장마감)` | 현재가(원 또는 Pre … USD).
+#    total=False — 계좌 총액 없이 맨 위가 첫 종목(첫 종목 금액을 총액으로 잘못 보면 안 된다).
+#    total=True  — 계좌 줄(증권사 이름 + 번호) · 큰 총액(= 종목 합 + 출금가능금액) · `출금가능금액 …원` · 투자내역 탭, 아래 안내 두 줄
+def layout_g(file, rows, title, total=False, cash=0, us=()):
+    tot = sum(r["value"] for r in rows) + cash
+    h = (f"<div style='display:flex;align-items:center;padding:10px 16px;font-size:15px'><span>‹ 내 계좌</span>"
+         f"<b style='margin:0 auto;font-size:18px'>{title}</b><span style='color:#1a9b4b'>관리</span></div>")
+    if total:
+        h += (f"<div style='padding:16px 16px 10px'><div style='font-size:14px;color:var(--mute);text-decoration:underline'>가나증권 012345678901</div>"
+              f"<div style='display:flex;align-items:center;margin-top:6px'><span style='font-size:28px;font-weight:700'>{won(tot)}원</span>"
+              f"<span style='margin-left:auto;background:#1a9b4b;color:#fff;padding:8px 14px;border-radius:6px;font-size:15px'>입금 &nbsp; 송금</span></div>"
+              f"<div style='font-size:14px;color:var(--mute);margin-top:6px'>출금가능금액 <b style='color:var(--ink)'>{won(cash)}원</b></div></div>"
+              "<div style='display:flex;font-size:16px;font-weight:700;border-bottom:1px solid var(--rule);padding:14px 0'><span style='flex:1;text-align:center'>투자내역</span>"
+              "<span style='flex:1;text-align:center;color:var(--mute);font-weight:500'>거래내역</span></div>")
+    h += "<div style='display:flex;justify-content:flex-end;gap:18px;padding:14px 16px;font-size:15px;color:var(--mute)'><b style='color:var(--ink)'>· 전체</b><span>주식</span><span>펀드</span><span>기타</span></div>"
+    items = ""
+    for r in rows:
+        overseas = r["name"] in us
+        price = max(1000, round(r["value"] / r["qty"] / 10) * 10)
+        ptext = (f"<span style='color:var(--mute);font-size:12px'>Pre</span> {price / 1350:.2f} USD <span class=down>▼ -1.23 (-0.9%)</span>" if overseas
+                 else f"{won(price)}원 <span class=down>▼ -{won(max(10, price // 20))} (-4.80%)</span>")
+        qty = f"{r['qty'] / 7:.6f}주" if overseas else f"{r['qty']}주"
+        items += ("<div style='margin:0 16px;padding:16px 0;border-bottom:1px solid var(--rule)'>"
+                  f"<div style='display:flex;justify-content:space-between;font-size:17px;font-weight:700'><span class=nm style='max-width:55%'>{r['name']}</span><span>{won(r['value'])}원</span></div>"
+                  f"<div style='display:flex;justify-content:space-between;font-size:15px;margin-top:8px'><span>{qty}</span>"
+                  f"<span class={'up' if r['pl'] >= 0 else 'down'}>{'+' if r['pl'] >= 0 else '-'}{won(abs(r['pl']))}원 ({r['rate']:+.2f}%)</span></div>"
+                  f"<div style='display:flex;justify-content:space-between;font-size:14px;margin-top:10px;color:var(--mute)'><span>{'현재가' if overseas else '현재가(장마감)'}</span>"
+                  f"<span style='color:var(--ink)'>{ptext} ›</span></div></div>")
+    if total:
+        items += ("<div style='padding:14px 16px;font-size:12.5px;color:var(--mute);text-align:right;line-height:1.7'>현재가 제공 : 가나 증권 11.20 22:53<br>"
+                  "외화 및 해외 종목은 오늘의 기준 환율로 계산합니다</div>")
+    page(file, h + items)
+    truth.append({"file": file, "layout": "G", "account_total": tot if total else None, "rows": rows})
+
 layout_a("a1", holdings(ETF, 9), "종합매매 · 아빠 · 123-45-****")
 layout_a("a2", holdings(STOCK, 9), "종합매매 · 엄마 · 234-56-****")
 layout_a("a3-dark", holdings(ETF + STOCK, 9), "ISA · 아빠 · 345-67-****", dark=True)
@@ -228,6 +263,12 @@ layout_e("e4-dark", holdings(ETF, 4), "456-7890-1234-0 [종합_주식] 아들 �
 random.seed(7)
 layout_f("f1", [("Alpha", us(US[:4], 2)), ("Core", us(US[4:], 2, ["나스닥<br>100", "S&amp;P<br>500"]))], "아무개의 투자")
 layout_f("f2", [("성장", us(US[:4], 3, ["", "나스닥<br>100"])), ("배당", us(US[4:], 2, ["S&amp;P<br>500"]))], "우리집 투자", rounding=-1)
+# G — 셋째 실제 화면들. 총액 없는 목록 · 현재가(장마감) 줄 · 총액에 현금이 든 계좌
+random.seed(11)
+g1 = holdings(US[:3], 3) + holdings(STOCK, 2)
+layout_g("g1", g1, "기본계좌", us=US)
+layout_g("g2", holdings(ETF, 1), "ISA(중개형)", total=True, cash=12_345)
+layout_g("g3", holdings(STOCK, 3), "연금저축", total=True, cash=503_310)
 for t in truth:
     for r in t["rows"]: r.pop("icon", None)
 json.dump(truth, open(os.path.join(HERE, "truth.json"), "w"), ensure_ascii=False, indent=1)

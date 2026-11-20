@@ -9,23 +9,34 @@ LABELS = {"평가금액", "평가액", "평가금", "매입금액", "매입가",
           "체결", "손익", "평가손익", "보유", "보유수량", "주문", "주문가능", "현재가", "평균단가", "평단가", "수량", "매도가능"}
 VALUE_LABELS = {"평가금액", "평가액", "평가금"}
 TOTAL_LABELS = {"평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"}
-NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금"]
+NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금", "출금", "가능금액"]
+CASH_WORDS = ["출금가능", "예수금", "주문가능현금"]
 NUMBER = re.compile(r"[+\-−]?\d{1,3}(?:,\d{3})+(?:원)?")
 ACCOUNT = re.compile(r"\d{2,}-\d{2,}")
 
 
 def label(text):
-    return re.sub(r"\(%\)|\(원\)|%|\s", "", text)
+    """이름표 비교용 — 괄호 안(`(%)` · `(장마감)`) · % · 빈칸을 걷는다."""
+    return re.sub(r"\([^)]*\)|%|\s", "", text)
+
+
+def digits_fixed(text):
+    """숫자 사이에 낀 닮은 글자를 숫자로 — 텍스트 인식이 굵은 1 을 l · I 로, 0 을 O 로 읽을 때. 길이는 그대로."""
+    text = re.sub(r"(?<=[\d,])[lI|](?=[\d,원]|$)", "1", text)
+    text = re.sub(r"(?<=[\d,])[Oo](?=[\d,원]|$)", "0", text)
+    return re.sub(r"(?<=\d)B(?=[\d,원]|$)", "8", text)
 
 
 def amount_spans(text):
     """평가금액 후보가 될 금액과 그 글자 자리 [(값, 시작, 끝)]."""
     out = []
+    text = digits_fixed(text)
     for m in NUMBER.finditer(text):
         token = m.group(0)
         if token[0] in "+-−": continue
         after = text[m.end():m.end() + 2]
         if after[:1] in ("주", "%", "(") or re.match(r"\.\d", after): continue   # 수량 · 비율 · 손익(…%) · 소수(환율)
+        if after[:1] == ",": continue                                    # 쉼표 뒤가 끊긴 숫자 — 덜 읽은 것은 고르지 않는다
         before = text[max(0, m.start() - 6):m.start()]
         if any(p in before for p in NOT_VALUE_PREFIXES): continue
         out.append((int(re.sub(r"\D", "", token)), m.start(), m.end()))
@@ -97,7 +108,8 @@ def parse(lines):
                 total = min(right, key=lambda a: a["x"])["value"]; break
     if total is None:
         limit = column["top"] if column else 0.30
-        head = [l for l in rows if l["top"] < min(0.30, limit) and amounts(l["text"])]
+        head = [l for l in rows if l["top"] < min(0.30, limit) and amounts(l["text"])
+                and not any(m is not l and same_row(m, l) and is_name(m) for m in rows)]   # 첫 종목의 금액은 총액이 아니다
         if head:
             total_line = max(head, key=lambda l: l["height"])
             total = amounts(total_line["text"])[0]
@@ -107,6 +119,18 @@ def parse(lines):
     if account is None and total_line:
         account = next((l["text"] for l in reversed(rows) if l["top"] < total_line["top"] and is_name(l)), None)
     body = [l for l in rows if l["top"] > start]
+    # 현금(출금가능 · 예수금) — 그 이름표 줄이나 같은 줄 오른쪽의 금액. 화면 총액이 현금을 품을 때 검산에 쓴다
+    def unsigned(text):
+        return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text)) if m.group(0)[0] not in "+-−"), None)
+    cash = None
+    for l in rows:
+        if not any(w in label(l["text"]) for w in CASH_WORDS): continue
+        cash = unsigned(l["text"])
+        if cash is None:
+            right = sorted([m for m in rows if m is not l and same_row(m, l) and m["x"] > l["x"] and unsigned(m["text"]) is not None],
+                           key=lambda m: m["x"])
+            cash = unsigned(right[0]["text"]) if right else None
+        if cash is not None: break
 
     # 2) 이름 — 두 줄로 꺾인 것은 붙이고, 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
     names = []
@@ -137,7 +161,9 @@ def parse(lines):
             value = cands[column["rank"]]["value"] if len(cands) > column["rank"] else None
         else:
             band = [l for l in body if lo <= l["top"] < hi and l is not n]
-            cands = [(l, v) for l in band if l["x"] > 0.25 for v in amounts(l["text"])]
+            def other_label_left(l):
+                return any(same_row(m, l) and m["x"] < l["x"] and label(m["text"]) in LABELS - VALUE_LABELS for m in rows)
+            cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in amounts(l["text"])]
             if not cands: continue
             mark = next((l for l in band if label(l["text"]) in VALUE_LABELS), None)
             if mark:
@@ -146,11 +172,53 @@ def parse(lines):
                 cands.sort(key=lambda lv: (-lv[0]["height"], -lv[1]))
             value = cands[0][1]
         items.append(dict(name=n["text"], value=value))
-    return dict(account=account, total=total, items=items)
+    return dict(account=account, total=total, items=items, cash=cash)
 
 
 def is_balanced(result):
     """검산 — 합 = 총액. 해외 종목은 원화 환산 반올림으로 몇 원 다를 수 있어 종목 수만큼(원) 봐준다."""
     if result["total"] is None: return None
     if any(i["value"] is None for i in result["items"]) or not result["items"]: return False
-    return abs(result["total"] - sum(i["value"] for i in result["items"])) <= len(result["items"])
+    return abs(result["total"] - expected_sum(result)) <= len(result["items"])
+
+
+def expected_sum(result):
+    """총액과 견줄 합 — 화면 총액이 현금(출금가능 · 예수금)을 품었으면 그것까지."""
+    s = sum(i["value"] or 0 for i in result["items"])
+    cash = result.get("cash")
+    if cash is not None and result["total"] is not None and abs(result["total"] - s - cash) <= len(result["items"]):
+        return s + cash
+    return s
+
+
+# 이름 맞추기 — Swift `match(_:among:)` 와 같다
+
+def normalized(name):
+    return re.sub(r"\s", "", name.replace("...", "…").replace("…", "")).lower()
+
+
+def similarity(a, b):
+    if not a and not b: return 1.0
+    if not a or not b: return 0.0
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i] + [0] * len(b)
+        for j in range(1, len(b) + 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+        prev = cur
+    return 1 - prev[len(b)] / max(len(a), len(b))
+
+
+def match(read, candidates):
+    """잘린 이름(…)은 앞부분이 맞는 하나 → 앱 이름이 읽은 긴 이름 속에 든 것(가장 긴 것) → 가장 비슷한 것(0.6 이상)."""
+    clean = normalized(read)
+    if not clean: return None
+    prefix = clean[:max(4, len(clean) - 1)]
+    prefixed = [i for i, c in enumerate(candidates) if normalized(c).startswith(prefix)]
+    if len(prefixed) == 1: return prefixed[0], 1.0
+    inside = [i for i, c in enumerate(candidates) if len(normalized(c)) >= 4 and normalized(c) in clean]
+    if inside: return max(inside, key=lambda i: len(normalized(candidates[i]))), 0.9
+    scored = [(i, similarity(clean, normalized(c))) for i, c in enumerate(candidates)]
+    if not scored: return None
+    best = max(scored, key=lambda t: t[1])
+    return best if best[1] >= 0.6 else None

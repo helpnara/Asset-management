@@ -21,7 +21,7 @@ for line in open(sys.argv[1]):
     o["top"] = 1 - (o["y"] + o["h"])          # 위에서부터
     obs[o["file"]].append(o)
 
-from parser import parse as parse_lines, is_balanced
+from parser import parse as parse_lines, is_balanced, match as match_lines
 
 def parse(file):
     lines = [dict(text=o["text"], x=o["x"], top=o["top"], width=o["w"], height=o["h"]) for o in obs[file]]
@@ -29,12 +29,8 @@ def parse(file):
     return r, [{"name": i["name"], "value": i["value"]} for i in r["items"]]
 
 def match(name, registered):
-    """앱에 등록된 이름과 맞추기 — 잘린 이름(…)은 앞부분으로, 나머지는 가장 비슷한 것."""
-    clean = re.sub(r"\s*(…|\.\.\.)$", "", name.replace("...", "…")).rstrip("…").strip()
-    pre = [r for r in registered if r.replace(" ", "").startswith(clean.replace(" ", "")[:max(4, len(clean.replace(' ', '')) - 1)])]
-    if len(pre) == 1: return pre[0], 1.0
-    best = max(registered, key=lambda r: difflib.SequenceMatcher(None, clean, r).ratio())
-    return best, difflib.SequenceMatcher(None, clean, best).ratio()
+    found = match_lines(name, registered)
+    return (registered[found[0]], found[1]) if found else (None, 0.0)
 
 tot_ok = tot_n = good = bad_value = bad_name = missing = caught = 0
 report = []

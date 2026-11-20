@@ -21,6 +21,10 @@ struct CaptureParserTests {
         #expect(CaptureParser.amounts(in: "12,345,678").contains(12_345_678))
         #expect(CaptureParser.amounts(in: "달러 환율 1,352.70 +0.4%").isEmpty)   // 소수
         #expect(CaptureParser.amounts(in: "담보 1,000,000").isEmpty)
+        #expect(CaptureParser.amounts(in: "45,612,l38원") == [45_612_138])   // 굵은 1 을 l 로 읽음
+        #expect(CaptureParser.amounts(in: "2,0O0,13B원") == [2_000_138])
+        #expect(CaptureParser.amounts(in: "12,345,x67원").isEmpty)           // 끊긴 숫자는 고르지 않는다
+        #expect(CaptureParser.amounts(in: "출금가능금액 12,345원").isEmpty)
     }
 
     // 목록형: 이름 | 평가금액(큰 글씨), 아래 수량 · 매입 | 손익(%)
@@ -100,6 +104,9 @@ struct CaptureParserTests {
         #expect(CaptureParser.match("ORBIT 200", among: names)?.index == 1)
         #expect(CaptureParser.match("가나 전자", among: names)?.index == 2)
         #expect(CaptureParser.match("전혀 다른 종목", among: names) == nil)
+        // 긴 펀드 이름 속에 앱 이름이 들어 있을 때
+        let funds = ["하늘로보틱스", "하늘자산 TDF 2050"]
+        #expect(CaptureParser.match("하늘로보틱스증권자투자신탁(주식-재간접형)-Ce 펀드", among: funds)?.index == 0)
     }
 
     // 11-20 실제 화면(첫째)의 배치 — 2단 표. 숫자 · 이름 · 계좌는 지어낸 것.
@@ -197,6 +204,57 @@ struct CaptureParserTests {
         #expect(result.accountLine == "아무개의 투자")
         #expect(result.items.map(\.name) == ["ARQ", "QQXM", "SPXM"])
         #expect(result.items.map(\.valueMinor) == [300_000, 450_000, 250_000])
+        #expect(result.isBalanced == true)
+    }
+
+    // 11-20 셋째 실제 화면의 배치 — 계좌 총액 없이 맨 위가 첫 종목, 종목마다 `현재가` · `현재가(장마감)` 줄. 숫자 · 이름은 지어낸 것.
+    // 맨 위 종목 금액(큰 글씨)을 계좌 총액으로 잘못 보면 그 종목이 빠진다 — 같은 줄에 종목 이름이 있으면 총액이 아니다.
+    @Test("총액 없는 목록 — 첫 종목 금액은 총액이 아니고, 현재가(장마감) 줄은 종목이 아니다")
+    func listWithoutTotal() {
+        let lines = [
+            line("‹ 내 계좌", 0.03, 0.07, w: 0.2), line("기본계좌", 0.42, 0.07, h: 0.02, w: 0.15), line("관리", 0.88, 0.07, w: 0.08),
+            line("· 전체", 0.55, 0.12, w: 0.08), line("주식", 0.68, 0.12, w: 0.06),
+            line("VELT", 0.05, 0.17, h: 0.02, w: 0.1), line("2,430,040원", 0.70, 0.17, h: 0.02, w: 0.25),
+            line("1.234567주", 0.05, 0.20, h: 0.017, w: 0.15), line("-120,000원 (-4.70%)", 0.62, 0.20, h: 0.017, w: 0.33),
+            line("현재가", 0.05, 0.235, w: 0.08), line("Pre 12.34 USD ▼ -0.10 (-0.8%) ›", 0.45, 0.235, w: 0.5),
+            line("가온소프트", 0.05, 0.28, h: 0.02, w: 0.2), line("5,000,000원", 0.70, 0.28, h: 0.02, w: 0.25),
+            line("100주", 0.05, 0.31, h: 0.017, w: 0.08), line("+200,000원 (+4.17%)", 0.62, 0.31, h: 0.017, w: 0.33),
+            line("현재가(장마감)", 0.05, 0.345, w: 0.2), line("50,000원 ▼ -2,500 (-4.80%) ›", 0.52, 0.345, w: 0.43),
+        ]
+        let result = CaptureParser.parse(lines)
+        #expect(result.totalMinor == nil)
+        #expect(result.items.map(\.name) == ["VELT", "가온소프트"])
+        #expect(result.items.map(\.valueMinor) == [2_430_040, 5_000_000])
+        #expect(result.isBalanced == nil)
+    }
+
+    // 같은 증권사의 다른 계좌 — 큰 총액 = 종목 합 + 출금가능금액(현금). 숫자 · 계좌는 지어낸 것.
+    // 3,000,000 + 200,000 + 현금 111,001 = 3,311,001 (손으로 셈)
+    @Test("총액에 현금이 든 계좌 — 출금가능금액을 더해 검산하고, 현재가 줄 · 안내 문구는 종목이 아니다")
+    func totalWithCash() {
+        let lines = [
+            line("‹ 내 계좌", 0.03, 0.07, w: 0.2), line("ISA(중개형)", 0.40, 0.07, h: 0.02, w: 0.2), line("관리", 0.88, 0.07, w: 0.08),
+            line("가나증권 012345678901", 0.05, 0.16, w: 0.4),
+            line("3,311,001원", 0.05, 0.19, h: 0.03, w: 0.4), line("입금", 0.72, 0.195, h: 0.02, w: 0.08), line("송금", 0.85, 0.195, h: 0.02, w: 0.08),
+            line("출금가능금액", 0.05, 0.24, w: 0.17), line("111,001원", 0.23, 0.24, w: 0.12),
+            line("투자내역", 0.18, 0.31, h: 0.02, w: 0.15), line("거래내역", 0.66, 0.31, h: 0.02, w: 0.15),
+            line("· 전체", 0.55, 0.37, w: 0.08),
+            line("가나전자", 0.05, 0.42, h: 0.02, w: 0.2), line("3,000,000원", 0.70, 0.42, h: 0.02, w: 0.25),
+            line("60주", 0.05, 0.45, h: 0.017, w: 0.08), line("-100,000원 (-3.23%)", 0.62, 0.45, h: 0.017, w: 0.33),
+            line("현재가(장마감)", 0.05, 0.485, w: 0.2), line("50,000원 ▼ -620 (-1.22%) ›", 0.52, 0.485, w: 0.43),
+            line("다라화학", 0.05, 0.53, h: 0.02, w: 0.2), line("200,000원", 0.70, 0.53, h: 0.02, w: 0.25),
+            line("10주", 0.05, 0.56, h: 0.017, w: 0.08), line("+5,000원 (+2.56%)", 0.62, 0.56, h: 0.017, w: 0.33),
+            line("현재가(장마감)", 0.05, 0.595, w: 0.2), line("20,000원 ▼ -100 (-0.50%) ›", 0.52, 0.595, w: 0.43),
+            line("현재가 제공 : 가나 증권 11.20 22:53", 0.45, 0.65, w: 0.5),
+            line("외화 및 해외 종목은 오늘의 기준 환율로 계산합니다", 0.35, 0.675, w: 0.6),
+        ]
+        let result = CaptureParser.parse(lines)
+        #expect(result.totalMinor == 3_311_001)
+        #expect(result.cashMinor == 111_001)
+        #expect(result.accountLine == "가나증권 012345678901")
+        #expect(result.items.map(\.name) == ["가나전자", "다라화학"])
+        #expect(result.items.map(\.valueMinor) == [3_000_000, 200_000])
+        #expect(result.expectedSumMinor == 3_311_001)
         #expect(result.isBalanced == true)
     }
 }

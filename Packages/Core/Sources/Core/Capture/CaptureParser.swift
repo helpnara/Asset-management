@@ -6,13 +6,15 @@ import Foundation
 /// 리눅스에서도 시험된다. 화면 배치를 미리 알지 않는다(증권사마다 다르다):
 /// 0. **표 머리줄** — `평가금액` 과 같은 줄이 모두 이름표(셋 이상)면 표다. 그 열(위아래로 쌓인 칸이면 몇째 단인지)을 기억한다
 /// 1. 계좌 총액 — 표면 머리줄 위 `평가금액` 이름표 오른쪽 금액, 아니면 맨 위에서 가장 큰 글씨의 금액
+///    (같은 줄에 종목 이름이 있으면 첫 종목의 금액이지 총액이 아니다 — 총액 없는 화면). `출금가능금액` 같은 현금도 읽어 둔다
 /// 2. 숫자가 아닌 왼쪽 줄 = 종목 이름 (두 줄로 꺾인 이름은 붙이고, 같은 줄에 겹친 아이콘 글자는 버린다)
 /// 3. 이름 아래 · 다음 이름 전에서 평가금액 — 표면 그 열, 아니면 `평가금액` 이름표 줄, 없으면 가장 큰 글씨
 ///    (같으면 큰 값). 부호(+ −)가 붙은 손익 · % · 주 · 소수 · 매입 · 원금 · 현재가 · 담보 는 뺀다.
 ///    **금액이 하나도 없는 이름은 종목이 아니다** (메뉴 · 탭 · 묶음 머리)
-/// 4. **검산** — 읽은 금액의 합 = 계좌 총액(해외 종목 환산 반올림만큼 종목 수 × 1원 봐줌). 맞지 않으면 사람이 본다
+/// 4. **검산** — 읽은 금액의 합(화면 총액이 현금을 품었으면 + 현금) = 계좌 총액(해외 종목 환산 반올림만큼 종목 수 × 1원 봐줌).
+///    맞지 않으면 사람이 본다
 ///
-/// 규칙은 `Tools/ocr-sim/parser.py` 와 줄 단위로 같다 — 가상 캡처 15장(실제 화면 두 배치를 본뜬 6장 포함)으로 다듬었다.
+/// 규칙은 `Tools/ocr-sim/parser.py` 와 줄 단위로 같다 — 가상 캡처 18장(실제 화면 배치를 본뜬 9장 포함)으로 다듬었다.
 public enum CaptureParser {
 
     /// 글자 한 줄. 좌표는 그림 크기에 대한 비율(0~1), **위에서부터**.
@@ -47,13 +49,22 @@ public enum CaptureParser {
         public let accountLine: String?
         public let totalMinor: Int?
         public let items: [Item]
+        /// 화면의 현금(`출금가능금액` · `예수금`) — 있으면. 계좌 총액이 현금을 품은 화면의 검산에 쓴다.
+        public var cashMinor: Int? = nil
 
         public var sumMinor: Int { items.reduce(0) { $0 + ($1.valueMinor ?? 0) } }
+        /// 총액과 견줄 합 — 화면 총액이 현금을 품었으면(합 + 현금이 맞으면) 현금까지.
+        public var expectedSumMinor: Int {
+            if let cashMinor, let totalMinor, abs(totalMinor - sumMinor - cashMinor) <= items.count {
+                return sumMinor + cashMinor
+            }
+            return sumMinor
+        }
         /// 총액이 없으면 nil — 검산할 수 없다. 해외 종목은 원화 환산 반올림으로 몇 원 다를 수 있어 종목 수만큼(원) 봐준다.
         public var isBalanced: Bool? {
             guard let totalMinor else { return nil }
             guard !items.isEmpty, items.allSatisfy({ $0.valueMinor != nil }) else { return false }
-            return abs(totalMinor - sumMinor) <= items.count
+            return abs(totalMinor - expectedSumMinor) <= items.count
         }
     }
 
@@ -63,15 +74,37 @@ public enum CaptureParser {
     static let valueLabels: Set<String> = ["평가금액", "평가액", "평가금"]
     static let totalLabels: Set<String> = ["평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"]
     /// 이 말 바로 뒤의 숫자는 평가금액이 아니다.
-    static let notValuePrefixes = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금"]
+    static let notValuePrefixes = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금",
+                                   "출금", "가능금액"]
+    static let cashWords = ["출금가능", "예수금", "주문가능현금"]
+    static let numberPattern = #"[+\-−]?\d{1,3}(?:,\d{3})+(?:원)?"#
 
-    /// 이름표 비교용 — `수익률(%)` · `평가금액(원)` · 빈칸을 걷는다.
+    /// 이름표 비교용 — 괄호 안(`(%)` · `(장마감)`) · % · 빈칸을 걷는다.
     static func label(_ text: String) -> String {
-        var out = text.replacingOccurrences(of: "(%)", with: "")
-            .replacingOccurrences(of: "(원)", with: "")
+        var out = text.replacingOccurrences(of: #"\([^)]*\)"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: "%", with: "")
         out.removeAll { $0.isWhitespace }
         return out
+    }
+
+    /// 숫자 사이에 낀 닮은 글자를 숫자로 — 텍스트 인식이 굵은 1 을 l · I 로, 0 을 O 로 읽을 때. **길이는 그대로**(자리 어림이 안 어긋난다).
+    static func digitsFixed(_ text: String) -> String {
+        text.replacingOccurrences(of: #"(?<=[\d,])[lI|](?=[\d,원]|$)"#, with: "1", options: .regularExpression)
+            .replacingOccurrences(of: #"(?<=[\d,])[Oo](?=[\d,원]|$)"#, with: "0", options: .regularExpression)
+            .replacingOccurrences(of: #"(?<=\d)B(?=[\d,원]|$)"#, with: "8", options: .regularExpression)
+    }
+
+    /// 부호 없는 첫 금액 — 현금 줄처럼 앞말을 가리지 않고 읽을 때.
+    static func unsignedAmount(in text: String) -> Int? {
+        guard let number = try? NSRegularExpression(pattern: numberPattern) else { return nil }
+        let fixed = digitsFixed(text)
+        let ns = fixed as NSString
+        for match in number.matches(in: fixed, range: NSRange(location: 0, length: ns.length)) {
+            let token = ns.substring(with: match.range)
+            if let first = token.first, "+-−".contains(first) { continue }
+            return Int(token.filter(\.isNumber))
+        }
+        return nil
     }
 
     static func sameRow(_ a: Line, _ b: Line) -> Bool {
@@ -81,7 +114,8 @@ public enum CaptureParser {
     /// 그 줄에서 평가금액 후보가 될 금액(원)과 글자 자리.
     static func amountSpans(in text: String) -> [(value: Int, range: NSRange)] {
         // 정규식은 그 자리에서 만든다 — 정적 값으로 두면 `NSRegularExpression` 이 Sendable 이 아니라 Swift 6 이 막는다.
-        guard let number = try? NSRegularExpression(pattern: #"[+\-−]?\d{1,3}(?:,\d{3})+(?:원)?"#) else { return [] }
+        guard let number = try? NSRegularExpression(pattern: numberPattern) else { return [] }
+        let text = digitsFixed(text)
         let ns = text as NSString
         var out: [(value: Int, range: NSRange)] = []
         for match in number.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
@@ -91,6 +125,7 @@ public enum CaptureParser {
             let after = ns.substring(with: NSRange(location: afterStart, length: min(2, ns.length - afterStart)))
             if after.hasPrefix("주") || after.hasPrefix("%") || after.hasPrefix("(") { continue }
             if after.range(of: #"^\.\d"#, options: .regularExpression) != nil { continue }   // 소수 — 환율 1,352.70
+            if after.hasPrefix(",") { continue }   // 쉼표 뒤가 끊긴 숫자 — 덜 읽은 것은 고르지 않는다
             let beforeStart = max(0, match.range.location - 6)
             let before = ns.substring(with: NSRange(location: beforeStart, length: match.range.location - beforeStart))
             if notValuePrefixes.contains(where: { before.contains($0) }) { continue }
@@ -206,7 +241,12 @@ public enum CaptureParser {
         }
         if total == nil {
             let limit = min(0.30, column?.top ?? 0.30)
-            if let line = rows.filter({ $0.top < limit && !amounts(in: $0.text).isEmpty }).max(by: { $0.height < $1.height }) {
+            // 같은 줄 왼쪽에 종목 이름이 있으면 총액이 아니라 첫 종목의 금액이다(총액이 없는 화면)
+            let head = rows.filter { line in
+                line.top < limit && !amounts(in: line.text).isEmpty
+                    && !rows.contains { $0 != line && sameRow($0, line) && isName($0) }
+            }
+            if let line = head.max(by: { $0.height < $1.height }) {
                 totalLine = line
                 total = amounts(in: line.text).first
             }
@@ -220,6 +260,15 @@ public enum CaptureParser {
             accountLine = rows.last { $0.top < totalLine.top && isName($0) }?.text
         }
         let body = rows.filter { $0.top > start }
+
+        // 현금(출금가능 · 예수금) — 그 이름표 줄이나 같은 줄 오른쪽의 금액
+        var cash: Int?
+        for line in rows where cashWords.contains(where: { label(line.text).contains($0) }) {
+            cash = unsignedAmount(in: line.text)
+                ?? rows.filter { $0 != line && sameRow($0, line) && $0.x > line.x && unsignedAmount(in: $0.text) != nil }
+                    .min(by: { $0.x < $1.x }).flatMap { unsignedAmount(in: $0.text) }
+            if cash != nil { break }
+        }
 
         // 2) 이름 — 두 줄로 꺾인 것은 붙이고(바로 아래 · 같은 왼쪽), 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
         var names: [Line] = []
@@ -254,8 +303,12 @@ public enum CaptureParser {
                                   valueMinor: candidates.count > column.rank ? candidates[column.rank].value : nil))
             } else {
                 let band = body.filter { $0.top >= low && $0.top < high && $0 != name }
+                // 같은 줄 왼쪽에 평가금액이 아닌 이름표(`현재가(장마감)` · `매입금액` …)가 있으면 그 줄의 금액은 아니다
+                func otherLabelLeft(_ line: Line) -> Bool {
+                    rows.contains { sameRow($0, line) && $0.x < line.x && labels.subtracting(valueLabels).contains(label($0.text)) }
+                }
                 var candidates: [(line: Line, value: Int)] = band.flatMap { line in
-                    line.x > 0.25 ? amounts(in: line.text).map { (line, $0) } : []
+                    line.x > 0.25 && !otherLabelLeft(line) ? amounts(in: line.text).map { (line, $0) } : []
                 }
                 guard !candidates.isEmpty else { continue }
                 if let mark = band.first(where: { valueLabels.contains(label($0.text)) }) {
@@ -266,7 +319,7 @@ public enum CaptureParser {
                 items.append(Item(name: name.text, valueMinor: candidates.first?.value))
             }
         }
-        return Result(accountLine: accountLine, totalMinor: total, items: items)
+        return Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash)
     }
 
     // MARK: - 이름 맞추기
@@ -295,8 +348,8 @@ public enum CaptureParser {
         return 1 - Double(previous[y.count]) / Double(max(x.count, y.count))
     }
 
-    /// 읽은 이름을 앱 종목 이름 가운데 하나와 짝짓는다. **잘린 이름(…)은 앞부분이 맞는 하나**,
-    /// 아니면 가장 비슷한 것. 0.6 아래면 짝이 없다고 본다.
+    /// 읽은 이름을 앱 종목 이름 가운데 하나와 짝짓는다. **잘린 이름(…)은 앞부분이 맞는 하나** →
+    /// 앱 이름이 읽은 긴 이름 속에 든 것(긴 펀드 이름 — 가장 긴 것) → 가장 비슷한 것. 0.6 아래면 짝이 없다고 본다.
     public static func match(_ read: String, among candidates: [String]) -> (index: Int, score: Double)? {
         let clean = normalized(read)
         guard !clean.isEmpty else { return nil }
@@ -304,6 +357,13 @@ public enum CaptureParser {
         let prefix = String(clean.prefix(prefixLength))
         let prefixed = candidates.indices.filter { normalized(candidates[$0]).hasPrefix(prefix) }
         if prefixed.count == 1 { return (index: prefixed[0], score: 1) }
+        let inside = candidates.indices.filter {
+            let name = normalized(candidates[$0])
+            return name.count >= 4 && clean.contains(name)
+        }
+        if let longest = inside.max(by: { normalized(candidates[$0]).count < normalized(candidates[$1]).count }) {
+            return (index: longest, score: 0.9)
+        }
         let scored = candidates.indices.map { (index: $0, score: similarity(clean, normalized(candidates[$0]))) }
         guard let best = scored.max(by: { $0.score < $1.score }), best.score >= 0.6 else { return nil }
         return best

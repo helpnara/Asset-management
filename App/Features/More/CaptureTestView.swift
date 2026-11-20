@@ -176,10 +176,17 @@ struct CaptureTestView: View {
         }
     }
 
-    /// 총액과 합이 다르면 ` · 차이 n원` — 해외 종목 환산 반올림(종목 수만큼 원)은 검산 통과로 본다.
+    /// 화면 총액이 현금을 품었으면 ` · 현금 n`, 총액과 합이 다르면 ` · 차이 n원` — 해외 종목 환산 반올림(종목 수만큼 원)은 검산 통과로 본다.
     private func differenceText(_ result: CaptureParser.Result) -> String {
-        guard let total = result.totalMinor, total != result.sumMinor else { return "" }
-        return " · 차이 \(Won.grouped(abs(total - result.sumMinor)))원"
+        guard let total = result.totalMinor else { return "" }
+        var text = ""
+        if let cash = result.cashMinor, result.expectedSumMinor != result.sumMinor {
+            text += " · 현금 \(Won.grouped(cash))"
+        }
+        if total != result.expectedSumMinor {
+            text += " · 차이 \(Won.grouped(abs(total - result.expectedSumMinor)))원"
+        }
+        return text
     }
 
     private func rowView(_ row: Row) -> some View {
