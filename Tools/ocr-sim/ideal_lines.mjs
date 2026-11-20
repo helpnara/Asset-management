@@ -21,6 +21,9 @@ for (const t of truth) {
       // 꺾인 글자는 줄마다 따로 (Vision 도 줄 단위로 준다)
       for (const r of range.getClientRects()) {
         if (r.width < 1) continue;
+        // 다른 것(맨 아래 메뉴 막대 등)에 가려진 글자는 캡처에 안 보인다
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!hit || !(hit === n.parentElement || n.parentElement.contains(hit) || hit.contains(n.parentElement))) continue;
         // 말줄임(…)으로 잘린 이름은 보이는 만큼만
         const el = n.parentElement; let shown = text;
         if (getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth) {

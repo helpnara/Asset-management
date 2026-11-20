@@ -700,5 +700,272 @@
     "visible": true
    }
   ]
+ },
+ {
+  "file": "e1",
+  "layout": "E",
+  "account_total": 198408542,
+  "rows": [
+   {
+    "name": "온빛식품",
+    "value": 1242702,
+    "cost": 1009297,
+    "pl": 233405,
+    "rate": 23.1255022059909,
+    "qty": 977,
+    "visible": true
+   },
+   {
+    "name": "미르건설",
+    "value": 125839052,
+    "cost": 95553616,
+    "pl": 30285436,
+    "rate": 31.6947042590204,
+    "qty": 1837,
+    "visible": true
+   },
+   {
+    "name": "새솔통신",
+    "value": 71326788,
+    "cost": 85772500,
+    "pl": -14445712,
+    "rate": -16.841892214870732,
+    "qty": 1766,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "e2",
+  "layout": "E",
+  "account_total": 32806574,
+  "rows": [
+   {
+    "name": "ARIA 미국S&P500",
+    "value": 1273002,
+    "cost": 960611,
+    "pl": 312391,
+    "rate": 32.52003152160448,
+    "qty": 851,
+    "visible": true
+   },
+   {
+    "name": "온빛식품",
+    "value": 1720845,
+    "cost": 1898157,
+    "pl": -177312,
+    "rate": -9.341271559728726,
+    "qty": 1777,
+    "visible": true
+   },
+   {
+    "name": "ORBIT 단기채권액티브",
+    "value": 12970221,
+    "cost": 14306500,
+    "pl": -1336279,
+    "rate": -9.340362772166499,
+    "qty": 1186,
+    "visible": true
+   },
+   {
+    "name": "다라화학",
+    "value": 13845062,
+    "cost": 16718751,
+    "pl": -2873689,
+    "rate": -17.188419158823525,
+    "qty": 2020,
+    "visible": true
+   },
+   {
+    "name": "VEGA 미국테크TOP10",
+    "value": 2997444,
+    "cost": 3661654,
+    "pl": -664210,
+    "rate": -18.139616686885216,
+    "qty": 901,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "e3-merged",
+  "layout": "E",
+  "account_total": 142490900,
+  "rows": [
+   {
+    "name": "미르건설",
+    "value": 1377887,
+    "cost": 1025846,
+    "pl": 352041,
+    "rate": 34.31713921972694,
+    "qty": 1072,
+    "visible": true
+   },
+   {
+    "name": "카타에너지솔루션",
+    "value": 14716320,
+    "cost": 16692455,
+    "pl": -1976135,
+    "rate": -11.838492300862875,
+    "qty": 241,
+    "visible": true
+   },
+   {
+    "name": "파하모빌리티",
+    "value": 1485988,
+    "cost": 1609018,
+    "pl": -123030,
+    "rate": -7.646278661891912,
+    "qty": 2018,
+    "visible": true
+   },
+   {
+    "name": "로이반도체",
+    "value": 124910705,
+    "cost": 112963602,
+    "pl": 11947103,
+    "rate": 10.576064137898152,
+    "qty": 1047,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "e4-dark",
+  "layout": "E",
+  "account_total": 15720654,
+  "rows": [
+   {
+    "name": "KAPPA 골드선물(H)",
+    "value": 1366034,
+    "cost": 1645118,
+    "pl": -279084,
+    "rate": -16.96437580769282,
+    "qty": 415,
+    "visible": true
+   },
+   {
+    "name": "ORBIT 200",
+    "value": 2871254,
+    "cost": 2389209,
+    "pl": 482045,
+    "rate": 20.175924333116107,
+    "qty": 1902,
+    "visible": true
+   },
+   {
+    "name": "VEGA 미국테크TOP10",
+    "value": 2169262,
+    "cost": 2337746,
+    "pl": -168484,
+    "rate": -7.207113176538426,
+    "qty": 1674,
+    "visible": true
+   },
+   {
+    "name": "KAPPA 미국배당다우존스",
+    "value": 9314104,
+    "cost": 12064576,
+    "pl": -2750472,
+    "rate": -22.797916810337966,
+    "qty": 136,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "f1",
+  "layout": "F",
+  "account_total": 196556965,
+  "rows": [
+   {
+    "name": "NOVA",
+    "value": 1956009,
+    "cost": 1573917,
+    "pl": 382092,
+    "rate": 24.27650250934452,
+    "qty": 386,
+    "visible": true
+   },
+   {
+    "name": "ARQ",
+    "value": 37784483,
+    "cost": 42994617,
+    "pl": -5210134,
+    "rate": -12.118107715670545,
+    "qty": 353,
+    "visible": true
+   },
+   {
+    "name": "DIVY",
+    "value": 42175294,
+    "cost": 41977516,
+    "pl": 197778,
+    "rate": 0.4711522234903085,
+    "qty": 2317,
+    "visible": true
+   },
+   {
+    "name": "TLTX",
+    "value": 114641177,
+    "cost": 104238380,
+    "pl": 10402797,
+    "rate": 9.979814536641877,
+    "qty": 254,
+    "visible": true
+   }
+  ]
+ },
+ {
+  "file": "f2",
+  "layout": "F",
+  "account_total": 156507107,
+  "rows": [
+   {
+    "name": "QQXM",
+    "value": 495381,
+    "cost": 536262,
+    "pl": -40881,
+    "rate": -7.623325911587993,
+    "qty": 591,
+    "visible": true
+   },
+   {
+    "name": "ARQ",
+    "value": 6952451,
+    "cost": 6400978,
+    "pl": 551473,
+    "rate": 8.615449076687968,
+    "qty": 741,
+    "visible": true
+   },
+   {
+    "name": "NOVA",
+    "value": 106665755,
+    "cost": 123638528,
+    "pl": -16972773,
+    "rate": -13.727737845601009,
+    "qty": 400,
+    "visible": true
+   },
+   {
+    "name": "SPXM",
+    "value": 23770515,
+    "cost": 20522961,
+    "pl": 3247554,
+    "rate": 15.824003173811029,
+    "qty": 1752,
+    "visible": true
+   },
+   {
+    "name": "SOXQ",
+    "value": 18623006,
+    "cost": 19259545,
+    "pl": -636539,
+    "rate": -3.3050573105439405,
+    "qty": 1018,
+    "visible": true
+   }
+  ]
  }
 ]

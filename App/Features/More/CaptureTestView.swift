@@ -139,7 +139,8 @@ struct CaptureTestView: View {
                             .foregroundStyle(Color.faint)
                             .lineLimit(1)
                     }
-                    Text("계좌 총액 \(page.result.totalMinor.map { Won.grouped($0) } ?? "—") · 읽은 합 \(Won.grouped(page.result.sumMinor))")
+                    Text("계좌 총액 \(page.result.totalMinor.map { Won.grouped($0) } ?? "—") · 읽은 합 \(Won.grouped(page.result.sumMinor))"
+                         + differenceText(page.result))
                         .font(.figure(12))
                         .foregroundStyle(Color.muted)
                 }
@@ -173,6 +174,12 @@ struct CaptureTestView: View {
             }
             .cardSurface()
         }
+    }
+
+    /// 총액과 합이 다르면 ` · 차이 n원` — 해외 종목 환산 반올림(종목 수만큼 원)은 검산 통과로 본다.
+    private func differenceText(_ result: CaptureParser.Result) -> String {
+        guard let total = result.totalMinor, total != result.sumMinor else { return "" }
+        return " · 차이 \(Won.grouped(abs(total - result.sumMinor)))원"
     }
 
     private func rowView(_ row: Row) -> some View {

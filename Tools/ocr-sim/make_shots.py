@@ -119,6 +119,97 @@ def layout_d(file, rows, acct):
     page(file, h + items)
     truth.append({"file": file, "layout": "D", "account_total": tot, "rows": rows})
 
+# E. 2단 표형 (11-20 실제 화면의 배치를 본뜸 — 이름 · 숫자 · 계좌는 지어낸 것)
+#    위에 메뉴 · 탭 · 계좌 줄 · 단추 줄, 이름표 | 값 의 요약표(매입금액 · 평가손익 / 평가금액 · 수익률),
+#    머리줄 두 단(종목명 · 평가손익 · 평가금액 · 현재가 / 주문가능 · 보유수량 · 수익률(%) · 매입금액 · 평균단가),
+#    종목마다 두 단 — 한 칸에 평가금액 위 · 매입금액 아래. 이익은 부호 없이 빨강. 맨 아래 메뉴 줄.
+#    merged=True 면 오른쪽 세 칸을 한 덩어리 글자로 — 텍스트 인식이 칸을 붙여 읽을 때
+def layout_e(file, rows, acct, merged=False, dark=False):
+    tot = sum(r["value"] for r in rows); cost = sum(r["cost"] for r in rows); pl = tot - cost
+    def signed(v): return won(v) if v >= 0 else "-" + won(-v)
+    def tone(v): return "up" if v >= 0 else "down"
+    cell = "padding:12px 10px;border-bottom:1px solid var(--rule);font-size:15px"
+    h = ("<div style='display:flex;align-items:center;padding:6px 18px;font-size:23px;font-weight:700'><span>‹</span><span style='margin-left:14px'>내자산</span></div>"
+         "<div style='display:flex;justify-content:space-around;font-size:19px;padding:12px 0;border-bottom:1px solid var(--rule)'>"
+         "<span style='color:var(--mute)'>자산</span><b>국내주식</b><span style='color:var(--mute)'>해외주식</span></div>"
+         f"<div style='padding:16px 20px;font-size:15px;background:var(--rule)'>{acct}</div>"
+         "<div style='display:flex;gap:5px;padding:12px 12px;font-size:14px;align-items:center'><span style='margin-right:auto'>전체</span>"
+         + "".join(f"<span style='border:1px solid #bbb;padding:6px 8px'>{b}</span>" for b in ["담보", "체결", "평가", "일지", "예수금"]) + "</div>"
+         "<div style='display:grid;grid-template-columns:20% 30% 21% 29%;background:var(--card)'>"
+         f"<span style='{cell};color:var(--mute)'>매입금액</span><span style='{cell};text-align:right'>{won(cost)}</span>"
+         f"<span style='{cell};color:var(--mute)'>평가손익</span><span class={tone(pl)} style='{cell};text-align:right'>{signed(pl)}</span>"
+         f"<span style='{cell};color:var(--mute)'>평가금액</span><span style='{cell};text-align:right'>{won(tot)}</span>"
+         f"<span style='{cell};color:var(--mute)'>수익률(%)</span><span class={tone(pl)} style='{cell};text-align:right'>{pl / cost * 100:.2f}</span></div>"
+         "<div style='display:flex;gap:10px;padding:14px 14px;font-size:15px;align-items:center'><span style='margin-right:auto'>매매비용</span>"
+         "<span>통합</span><span>합산</span><span style='color:var(--mute)'>개별</span></div>")
+    def two(a, b, style=""):
+        return (f"<div style='display:grid;grid-template-columns:39% 61%;padding:8px 6px;font-size:13.5px;color:var(--mute);background:var(--rule)'>"
+                f"<div><div style='text-align:center'>{a[0]}</div><div style='display:flex;justify-content:space-around;margin-top:8px'><span>{a[1]}</span><span>{a[2]}</span></div></div>"
+                + (f"<div><div style='text-align-last:justify;padding:0 4px'>{b[0][0]} {b[0][1]} {b[0][2]}</div><div style='text-align-last:justify;margin-top:8px;padding:0 4px'>{b[1][0]} {b[1][1]} {b[1][2]}</div></div>"
+                   if merged else
+                   f"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center'>{''.join(f'<span>{x}</span>' for x in b[0])}"
+                   f"{''.join(f'<span style=margin-top:8px>{x}</span>' for x in b[1])}</div>")
+                + "</div>")
+    head = two(("종목명", "주문가능", "보유수량"), (("평가손익", "평가금액", "현재가"), ("수익률(%)", "매입금액", "평균단가")))
+    items = ""
+    for r in rows:
+        price = max(1000, round(r["value"] / r["qty"] / 10) * 10); avg = round(r["cost"] / r["qty"])
+        top = (signed(r["pl"]), won(r["value"]), won(price)); bot = (f"{r['rate']:.2f}" if r["pl"] < 0 else f"{r['rate']:.2f}", won(r["cost"]), won(avg))
+        right = (f"<div style='text-align-last:justify;padding:0 4px'>{' '.join(top)}</div><div style='text-align-last:justify;margin-top:8px;padding:0 4px'>{' '.join(bot)}</div>"
+                 if merged else
+                 f"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;text-align:right;gap:0 6px'>"
+                 f"<span class={tone(r['pl'])}>{top[0]}</span><span>{top[1]}</span><span class=down>{top[2]}</span>"
+                 f"<span class={tone(r['pl'])} style=margin-top:8px>{bot[0]}</span><span style=margin-top:8px>{bot[1]}</span><span style=margin-top:8px>{bot[2]}</span></div>")
+        items += (f"<div style='display:grid;grid-template-columns:39% 61%;padding:16px 6px;font-size:16px;border-bottom:1px solid var(--rule);background:var(--card)'>"
+                  f"<div><div class=nm style='font-size:17px;padding-left:8px'>{r['name']}</div><div style='display:flex;justify-content:space-around;margin-top:10px'><span>{r['qty']:,}</span><span>{r['qty']:,}</span></div></div>"
+                  f"<div>{right}</div></div>")
+    nav = ("<div style='position:fixed;left:0;right:0;bottom:22px;display:flex;justify-content:space-around;font-size:13px;text-align:center;padding:10px 0;border-top:1px solid var(--rule);background:var(--card)'>"
+           "<span>☰<br>메뉴</span><span>홈</span><b>국내주식<br>잔고</b><span>배당<br>플래너</span><span>이체<br>오픈뱅킹</span><span>관심<br>종목</span></div>")
+    page(file, h + head + items + nav, dark)
+    truth.append({"file": file, "layout": "E", "account_total": tot, "rows": rows})
+
+# F. 묶음 목록형 (11-20 두 번째 실제 화면의 배치를 본뜸 — 이름 · 숫자는 지어낸 것)
+#    맨 위 환율 줄(소수 1,352.70), 원화 · 달러 카드, 계좌 이름 아래 큰 총액, 묶음 머리(이름 −3.2%),
+#    종목마다 왼쪽 아이콘(아이콘 안 작은 글자), 이름 아래 소수 수량(0.123456주), 오른쪽 평가금(크게) · 손익(작게),
+#    해외 종목 원화 환산이라 총액이 합과 몇 원 다르다(반올림). 아래에 다른 구역 · 탭 막대
+def layout_f(file, groups, title, rounding=2, dark=True):
+    rows = [r for g in groups for r in g[1]]
+    tot = sum(r["value"] for r in rows) + rounding; pl = sum(r["pl"] for r in rows)
+    def signed(v): return ("+" if v >= 0 else "-") + won(abs(v))
+    h = ("<div style='display:flex;align-items:center;padding:8px 18px;font-size:16px;color:var(--mute)'>달러 환율&nbsp;<span class=up>1,352.70</span>&nbsp;<span class=up style='font-size:14px'>+0.4%</span></div>"
+         "<div style='display:flex;gap:10px;padding:4px 14px 18px'><div style='flex:1;padding:10px 14px;border-radius:14px;background:var(--card);font-size:16px'>652원</div>"
+         "<div style='flex:1;padding:10px 14px;border-radius:14px;background:var(--card);font-size:16px'>$0.00</div></div>"
+         f"<div style='padding:8px 18px'><div style='font-size:15px;font-weight:700'>{title}</div><div style='font-size:27px;font-weight:700;margin-top:6px'>{won(tot)}원 ›</div>"
+         f"<div class={'up' if pl >= 0 else 'down'} style='font-size:15px;margin-top:4px'>{signed(pl)}원 ({abs(pl) / (tot - pl) * 100:.1f}%)</div></div>"
+         "<div style='display:flex;align-items:center;gap:6px;padding:10px 18px;font-size:14px'><span style='margin-right:auto;padding:5px 9px;border-radius:8px;background:var(--card)'>가나다 순</span>"
+         "<span style='color:var(--mute)'>현재가</span><b>평가금</b><span style='margin-left:8px'>$ 원</span></div>")
+    items = ""
+    for gname, grows in groups:
+        g_rate = sum(r["pl"] for r in grows) / sum(r["cost"] for r in grows) * 100
+        items += f"<div style='display:flex;padding:18px 18px 6px;font-size:16px'><span>{gname}</span>&nbsp;<span class={'up' if g_rate >= 0 else 'down'}>{g_rate:+.1f}%</span></div>"
+        for r in grows:
+            icon = r.get("icon", "")
+            items += ("<div style='display:flex;align-items:center;padding:10px 18px'>"
+                      f"<div style='width:40px;height:40px;border-radius:12px;background:#2a4a8a;color:#fff;font-size:10px;font-weight:700;text-align:center;line-height:1.15;padding-top:6px'>{icon}</div>"
+                      f"<div style='flex:1;margin-left:14px;min-width:0'><div class=nm style='font-size:17px'>{r['name']}</div>"
+                      f"<div style='font-size:13.5px;color:var(--mute);margin-top:3px'>{r['qty'] / 7:.6f}주</div></div>"
+                      f"<div style='text-align:right'><div style='font-size:17px;font-weight:700'>{won(r['value'])}원</div>"
+                      f"<div class={'up' if r['pl'] >= 0 else 'down'} style='font-size:13.5px;margin-top:3px'>{signed(r['pl'])} ({abs(r['rate']):.1f}%)</div></div></div>")
+    items += ("<div style='display:flex;justify-content:space-around;padding:16px 18px;font-size:15px;color:var(--mute);border-top:1px solid var(--rule)'><span>⚙ 보기 설정</span><span>자세히 보기 ›</span></div>"
+              "<div style='display:flex;justify-content:space-between;padding:22px 18px;font-size:17px;font-weight:700'><span>주문내역</span><span style='font-weight:500;color:var(--mute)'>이번 달 4건 ›</span></div>"
+              "<div style='padding:6px 18px;font-size:17px;font-weight:700'>배당금</div>")
+    nav = ("<div style='position:fixed;left:14px;right:14px;bottom:24px;display:flex;justify-content:space-around;font-size:12px;padding:10px 0;border-radius:30px;background:var(--card)'>"
+           "<span>←</span><span>증권</span><span>관심</span><span>발견</span><span>시장</span></div>")
+    page(file, h + items + nav, dark)
+    truth.append({"file": file, "layout": "F", "account_total": tot, "rows": rows})
+
+def us(names, k, icons=()):
+    rows = holdings(names, k)
+    for r, ic in zip(rows, icons): r["icon"] = ic
+    return rows
+
+US = ["ARQ", "VELT", "NOVA", "QQXM", "SPXM", "TLTX", "SOXQ", "DIVY"]
+
 layout_a("a1", holdings(ETF, 9), "종합매매 · 아빠 · 123-45-****")
 layout_a("a2", holdings(STOCK, 9), "종합매매 · 엄마 · 234-56-****")
 layout_a("a3-dark", holdings(ETF + STOCK, 9), "ISA · 아빠 · 345-67-****", dark=True)
@@ -128,5 +219,16 @@ layout_c("c1", holdings(ETF + STOCK, 13), "종합 · 딸 · 678-90-****")
 layout_c("c2", holdings(ETF + STOCK, 13), "IRP · 아빠 · 789-01-****")
 layout_d("d1", holdings(FUND, 4), "연금저축펀드 · 아빠 · 890-12-****")
 layout_d("d2", holdings(FUND, 4), "IRP · 엄마 · 901-23-****")
+# E — 실제 화면에서 틀린 배치. 손실 종목이 섞여(매입금액 > 평가금액) 큰 값 고르기로는 틀린다
+layout_e("e1", holdings(STOCK, 3), "123-4567-8901-0 [종합_주식] 딸 일반주식")
+layout_e("e2", holdings(ETF + STOCK, 5), "234-5678-9012-0 [종합_주식] 아빠 일반주식")
+layout_e("e3-merged", holdings(STOCK, 4), "345-6789-0123-0 [종합_주식] 엄마 일반주식", merged=True)
+layout_e("e4-dark", holdings(ETF, 4), "456-7890-1234-0 [종합_주식] 아들 일반주식", dark=True)
+# F — 두 번째 실제 화면에서 본 배치. 아이콘 안 글자 · 소수 수량 · 환율 소수 · 반올림 몇 원
+random.seed(7)
+layout_f("f1", [("Alpha", us(US[:4], 2)), ("Core", us(US[4:], 2, ["나스닥<br>100", "S&amp;P<br>500"]))], "아무개의 투자")
+layout_f("f2", [("성장", us(US[:4], 3, ["", "나스닥<br>100"])), ("배당", us(US[4:], 2, ["S&amp;P<br>500"]))], "우리집 투자", rounding=-1)
+for t in truth:
+    for r in t["rows"]: r.pop("icon", None)
 json.dump(truth, open(os.path.join(HERE, "truth.json"), "w"), ensure_ascii=False, indent=1)
 print(sum(len(t["rows"]) for t in truth), "holdings in", len(truth), "screens")
