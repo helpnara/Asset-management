@@ -687,7 +687,11 @@ struct WeeklyReviewView: View {
 
             if !isCompactAccessory {
                 // 한 줄로 못 박는다 — 좁아지면 `1 / 14` 가 세 줄로 꺾였다 (빌드 76 사진).
-                Text("\(min(currentIndex + 1, max(queue.count, 1))) / \(queue.count)")
+                // **본 줄 수다, 커서 자리가 아니다** (11-20 사용자: "남아있는 개수라든가 그런 것들이 맞지 않게
+                // 움직이는 거 같다"). 예전에는 커서가 몇 번째 줄인지를 적어, 줄을 직접 누르거나 위로 돌아가면
+                // `8 / 11` 인데 `남은 7건` 처럼 합이 안 맞았다. 이제 머리글 · 진행 막대 · `남은 n건` 과 같은 것을 센다 —
+                // 늘 `이 숫자 + 남은 n = 전체`.
+                Text("\(shownVisited.count) / \(queue.count)")
                     .font(.figure(11))
                     .foregroundStyle(Color.muted)
                     .lineLimit(1)

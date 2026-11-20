@@ -487,6 +487,8 @@ jobs:
           # **좁혀 본 크게 보기** (215번). 두 손가락 손짓은 찍을 수 없어 실행 인자로 오늘 앞뒤 여섯 달로 좁혀 연다 —
           # 주간 점이 낱낱이 보이는지, x 눈금이 `2026.11` 꼴 달 눈금인지, 목표선이 빠져 세로 축이 지금 값에 맞는지, `전체 보기` 단추.
           shoot 37-trajectory-zoomed.png -skipOnboarding -seedSampleData -startTab dashboard -startTrajectoryDetail -trajectory.zoomMonths 6
+          # **캡처 읽기 시험** (docs/25 J3) — 고르기 전 화면. 사진 선택 창은 시뮬레이터에서 찍지 않는다.
+          shoot 38-capture-test.png -skipOnboarding -seedSampleData -startTab more -startCaptureTest
           # **큰 글자** (접근성, docs/10 §3-6). 글자를 접근성 크기로 키웠을 때 표와
           # 카드가 깨지지 않는지 — 에디터 추천의 조건이고 반려 사유는 아니다.
           shoot 25-dashboard-large-text.png -skipOnboarding -seedSampleData -startTab dashboard -UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL
