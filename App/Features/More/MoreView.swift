@@ -45,6 +45,7 @@ struct MoreView: View {
         case eraseAll
         case retrospective
         case help
+        case captureTest
     }
 
     /// CI 가 스크롤 아래 구역을 찍을 수 있게 하는 갈고리.
@@ -193,6 +194,17 @@ struct MoreView: View {
                 SyncStatusSection()
                     .id("sync")
 
+                // **실험** (docs/25 J3) — 증권사 캡처 읽기 시험. 아무것도 저장하지 않는다.
+                Section {
+                    NavigationLink(value: Destination.captureTest) {
+                        Label("캡처 읽기 시험", systemImage: "text.viewfinder")
+                    }
+                } header: {
+                    Text("실험")
+                } footer: {
+                    Text("증권사 화면 캡처를 이 기기 안에서 읽어 보기만 합니다. 저장하지 않습니다.")
+                }
+
                 Section {
                     NavigationLink(value: Destination.help) {
                         Label("도움말 · 용어집", systemImage: "questionmark.circle")
@@ -280,6 +292,7 @@ struct MoreView: View {
                 case .eraseAll: EraseAllView()
                 case .retrospective: RetrospectiveView()
                 case .help: HelpView()
+                case .captureTest: CaptureTestView()
                 }
             }
         }
@@ -288,6 +301,7 @@ struct MoreView: View {
     static var initialPath: [Destination] {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-startHistory") { return [.history] }
+        if arguments.contains("-startCaptureTest") { return [.captureTest] }
         if arguments.contains("-startDiagnostics") { return [.diagnostics] }
         if arguments.contains("-startTodos") { return [.todos] }
         if arguments.contains("-startPrinciples") { return [.principles] }
