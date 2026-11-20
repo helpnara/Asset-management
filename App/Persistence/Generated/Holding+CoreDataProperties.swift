@@ -24,6 +24,10 @@ extension Holding {
 
     @NSManaged var name: String
 
+    /// **증권사 캡처에 나오는 이 종목의 이름** (222번, 모델 3판). 앱 이름(`name`)과 증권사 이름이 다를 때만 적는다 —
+    /// 처음 한 번 사람이 짝을 지으면 기억하고, 다음 캡처부터는 이 이름으로 먼저 맞춘다. 빈 값 = `name` 으로만 맞춘다.
+    @NSManaged var captureName: String
+
     @NSManaged var assetClassRaw: String
 
     @NSManaged var instrumentTypeRaw: String

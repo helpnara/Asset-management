@@ -26,6 +26,11 @@ extension Account {
 
     @NSManaged var institution: String
 
+    /// **증권사 캡처에서 이 계좌를 알아보는 표시** (222번, 모델 3판). 캡처 맨 위의 계좌 줄(번호 · 이름)을 다듬은 것 —
+    /// `CaptureBatch.accountKey`. 처음 한 번 사람이 "이 캡처는 이 계좌" 라고 고르면 적고, 다음부터는 저절로 고른다.
+    /// 가족이 함께 쓰도록 모델에 둔다(기기마다 다시 고르지 않게). 빈 값 = 아직 모름.
+    @NSManaged var captureKey: String
+
     @NSManaged var kindRaw: String
 
     @NSManaged var isArchived: Bool

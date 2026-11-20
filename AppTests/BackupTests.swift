@@ -47,6 +47,20 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(worth(target), worth(source))
     }
 
+    /// 캡처로 채우기가 기억한 계좌 표시 · 증권사 이름도 백업으로 돌아온다 (222번, 모델 3판).
+    func testCaptureMemoryRoundTrips() throws {
+        let source = Persistence.makeTrialContainer().viewContext
+        let account = try XCTUnwrap(source.all(Account.self).first)
+        let holding = try XCTUnwrap(account.sortedHoldings.first)
+        account.captureKey = "012345678901"
+        holding.captureName = "가나 증권 이름(예시)"
+        let decoded = try BackupDocument.decode(try BackupDocument.make(from: source).encoded())
+        let target = Persistence.makeEmptyContainer().viewContext
+        XCTAssertTrue(BackupDocument.restore(decoded, into: target))
+        XCTAssertEqual(target.all(Account.self).first { $0.id == account.id }?.captureKey, "012345678901")
+        XCTAssertEqual(target.all(Holding.self).first { $0.id == holding.id }?.captureName, "가나 증권 이름(예시)")
+    }
+
     /// 더 새 판 앱이 만든 백업(형식 2)은 거절한다 — "업데이트하세요" (R6).
     func testNewerFormatIsRefused() throws {
         let sourceContainer = Persistence.makeTrialContainer()

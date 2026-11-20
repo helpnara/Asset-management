@@ -1,9 +1,7 @@
 import Core
 import CoreData
-import ImageIO
 import PhotosUI
 import SwiftUI
-import Vision
 
 /// **캡처 읽기 시험** (docs/25 J3, 11-20 사용자: *"착수하자. 시험 화면 만들어줘"*).
 ///
@@ -252,7 +250,7 @@ struct CaptureTestView: View {
                     failures.append("\(offset + 1)번째 그림을 열지 못했습니다."); continue
                 }
                 let started = Date()
-                let lines = try await Self.recognize(data)
+                let lines = try await CaptureReader.recognize(data)
                 let milliseconds = Int(Date().timeIntervalSince(started) * 1000)
                 let result = CaptureParser.parse(lines)
                 let rows = result.items.map { item in
@@ -268,26 +266,5 @@ struct CaptureTestView: View {
         // 그림은 여기서 버린다 — 고른 표지(PhotosPickerItem)도 비운다. 남는 것은 화면의 결과뿐.
         picks = []
         isReading = false
-    }
-
-    private enum ReadError: Error { case unreadable }
-
-    /// 기기 안의 글자 인식 — 정밀 · 한국어 + 영어. 주 스레드 밖에서 돌고, 값(`Line`)만 돌려준다.
-    nonisolated static func recognize(_ data: Data) async throws -> [CaptureParser.Line] {
-        try await Task.detached(priority: .userInitiated) {
-            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { throw ReadError.unreadable }
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["ko-KR", "en-US"]
-            request.usesLanguageCorrection = true
-            try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
-            return (request.results ?? []).compactMap { observation in
-                guard let top = observation.topCandidates(1).first else { return nil }
-                let box = observation.boundingBox   // 아래에서부터 — 위에서부터로 뒤집는다
-                return CaptureParser.Line(text: top.string, x: Double(box.minX), top: Double(1 - box.maxY),
-                                          width: Double(box.width), height: Double(box.height))
-            }
-        }.value
     }
 }

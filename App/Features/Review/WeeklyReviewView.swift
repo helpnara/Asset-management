@@ -1,6 +1,7 @@
 import Core
 import CoreData
 import Observation
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -69,6 +70,13 @@ struct WeeklyReviewView: View {
     @State private var limitNote = false
     /// 포커스를 받은 순간의 값. 자리표시로 보이고, 친 것을 다 지우면 이리로 돌아간다.
     @State private var focusOriginal = 0
+
+    /// **캡처로 채우기** (222번) — 고른 그림 · 읽는 중 · 확인 시트에 건넬 읽은 결과.
+    @State private var capturePicks: [PhotosPickerItem] = []
+    @State private var isReadingCaptures = false
+    @State private var captureDraft: CaptureFillDraft?
+    /// 캡처로 채울 수 있는 계좌 — 이 기기에서 적을 수 있는 구성원의 것.
+    private var fillableAccounts: [Account] { editableMembers.flatMap(\.sortedAccounts) }
 
     /// **이번 주에 커서가 다녀간 줄** 을 기기에 남긴다 (144-C, 빌드 76 에서 고침).
     /// 처음에는 `lastEnteredAt` 으로 "적은 줄" 을 가렸는데, 점검을 끝내는 순간
@@ -175,6 +183,17 @@ struct WeeklyReviewView: View {
             .navigationTitle("주간 점검")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // **캡처로 채우기** (222번) — 증권사 보유 화면 캡처를 여러 장 골라 값을 미리 채운다. 사진 보관함 권한을
+                // 묻지 않는 시스템 선택 창, 읽기는 기기 안(`CaptureReader`). 적을 종목이 없으면 감춘다.
+                if !hasNoHoldings {
+                    ToolbarItem(placement: .topBarLeading) {
+                        PhotosPicker(selection: $capturePicks, maxSelectionCount: 20, selectionBehavior: .ordered,
+                                     matching: .images) {
+                            Text(isReadingCaptures ? "읽는 중…" : "캡처로 채우기")
+                        }
+                        .disabled(isReadingCaptures)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     // **취소다** (103번). 치는 대로 저장되므로 열 때 값으로 되돌린다.
                     Button("나중에") { requestLater() }
@@ -199,7 +218,17 @@ struct WeeklyReviewView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if focusedID != nil { accessoryBar }
             }
+            .onChange(of: capturePicks) { _, items in
+                guard !items.isEmpty else { return }
+                Task { await readCaptures(items) }
+            }
+            .reportsProgress("캡처 읽는 중", when: isReadingCaptures)
+            .sheet(item: $captureDraft) { fill in
+                CaptureFillSheet(draft: fill, accounts: fillableAccounts, queued: ledger.queuedIDs ?? [],
+                                 onApply: applyCapture)
+            }
             .onAppear {
+                if Self.isCaptureDemo { showCaptureDemo() }
                 if ledger.queuedIDs == nil {
                     var ids = Set(queue.map(\.id))
                     // 자산 탭에서 `이번 주 점검에서 고치기` 로 들어왔다 (145번). 그 줄이
@@ -371,6 +400,114 @@ struct WeeklyReviewView: View {
         }
     }
 
+    // MARK: - 캡처로 채우기 (222번)
+
+    /// 고른 그림을 차례로 읽어 계좌별로 묶고 확인 시트를 연다. 그림은 읽고 나면 버린다 — 고른 표지도 비운다.
+    private func readCaptures(_ items: [PhotosPickerItem]) async {
+        isReadingCaptures = true
+        var pages: [CaptureParser.Result] = []
+        var numbers: [Int] = []
+        var failed = 0
+        for (offset, item) in items.enumerated() {
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else { failed += 1; continue }
+                let lines = try await CaptureReader.recognize(data)
+                pages.append(CaptureParser.parse(lines))
+                numbers.append(offset)
+            } catch {
+                failed += 1
+            }
+        }
+        capturePicks = []
+        isReadingCaptures = false
+        guard !pages.isEmpty || failed > 0 else { return }
+        let infos = fillableAccounts.map(\.captureInfo)
+        let groups = CaptureBatch.group(pages, accounts: infos).map { group in
+            CaptureFillGroup(pages: group.pages.map { numbers[$0] }, result: group.result,
+                             accountID: CaptureBatch.suggestAccount(for: group.result, among: infos))
+        }
+        captureDraft = CaptureFillDraft(groups: groups, failed: failed)
+    }
+
+    /// **점검에 채운다** — 값은 `write` 로(`나중에` 가 되돌린다), 고른 계좌 · 짝은 모델에 기억한다(가족 공유).
+    /// 검산이 맞은 계좌의 줄은 다녀간 줄로 세고, 총액이 없거나 `그래도 채우기` 로 채운 줄은 커서가 들르게 둔다.
+    private func applyCapture(_ fill: CaptureFillDraft) {
+        let queued = ledger.queuedIDs ?? []
+        let allAccounts = members.flatMap(\.sortedAccounts)
+        // 커서 줄이 친 글자로 다시 써 넣지 않게 — `revertSuspicious` 와 같은 까닭.
+        draft = nil
+        for group in fill.groups {
+            guard let account = fillableAccounts.first(where: { $0.id == group.accountID }) else { continue }
+            // 계좌 표시를 기억한다 — 같은 표시가 다른 계좌에 있었으면 그쪽은 지운다(사람이 바꿔 고름).
+            let key = CaptureBatch.accountKey(group.result.accountLine)
+            if !key.isEmpty, account.captureKey != key {
+                for other in allAccounts where other.id != account.id && other.captureKey == key { other.captureKey = "" }
+                account.captureKey = key
+            }
+            let pairs = group.pairs(in: account)
+            let holdings = account.sortedHoldings
+            for (index, item) in group.result.items.enumerated() {
+                guard let id = pairs[index], let holding = holdings.first(where: { $0.id == id }) else { continue }
+                // 증권사 이름이 앱 이름과 다르면 기억한다 — 다음 캡처부터 이 이름으로 먼저 맞춘다.
+                if !CaptureBatch.isSameName(item.name, holding.name), holding.captureName != item.name {
+                    holding.captureName = item.name
+                }
+                guard group.canFill, let value = item.valueMinor, queued.contains(id) else { continue }
+                if value != holding.valueMinor { write(holding, value) }
+                if group.result.isBalanced == true {
+                    ledger.captureMarks[id] = .checked
+                    visited.insert(id)
+                } else {
+                    ledger.captureMarks[id] = .unchecked
+                }
+            }
+            if group.canFill {
+                for holding in holdings where queued.contains(holding.id) && !pairs.contains(holding.id)
+                    && ledger.captureMarks[holding.id] == nil {
+                    ledger.captureMarks[holding.id] = .missing
+                }
+            }
+        }
+        VisitedStore.save(visited, anchor: ReviewWeek.anchor(for: .now))
+        focus(queue.first { !visited.contains($0.id) }?.id)
+    }
+
+    /// CI 스크린샷 — 읽기(Vision 정밀 인식)는 맥 러너에서 안 돌아(docs/25), 체험 자료로 읽은 결과를 지어 시트를 연다.
+    /// `-captureFillApply` 면 시트 없이 바로 채워 줄 띠지를 보인다.
+    private static let isCaptureDemo = ProcessInfo.processInfo.arguments.contains("-captureFillDemo")
+
+    private func showCaptureDemo() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            let accounts = fillableAccounts.filter { $0.sortedHoldings.filter { isQueued($0) }.count >= 2 }
+            guard accounts.count >= 2 else { return }
+            func items(_ account: Account, dropLast: Bool) -> [CaptureParser.Item] {
+                var holdings = account.sortedHoldings.filter { isQueued($0) }
+                if dropLast { holdings.removeLast() }
+                return holdings.enumerated().map { index, holding in
+                    CaptureParser.Item(name: holding.name,
+                                       valueMinor: holding.valueMinor + holding.valueMinor / 100 * (index.isMultiple(of: 2) ? 1 : -1))
+                }
+            }
+            let first = items(accounts[0], dropLast: false)
+            let second = items(accounts[1], dropLast: true)
+            let sum = { (items: [CaptureParser.Item]) in items.compactMap(\.valueMinor).reduce(0, +) }
+            var demo = CaptureFillDraft(groups: [
+                CaptureFillGroup(pages: [0], result: .init(accountLine: "가나증권 012345678901", totalMinor: sum(first),
+                                                            items: first), accountID: accounts[0].id),
+                CaptureFillGroup(pages: [1, 2], result: .init(accountLine: "다라증권 098765432109",
+                                                               totalMinor: sum(second) + 90_000, items: second),
+                                 accountID: accounts[1].id),
+            ], failed: 0)
+            if ProcessInfo.processInfo.arguments.contains("-captureFillApply") {
+                demo.groups[1].fillUnchecked = true
+                applyCapture(demo)
+            } else {
+                captureDraft = demo
+            }
+        }
+    }
+
     // MARK: - 조각
 
     private var progressBar: some View {
@@ -444,9 +581,15 @@ struct WeeklyReviewView: View {
         queue(for: member).filter { shownVisited.contains($0.id) }.count
     }
 
-    /// 줄의 띠지 — 상태 · 비중 (199번 C5 에서 떼어 냄).
+    /// 줄의 띠지 — 상태 · 비중 · 캡처 (199번 C5 에서 떼어 냄, 222번).
     @ViewBuilder
     private func rowBadges(_ holding: Holding) -> some View {
+        switch ledger.captureMarks[holding.id] {
+        case .checked: StatusBadge(text: "캡처", foreground: .brand, background: .brandSoft)
+        case .unchecked: StatusBadge(text: "캡처 · 확인", foreground: .caution, background: .goldSoft)
+        case .missing: StatusBadge(text: "캡처에 없음")
+        case nil: EmptyView()
+        }
         if holding.status != .accumulating {
             StatusBadge(text: holding.status.label,
                         foreground: holding.status.badgeForeground,
@@ -955,6 +1098,8 @@ final class ReviewLedger {
     @ObservationIgnored var isClosing = false
     /// 크게 바뀐 항목 `되돌리기` 로 되돌린 줄 — 커서가 다시 올 때까지 늦은 세터를 안 받는다.
     @ObservationIgnored var blocked: Set<UUID> = []
+    /// **캡처로 채운 줄의 띠지** (222번). 화면이 다시 그려야 하므로 지켜본다.
+    var captureMarks: [UUID: CaptureMark] = [:]
 
     func reset() {
         queuedIDs = nil
@@ -962,5 +1107,6 @@ final class ReviewLedger {
         written = [:]
         visitedAtOpen = []
         blocked = []
+        captureMarks = [:]
     }
 }

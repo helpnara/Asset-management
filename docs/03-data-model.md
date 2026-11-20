@@ -3,8 +3,9 @@
 > **원본은 `App/SlowRich.xcdatamodeld` 다** (Core Data, 4차에서 SwiftData 에서 옮겼다 —
 > [09](09-family-sharing.md)). `@NSManaged` 선언(`App/Persistence/Generated/`)과
 > CloudKit 스키마(`Tools/cloudkit/slowrich.ckdb`)가 거기서 파생되고, CI 가 셋을 대조한다.
-> **지금 판은 `SlowRich 2.xcdatamodel`** 이다(`.xccurrentversion` 이 가리킨다 — 1.0.6 에서 `Account.annualContributionYear`
-> 를 더하며 판을 쌓았다, 199번 B2). 옛 판 `SlowRich.xcdatamodel` 은 마이그레이션의 원본이라 지우지 않는다 — 3.5.
+> **지금 판은 `SlowRich 3.xcdatamodel`** 이다(`.xccurrentversion` 이 가리킨다 — 11-21 `Account.captureKey` · `Holding.captureName`
+> 을 더하며 판을 쌓았다, 222번 캡처로 채우기. 2판은 1.0.6 의 `Account.annualContributionYear`, 199번 B2). 옛 판 `SlowRich.xcdatamodel` ·
+> `SlowRich 2.xcdatamodel` 은 마이그레이션의 원본이라 지우지 않는다 — 3.5.
 > 아래 **3.1 이 지금 모델**이고(2026-09-27 전수 조사로 다시 썼다), **3.3 은 처음
 > 설계할 때의 SwiftData 스케치**라 이름·칸이 다르다 — 무엇이 왜 바뀌었는지 보는 기록으로 남긴다.
 
@@ -28,8 +29,8 @@ Household (가구, 공유의 뿌리 — 모든 엔티티가 household 로 매달
 |---|---:|---|---|
 | Household | 4 | 공유 단위(`CKShare` 의 뿌리) | 제목 · 기준 시점 · 선언문은 `Plan` 으로 갔다 |
 | Member | 16 | 이름 · 생년월 · 세적 · 은퇴 나이 · 월 적립 · 회사 매칭 · 월급 · `editorIDs`(편집 권한) · 색 번호 | 기대수명 · 색 코드 대신 색 번호 |
-| Account | 15 | 종류 · 기관 · 연 납입 한도 · 연 납입액 + **그 납입액의 해**(`annualContributionYear`, 2판 · 199번 B2 — 0 이면 2판 전 값으로 2026년) · 만기 · 월세 · 매매가 | **통화 없음** (전부 원화) |
-| Holding | 15 | 자산군 · 상품 유형 · 상장 국가 · 상태 · 입력 주기 · 평가액 · 목표 비중 | 통화 · 수량 · 단가 · 원가 없음 |
+| Account | 16 | 종류 · 기관 · 연 납입 한도 · 연 납입액 + **그 납입액의 해**(`annualContributionYear`, 2판 · 199번 B2 — 0 이면 2판 전 값으로 2026년) · 만기 · 월세 · 매매가 · **캡처 표시**(`captureKey`, 3판 · 222번 — 증권사 캡처의 계좌 줄을 다듬은 것, 빈 값 = 모름) | **통화 없음** (전부 원화) |
+| Holding | 16 | 자산군 · 상품 유형 · 상장 국가 · 상태 · 입력 주기 · 평가액 · 목표 비중 · **증권사 이름**(`captureName`, 3판 · 222번 — 앱 이름과 다를 때만) | 통화 · 수량 · 단가 · 원가 없음 |
 | HoldingNote | 4 | 종목 "왜 샀나" 한 줄 + 날짜 · 적은 사람 | 187번에서 새로 |
 | HoldingRecord | 7 | 종목별 주간 값 (이름 · 계좌 이름을 함께 적어 종목을 지워도 남는다) | A3 에서 새로 — 스케치는 "종목 단위로는 저장하지 않는다" 였다 |
 | Plan | 35 | 제목 · 시작 · 은퇴 연도 · 월 적립 · 수익률(자산군별) · 물가 · 은퇴 후 수익률 · 목표 · 생활비 · 인출률 · 진단 기준 · 채우는 순서 · 지평선 | 스케치의 `Household` 머리 · `ContributionPlan` · `Scenario.Assumptions` 를 합쳤다 |

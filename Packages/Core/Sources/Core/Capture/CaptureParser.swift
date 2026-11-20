@@ -42,6 +42,11 @@ public enum CaptureParser {
         public let name: String
         /// 평가금액(원). 못 고르면 nil.
         public let valueMinor: Int?
+
+        public init(name: String, valueMinor: Int?) {
+            self.name = name
+            self.valueMinor = valueMinor
+        }
     }
 
     public struct Result: Sendable, Hashable {
@@ -50,7 +55,14 @@ public enum CaptureParser {
         public let totalMinor: Int?
         public let items: [Item]
         /// 화면의 현금(`출금가능금액` · `예수금`) — 있으면. 계좌 총액이 현금을 품은 화면의 검산에 쓴다.
-        public var cashMinor: Int? = nil
+        public var cashMinor: Int?
+
+        public init(accountLine: String?, totalMinor: Int?, items: [Item], cashMinor: Int? = nil) {
+            self.accountLine = accountLine
+            self.totalMinor = totalMinor
+            self.items = items
+            self.cashMinor = cashMinor
+        }
 
         public var sumMinor: Int { items.reduce(0) { $0 + ($1.valueMinor ?? 0) } }
         /// 총액과 견줄 합 — 화면 총액이 현금을 품었으면(합 + 현금이 맞으면) 현금까지.

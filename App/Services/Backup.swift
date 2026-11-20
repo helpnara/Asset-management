@@ -140,6 +140,8 @@ struct BackupDocument: Codable, Sendable {
         var id: UUID
         var name: String
         var institution: String
+        /// 캡처에서 이 계좌를 알아보는 표시 (222번, 모델 3판). 옛 백업에는 없다 — 없으면 빈 값.
+        var captureKey: String?
         var kind: String
         var isArchived: Bool
         var annualContributionMinor: Int
@@ -160,6 +162,8 @@ struct BackupDocument: Codable, Sendable {
     struct HoldingData: Codable, Sendable {
         var id: UUID
         var name: String
+        /// 증권사 캡처에 나오는 이름 (222번, 모델 3판). 옛 백업에는 없다 — 없으면 빈 값.
+        var captureName: String?
         var assetClass: String
         var instrumentType: String
         var listingCountryCode: String
@@ -321,7 +325,8 @@ extension BackupDocument {
                     accounts: member.sortedAccounts.map { account in
                         AccountData(
                             id: account.id, name: account.name,
-                            institution: account.institution, kind: account.kindRaw,
+                            institution: account.institution, captureKey: account.captureKey,
+                            kind: account.kindRaw,
                             isArchived: account.isArchived,
                             annualContributionMinor: account.annualContributionMinor,
                             annualContributionYear: account.annualContributionYear,
@@ -335,6 +340,7 @@ extension BackupDocument {
                             holdings: account.sortedHoldings.map { holding in
                                 HoldingData(
                                     id: holding.id, name: holding.name,
+                                    captureName: holding.captureName,
                                     assetClass: holding.assetClassRaw,
                                     instrumentType: holding.instrumentTypeRaw,
                                     listingCountryCode: holding.listingCountryCode,
@@ -655,6 +661,7 @@ extension BackupDocument {
                                       owner: member, sortIndex: accountData.sortIndex)
                 account.id = accountData.id
                 account.isArchived = accountData.isArchived
+                account.captureKey = accountData.captureKey ?? ""
                 account.annualContributionMinor = accountData.annualContributionMinor
                 account.annualContributionYear = accountData.annualContributionYear ?? 0
                 account.annualLimitMinor = accountData.annualLimitMinor
@@ -677,6 +684,7 @@ extension BackupDocument {
                         sortIndex: holdingData.sortIndex
                     )
                     holding.id = holdingData.id
+                    holding.captureName = holdingData.captureName ?? ""
                     holding.lastEnteredValueMinor = holdingData.lastEnteredValueMinor
                     holding.lastEnteredAt = holdingData.lastEnteredAt
                     holding.note = holdingData.note

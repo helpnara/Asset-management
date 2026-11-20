@@ -31,7 +31,7 @@ App/                        앱 타깃 "SlowRich" (표시 이름: 느린 부자)
 ├─ RootView.swift           탭 다섯 · 가로/iPad 좌측 메뉴 · 상태 띠(StatusBand) ·
 │                           탭 바깥의 전체 화면 창 — 주간 점검(199번 C4) · 궤적 크게 보기(204번)
 ├─ AppRoute.swift           그 창들을 여는 신호(`showReview` · `expandedTrajectory`) · 알림 · 현황판에서 다른 탭으로 보내는 경로
-├─ SlowRich.xcdatamodeld    ★ 모델의 원본 — 판을 쌓는다, 지금 판은 `SlowRich 2`(.xccurrentversion)
+├─ SlowRich.xcdatamodeld    ★ 모델의 원본 — 판을 쌓는다, 지금 판은 `SlowRich 3`(.xccurrentversion)
 ├─ Persistence/             저장소 · Generated/(@NSManaged) · 모델 확장 · 자동 저장 · 체험 자료
 ├─ Services/                알림 · 백업 · 가족 공유 · 동기화 감시 · 앱 잠금 · 계획선(PlanTrack) · 회고
 ├─ DesignSystem/            색 · 글자(Typography) · 읽을 수 있는 너비(`readableWidth` — 남은 양옆 바탕도 칠한다, 205번)
