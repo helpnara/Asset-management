@@ -72,11 +72,36 @@ extension Account {
                                  holdings: sortedHoldings.map { .init(id: $0.id, name: $0.name, captureName: $0.captureName) })
     }
 
-    /// 시트의 계좌 고르기에 보이는 이름 — `아빠 · 개인IRP`.
+    /// 시트의 계좌 고르기에 보이는 이름 — `아들 · 일반적립 · 가나증권`. **기관까지** 붙인다
+    /// (11-21 사용자: *"아들 일반적립만 나오면 계좌 구분이 어려워"* — 같은 이름의 계좌가 증권사마다 있다).
     var captureLabel: String {
-        let name = self.name.isEmpty ? kind.label : self.name
-        guard let owner, !owner.name.isEmpty else { return name }
-        return "\(owner.name) · \(name)"
+        var parts: [String] = []
+        if let owner, !owner.name.isEmpty { parts.append(owner.name) }
+        parts.append(name.isEmpty ? kind.label : name)
+        if !institution.isEmpty { parts.append(institution) }
+        return parts.joined(separator: " · ")
+    }
+
+    /// 계좌 고르기의 둘째 줄 — 이 캡처와 짝이 맞는 종목 수 · 기억한 계좌인지 · 그 계좌의 종목 이름 몇 개.
+    /// 이름이 같은 계좌도 안에 든 종목으로 가린다.
+    func captureHint(for result: CaptureParser.Result) -> String {
+        let holdings = sortedHoldings
+        let matched = captureMatchCount(for: result)
+        var parts: [String] = []
+        if !captureKey.isEmpty, captureKey == CaptureBatch.accountKey(result.accountLine) { parts.append("기억한 계좌") }
+        parts.append("이 캡처와 짝 \(matched)개")
+        let names = holdings.prefix(2).map { $0.name.isEmpty ? "이름 없음" : $0.name }.joined(separator: ", ")
+        if holdings.isEmpty {
+            parts.append("종목 없음")
+        } else {
+            parts.append(names + (holdings.count > 2 ? " 외 \(holdings.count - 2)" : ""))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// 이 캡처와 짝이 맞는 종목 수 — 계좌 고르기 목록을 짝이 많은 순으로 늘어놓는 데 쓴다.
+    func captureMatchCount(for result: CaptureParser.Result) -> Int {
+        CaptureBatch.pair(result.items, with: captureInfo.holdings).compactMap { $0 }.count
     }
 }
 
@@ -212,15 +237,7 @@ struct CaptureFillSheet: View {
                             .foregroundStyle(Color.faint)
                             .lineLimit(1)
                     }
-                    Picker("계좌", selection: group.accountID) {
-                        Text("계좌 고르기").tag(UUID?.none)
-                        ForEach(accounts) { account in
-                            Text(account.captureLabel).tag(UUID?.some(account.id))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(chosen == nil ? Color.caution : Color.brand)
-                    .labelsHidden()
+                    accountMenu(group, result: value.result, chosen: chosen)
                     if chosen == nil {
                         Text("어느 계좌의 캡처인지 골라 주세요 — 한 번 고르면 기억합니다.")
                             .font(.scaled(11.5))
@@ -268,6 +285,45 @@ struct CaptureFillSheet: View {
                 }
             }
             .cardSurface()
+        }
+    }
+
+    /// **계좌 고르기** — 줄마다 `구성원 · 계좌 · 기관` 과 둘째 줄(이 캡처와 짝 n개 · 종목 이름). 짝이 많은 계좌가 위로.
+    /// 메뉴 단추의 두 글자 줄은 iOS 가 제목 · 부제로 그린다.
+    private func accountMenu(_ group: Binding<CaptureFillGroup>, result: CaptureParser.Result, chosen: Account?) -> some View {
+        let ordered = accounts.enumerated()
+            .sorted { lhs, rhs in
+                let (a, b) = (lhs.element.captureMatchCount(for: result), rhs.element.captureMatchCount(for: result))
+                return a != b ? a > b : lhs.offset < rhs.offset
+            }
+            .map(\.element)
+        return Menu {
+            ForEach(ordered) { account in
+                Button {
+                    group.wrappedValue.accountID = account.id
+                } label: {
+                    if account.id == chosen?.id {
+                        Label {
+                            Text(account.captureLabel)
+                            Text(account.captureHint(for: result))
+                        } icon: {
+                            Image(systemName: "checkmark")
+                        }
+                    } else {
+                        Text(account.captureLabel)
+                        Text(account.captureHint(for: result))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(chosen?.captureLabel ?? "계좌 고르기")
+                    .font(.scaled(13.5, weight: .semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.scaled(11, weight: .semibold))
+            }
+            .foregroundStyle(chosen == nil ? Color.caution : Color.brand)
         }
     }
 
