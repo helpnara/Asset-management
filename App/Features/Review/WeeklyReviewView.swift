@@ -187,11 +187,10 @@ struct WeeklyReviewView: View {
                 // 묻지 않는 시스템 선택 창, 읽기는 기기 안(`CaptureReader`). 적을 종목이 없으면 감춘다.
                 if !hasNoHoldings {
                     ToolbarItem(placement: .topBarLeading) {
-                        PhotosPicker(selection: $capturePicks, maxSelectionCount: 20, selectionBehavior: .ordered,
-                                     matching: .images) {
-                            Text(isReadingCaptures ? "읽는 중…" : "캡처로 채우기")
-                        }
-                        .disabled(isReadingCaptures)
+                        // 제목은 글자로 건넨다 — 꼬리 닫힘(label)은 Sendable 이라 화면 상태를 읽으면 Swift 6 이 경고한다.
+                        PhotosPicker(isReadingCaptures ? "읽는 중…" : "캡처로 채우기", selection: $capturePicks,
+                                     maxSelectionCount: 20, selectionBehavior: .ordered, matching: .images)
+                            .disabled(isReadingCaptures)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -479,33 +478,43 @@ struct WeeklyReviewView: View {
     private func showCaptureDemo() {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(600))
-            let accounts = fillableAccounts.filter { $0.sortedHoldings.filter { isQueued($0) }.count >= 2 }
-            guard accounts.count >= 2 else { return }
-            func items(_ account: Account, dropLast: Bool) -> [CaptureParser.Item] {
-                var holdings = account.sortedHoldings.filter { isQueued($0) }
-                if dropLast { holdings.removeLast() }
-                return holdings.enumerated().map { index, holding in
-                    CaptureParser.Item(name: holding.name,
-                                       valueMinor: holding.valueMinor + holding.valueMinor / 100 * (index.isMultiple(of: 2) ? 1 : -1))
-                }
-            }
-            let first = items(accounts[0], dropLast: false)
-            let second = items(accounts[1], dropLast: true)
-            let sum = { (items: [CaptureParser.Item]) in items.compactMap(\.valueMinor).reduce(0, +) }
-            var demo = CaptureFillDraft(groups: [
-                CaptureFillGroup(pages: [0], result: .init(accountLine: "가나증권 012345678901", totalMinor: sum(first),
-                                                            items: first), accountID: accounts[0].id),
-                CaptureFillGroup(pages: [1, 2], result: .init(accountLine: "다라증권 098765432109",
-                                                               totalMinor: sum(second) + 90_000, items: second),
-                                 accountID: accounts[1].id),
-            ], failed: 0)
-            if ProcessInfo.processInfo.arguments.contains("-captureFillApply") {
-                demo.groups[1].fillUnchecked = true
-                applyCapture(demo)
-            } else {
-                captureDraft = demo
-            }
+            runCaptureDemo()
         }
+    }
+
+    /// 체험 자료의 두 계좌로 읽은 결과를 짓는다 — 하나는 검산이 맞고, 하나는 한 종목이 빠지고 총액이 어긋난다.
+    /// (닫힘 안에 지역 함수를 두면 관리 객체가 경계를 넘는다고 Swift 6 이 막아 따로 뺐다.)
+    private func runCaptureDemo() {
+        let accounts = fillableAccounts.filter { account in account.sortedHoldings.filter { isQueued($0) }.count >= 2 }
+        guard accounts.count >= 2 else { return }
+        let first = demoItems(accounts[0], dropLast: false)
+        let second = demoItems(accounts[1], dropLast: true)
+        let firstSum = first.compactMap(\.valueMinor).reduce(0, +)
+        let secondSum = second.compactMap(\.valueMinor).reduce(0, +)
+        var demo = CaptureFillDraft(groups: [
+            CaptureFillGroup(pages: [0], result: .init(accountLine: "가나증권 012345678901", totalMinor: firstSum,
+                                                        items: first), accountID: accounts[0].id),
+            CaptureFillGroup(pages: [1, 2], result: .init(accountLine: "다라증권 098765432109",
+                                                           totalMinor: secondSum + 90_000, items: second),
+                             accountID: accounts[1].id),
+        ], failed: 0)
+        if ProcessInfo.processInfo.arguments.contains("-captureFillApply") {
+            demo.groups[1].fillUnchecked = true
+            applyCapture(demo)
+        } else {
+            captureDraft = demo
+        }
+    }
+
+    private func demoItems(_ account: Account, dropLast: Bool) -> [CaptureParser.Item] {
+        var holdings = account.sortedHoldings.filter { isQueued($0) }
+        if dropLast { holdings.removeLast() }
+        var items: [CaptureParser.Item] = []
+        for (index, holding) in holdings.enumerated() {
+            let step = holding.valueMinor / 100 * (index.isMultiple(of: 2) ? 1 : -1)
+            items.append(CaptureParser.Item(name: holding.name, valueMinor: holding.valueMinor + step))
+        }
+        return items
     }
 
     // MARK: - 조각
