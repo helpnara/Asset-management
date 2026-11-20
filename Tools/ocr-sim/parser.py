@@ -63,6 +63,8 @@ def is_name(line):
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
+    # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
+    if re.fullmatch(r"[+\-−]?\d[\d,.]*\s*[^\d\s]?", t) and ("." in t or len(re.findall(r"\d", t)) >= 3): return False
     return True
 
 

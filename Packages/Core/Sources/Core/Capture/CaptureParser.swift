@@ -142,6 +142,9 @@ public enum CaptureParser {
         // 숫자에 단위만 붙은 줄 — 0.123456주 · 652원
         if text.contains(where: \.isNumber),
            text.allSatisfy({ $0.isNumber || $0.isWhitespace || ".,+-−%()$주원좌개".contains($0) }) { return false }
+        // 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
+        if text.range(of: #"^[+\-−]?\d[\d,.]*\s*[^\d\s]?$"#, options: .regularExpression) != nil,
+           text.contains(".") || text.filter(\.isNumber).count >= 3 { return false }
         return true
     }
 
