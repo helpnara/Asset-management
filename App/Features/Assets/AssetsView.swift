@@ -31,6 +31,9 @@ struct AssetsView: View {
     // 관계를 따라 계좌·종목을 읽는데, 종목 값이 바뀌어도 구성원 자체는 안 바뀌어
     // 다시 그릴 이유가 없었다 — 접었다 펴거나 탭을 오가야 새 값이 보였다.
     // 이 둘이 바뀌면 화면이 다시 그려진다. 몸체가 한 번 읽어 줘야 확실하다.
+    // **칸만 바뀐 것은 72번 때 안 잡혔다** (225번) — `@FetchRequest` 는 들고 나는 것에만 반응해,
+    // 종목 편집에서 목표 비중을 고치고 닫으면 비중 표기 · `목표 미완` 이 접었다 펴야 바뀌었다.
+    // 이제 `@Fetched` 가 칸 변경도 알린다(`EntityChanges`).
     @Fetched private var holdings: [Holding]
     @Fetched private var accounts: [Account]
 

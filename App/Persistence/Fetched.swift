@@ -1,3 +1,4 @@
+import Combine
 import CoreData
 import SwiftUI
 
@@ -24,13 +25,23 @@ struct Fetched<Result: NSManagedObject>: DynamicProperty {
 
     @FetchRequest private var results: FetchedResults<Result>
 
+    /// **칸만 바뀐 것도 알린다** (225번). `@FetchRequest` 는 목록에 드나드는 것(추가 · 삭제 · 정렬)에만
+    /// 반응하고, 이미 있는 객체의 칸 하나가 바뀐 것은 알리지 않는다 — 종목 편집 시트에서 목표 비중을
+    /// 고치고 닫아도 자산 탭의 비중 표기 · `목표 미완` 이 계좌를 접었다 펴야 바뀌었다. 같은 병을
+    /// 72번(자산 탭) · 150번(일기 줄) · 빌드 98 8번(진단 기준)에서 화면마다 따로 고쳤다.
+    /// 여기서 한 번에 막는다 — 이 엔티티의 객체가 바뀌면(칸 · 들고 남 · iCloud 가 밀어 넣은 것)
+    /// 이것을 쓰는 화면이 다시 그려진다.
+    @StateObject private var changes: EntityChanges
+
     /// **매번 배열을 새로 만든다.** 이 앱이 다루는 크기(구성원 넷 · 종목 수십)에서는
     /// 값이 싸고, 대신 쓰는 쪽이 `[T]` 라는 사실이 흔들리지 않는다.
     var wrappedValue: [Result] { Array(results) }
 
     /// 정렬 없이. 예전 `@Query private var plans: [Plan]` 자리다.
+    @MainActor
     init() {
         _results = FetchRequest(fetchRequest: Self.request(sortedBy: []))
+        _changes = StateObject(wrappedValue: EntityChanges(entity: Self.entityName))
     }
 
     /// 키패스 하나로 정렬. 82곳 중 47곳이 이 꼴이다.
@@ -44,18 +55,57 @@ struct Fetched<Result: NSManagedObject>: DynamicProperty {
     /// Core Data 가 원하는 것은 `NSSortDescriptor` 이고, 그건 **속성 이름
     /// 문자열**로 만든다. 키패스는 이름을 얻는 데만 쓴다 — 그래야 부르는 쪽이
     /// 오타를 컴파일 때 잡힌다(`\Member.sortIndex`).
+    @MainActor
     init<Value>(sort keyPath: KeyPath<Result, Value>,
                 order: SortOrder = .forward) where Value: Comparable {
         let name = NSExpression(forKeyPath: keyPath).keyPath
         _results = FetchRequest(fetchRequest: Self.request(
             sortedBy: [NSSortDescriptor(key: name, ascending: order == .forward)]))
+        _changes = StateObject(wrappedValue: EntityChanges(entity: Self.entityName))
     }
 
     /// 엔티티 이름은 클래스 이름과 같다 — 생성기가 그렇게 뽑았다.
+    private static var entityName: String { String(describing: Result.self) }
+
     private static func request(sortedBy descriptors: [NSSortDescriptor]) -> NSFetchRequest<Result> {
-        let request = NSFetchRequest<Result>(entityName: String(describing: Result.self))
+        let request = NSFetchRequest<Result>(entityName: entityName)
         request.sortDescriptors = descriptors
         return request
+    }
+}
+
+// MARK: - 칸 변경 알림 (225번)
+
+/// **한 엔티티의 객체가 바뀌면 세대 번호를 올린다** — `@Fetched` 가 하나씩 들고, 올라가면 그것을 쓰는
+/// 화면이 다시 그려진다. Core Data 의 `ObjectsDidChange` 를 본다: 칸만 바뀐 것(`updated`), iCloud 가
+/// 밀어 넣어 다시 읽은 것(`refreshed`), 들고 난 것까지. `ValuationCache` 와 같은 알림 · 같은 판정이다.
+///
+/// **액터에 매지 않는다.** `@MainActor` 클래스 안에서 Combine 닫힘을 만들면 Swift 6 가 그 닫힘을
+/// 메인 액터 것으로 여기는데, 알림은 배경 컨텍스트(iCloud 가져오기)에서도 온다 — 거기서 부르면
+/// 실행 중에 큐 검사로 죽는다. 판정은 보낸 쪽 스레드에서 하고(`objectID` 는 어느 스레드에서 읽어도
+/// 된다), 숫자는 메인 큐로 옮긴 뒤에만 올린다.
+final class EntityChanges: ObservableObject {
+    @Published private(set) var generation = 0
+    private var subscription: AnyCancellable?
+
+    init(entity: String) {
+        subscription = NotificationCenter.default
+            .publisher(for: .NSManagedObjectContextObjectsDidChange)
+            .filter { @Sendable note in EntityChanges.touches(note, entity: entity) }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.generation &+= 1 }
+    }
+
+    static func touches(_ note: Notification, entity: String) -> Bool {
+        // 통째로 무효화됐으면(저장소 교체 · 체험 모드 전환) 무조건.
+        if note.userInfo?[NSInvalidatedAllObjectsKey] != nil { return true }
+        let keys = [NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey,
+                    NSRefreshedObjectsKey, NSInvalidatedObjectsKey]
+        for key in keys {
+            guard let objects = note.userInfo?[key] as? Set<NSManagedObject> else { continue }
+            if objects.contains(where: { $0.objectID.entity.name == entity }) { return true }
+        }
+        return false
     }
 }
 
