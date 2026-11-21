@@ -15,6 +15,51 @@
 `screenshots/appstore/store/iphone-6.3/` 다섯 장과 포스터 장면 `Tools/preview/out/poster-*.png` 를 그 크기로 만들어 건넸다.
 다음 버전 페이지의 미리 보기 · 스크린샷 칸은 이것으로 다 찼다 — 낼 때 다시 손대지 않는다.
 
+## ★ 업데이트 제출 — 1.0.19 (220 주간 점검 개수 · 221 캡처 읽기 시험 · 222 캡처로 채우기 · 223 띠지 줄 이름 꺾임 · 224 읽은 글자 복사 · 증권사별 읽기 보완, **빌드 159** — 155 · 157 · 158 · 159 체크리스트 확인(11-21 사용자: *"빌드 159 체크리스트 확인 완료. 우선 우리 가족 계좌 캡쳐 화면 8장 기준으로 한번에 입력이 가능한 것을 확인했어."*)) — **11-21 제출 준비** (사용자: *"현재 버전으로 심사 제출 준비하자."*)
+
+1.0.18(빌드 154)은 심사에 냈다가 취소했다 — **1.0.18 의 내용이 다 이 판에 들어 있고 공개된 적이 없으므로, 새로운 기능 글은 1.0.17 다음 판으로 쓴다.** 모델은 1.0.18 과 같은 **3판**(`Account.captureKey` · `Holding.captureName`), **CloudKit Production Deploy 는 11-21 끝났다** — 할 일 없다. 미리 보기 · 스크린샷은 그대로 따라온다.
+
+| ☐ | 어디서 | 무엇 |
+|---|---|---|
+| ✅ | (먼저) CloudKit Console → Production | 11-21 Deploy 완료 — 새 칸 둘 |
+| ☐ | App Store 탭 → 왼쪽 `iOS 앱` 아래 **`1.0.18`** 페이지(취소해서 `개발자가 거부함` 또는 `제출 준비 중`) | 페이지 위쪽 **버전** 칸의 `1.0.18` 을 **`1.0.19`** 로 고친다 — 새 페이지를 만들 필요 없다(빌드 버전과 같아야 빌드를 고를 수 있다) |
+| ☐ | 같은 페이지 → **이 버전의 새로운 기능** | 아래 첫 상자로 **바꿔** 붙인다 |
+| ☐ | 같은 페이지 → **빌드** | 붙어 있던 154 를 빼고(**−**) **+** 로 **159** (155 ~ 158 아님) |
+| ☐ | **App 심사 정보 → 메모** | 1.0.18 때 맨 끝에 붙인 영어 문단을 아래 둘째 상자로 **바꾼다**(제목 줄 `NEW IN 1.0.19`, 복사 단추 한 문장 더) |
+| ☐ | **버전 출시** | **자동 출시** — 스키마는 이미 Production 에 있다 |
+| ☐ | **심사에 추가 → 심사를 위해 제출** | |
+
+```
+주간 점검이 빨라졌습니다.
+
+· 주간 점검의 '캡처로 채우기' — 증권사 앱의 보유 종목 화면을 캡처해 여러 장 고르면 금액을 읽어 점검 목록에 미리 채웁니다
+· 여러 장을 한 번에 골라도 계좌별로 묶고, 계좌 이름 · 구성원 · 기관으로 어느 계좌인지 알아봅니다
+· 처음 한 번 고른 계좌와 종목 짝은 기억해, 가족 모두 다음부터 저절로 맞춥니다
+· 읽은 금액의 합이 계좌 총액과 맞지 않으면 채우지 않고 알려 드립니다 — 틀린 값이 조용히 들어가지 않습니다
+· 글자 읽기는 이 기기 안에서만 하고, 캡처는 읽은 뒤 바로 버립니다. 사진 보관함 권한도 묻지 않습니다
+· 주간 점검의 진행 숫자와 남은 개수가 서로 맞게 움직입니다
+· 띠지가 여럿 붙어도 종목 이름이 한 글자씩 꺾이지 않습니다
+```
+
+```
+NEW IN 1.0.19 — "캡처로 채우기" (Fill from screenshots)
+
+On the weekly check-in screen (현황판 (Dashboard) → the weekly check-in card →
+"지금 입력", or "다시 열기" once this week is done), the top-left button "캡처로 채우기" opens the system photo picker.
+The user picks screenshots they took of their own brokerage app's holdings
+screen. The app reads the text ON THE DEVICE with Apple's Vision framework
+(VNRecognizeTextRequest) — no network request, nothing uploaded — and pre-fills
+the amounts into the check-in list for the user to review before saving. The
+images are discarded right after reading and are never stored. The system
+photo picker (PhotosPicker) is used, so no Photos library permission is
+requested. More (더보기) → "실험" → "캡처 읽기 시험" is a read-only test screen
+for the same feature that saves nothing; its "읽은 글자 복사" button copies the
+recognized text to the clipboard (optionally with digits masked as #) so the
+user can report a misread — nothing is sent anywhere by the app.
+```
+
+> 제출하면 `Tools/coredata/migration-baselines.txt` 맨 위에 **빌드 159 의 커밋 `8d3662e`** 를 더한다(모델은 `a52fb41` 과 같은 3판 — 공개된 판을 남겨 두는 규칙).
+
 ## ★ 업데이트 제출 — 1.0.18 (220 주간 점검 개수 · 221 캡처 읽기 시험 · 222 캡처로 채우기, **빌드 154** — 152 · 154 체크리스트 확인(11-21 사용자: *"빌드 154 체크리스트 확인 완료"*)) — ~~11-21 심사 제출~~ → **11-21 제출 취소** (사용자: *"1.0.18 심사 제출은 취소했으니, 1.0.19 테스트가 잘 끝나면 여기부터 심사 제출 준비하자."*) — **1.0.19 로 낸다**
 
 **모델 3판의 첫 출시다**(`Account.captureKey` · `Holding.captureName`). **CloudKit Production Deploy 는 11-21 이미 끝났다**(사용자) — 빌드 152 를 깔기 전에 했다. 미리 보기 · 스크린샷은 그대로 따라온다(캡처로 채우기는 점검 화면 왼쪽 위 단추 하나라 스크린샷을 바꾸지 않는다).
