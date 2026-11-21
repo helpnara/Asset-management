@@ -475,7 +475,12 @@ struct WeeklyReviewView: View {
     /// `-captureFillApply` 면 시트 없이 바로 채워 줄 띠지를 보인다.
     private static let isCaptureDemo = ProcessInfo.processInfo.arguments.contains("-captureFillDemo")
 
+    /// 한 번만 — 전체 화면 창 안에서 `onAppear` 가 두 번 불리면 시트 값을 두 번 바꿔 띄우던 것이 사라졌다(CI 스크린샷 39, 11-21).
+    private static var didRunCaptureDemo = false
+
     private func showCaptureDemo() {
+        guard !Self.didRunCaptureDemo else { return }
+        Self.didRunCaptureDemo = true
         Task { @MainActor in
             // 점검 창이 다 올라온 뒤에 — 600ms 에는 창이 아직 올라오는 중이라 시트가 안 떴다(CI 스크린샷 39, 11-21)
             try? await Task.sleep(for: .milliseconds(1800))
