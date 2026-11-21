@@ -477,7 +477,8 @@ struct WeeklyReviewView: View {
 
     private func showCaptureDemo() {
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(600))
+            // 점검 창이 다 올라온 뒤에 — 600ms 에는 창이 아직 올라오는 중이라 시트가 안 떴다(CI 스크린샷 39, 11-21)
+            try? await Task.sleep(for: .milliseconds(1800))
             runCaptureDemo()
         }
     }
@@ -625,12 +626,24 @@ struct WeeklyReviewView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 5) { rowBadges(holding) }
                 } else {
-                    HStack(spacing: 5) {
-                        Text(holding.name.isEmpty ? "이름 없음" : holding.name)
-                            .font(.scaled(13.5, weight: isActive ? .medium : .regular))
-                            .foregroundStyle(Color.ink)
-                            .layoutPriority(1)
-                        rowBadges(holding)
+                    // **한 줄에 다 들어가면 한 줄, 아니면 띠지를 둘째 줄로** (CI 스크린샷 40, 11-21). `캡처` 띠지가 `동결` ·
+                    // 비중 · `부족` 옆에 하나 더 붙자 이름 칸이 밀려 `내/대/형/주` 처럼 한 글자씩 꺾였다 — 199번 C5 와 같은 병.
+                    // 이름은 한 줄로 두고(`fixedSize`) 띠지까지 들어가는지 먼저 재 본다.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 5) {
+                            Text(holding.name.isEmpty ? "이름 없음" : holding.name)
+                                .font(.scaled(13.5, weight: isActive ? .medium : .regular))
+                                .foregroundStyle(Color.ink)
+                                .fixedSize()
+                            rowBadges(holding)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(holding.name.isEmpty ? "이름 없음" : holding.name)
+                                .font(.scaled(13.5, weight: isActive ? .medium : .regular))
+                                .foregroundStyle(Color.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: 5) { rowBadges(holding) }
+                        }
                     }
                 }
                 // 같은 주에 다시 열었으면 기준은 지난주가 아니라 **이번 주에 먼저
