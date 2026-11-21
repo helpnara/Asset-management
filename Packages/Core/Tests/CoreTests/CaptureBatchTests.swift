@@ -86,4 +86,42 @@ struct CaptureBatchTests {
         #expect(CaptureBatch.suggestAccount(for: groups[0].result, among: [gana, toss]) == id(10))
         #expect(CaptureBatch.suggestAccount(for: groups[1].result, among: [gana, toss]) == id(20))
     }
+
+    // 11-21 사용자: "계좌 이름이 나오면 유사한 계좌라면 선택이 가능하지 않을까 … 텍스트 매칭". 계좌 번호 · 이름은 지어낸 것.
+    // 같은 ETF 를 IRP · 연금저축 둘 다 가져 짝 수가 같을 때 계좌 줄 글자로 가린다.
+    @Test("계좌 줄 글자 — 계좌 이름 3 · 구성원 2(낱말) · 종류 1, 짝 수가 같으면 이걸로 가린다")
+    func textMatching() {
+        let irp = CaptureBatch.AccountInfo(id: id(10), captureKey: "",
+                                           holdings: [holding(1, "TIGER 미국S&P500"), holding(2, "KODEX 국고채3년")],
+                                           owner: "아빠", name: "개인IRP", kind: "IRP")
+        let pension = CaptureBatch.AccountInfo(id: id(20), captureKey: "", holdings: [holding(3, "TIGER 미국S&P500")],
+                                               owner: "아빠", name: "연금저축", kind: "연금저축")
+        let pensionLine = "022-1111-2222-0 [연금저축계좌(신)] 아빠 연금저축"
+        let irpLine = "001-3333-4444-0 [퇴직연금_개인IRP] 아빠 IRP"
+        #expect(CaptureBatch.textScore(pensionLine, irp) == 2)       // 아빠
+        #expect(CaptureBatch.textScore(pensionLine, pension) == 5)   // 연금저축 3 + 아빠 2 (종류 = 이름이라 한 번만)
+        #expect(CaptureBatch.textScore(irpLine, irp) == 6)           // 개인IRP 3 + 아빠 2 + IRP 1
+        #expect(CaptureBatch.textScore("아무개의 투자", irp) == 0)
+
+        // 짝 1 : 1 — 글자로 연금저축
+        let pensionPage = CaptureParser.Result(accountLine: pensionLine, totalMinor: 2_000_000,
+                                               items: [item("TIGER 미국S&P500", 2_000_000)])
+        #expect(CaptureBatch.suggestAccount(for: pensionPage, among: [irp, pension]) == id(20))
+        // 짝이 하나도 없어도 계좌 이름이 줄에 들면(3 이상) 고른다
+        let emptyPage = CaptureParser.Result(accountLine: pensionLine, totalMinor: nil, items: [item("없는 종목", 1_000)])
+        #expect(CaptureBatch.suggestAccount(for: emptyPage, among: [irp, pension]) == id(20))
+        // 구성원만 맞는 것(2)으로는 짝 없이 고르지 않는다
+        let ownerOnly = CaptureParser.Result(accountLine: "아빠 기타", totalMinor: nil, items: [item("없는 종목", 1_000)])
+        #expect(CaptureBatch.suggestAccount(for: ownerOnly, among: [irp, pension]) == nil)
+
+        // 이름이 같은 계좌(일반적립)를 딸 · 아들이 따로 — 한 글자 구성원은 낱말로만
+        let daughter = CaptureBatch.AccountInfo(id: id(30), captureKey: "", holdings: [holding(4, "가나전자")],
+                                                owner: "딸", name: "일반적립")
+        let son = CaptureBatch.AccountInfo(id: id(40), captureKey: "", holdings: [holding(5, "가나전자")],
+                                           owner: "아들", name: "일반적립")
+        let daughterPage = CaptureParser.Result(accountLine: "123-4567-8901-0 [종합_주식] 딸 일반주식", totalMinor: 1_000_000,
+                                                items: [item("가나전자", 1_000_000)])
+        #expect(CaptureBatch.suggestAccount(for: daughterPage, among: [son, daughter]) == id(30))
+    }
 }
+

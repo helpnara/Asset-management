@@ -25,6 +25,9 @@ struct CaptureParserTests {
         #expect(CaptureParser.amounts(in: "2,0O0,13B원") == [2_000_138])
         #expect(CaptureParser.amounts(in: "12,345,x67원").isEmpty)           // 끊긴 숫자는 고르지 않는다
         #expect(CaptureParser.amounts(in: "출금가능금액 12,345원").isEmpty)
+        #expect(CaptureParser.amounts(in: "–7,123,456 (12.4%)").isEmpty)   // 마이너스를 줄표(–)로 읽음 (11-21)
+        #expect(CaptureParser.amounts(in: "7,123,456 (12.4%)").isEmpty)    // 부호가 빠져도 뒤 괄호면 손익
+        #expect(CaptureParser.amounts(in: "52,000,000원").contains(52_000_000))
     }
 
     // 목록형: 이름 | 평가금액(큰 글씨), 아래 수량 · 매입 | 손익(%)

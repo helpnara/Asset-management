@@ -11,7 +11,8 @@ VALUE_LABELS = {"평가금액", "평가액", "평가금"}
 TOTAL_LABELS = {"평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"}
 NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금", "출금", "가능금액"]
 CASH_WORDS = ["출금가능", "예수금", "주문가능현금"]
-NUMBER = re.compile(r"[+\-−]?\d{1,3}(?:,\d{3})+(?:원)?")
+SIGNS = "+-−‐‑‒–—―﹣－"   # 텍스트 인식이 마이너스를 여러 줄표로 읽는다 (11-21 `–7,4xx,xxx` 가 부호 없는 금액이 됨)
+NUMBER = re.compile(r"[" + re.escape(SIGNS) + r"]?\d{1,3}(?:,\d{3})+(?:원)?")
 ACCOUNT = re.compile(r"\d{2,}-\d{2,}")
 
 
@@ -33,8 +34,9 @@ def amount_spans(text):
     text = digits_fixed(text)
     for m in NUMBER.finditer(text):
         token = m.group(0)
-        if token[0] in "+-−": continue
+        if token[0] in SIGNS: continue
         after = text[m.end():m.end() + 2]
+        if re.match(r"\s?\(", text[m.end():m.end() + 3]): continue          # `금액 (12.4%)` — 손익과 비율
         if after[:1] in ("주", "%", "(") or re.match(r"\.\d", after): continue   # 수량 · 비율 · 손익(…%) · 소수(환율)
         if after[:1] == ",": continue                                    # 쉼표 뒤가 끊긴 숫자 — 덜 읽은 것은 고르지 않는다
         before = text[max(0, m.start() - 6):m.start()]
@@ -91,6 +93,7 @@ def is_name(line):
     if not re.search(r"[^\W\d_]", t): return False
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
+    if re.fullmatch(r"[가-힣]", t): return False                      # 한 글자 한글 — 가려진 글자 조각(`트`)
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
     # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
     if re.fullmatch(r"[+\-−]?\d[\d,.]*\s*[^\d\s]?", t) and ("." in t or len(re.findall(r"\d", t)) >= 3): return False
@@ -142,7 +145,7 @@ def parse(lines):
     body = [l for l in rows if l["top"] > start]
     # 현금(출금가능 · 예수금) — 그 이름표 줄이나 같은 줄 오른쪽의 금액. 화면 총액이 현금을 품을 때 검산에 쓴다
     def unsigned(text):
-        return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text)) if m.group(0)[0] not in "+-−"), None)
+        return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text)) if m.group(0)[0] not in SIGNS), None)
     cash = None
     for l in rows:
         if not any(w in label(l["text"]) for w in CASH_WORDS): continue

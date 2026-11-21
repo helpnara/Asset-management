@@ -89,7 +89,9 @@ public enum CaptureParser {
     static let notValuePrefixes = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금",
                                    "출금", "가능금액"]
     static let cashWords = ["출금가능", "예수금", "주문가능현금"]
-    static let numberPattern = #"[+\-−]?\d{1,3}(?:,\d{3})+(?:원)?"#
+    /// 부호 — 텍스트 인식이 마이너스를 여러 줄표로 읽는다(11-21 `–7,4xx,xxx` 가 부호 없는 금액이 되어 종목이 됨).
+    static let signs = "+-−‐‑‒–—―﹣－"
+    static let numberPattern = #"[+\-−‐‑‒–—―﹣－]?\d{1,3}(?:,\d{3})+(?:원)?"#
 
     /// 이름표 비교용 — 괄호 안(`(%)` · `(장마감)`) · % · 빈칸을 걷는다.
     static func label(_ text: String) -> String {
@@ -113,7 +115,7 @@ public enum CaptureParser {
         let ns = fixed as NSString
         for match in number.matches(in: fixed, range: NSRange(location: 0, length: ns.length)) {
             let token = ns.substring(with: match.range)
-            if let first = token.first, "+-−".contains(first) { continue }
+            if let first = token.first, signs.contains(first) { continue }
             return Int(token.filter(\.isNumber))
         }
         return nil
@@ -132,10 +134,13 @@ public enum CaptureParser {
         var out: [(value: Int, range: NSRange)] = []
         for match in number.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
             let token = ns.substring(with: match.range)
-            if let first = token.first, "+-−".contains(first) { continue }
+            if let first = token.first, signs.contains(first) { continue }
             let afterStart = NSMaxRange(match.range)
             let after = ns.substring(with: NSRange(location: afterStart, length: min(2, ns.length - afterStart)))
             if after.hasPrefix("주") || after.hasPrefix("%") || after.hasPrefix("(") { continue }
+            // `금액 (12.4%)` — 빈칸 하나 두고 괄호가 오면 손익과 비율이다
+            let wider = ns.substring(with: NSRange(location: afterStart, length: min(3, ns.length - afterStart)))
+            if wider.range(of: #"^\s?\("#, options: .regularExpression) != nil { continue }
             if after.range(of: #"^\.\d"#, options: .regularExpression) != nil { continue }   // 소수 — 환율 1,352.70
             if after.hasPrefix(",") { continue }   // 쉼표 뒤가 끊긴 숫자 — 덜 읽은 것은 고르지 않는다
             let beforeStart = max(0, match.range.location - 6)
@@ -213,6 +218,8 @@ public enum CaptureParser {
         if text.range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
         if text.contains("****") || text.hasPrefix("총 ") || text.contains("평가손익") { return false }
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
+        // 한 글자 한글 — 가려진 글자 조각(11-21 `트`). 한 글자 영문(티커 T · V)은 남긴다
+        if text.count == 1, let scalar = text.unicodeScalars.first, (0xAC00...0xD7A3).contains(scalar.value) { return false }
         // 숫자에 단위만 붙은 줄 — 0.123456주 · 652원
         if text.contains(where: \.isNumber),
            text.allSatisfy({ $0.isNumber || $0.isWhitespace || ".,+-−%()$주원좌개".contains($0) }) { return false }

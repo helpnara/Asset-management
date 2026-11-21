@@ -31,11 +31,21 @@ public enum CaptureBatch {
         /// 캡처에서 이 계좌를 알아보는 표시(`accountKey`) — 모르면 빈 값.
         public let captureKey: String
         public let holdings: [HoldingInfo]
+        /// 캡처의 계좌 줄과 견줄 글자 — 구성원 이름 · 계좌 이름 · 기관 · 계좌 종류(`textScore`).
+        public let owner: String
+        public let name: String
+        public let institution: String
+        public let kind: String
 
-        public init(id: UUID, captureKey: String, holdings: [HoldingInfo]) {
+        public init(id: UUID, captureKey: String, holdings: [HoldingInfo],
+                    owner: String = "", name: String = "", institution: String = "", kind: String = "") {
             self.id = id
             self.captureKey = captureKey
             self.holdings = holdings
+            self.owner = owner
+            self.name = name
+            self.institution = institution
+            self.kind = kind
         }
     }
 
@@ -93,18 +103,48 @@ public enum CaptureBatch {
         return result
     }
 
-    /// 이 읽기 결과가 어느 계좌인가 — 기억해 둔 표시가 같은 계좌(하나일 때), 아니면 짝이 가장 많은 계좌(하나일 때). 모르면 nil.
+    /// 글자만 남긴 비교용 — 빈칸 · 괄호 · `_` · `-` 를 걷는다(`[연금저축계좌(신)]` → `연금저축계좌신`).
+    static func compact(_ text: String) -> String {
+        text.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    /// **계좌 줄과 앱 계좌 글자가 얼마나 맞나** (11-21 사용자: *"계좌 이름이 나오면 유사한 계좌라면 선택이 가능하지 않을까 …
+    /// 텍스트 매칭 기법을 활용하면"*). 계좌 이름이 줄에 들어 있으면 3(`[퇴직연금_개인IRP] 아빠 IRP` ⊃ `개인IRP`),
+    /// 구성원 이름이 줄의 낱말과 같으면 2(`딸` — 한 글자라 낱말로만 견준다), 기관 2, 계좌 종류 1. 두 글자 아래는 안 본다.
+    public static func textScore(_ line: String?, _ account: AccountInfo) -> Int {
+        guard let line, !line.isEmpty else { return 0 }
+        let hay = compact(line)
+        let words = Set(line.lowercased().split { !($0.isLetter || $0.isNumber) }.map(String.init))
+        var score = 0
+        let name = compact(account.name)
+        if name.count >= 2, hay.contains(name) { score += 3 }
+        let owner = compact(account.owner)
+        if !owner.isEmpty, words.contains(owner) { score += 2 }
+        let institution = compact(account.institution)
+        if institution.count >= 2, hay.contains(institution) { score += 2 }
+        let kind = compact(account.kind)
+        if kind.count >= 2, hay.contains(kind), kind != name { score += 1 }
+        return score
+    }
+
+    /// 이 캡처와 계좌가 얼마나 맞나 — (짝지어지는 종목 수, 계좌 줄 글자 점수). 앞이 먼저, 같으면 뒤로 가린다.
+    public static func score(for result: CaptureParser.Result, _ account: AccountInfo) -> (pairs: Int, text: Int) {
+        (pair(result.items, with: account.holdings).compactMap { $0 }.count, textScore(result.accountLine, account))
+    }
+
+    /// 이 읽기 결과가 어느 계좌인가 — 기억해 둔 표시가 같은 계좌(하나일 때), 아니면 **(짝 수, 계좌 줄 글자 점수)** 가
+    /// 가장 큰 계좌(하나일 때). 짝이 하나도 없으면 계좌 이름이 줄에 든 것(점수 3 이상)만. 모르면 nil.
+    /// 같은 ETF 를 IRP · 연금저축 둘 다 가지면 짝 수가 같다 — 그때 `[연금저축계좌(신)] 아빠 연금저축` 이 가린다.
     public static func suggestAccount(for result: CaptureParser.Result, among accounts: [AccountInfo]) -> UUID? {
         let key = accountKey(result.accountLine)
         if !key.isEmpty {
             let remembered = accounts.filter { $0.captureKey == key }
             if remembered.count == 1 { return remembered[0].id }
         }
-        let scored = accounts.map { account in
-            (id: account.id, count: pair(result.items, with: account.holdings).compactMap { $0 }.count)
-        }
-        guard let best = scored.max(by: { $0.count < $1.count }), best.count > 0,
-              scored.filter({ $0.count == best.count }).count == 1 else { return nil }
+        let scored = accounts.map { account in (id: account.id, score: score(for: result, account)) }
+        guard let best = scored.max(by: { ($0.score.pairs, $0.score.text) < ($1.score.pairs, $1.score.text) }),
+              best.score.pairs > 0 || best.score.text >= 3,
+              scored.filter({ $0.score == best.score }).count == 1 else { return nil }
         return best.id
     }
 

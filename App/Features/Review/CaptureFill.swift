@@ -69,7 +69,8 @@ extension Account {
     /// 짝짓기에 건네는 값 — 관리 객체를 Core 로 넘기지 않는다(CLAUDE.md).
     var captureInfo: CaptureBatch.AccountInfo {
         CaptureBatch.AccountInfo(id: id, captureKey: captureKey,
-                                 holdings: sortedHoldings.map { .init(id: $0.id, name: $0.name, captureName: $0.captureName) })
+                                 holdings: sortedHoldings.map { .init(id: $0.id, name: $0.name, captureName: $0.captureName) },
+                                 owner: owner?.name ?? "", name: name, institution: institution, kind: kind.label)
     }
 
     /// 시트의 계좌 고르기에 보이는 이름 — `아들 · 일반적립 · 가나증권`. **기관까지** 붙인다
@@ -86,10 +87,11 @@ extension Account {
     /// 이름이 같은 계좌도 안에 든 종목으로 가린다.
     func captureHint(for result: CaptureParser.Result) -> String {
         let holdings = sortedHoldings
-        let matched = captureMatchCount(for: result)
+        let score = captureScore(for: result)
         var parts: [String] = []
         if !captureKey.isEmpty, captureKey == CaptureBatch.accountKey(result.accountLine) { parts.append("기억한 계좌") }
-        parts.append("이 캡처와 짝 \(matched)개")
+        if score.text >= 3 { parts.append("계좌 이름 맞음") }
+        parts.append("이 캡처와 짝 \(score.pairs)개")
         let names = holdings.prefix(2).map { $0.name.isEmpty ? "이름 없음" : $0.name }.joined(separator: ", ")
         if holdings.isEmpty {
             parts.append("종목 없음")
@@ -99,9 +101,9 @@ extension Account {
         return parts.joined(separator: " · ")
     }
 
-    /// 이 캡처와 짝이 맞는 종목 수 — 계좌 고르기 목록을 짝이 많은 순으로 늘어놓는 데 쓴다.
-    func captureMatchCount(for result: CaptureParser.Result) -> Int {
-        CaptureBatch.pair(result.items, with: captureInfo.holdings).compactMap { $0 }.count
+    /// 이 캡처와 얼마나 맞나 — (짝 수, 계좌 줄 글자 점수). 계좌 고르기 목록을 맞는 순으로 늘어놓는 데 쓴다.
+    func captureScore(for result: CaptureParser.Result) -> (pairs: Int, text: Int) {
+        CaptureBatch.score(for: result, captureInfo)
     }
 }
 
@@ -288,13 +290,13 @@ struct CaptureFillSheet: View {
         }
     }
 
-    /// **계좌 고르기** — 줄마다 `구성원 · 계좌 · 기관` 과 둘째 줄(이 캡처와 짝 n개 · 종목 이름). 짝이 많은 계좌가 위로.
+    /// **계좌 고르기** — 줄마다 `구성원 · 계좌 · 기관` 과 둘째 줄(계좌 이름 맞음 · 이 캡처와 짝 n개 · 종목 이름). 맞는 계좌가 위로.
     /// 메뉴 단추의 두 글자 줄은 iOS 가 제목 · 부제로 그린다.
     private func accountMenu(_ group: Binding<CaptureFillGroup>, result: CaptureParser.Result, chosen: Account?) -> some View {
         let ordered = accounts.enumerated()
             .sorted { lhs, rhs in
-                let (a, b) = (lhs.element.captureMatchCount(for: result), rhs.element.captureMatchCount(for: result))
-                return a != b ? a > b : lhs.offset < rhs.offset
+                let (a, b) = (lhs.element.captureScore(for: result), rhs.element.captureScore(for: result))
+                return a != b ? (a.pairs, a.text) > (b.pairs, b.text) : lhs.offset < rhs.offset
             }
             .map(\.element)
         return Menu {
