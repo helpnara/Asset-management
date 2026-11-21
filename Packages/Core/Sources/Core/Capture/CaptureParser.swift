@@ -137,7 +137,18 @@ public enum CaptureParser {
         for match in number.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
             let token = ns.substring(with: match.range)
             if let first = token.first, signs.contains(first) { continue }
-            let afterStart = NSMaxRange(match.range)
+            guard var value = Int(token.filter(\.isNumber)) else { continue }
+            var range = match.range
+            // 금액 바로 뒤에 숫자가 붙어 있다 — 쉼표 하나를 빠뜨리고 읽은 것(`6,000000`, 11-21 딸 계좌 총액).
+            // 정확히 세 자리면 빠진 쉼표로 보고 붙이고, 아니면 망가진 숫자라 고르지 않는다(앞부분만 고르면 틀린 값이 된다).
+            let next = ns.substring(with: NSRange(location: NSMaxRange(range), length: min(4, ns.length - NSMaxRange(range))))
+            if !token.hasSuffix("원"), next.first?.isNumber == true {
+                guard next.range(of: #"^\d{3}(?!\d)"#, options: .regularExpression) != nil,
+                      let tail = Int(next.prefix(3)) else { continue }
+                value = value * 1000 + tail
+                range.length += 3
+            }
+            let afterStart = NSMaxRange(range)
             let after = ns.substring(with: NSRange(location: afterStart, length: min(2, ns.length - afterStart)))
             if after.hasPrefix("주") || after.hasPrefix("%") || after.hasPrefix("(") { continue }
             // `금액 (12.4%)` — 빈칸 하나 두고 괄호가 오면 손익과 비율이다
@@ -148,7 +159,7 @@ public enum CaptureParser {
             let beforeStart = max(0, match.range.location - 6)
             let before = ns.substring(with: NSRange(location: beforeStart, length: match.range.location - beforeStart))
             if notValuePrefixes.contains(where: { before.contains($0) }) { continue }
-            if let value = Int(token.filter(\.isNumber)) { out.append((value, match.range)) }
+            out.append((value, range))
         }
         return out
     }

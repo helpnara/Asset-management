@@ -170,6 +170,13 @@ struct CaptureParserTests {
         let apart = CaptureParser.parse(twoTier(summary: [line("6,000", 0.26, 0.35, w: 0.12), line("000", 0.39, 0.35, w: 0.06)]))
         #expect(apart.totalMinor == 6_000_000)
         #expect(apart.isBalanced == true)
+        // 마지막 쉼표를 빠뜨리고 읽음 — `6,000000` (11-21 빌드 158 딸 계좌)
+        let noComma = CaptureParser.parse(twoTier(summary: [line("6,000000", 0.26, 0.35, w: 0.2)]))
+        #expect(noComma.totalMinor == 6_000_000)
+        #expect(noComma.isBalanced == true)
+        #expect(CaptureParser.amounts(in: "6,000000원") == [6_000_000])
+        #expect(CaptureParser.amounts(in: "6,0000").isEmpty)          // 세 자리가 아니면 망가진 숫자 — 고르지 않는다
+        #expect(CaptureParser.amounts(in: "5,123456주").isEmpty)       // 붙여도 수량이면 뺀다
         // 앞 묶음만 — 6,000 은 가장 큰 종목(4,000,000)보다 작아 총액일 수 없다
         let cut = CaptureParser.parse(twoTier(summary: [line("6,000", 0.26, 0.35, w: 0.12)]))
         #expect(cut.totalMinor == nil)

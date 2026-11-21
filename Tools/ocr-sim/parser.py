@@ -37,13 +37,20 @@ def amount_spans(text):
     for m in NUMBER.finditer(text):
         token = m.group(0)
         if token[0] in SIGNS: continue
-        after = text[m.end():m.end() + 2]
-        if re.match(r"\s?\(", text[m.end():m.end() + 3]): continue          # `금액 (12.4%)` — 손익과 비율
+        value, end = int(re.sub(r"\D", "", token)), m.end()
+        # 금액 바로 뒤에 숫자가 붙어 있다 — 쉼표 하나를 빠뜨리고 읽은 것(`10,8xx0xx`, 11-21 딸 계좌 총액).
+        # 정확히 세 자리면 빠진 쉼표로 보고 붙이고, 아니면 망가진 숫자라 고르지 않는다(앞부분만 고르면 틀린 값이 된다).
+        if not token.endswith("원") and re.match(r"\d", text[end:end + 1]):
+            tail = re.match(r"\d{3}(?!\d)", text[end:])
+            if not tail: continue
+            value, end = value * 1000 + int(tail.group(0)), end + 3
+        after = text[end:end + 2]
+        if re.match(r"\s?\(", text[end:end + 3]): continue          # `금액 (12.4%)` — 손익과 비율
         if after[:1] in ("주", "%", "(") or re.match(r"\.\d", after): continue   # 수량 · 비율 · 손익(…%) · 소수(환율)
         if after[:1] == ",": continue                                    # 쉼표 뒤가 끊긴 숫자 — 덜 읽은 것은 고르지 않는다
         before = text[max(0, m.start() - 6):m.start()]
         if any(p in before for p in NOT_VALUE_PREFIXES): continue
-        out.append((int(re.sub(r"\D", "", token)), m.start(), m.end()))
+        out.append((value, m.start(), end))
     return out
 
 
