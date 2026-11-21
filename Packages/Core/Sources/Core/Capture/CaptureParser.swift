@@ -193,7 +193,7 @@ public enum CaptureParser {
     static func withTail(_ value: Int, line: Line, end: Int, rightEdge: Double, rows: [Line]) -> Int {
         let text = digitsFixed(line.text) as NSString
         if end < text.length,
-           let tail = try? NSRegularExpression(pattern: #"[ ,.]\d{3}(?!\d)"#),
+           let tail = try? NSRegularExpression(pattern: #"[ ,.]\d{3}(?![\d,.주%(])"#),
            let match = tail.firstMatch(in: text as String, options: .anchored,
                                        range: NSRange(location: end, length: text.length - end)),
            let digits = Int(text.substring(with: match.range).filter(\.isNumber)) {
@@ -208,6 +208,28 @@ public enum CaptureParser {
             }
         }
         return value
+    }
+
+    /// **목록형 종목 줄의 금액** — 끝 세 자리가 떨어져 읽혔으면 붙인다 (QQQM 이 `31,5xx` 로 읽힌 일, 11-21).
+    /// `5,000 000원`(마지막 쉼표를 빈칸으로) · `5,000,` | `000원`(끝 묶음을 따로). 표의 열 고르기(머리줄)에는 쓰지 않는다 —
+    /// 표에서는 이웃 칸의 숫자가 같은 줄에 붙어 읽힐 수 있다. 목록형은 금액 칸이 줄 끝에 홀로 있다.
+    static func lineValues(_ line: Line, rows: [Line]) -> [Int] {
+        let count = Double(max(1, (line.text as NSString).length))
+        let spans = amountSpans(in: line.text)
+        if !spans.isEmpty {
+            return spans.map { span in
+                let end = NSMaxRange(span.range)
+                return withTail(span.value, line: line, end: end,
+                                rightEdge: line.x + line.width * Double(end) / count, rows: rows)
+            }
+        }
+        // `5,000,` — 끝 묶음이 따로 읽힌 앞 조각
+        let trimmed = digitsFixed(line.text).trimmingCharacters(in: .whitespaces)
+        guard trimmed.range(of: #"^\d{1,3}(,\d{3})+[,.]$"#, options: .regularExpression) != nil,
+              let value = Int(trimmed.dropLast().filter(\.isNumber)) else { return [] }
+        let joined = withTail(value, line: line, end: (line.text as NSString).length,
+                              rightEdge: line.x + line.width, rows: rows)
+        return joined == value ? [] : [joined]
     }
 
     static func isName(_ line: Line) -> Bool {
@@ -357,7 +379,7 @@ public enum CaptureParser {
                     rows.contains { sameRow($0, line) && $0.x < line.x && labels.subtracting(valueLabels).contains(label($0.text)) }
                 }
                 var candidates: [(line: Line, value: Int)] = band.flatMap { line in
-                    line.x > 0.25 && !otherLabelLeft(line) ? amounts(in: line.text).map { (line, $0) } : []
+                    line.x > 0.25 && !otherLabelLeft(line) ? lineValues(line, rows: rows).map { (line, $0) } : []
                 }
                 guard !candidates.isEmpty else { continue }
                 if let mark = band.first(where: { valueLabels.contains(label($0.text)) }) {

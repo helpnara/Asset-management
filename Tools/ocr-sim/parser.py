@@ -70,7 +70,7 @@ def placed_amounts(line):
             for v, s, e in amount_spans(line["text"])]
 
 
-TAIL = re.compile(r"[ ,.]\d{3}(?!\d)")
+TAIL = re.compile(r"[ ,.]\d{3}(?![\d,.주%(])")
 
 
 def with_tail(value, line, end, right_edge, rows):
@@ -85,6 +85,21 @@ def with_tail(value, line, end, right_edge, rows):
         if right_edge - 0.005 <= l["x"] <= right_edge + 0.04 and re.fullmatch(r"[,.]?\d{3}(원)?", l["text"].strip()):
             return value * 1000 + int(re.sub(r"\D", "", l["text"]))
     return value
+
+
+def line_values(line, rows):
+    """**목록형 종목 줄의 금액** — 끝 세 자리가 떨어져 읽혔으면 붙인다 (QQQM 이 `31,574` 로 읽힌 일, 11-21).
+    `31,574 138원`(마지막 쉼표를 빈칸으로) · `31,574,` | `138원`(끝 묶음을 따로). 표의 열 고르기(머리줄)에는 쓰지 않는다 —
+    표에서는 이웃 칸의 숫자가 같은 줄에 붙어 읽힐 수 있다. 목록형은 금액 칸이 줄 끝에 홀로 있다."""
+    text = line["text"]; n = max(1, len(text))
+    out = [with_tail(v, line, e, line["x"] + line["width"] * e / n, rows) for v, _, e in amount_spans(text)]
+    if not out:
+        m = re.fullmatch(r"(\d{1,3}(?:,\d{3})+)[,.]", digits_fixed(text).strip())
+        if m:
+            value = int(m.group(1).replace(",", ""))
+            joined = with_tail(value, line, len(text), line["x"] + line["width"], rows)
+            if joined != value: out.append(joined)
+    return out
 
 
 def is_name(line):
@@ -187,7 +202,7 @@ def parse(lines):
             band = [l for l in body if lo <= l["top"] < hi and l is not n]
             def other_label_left(l):
                 return any(same_row(m, l) and m["x"] < l["x"] and label(m["text"]) in LABELS - VALUE_LABELS for m in rows)
-            cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in amounts(l["text"])]
+            cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in line_values(l, rows)]
             if not cands: continue
             mark = next((l for l in band if label(l["text"]) in VALUE_LABELS), None)
             if mark:

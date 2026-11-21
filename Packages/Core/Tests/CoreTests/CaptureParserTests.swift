@@ -281,4 +281,28 @@ struct CaptureParserTests {
         #expect(result.expectedSumMinor == 3_311_001)
         #expect(result.isBalanced == true)
     }
+
+    // 11-21 — 총액 없는 목록에서 QQQM 금액이 앞 두 묶음만 읽혔다(검산이 없어 그대로 들어갈 뻔 — 크게 바뀐 항목 확인이 잡음)
+    @Test("목록형 종목 금액 — 끝 세 자리가 떨어져 읽혀도 붙인다, 수량 · 비율은 안 붙인다")
+    func listTailJoin() {
+        func lines(_ value: [CaptureParser.Line]) -> [CaptureParser.Line] {
+            [
+                line("‹ 내 계좌", 0.03, 0.07, w: 0.2), line("기본계좌", 0.42, 0.07, h: 0.02, w: 0.15),
+                line("VELT", 0.05, 0.17, h: 0.02, w: 0.1), line("2,430,040원", 0.70, 0.17, h: 0.02, w: 0.25),
+                line("1.234567주", 0.05, 0.20, h: 0.017, w: 0.15), line("-120,000원 (-4.70%)", 0.62, 0.20, h: 0.017, w: 0.33),
+                line("가온소프트", 0.05, 0.28, h: 0.02, w: 0.2),
+                line("100주", 0.05, 0.31, h: 0.017, w: 0.08), line("+200,000원 (+4.17%)", 0.62, 0.31, h: 0.017, w: 0.33),
+            ] + value
+        }
+        let spaced = CaptureParser.parse(lines([line("5,000 000원", 0.70, 0.28, h: 0.02, w: 0.25)]))
+        #expect(spaced.items.map(\.valueMinor) == [2_430_040, 5_000_000])
+        let apart = CaptureParser.parse(lines([line("5,000,", 0.70, 0.28, h: 0.02, w: 0.13),
+                                               line("000원", 0.84, 0.28, h: 0.02, w: 0.11)]))
+        #expect(apart.items.map(\.valueMinor) == [2_430_040, 5_000_000])
+        // 수량(주) · 비율(%) 이 뒤따르면 붙이지 않는다
+        #expect(CaptureParser.lineValues(line("1,234 567주", 0.6, 0.5, w: 0.3), rows: []) == [1_234])
+        #expect(CaptureParser.lineValues(line("1,234 567%", 0.6, 0.5, w: 0.3), rows: []) == [1_234])
+        #expect(CaptureParser.lineValues(line("1,234 567원", 0.6, 0.5, w: 0.3), rows: []) == [1_234_567])
+    }
 }
+

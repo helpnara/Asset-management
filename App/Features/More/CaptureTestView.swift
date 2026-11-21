@@ -2,6 +2,7 @@ import Core
 import CoreData
 import PhotosUI
 import SwiftUI
+import UIKit
 
 /// **캡처 읽기 시험** (docs/25 J3, 11-20 사용자: *"착수하자. 시험 화면 만들어줘"*).
 ///
@@ -21,6 +22,8 @@ struct CaptureTestView: View {
     @State private var pages: [Page] = []
     @State private var isReading = false
     @State private var failures: [String] = []
+    /// 방금 `읽은 글자 복사` 를 누른 장 — 단추 글자를 `복사했습니다` 로 바꿔 보인다.
+    @State private var copiedPage: UUID?
 
     /// 앱에 등록된 종목 — 짝짓기에만 쓰는 값. 관리 객체를 넘기지 않는다(CLAUDE.md).
     struct Known: Sendable {
@@ -169,6 +172,21 @@ struct CaptureTestView: View {
                 .tint(Color.brand)
                 .padding(.horizontal, Card.inset)
                 .padding(.vertical, 12)
+
+                // **읽은 글자 복사** (11-21 사용자: QQQM 오독 원인 확인). 틀린 캡처의 진단에는 텍스트 인식이 **무엇을** 내놓았는지가
+                // 필요하다 — 줄마다 자리(위 · 왼쪽 · 너비 · 높이)와 글자를 글로 복사해 대화에 붙여 넣는다. 숫자를 `#` 으로 가려도
+                // `##,###,l##` 처럼 틀린 모양은 남는다.
+                Menu {
+                    Button("숫자를 #으로 가리고 복사") { copy(page, masked: true) }
+                    Button("그대로 복사") { copy(page, masked: false) }
+                } label: {
+                    Label(copiedPage == page.id ? "복사했습니다 — 대화에 붙여 넣으세요" : "읽은 글자 복사",
+                          systemImage: copiedPage == page.id ? "checkmark" : "doc.on.doc")
+                        .font(.scaled(12, weight: .medium))
+                        .foregroundStyle(Color.brand)
+                }
+                .padding(.horizontal, Card.inset)
+                .padding(.bottom, 12)
             }
             .cardSurface()
         }
@@ -185,6 +203,33 @@ struct CaptureTestView: View {
             text += " · 차이 \(Won.grouped(abs(total - result.expectedSumMinor)))원"
         }
         return text
+    }
+
+    private func copy(_ page: Page, masked: Bool) {
+        UIPasteboard.general.string = Self.copyText(page, masked: masked)
+        copiedPage = page.id
+    }
+
+    /// 대화에 붙여 넣을 글 — 머리에 읽은 결과, 아래로 줄마다 `위 왼쪽 너비 높이 | 글자`(그림 크기에 대한 비율, 위에서부터).
+    /// `Tools/ocr-sim/from_paste.py` 가 이 글을 그대로 읽어 규칙을 다시 돌린다.
+    static func copyText(_ page: Page, masked: Bool) -> String {
+        func hide(_ text: String) -> String { masked ? String(text.map { $0.isASCII && $0.isNumber ? "#" : $0 }) : text }
+        let badge = switch page.result.isBalanced {
+        case .some(true): "검산 통과"
+        case .some(false): "확인 필요"
+        case .none: "총액 못 찾음"
+        }
+        var out = ["# 캡처 읽기 — \(page.number)번째 캡처 · \(badge)\(masked ? " · 숫자 가림" : "")",
+                   "# 계좌 줄: \(hide(page.result.accountLine ?? "—"))",
+                   "# 계좌 총액: \(hide(page.result.totalMinor.map(String.init) ?? "—")) · 읽은 종목 \(page.result.items.count)개"]
+        for item in page.result.items {
+            out.append("# 종목: \(hide(item.name)) = \(hide(item.valueMinor.map(String.init) ?? "금액 못 고름"))")
+        }
+        out.append("# 위 왼쪽 너비 높이 | 글자")
+        for line in page.lines.sorted(by: { ($0.top, $0.x) < ($1.top, $1.x) }) {
+            out.append(String(format: "%.4f %.4f %.4f %.4f | ", line.top, line.x, line.width, line.height) + hide(line.text))
+        }
+        return out.joined(separator: "\n")
     }
 
     private func rowView(_ row: Row) -> some View {

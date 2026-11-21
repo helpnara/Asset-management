@@ -9,3 +9,5 @@
    `Actions → macOS 탐침` 에 그 명령을 넣는다. 로그의 `OCR` 줄을 받아 `ocr.jsonl` 로.
 4. `python3 score.py ocr.jsonl` — 종목 이름 · 평가금액을 짝짓고 정답과 견준다. 읽기 규칙은 `parser.py` — **앱의 `Core/CaptureParser.swift` 를 줄 단위로 옮긴 것이라 둘을 같이 고친다.**
 5. `node ideal_lines.mjs` → `python3 score.py ideal.jsonl` — 글자를 완벽히 읽었다고 치고 규칙만 채점(가려진 글자는 뺀다). 배치 E(2단 표) · F(묶음 목록) · G(줄 셋 목록 — 총액 없음 / 현금 포함)는 11-20 실제 화면들을 본뜬 것 — 숫자 · 이름은 지어냈다.
+6. `python3 from_paste.py 붙여넣은.txt` — 앱 시험 화면(`더보기 → 실험 → 캡처 읽기 시험`)의 **`읽은 글자 복사`** 로 받은 글을 그대로 읽어 규칙을 다시 돌린다. 숫자를 `#` 으로 가린 글은 `#` → `5`. **받은 글은 저장소에 넣지 않는다** — 배치만 본떠 `make_shots.py` 에 지어낸 숫자로 더한다.
+
