@@ -106,6 +106,8 @@ public enum CaptureParser {
         text.replacingOccurrences(of: #"(?<=[\d,])[lI|](?=[\d,원]|$)"#, with: "1", options: .regularExpression)
             .replacingOccurrences(of: #"(?<=[\d,])[Oo](?=[\d,원]|$)"#, with: "0", options: .regularExpression)
             .replacingOccurrences(of: #"(?<=\d)B(?=[\d,원]|$)"#, with: "8", options: .regularExpression)
+            // 쉼표 뒤 빈칸 — `250, 001원` 을 `250,001 원` 으로(빈칸을 뒤로 옮겨 길이는 그대로). 11-21 SPYM 을 놓친 일
+            .replacingOccurrences(of: #"(\d),\s(\d{3})(?!\d)"#, with: "$1,$2 ", options: .regularExpression)
     }
 
     /// 부호 없는 첫 금액 — 현금 줄처럼 앞말을 가리지 않고 읽을 때.
@@ -240,8 +242,9 @@ public enum CaptureParser {
         if text.range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
         if text.contains("****") || text.hasPrefix("총 ") || text.contains("평가손익") { return false }
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
-        // 한 글자 한글 — 가려진 글자 조각(11-21 `트`). 한 글자 영문(티커 T · V)은 남긴다
-        if text.count == 1, let scalar = text.unicodeScalars.first, (0xAC00...0xD7A3).contains(scalar.value) { return false }
+        // 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
+        if text.count == 1, let scalar = text.unicodeScalars.first,
+           (0xAC00...0xD7A3).contains(scalar.value) || (0x3131...0x318E).contains(scalar.value) { return false }
         // 숫자에 단위만 붙은 줄 — 0.123456주 · 652원
         if text.contains(where: \.isNumber),
            text.allSatisfy({ $0.isNumber || $0.isWhitespace || ".,+-−%()$주원좌개".contains($0) }) { return false }
@@ -309,7 +312,13 @@ public enum CaptureParser {
             }
         }
         if total == nil {
-            let limit = min(0.30, column?.top ?? 0.30)
+            // 총액 자리 — 위쪽 30%, 또는 **첫 종목 줄 위까지**(그게 더 아래면). 토스처럼 맨 위에 계좌 탭 · 원화 · 달러 카드가
+            // 있으면 총액이 37% 쯤에 온다(11-21). 첫 종목 줄 = 같은 줄 오른쪽에 금액이 있는 이름 줄.
+            let itemTops = rows.filter { line in
+                isName(line) && rows.contains { $0 != line && sameRow($0, line) && $0.x > 0.5 && !amounts(in: $0.text).isEmpty }
+            }.map(\.top)
+            let reach = itemTops.min().map { max(0.30, $0) } ?? 0.30
+            let limit = min(reach, column?.top ?? reach)
             // 같은 줄 왼쪽에 종목 이름이 있으면 총액이 아니라 첫 종목의 금액이다(총액이 없는 화면)
             let head = rows.filter { line in
                 line.top < limit && !amounts(in: line.text).isEmpty

@@ -25,7 +25,9 @@ def digits_fixed(text):
     """숫자 사이에 낀 닮은 글자를 숫자로 — 텍스트 인식이 굵은 1 을 l · I 로, 0 을 O 로 읽을 때. 길이는 그대로."""
     text = re.sub(r"(?<=[\d,])[lI|](?=[\d,원]|$)", "1", text)
     text = re.sub(r"(?<=[\d,])[Oo](?=[\d,원]|$)", "0", text)
-    return re.sub(r"(?<=\d)B(?=[\d,원]|$)", "8", text)
+    text = re.sub(r"(?<=\d)B(?=[\d,원]|$)", "8", text)
+    # 쉼표 뒤 빈칸 — `250, 001원` 을 `250,001 원` 으로(빈칸을 뒤로 옮겨 길이는 그대로). 11-21 SPYM 을 놓친 일
+    return re.sub(r"(\d),\s(\d{3})(?!\d)", r"\1,\2 ", text)
 
 
 def amount_spans(text):
@@ -108,7 +110,7 @@ def is_name(line):
     if not re.search(r"[^\W\d_]", t): return False
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
-    if re.fullmatch(r"[가-힣]", t): return False                      # 한 글자 한글 — 가려진 글자 조각(`트`)
+    if re.fullmatch(r"[가-힣ㄱ-ㆎ]", t): return False                  # 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
     # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
     if re.fullmatch(r"[+\-−]?\d[\d,.]*\s*[^\d\s]?", t) and ("." in t or len(re.findall(r"\d", t)) >= 3): return False
@@ -144,8 +146,13 @@ def parse(lines):
                 a = min(right, key=lambda a: a["x"])
                 total = with_tail(a["value"], a["line"], a["end"], a["x"] + a["width"], rows); break
     if total is None:
-        limit = column["top"] if column else 0.30
-        head = [l for l in rows if l["top"] < min(0.30, limit) and amounts(l["text"])
+        # 총액 자리 — 위쪽 30%, 또는 **첫 종목 줄 위까지**(그게 더 아래면). 토스처럼 맨 위에 계좌 탭 · 원화 · 달러 카드가
+        # 있으면 총액이 37% 쯤에 온다(11-21). 첫 종목 줄 = 같은 줄 오른쪽에 금액이 있는 이름 줄.
+        item_tops = [l["top"] for l in rows if is_name(l)
+                     and any(m is not l and same_row(m, l) and m["x"] > 0.5 and amounts(m["text"]) for m in rows)]
+        reach = max(0.30, min(item_tops)) if item_tops else 0.30
+        limit = column["top"] if column else reach
+        head = [l for l in rows if l["top"] < min(reach, limit) and amounts(l["text"])
                 and not any(m is not l and same_row(m, l) and is_name(m) for m in rows)]   # 첫 종목의 금액은 총액이 아니다
         if head:
             total_line = max(head, key=lambda l: l["height"])
