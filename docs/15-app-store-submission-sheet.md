@@ -15,6 +15,48 @@
 `screenshots/appstore/store/iphone-6.3/` 다섯 장과 포스터 장면 `Tools/preview/out/poster-*.png` 를 그 크기로 만들어 건넸다.
 다음 버전 페이지의 미리 보기 · 스크린샷 칸은 이것으로 다 찼다 — 낼 때 다시 손대지 않는다.
 
+## ★ 업데이트 제출 — 1.0.18 (220 주간 점검 개수 · 221 캡처 읽기 시험 · 222 캡처로 채우기, **빌드 154** — 152 · 154 체크리스트 확인(11-21 사용자: *"빌드 154 체크리스트 확인 완료"*)) — 11-21 준비 (사용자: *"심사 제출 준비하자!"*)
+
+**모델 3판의 첫 출시다**(`Account.captureKey` · `Holding.captureName`). **CloudKit Production Deploy 는 11-21 이미 끝났다**(사용자) — 빌드 152 를 깔기 전에 했다. 미리 보기 · 스크린샷은 그대로 따라온다(캡처로 채우기는 점검 화면 왼쪽 위 단추 하나라 스크린샷을 바꾸지 않는다).
+
+| ☐ | 어디서 | 무엇 |
+|---|---|---|
+| ✅ | (먼저) CloudKit Console → Production | 11-21 Deploy 완료 — 새 칸 둘(계좌 `captureKey` · 종목 `captureName`) |
+| ✅ | (먼저) 1.0.17 이 공개돼 있는지 | 11-20 공개 |
+| ☐ | App Store 탭 → `iOS 앱` 옆 **+** → `iOS` | 버전 번호 **`1.0.18`** |
+| ☐ | `1.0.18` 페이지 → **이 버전의 새로운 기능** | 아래 첫 상자 그대로 |
+| ☐ | 같은 페이지 → **빌드** → **+** | **154** (148 ~ 153 아님 — 154 에 실제 점검에서 본 것 고침이 다 들어 있다) |
+| ☐ | **App 심사 정보 → 메모** | 따라온 메모 **맨 끝에** 아래 둘째 상자(영어)를 한 문단 더 붙인다 — 사진을 고르는 새 기능이 무엇을 하는지 심사자에게 먼저 말해 둔다 |
+| ☐ | **버전 출시** | **자동 출시** — 스키마는 이미 Production 에 있다 |
+| ☐ | **심사에 추가 → 심사를 위해 제출** | |
+
+```
+주간 점검이 빨라졌습니다.
+
+· 주간 점검의 '캡처로 채우기' — 증권사 앱의 보유 종목 화면을 캡처해 여러 장 고르면 금액을 읽어 점검 목록에 미리 채웁니다
+· 처음 한 번 고른 계좌와 종목 짝은 기억해, 가족 모두 다음부터 저절로 맞춥니다
+· 읽은 금액의 합이 계좌 총액과 맞지 않으면 채우지 않고 알려 드립니다 — 틀린 값이 조용히 들어가지 않습니다
+· 글자 읽기는 이 기기 안에서만 하고, 캡처는 읽은 뒤 바로 버립니다. 사진 보관함 권한도 묻지 않습니다
+· 주간 점검의 진행 숫자와 남은 개수가 서로 맞게 움직입니다
+```
+
+```
+NEW IN 1.0.18 — "캡처로 채우기" (Fill from screenshots)
+
+On the weekly check-in screen (현황판 (Dashboard) → the weekly check-in card →
+"지금 입력", or "다시 열기" once this week is done), the top-left button "캡처로 채우기" opens the system photo picker.
+The user picks screenshots they took of their own brokerage app's holdings
+screen. The app reads the text ON THE DEVICE with Apple's Vision framework
+(VNRecognizeTextRequest) — no network request, nothing uploaded — and pre-fills
+the amounts into the check-in list for the user to review before saving. The
+images are discarded right after reading and are never stored. The system
+photo picker (PhotosPicker) is used, so no Photos library permission is
+requested. More (더보기) → "실험" → "캡처 읽기 시험" is a read-only test screen
+for the same feature that saves nothing.
+```
+
+> 제출하면 `Tools/coredata/migration-baselines.txt` 맨 위에 **빌드 154 의 커밋 `a52fb41`** 을 더한다(모델 3판 첫 출시 — 다음 판부터 CI 가 이 판의 저장소를 옮겨 본다).
+
 ## ★ 업데이트 제출 — 1.0.17 (iOS 27 SDK 로 다시 구움 — [24](24-ios27-sdk.md), **빌드 147** — 146 체크리스트 0~7 확인 · ITMS-90725 메일 없음 · 147 은 `isPresented` 고침, 11-19 체크리스트 확인) — **11-19 심사 제출 → 11-20 공개** (자동 출시, 사용자: *"1.0.17 심사 제출 완료."* · *"1.0.17이 공개 확인 완료"*)
 
 기능 변경은 없다. 2027-04 부터 iOS 27 SDK 빌드만 받으므로 그 전에 Xcode 27 로 만든 판을 한 번 낸다. 스키마 그대로 — CloudKit 할 일 없음. 미리 보기 · 스크린샷은 그대로 따라온다.
