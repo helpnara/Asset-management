@@ -3,7 +3,7 @@
 # 출시한 판은 지우지 않는다. 새로 App Store 에 낸 판의 커밋을 맨 위에 더한다.
 #
 # 커밋                                      설명
-a52fb4116c40d69898d1bd5ff811085abcf3c97d    1.0.18 App Store 빌드 154 (2026-11-21 제출) — 모델 3판 첫 출시 (Account.captureKey · Holding.captureName)
+a52fb4116c40d69898d1bd5ff811085abcf3c97d    1.0.18 빌드 154 (2026-11-21 App Store 제출 → 취소, 1.0.19 로 냄) — 모델 3판 첫 판 · 가족 폰은 TestFlight 152~ 로 이 모델의 저장소를 이미 가졌다
 00fa57182cee9749419085b55082a8ca98a7d29f    1.0.17 App Store 빌드 147 (2026-11-19 제출 — 모델 그대로 · iOS 27 SDK / Xcode 27.1 첫 판)
 cae7d4aca96e5e397764547b65ed4a39b86973fe    1.0.16 App Store 빌드 145 (2026-11-19 제출 — 모델 그대로 · 218 인생 이벤트 · 219 작은 편의 넷)
 1143aba99ec24532a8532ce419a0a0b7cd6b0244    1.0.15 App Store 빌드 141 (2026-11-14 제출 — 모델 그대로 · 217 디자인 1 · 2차)
