@@ -32,7 +32,7 @@
 | `irp.html` · `out/slowrich-shorts-irp.mp4` | **쇼츠 22편** (11-18, 퇴직금 IRP — 예금에만 두면 vs 굴리면 · 11-18 2회차 분석 반영 · **0초 장면에 물음이 이미 다 떠 있다** · 앱 장면은 계획 탭 자산군별 기대수익률을 문구 그대로 그림) — 31.5초 · **예약 게시 11-22(일) 18:00** (사용자, 11-18) · `node Tools/promo/render.mjs --page irp.html --out slowrich-shorts-irp.mp4` |
 | `gap.html` · `out/slowrich-shorts-gap.mp4` | **쇼츠 23편** (11-18, 소득 공백기 — 60세 퇴직 · 국민연금 65세 · 5년 공백 · 조기노령연금 · 14편과 겹치는 세액공제 대신) — 32.5초 · 0초 장면에 물음 · **예약 게시 11-24(화) 12:00** (사용자, 11-18) · `node Tools/promo/render.mjs --page gap.html --out slowrich-shorts-gap.mp4` |
 | `tuition.html` · `out/slowrich-shorts-tuition.mp4` | **쇼츠 24편** (11-20, 교육비 — 등록금 4천만원이 은퇴 때 8천만원 · 목돈 이벤트(유출) · 0초 장면에 물음) — 31.5초 · **예약 게시 11-26(목) 06:30** (사용자, 11-20) · `node Tools/promo/render.mjs --page tuition.html --out slowrich-shorts-tuition.mp4` |
-| `retire-later.html` · `out/slowrich-shorts-retire-later.mp4` | **쇼츠 25편** (11-22, 은퇴 3년 늦추면 2.7억 차이 · 시뮬레이션 탭 은퇴 연도 손잡이 · 0초 장면에 물음) — 31.5초 · 권장 11-29(일) 18:00 · `node Tools/promo/render.mjs --page retire-later.html --out slowrich-shorts-retire-later.mp4` |
+| `retire-later.html` · `out/slowrich-shorts-retire-later.mp4` | **쇼츠 25편** (11-22, 은퇴 3년 늦추면 2.7억 차이 · 시뮬레이션 탭 은퇴 연도 손잡이 · 0초 장면에 물음) — 31.5초 · **예약 게시 11-29(일) 18:00** (사용자, 11-22) · `node Tools/promo/render.mjs --page retire-later.html --out slowrich-shorts-retire-later.mp4` |
 | `hub.html` · `out/slowrich-hub-5min.mp4` | **허브 영상** (11-15, 가로 1920×1080 · 4분 45초 · 자막만, 음악은 올릴 때) — 쇼츠마다 `관련 동영상` 으로 잇는 "5분 사용법". **11-15 유튜브에 올림 · 고정 댓글(링크)** · 음악 없음. `render.mjs` 가 `window.SIZE` 로 가로로 찍는다. 제목 · 설명(챕터) · 태그 · 고정 댓글은 youtube-shorts.md 맨 아래 |
 
 ```bash
