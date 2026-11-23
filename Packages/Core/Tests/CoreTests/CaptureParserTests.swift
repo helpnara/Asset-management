@@ -415,4 +415,31 @@ struct CaptureParserTests {
         #expect(CaptureParser.looseAmount(in: "-1,200원", signed: true) == 1_200)
         #expect(CaptureParser.looseAmount(in: "12주", signed: false) == nil)
     }
+
+    // 229번 — 11-23 실제 화면(토스 · `$` 로 보기)의 배치. 이름 · 숫자는 지어낸 것. 총액만 원화, 종목 평가금은 달러.
+    // 앱은 원화로만 적고 환율을 가져오지 않는다(ADR-0005) — 읽지 않고 세어서 `원` 으로 바꿔 찍어 달라고 알린다.
+    // 기댓값은 Tools/ocr-sim/parser.py 로 같은 줄을 돌려 확인했다.
+    @Test("달러로 보이는 화면 — 달러 평가금은 읽지 않고 세며, 현재가만 달러인 줄(0.93 USD)은 세지 않는다")
+    func dollarValues() {
+        var lines = [
+            line("내 종목보기 >", 0.057, 0.19, h: 0.019, w: 0.22),
+            line("100,000,000원", 0.054, 0.221, h: 0.036, w: 0.42),
+            line("-1,000,000원 (1.0%)", 0.053, 0.255, h: 0.024, w: 0.38),
+            line("해외주식", 0.053, 0.357, h: 0.017, w: 0.11),
+        ]
+        for (name, dollars, top) in [("가나테크", "$1,234.56", 0.40), ("다라에너지", "$987.65", 0.465), ("MBAX", "$2,000.00", 0.53)] {
+            lines += [line(name, 0.183, top, h: 0.018, w: 0.14), line(dollars, 0.747, top, h: 0.022, w: 0.2),
+                      line("12.345678주", 0.183, top + 0.026, h: 0.014, w: 0.16),
+                      line("+123.45 (10.0%)", 0.69, top + 0.026, h: 0.015, w: 0.25)]
+        }
+        let result = CaptureParser.parse(lines)
+        #expect(result.totalMinor == 100_000_000)
+        #expect(result.items.isEmpty)
+        #expect(result.dollarAmounts == 3)
+        #expect(CaptureParser.isDollar("$3,303.22"))
+        #expect(CaptureParser.isDollar("US$ 12.5"))
+        #expect(!CaptureParser.isDollar("0.93 USD"))
+        #expect(!CaptureParser.isDollar("$"))
+        #expect(!CaptureParser.isDollar("2,430,040원"))
+    }
 }

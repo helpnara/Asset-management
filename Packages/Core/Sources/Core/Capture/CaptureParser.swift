@@ -58,6 +58,8 @@ public enum CaptureParser {
         public var cashMinor: Int?
         /// 화면의 비용(`수수료` · `제세금` · `예상매도비용`) — 있으면. 계좌 총액이 팔면 받을 돈(비용을 뺀 값)인 화면의 검산에 쓴다(227번).
         public var feeMinor: Int?
+        /// 금액이 **달러로만** 적힌 종목 수(229번) — 증권사 앱이 `$` 로 보이는 화면. 읽지 않고 `원` 으로 바꿔 찍어 달라고 알린다.
+        public var dollarAmounts = 0
         /// 본문이 시작되는 자리(머리 아래 끝, 없으면 −1) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번).
         var bodyTop: Double = -1
 
@@ -136,6 +138,12 @@ public enum CaptureParser {
             return Int(ns.substring(with: match.range(at: 2)).filter(\.isNumber))
         }
         return nil
+    }
+
+    /// 달러로 적힌 평가금인가 — `$3,303.22`. `0.93 USD` 같은 현재가 줄은 아니다(평가금은 원화, 현재가만 달러인 화면).
+    static func isDollar(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespaces)
+            .range(of: #"^(?:US)?\$\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?$"#, options: .regularExpression) != nil
     }
 
     /// 이름표 비교용 — 괄호 안(`(%)` · `(장마감)`) · % · 빈칸을 걷는다.
@@ -463,6 +471,7 @@ public enum CaptureParser {
 
         // 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
         var items: [Item] = []
+        var dollars = 0
         for (index, name) in names.enumerated() {
             let low = name.top - name.height * 0.6
             // 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
@@ -491,7 +500,12 @@ public enum CaptureParser {
                 var candidates: [(line: Line, value: Int)] = band.flatMap { line in
                     line.x > 0.25 && !otherLabelLeft(line) ? lineValues(line, rows: rows).map { (line, $0) } : []
                 }
-                guard !candidates.isEmpty else { continue }
+                guard !candidates.isEmpty else {
+                    // 원화 금액이 하나도 없고 달러 금액만 있는 종목 (229번) — 증권사 앱이 `$` 로 보이는 화면. 앱은 원화로만 적고
+                    // 환율을 가져오지 않으므로(ADR-0005) 읽지 않고, `원` 으로 바꿔 찍어 달라고 알린다
+                    if band.contains(where: { $0.x > 0.5 && isDollar($0.text) }) { dollars += 1 }
+                    continue
+                }
                 if let mark = band.first(where: { valueLabels.contains(label($0.text)) }) {
                     candidates.sort { abs($0.line.centerY - mark.centerY) < abs($1.line.centerY - mark.centerY) }
                 } else {
@@ -508,6 +522,7 @@ public enum CaptureParser {
         }
         var result = Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash, feeMinor: fee)
         result.bodyTop = start
+        result.dollarAmounts = dollars
         return result
     }
 

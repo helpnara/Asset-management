@@ -247,6 +247,7 @@ struct CaptureFillSheet: View {
     /// **검산이 안 맞을 때 무엇일 법한가** (226번) — 차이의 모양으로 짐작해 알려 준다. 어느 경우든 이 계좌는 채우지 않는다.
     private func gapText(_ result: CaptureParser.Result, pages: Int) -> String {
         let tail = " 그래서 이 계좌는 채우지 않습니다."
+        if result.dollarAmounts > 0 { return dollarText(result) + tail }
         switch CaptureBatch.gap(in: result, pages: pages) {
         case .unread(let count)?:
             return "금액을 못 읽은 종목이 \(count)개 있습니다." + tail
@@ -263,6 +264,11 @@ struct CaptureFillSheet: View {
         case nil:
             return "합이 계좌 총액과 달라 한 종목을 잘못 읽었을 수 있습니다." + tail
         }
+    }
+
+    /// 달러로 보이는 화면 (229번) — 앱은 원화로만 적고 환율을 가져오지 않는다(ADR-0005).
+    private func dollarText(_ result: CaptureParser.Result) -> String {
+        "종목 \(result.dollarAmounts)개의 금액이 달러($)로 표시돼 있습니다 — 이 앱은 원화로 적습니다. 증권사 앱에서 `원` 으로 바꿔 다시 찍어 주세요."
     }
 
     /// 근사 통과의 말 — 채운다는 것과 차이가 무엇으로 보이는지.
@@ -312,6 +318,12 @@ struct CaptureFillSheet: View {
                     Text(totalsText(value.result))
                         .font(.figure(12))
                         .foregroundStyle(Color.muted)
+                    // 검산이 안 맞는 계좌는 아래 말에 같이 나온다 — 여기는 총액이 없거나 맞을 때만
+                    if value.result.dollarAmounts > 0, value.result.isBalanced != false {
+                        Text(dollarText(value.result))
+                            .font(.scaled(11.5))
+                            .foregroundStyle(Color.caution)
+                    }
                     if value.pages.count > 1 {
                         Text("캡처 \(value.pages.count)장을 이어 읽었습니다 — 겹친 종목은 한 번만 셉니다.")
                             .font(.scaled(11.5))

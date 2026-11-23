@@ -186,6 +186,12 @@ struct CaptureTestView: View {
                          + differenceText(page.result))
                         .font(.figure(12))
                         .foregroundStyle(Color.muted)
+                    // 달러로 보이는 화면 (229번) — 앱은 원화로만 적는다
+                    if page.result.dollarAmounts > 0 {
+                        Text("종목 \(page.result.dollarAmounts)개의 금액이 달러($)로 표시돼 있습니다 — 증권사 앱에서 `원` 으로 바꿔 다시 찍어 주세요.")
+                            .font(.scaled(11.5))
+                            .foregroundStyle(Color.caution)
+                    }
                 }
                 .padding(.horizontal, Card.inset)
                 .padding(.vertical, 12)
@@ -265,7 +271,8 @@ struct CaptureTestView: View {
         var out = ["# 캡처 읽기 — \(page.number)번째 캡처 · \(badge)\(masked ? " · 숫자 가림" : "")",
                    "# 계좌 줄: \(hide(page.result.accountLine ?? "—"))",
                    "# 계좌 총액: \(hide(page.result.totalMinor.map(String.init) ?? "—")) · 읽은 종목 \(page.result.items.count)개"
-                    + " · 현금 \(hide(page.result.cashMinor.map(String.init) ?? "—")) · 비용 \(hide(page.result.feeMinor.map(String.init) ?? "—"))"]
+                    + " · 현금 \(hide(page.result.cashMinor.map(String.init) ?? "—")) · 비용 \(hide(page.result.feeMinor.map(String.init) ?? "—"))"
+                    + " · 달러 종목 \(page.result.dollarAmounts)개"]
         for item in page.result.items {
             out.append("# 종목: \(hide(item.name)) = \(hide(item.valueMinor.map(String.init) ?? "금액 못 고름"))")
         }

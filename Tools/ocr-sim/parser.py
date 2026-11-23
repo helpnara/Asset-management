@@ -32,6 +32,10 @@ def money_word(text):
     return any(w in plain(text) for w in CASH_WORDS + FEE_WORDS)
 
 
+# 달러로 적힌 평가금 — `$3,303.22`. `0.93 USD` 같은 현재가 줄은 세지 않는다(g1 — 평가금은 원화, 현재가만 달러)
+DOLLAR = re.compile(r"^(?:US)?\$\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?$")
+
+
 def loose_amount(text, signed=False):
     """쉼표 없는 작은 금액까지(`491원`) — 현금 · 비용 칸에서만. 수량 · 비율 · 손익 괄호 · 소수는 뺀다."""
     t = digits_fixed(text)
@@ -245,7 +249,7 @@ def parse(lines, find_total=True):
         names.append(dict(l))
 
     # 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
-    items = []
+    items, dollars = [], 0
     for i, n in enumerate(names):
         lo = n["top"] - n["height"] * 0.6
         # 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
@@ -268,7 +272,11 @@ def parse(lines, find_total=True):
             def other_label_left(l):
                 return any(same_row(m, l) and m["x"] < l["x"] and label(m["text"]) in LABELS - VALUE_LABELS for m in rows)
             cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in line_values(l, rows)]
-            if not cands: continue
+            if not cands:
+                # 원화 금액이 하나도 없고 달러 금액만 있는 종목 (229번) — 증권사 앱이 `$` 로 보이는 화면. 앱은 원화로만 적고
+                # 환율을 가져오지 않으므로(ADR-0005) 읽지 않고, `원` 으로 바꿔 찍어 달라고 알린다(현재가만 달러인 화면은 세지 않는다)
+                if any(l["x"] > 0.5 and DOLLAR.match(l["text"].strip()) for l in band): dollars += 1
+                continue
             mark = next((l for l in band if label(l["text"]) in VALUE_LABELS), None)
             if mark:
                 cands.sort(key=lambda lv: abs(cy(lv[0]) - cy(mark)))
@@ -283,7 +291,7 @@ def parse(lines, find_total=True):
     if total is not None and values and total < max(values):
         return parse(lines, find_total=False)
     # start = 본문이 시작되는 자리(머리 아래 끝) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번)
-    return dict(account=account, total=total, items=items, cash=cash, fee=fee, start=start)
+    return dict(account=account, total=total, items=items, cash=cash, fee=fee, start=start, dollars=dollars)
 
 
 def is_balanced(result):

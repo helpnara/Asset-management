@@ -185,7 +185,8 @@ def merged(results):
                 continue
             seen[k] = len(items); items.append(it)
     first = lambda f: next((r[f] for r in results if r.get(f) is not None), None)
-    return dict(account=first("account"), total=first("total"), items=items, cash=first("cash"), fee=first("fee"))
+    return dict(account=first("account"), total=first("total"), items=items, cash=first("cash"), fee=first("fee"),
+                dollars=sum(r.get("dollars", 0) for r in results))
 
 
 def closes(result):

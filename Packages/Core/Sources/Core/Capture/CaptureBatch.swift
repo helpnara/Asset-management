@@ -271,6 +271,7 @@ public enum CaptureBatch {
                                                 cashMinor: read.cashMinor ?? fallback.cashMinor,
                                                 feeMinor: read.feeMinor ?? fallback.feeMinor)
             stitched.bodyTop = read.bodyTop
+            stitched.dollarAmounts = read.dollarAmounts
             // 이어 읽기가 검산을 못 맞추고 장마다 합친 것은 맞으면 그것을
             let result = fallback.isBalanced == true && stitched.isBalanced != true ? fallback : stitched
             out.append(Group(pages: members, result: result))
@@ -488,10 +489,12 @@ public enum CaptureBatch {
             seen[name] = items.count
             items.append(item)
         }
-        return CaptureParser.Result(accountLine: results.lazy.compactMap(\.accountLine).first,
-                                    totalMinor: results.lazy.compactMap(\.totalMinor).first,
-                                    items: items,
-                                    cashMinor: results.lazy.compactMap(\.cashMinor).first,
-                                    feeMinor: results.lazy.compactMap(\.feeMinor).first)
+        var result = CaptureParser.Result(accountLine: results.lazy.compactMap(\.accountLine).first,
+                                          totalMinor: results.lazy.compactMap(\.totalMinor).first,
+                                          items: items,
+                                          cashMinor: results.lazy.compactMap(\.cashMinor).first,
+                                          feeMinor: results.lazy.compactMap(\.feeMinor).first)
+        result.dollarAmounts = results.reduce(0) { $0 + $1.dollarAmounts }
+        return result
     }
 }
