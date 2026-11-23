@@ -382,4 +382,37 @@ struct CaptureParserTests {
         #expect(bare.isBalanced == false)
         #expect(CaptureBatch.gap(in: bare, pages: 1) == .fees(30_000))
     }
+
+    // 228번 — 11-23 실제 화면의 배치(종합잔고 · 카드형). 계좌 번호 · 이름 · 숫자는 지어낸 것.
+    // `자산` 이 총액 옆 이름표인데 종목 이름으로 읽혀 총액을 못 찾고, `현금잔고(예수금)` 의 예수금은 괄호에 들어 있었고,
+    // 그 금액 `350원` 은 쉼표가 없어 금액으로 안 읽혔다. 기댓값은 Tools/ocr-sim/parser.py 로 같은 줄을 돌려 확인했다.
+    @Test("자산 이름표 · 아래 줄 예수금 — 자산은 종목이 아니고 총액을 찾으며, 괄호 안 예수금 · 쉼표 없는 금액을 현금으로")
+    func assetLabelAndCashBelow() {
+        let lines = [
+            line("< 종합잔고", 0.046, 0.068, h: 0.036, w: 0.245),
+            line("1234567890-01 [종합(가나 비대면)]", 0.066, 0.145, h: 0.019, w: 0.656),
+            line("25,350 원", 0.678, 0.183, h: 0.032, w: 0.252), line("자산", 0.066, 0.189, h: 0.019, w: 0.076),
+            line("+150원(+0.60%)", 0.647, 0.217, h: 0.019, w: 0.281),
+            line("예금자보호안내 O", 0.066, 0.305, h: 0.018, w: 0.265),
+            line("하늘로보틱스증권자H(주-재간)-Ce", 0.066, 0.368, h: 0.022, w: 0.656), line(":", 0.893, 0.371, h: 0.016, w: 0.019),
+            line("펀드", 0.066, 0.394, h: 0.019, w: 0.073),
+            line("25,000원", 0.715, 0.408, h: 0.030, w: 0.216), line("+150원(+0.60%)", 0.675, 0.443, h: 0.015, w: 0.256),
+            line("현금잔고(예수금)", 0.069, 0.507, h: 0.021, w: 0.284), line(":", 0.896, 0.510, h: 0.015, w: 0.016),
+            line("350원", 0.789, 0.546, h: 0.025, w: 0.142), line("0원(0%)", 0.801, 0.580, h: 0.017, w: 0.133),
+            line("KOSPI", 0.066, 0.884, h: 0.014, w: 0.104), line("4,700.00 V 150.00(3.10%)", 0.281, 0.882, h: 0.018, w: 0.473),
+            line("관심종목 주식현재가 종합차트 주식주문", 0.148, 0.926, h: 0.019, w: 0.697),
+        ]
+        let result = CaptureParser.parse(lines)
+        #expect(result.accountLine == "1234567890-01 [종합(가나 비대면)]")
+        #expect(result.totalMinor == 25_350)
+        #expect(result.items.map(\.name) == ["하늘로보틱스증권자H(주-재간)-Ce 펀드"])
+        #expect(result.items.map(\.valueMinor) == [25_000])
+        #expect(result.cashMinor == 350)
+        #expect(result.isBalanced == true)
+        #expect(CaptureParser.looseAmount(in: "350원", signed: false) == 350)
+        #expect(CaptureParser.looseAmount(in: "0원(0%)", signed: false) == 0)
+        #expect(CaptureParser.looseAmount(in: "-1,200원", signed: false) == nil)
+        #expect(CaptureParser.looseAmount(in: "-1,200원", signed: true) == 1_200)
+        #expect(CaptureParser.looseAmount(in: "12주", signed: false) == nil)
+    }
 }

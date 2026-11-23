@@ -9,6 +9,10 @@ LABELS = {"평가금액", "평가액", "평가금", "매입금액", "매입가",
           "체결", "손익", "평가손익", "보유", "보유수량", "주문", "주문가능", "현재가", "평균단가", "평단가", "수량", "매도가능"}
 VALUE_LABELS = {"평가금액", "평가액", "평가금"}
 TOTAL_LABELS = {"평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"}
+# 계좌 총액 이름표 — `자산 43,491 원` 처럼 총액 옆에 붙는 말. 종목 이름이 아니다 (228번)
+ASSET_WORDS = {"자산", "총자산", "순자산", "추정자산", "예탁자산", "총예탁자산", "추정예탁자산", "평가자산", "총평가자산"}
+LABELS |= ASSET_WORDS
+TOTAL_LABELS |= ASSET_WORDS
 NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금", "출금", "가능금액"]
 CASH_WORDS = ["출금가능", "예수금", "주문가능현금"]
 # 총액에서 빠진 비용 — 화면 총액이 '팔면 받을 돈'(수수료 · 세금을 뺀 값)일 때 (227번)
@@ -16,6 +20,25 @@ FEE_WORDS = ["수수료", "제세금", "매도비용", "예상비용", "제비�
 SIGNS = "+-−‐‑‒–—―﹣－"   # 텍스트 인식이 마이너스를 여러 줄표로 읽는다 (11-21 `–7,4xx,xxx` 가 부호 없는 금액이 됨)
 NUMBER = re.compile(r"[" + re.escape(SIGNS) + r"]?\d{1,3}(?:,\d{3})+(?:원)?")
 ACCOUNT = re.compile(r"\d{2,}-\d{2,}")
+
+
+def plain(text):
+    """빈칸만 걷는다 — 괄호 안도 남긴다(`현금잔고(예수금)` 의 예수금, 228번)."""
+    return re.sub(r"\s", "", text)
+
+
+def money_word(text):
+    """현금 · 비용 줄인가 — 종목이 아니라 총액이 품거나 뺀 돈."""
+    return any(w in plain(text) for w in CASH_WORDS + FEE_WORDS)
+
+
+def loose_amount(text, signed=False):
+    """쉼표 없는 작은 금액까지(`491원`) — 현금 · 비용 칸에서만. 수량 · 비율 · 손익 괄호 · 소수는 뺀다."""
+    t = digits_fixed(text)
+    for m in re.finditer(r"(?<![\d,.])([" + re.escape(SIGNS) + r"]?)(\d{1,3}(?:,\d{3})*)(?![\d,.%(]|\s?%|\s?주)", t):
+        if m.group(1) and not signed: continue
+        return int(m.group(2).replace(",", ""))
+    return None
 
 
 def label(text):
@@ -119,7 +142,7 @@ def is_name(line):
     if not re.search(r"[^\W\d_]", t): return False
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
-    if any(w in label(t) for w in CASH_WORDS + FEE_WORDS): return False   # 현금 · 비용 줄은 종목이 아니다 (227번)
+    if money_word(t): return False   # 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지)
     if re.fullmatch(r"[가-힣ㄱ-ㆎ]", t): return False                  # 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
     # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
@@ -180,7 +203,7 @@ def parse(lines, find_total=True):
         return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text)) if m.group(0)[0] not in SIGNS), None)
     cash = None
     for l in rows:
-        if not any(w in label(l["text"]) for w in CASH_WORDS): continue
+        if not any(w in plain(l["text"]) for w in CASH_WORDS): continue
         cash = unsigned(l["text"])
         if cash is None:
             right = sorted([m for m in rows if m is not l and same_row(m, l) and m["x"] > l["x"] and unsigned(m["text"]) is not None],
@@ -192,7 +215,7 @@ def parse(lines, find_total=True):
         return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text))), None)
     fee = None
     for l in rows:
-        if not any(w in label(l["text"]) for w in FEE_WORDS): continue
+        if not any(w in plain(l["text"]) for w in FEE_WORDS): continue
         fee = any_amount(l["text"])
         if fee is None:
             right = sorted([m for m in rows if m is not l and same_row(m, l) and m["x"] > l["x"] and any_amount(m["text"]) is not None],
@@ -201,10 +224,16 @@ def parse(lines, find_total=True):
         if fee is not None: break
 
     # 2) 이름 — 두 줄로 꺾인 것은 붙이고, 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
+    # 현금 · 비용 이름표만 있는 줄(`현금잔고(예수금)` — 금액은 아래 줄)도 자리를 잡아 둔다: 앞 종목의 금액 칸이 거기서 끝나고,
+    # 그 아래 금액은 현금 · 비용으로 읽는다(228번). 금액이 같은 줄에 있는 현금 줄은 위에서 이미 읽었다
+    def money_label(l):
+        return l["x"] < 0.5 and money_word(l["text"]) and not re.search(r"\d,\d{3}", l["text"])
     names = []
     for l in body:
+        if money_label(l):
+            names.append(dict(l, kind="fee" if any(w in plain(l["text"]) for w in FEE_WORDS) else "cash")); continue
         if not is_name(l): continue
-        if names:
+        if names and not names[-1].get("kind"):
             p = names[-1]
             gap = l["top"] - bottom(p)
             if abs(l["x"] - p["x"]) < 0.02 and 0 < gap < p["height"] * 0.9:
@@ -221,6 +250,12 @@ def parse(lines, find_total=True):
         lo = n["top"] - n["height"] * 0.6
         # 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
         hi = names[i + 1]["top"] - names[i + 1]["height"] * 0.6 if i + 1 < len(names) else float("inf")
+        if n.get("kind"):
+            band = sorted([l for l in body if lo <= l["top"] < hi and l is not n and l["x"] > 0.25], key=lambda l: (l["top"], l["x"]))
+            value = next((v for l in band if (v := loose_amount(l["text"], signed=n["kind"] == "fee")) is not None), None)
+            if n["kind"] == "cash" and cash is None: cash = value
+            if n["kind"] == "fee" and fee is None: fee = value
+            continue
         if column:
             def in_column(a):
                 nearest = min(column["block"], key=lambda u: abs(cx(u) - cx(a)))

@@ -96,11 +96,15 @@ public enum CaptureParser {
         }
     }
 
-    static let labels: Set<String> = ["평가금액", "평가액", "평가금", "매입금액", "매입가", "매입단가", "수익률", "손익률", "투자원금",
+    static let labels: Set<String> = Set<String>(["평가금액", "평가액", "평가금", "매입금액", "매입가", "매입단가", "수익률", "손익률", "투자원금",
                                       "종목명", "잔고", "체결", "손익", "평가손익", "보유", "보유수량", "주문", "주문가능", "현재가",
-                                      "평균단가", "평단가", "수량", "매도가능"]
+                                      "평균단가", "평단가", "수량", "매도가능"]).union(assetWords)
     static let valueLabels: Set<String> = ["평가금액", "평가액", "평가금"]
-    static let totalLabels: Set<String> = ["평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"]
+    static let totalLabels: Set<String> = Set<String>(["평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가",
+                                                       "평가금액합계", "평가합계"]).union(assetWords)
+    /// 계좌 총액 이름표 — `자산 43,491 원` 처럼 총액 옆에 붙는 말. 종목 이름이 아니다 (228번, 자산이 종목으로 읽힌 일).
+    static let assetWords: Set<String> = ["자산", "총자산", "순자산", "추정자산", "예탁자산", "총예탁자산", "추정예탁자산",
+                                          "평가자산", "총평가자산"]
     /// 이 말 바로 뒤의 숫자는 평가금액이 아니다.
     static let notValuePrefixes = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금",
                                    "출금", "가능금액"]
@@ -110,6 +114,29 @@ public enum CaptureParser {
     /// 부호 — 텍스트 인식이 마이너스를 여러 줄표로 읽는다(11-21 `–7,4xx,xxx` 가 부호 없는 금액이 되어 종목이 됨).
     static let signs = "+-−‐‑‒–—―﹣－"
     static let numberPattern = #"[+\-−‐‑‒–—―﹣－]?\d{1,3}(?:,\d{3})+(?:원)?"#
+
+    /// 빈칸만 걷는다 — 괄호 안도 남긴다(`현금잔고(예수금)` 의 예수금, 228번). 현금 · 비용 줄 알아보기에 쓴다.
+    static func plain(_ text: String) -> String { text.filter { !$0.isWhitespace } }
+
+    /// 현금 · 비용 줄인가 — 종목이 아니라 총액이 품거나 뺀 돈.
+    static func moneyWord(_ text: String) -> Bool {
+        let squeezed = plain(text)
+        return (cashWords + feeWords).contains { squeezed.contains($0) }
+    }
+
+    /// 쉼표 없는 작은 금액까지(`491원`) — 현금 · 비용 칸에서만 쓴다(228번). 수량 · 비율 · 손익 괄호 · 소수는 뺀다.
+    /// 부호(−)가 붙은 것은 비용 줄에서만(`signed`).
+    static func looseAmount(in text: String, signed: Bool) -> Int? {
+        guard let pattern = try? NSRegularExpression(
+            pattern: #"(?<![\d,.])([+\-−‐‑‒–—―﹣－]?)(\d{1,3}(?:,\d{3})*)(?![\d,.%(]|\s?%|\s?주)"#) else { return nil }
+        let fixed = digitsFixed(text)
+        let ns = fixed as NSString
+        for match in pattern.matches(in: fixed, range: NSRange(location: 0, length: ns.length)) {
+            if match.range(at: 1).length > 0 && !signed { continue }
+            return Int(ns.substring(with: match.range(at: 2)).filter(\.isNumber))
+        }
+        return nil
+    }
 
     /// 이름표 비교용 — 괄호 안(`(%)` · `(장마감)`) · % · 빈칸을 걷는다.
     static func label(_ text: String) -> String {
@@ -280,9 +307,8 @@ public enum CaptureParser {
         if text.range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
         if text.contains("****") || text.hasPrefix("총 ") || text.contains("평가손익") { return false }
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
-        // 현금 · 비용 줄은 종목이 아니다 (227번)
-        let plain = label(text)
-        if (cashWords + feeWords).contains(where: { plain.contains($0) }) { return false }
+        // 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지 — `현금잔고(예수금)`)
+        if moneyWord(text) { return false }
         // 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
         if text.count == 1, let scalar = text.unicodeScalars.first,
            (0xAC00...0xD7A3).contains(scalar.value) || (0x3131...0x318E).contains(scalar.value) { return false }
@@ -389,7 +415,7 @@ public enum CaptureParser {
 
         // 현금(출금가능 · 예수금) — 그 이름표 줄이나 같은 줄 오른쪽의 금액
         var cash: Int?
-        for line in rows where cashWords.contains(where: { label(line.text).contains($0) }) {
+        for line in rows where cashWords.contains(where: { plain(line.text).contains($0) }) {
             cash = unsignedAmount(in: line.text)
                 ?? rows.filter { $0 != line && sameRow($0, line) && $0.x > line.x && unsignedAmount(in: $0.text) != nil }
                     .min(by: { $0.x < $1.x }).flatMap { unsignedAmount(in: $0.text) }
@@ -397,7 +423,7 @@ public enum CaptureParser {
         }
         // 비용(수수료 · 제세금 · 예상매도비용) — 현금과 같은 자리에서, 부호가 붙어 있어도 크기만 (227번)
         var fee: Int?
-        for line in rows where feeWords.contains(where: { label(line.text).contains($0) }) {
+        for line in rows where feeWords.contains(where: { plain(line.text).contains($0) }) {
             fee = anyAmount(in: line.text)
                 ?? rows.filter { $0 != line && sameRow($0, line) && $0.x > line.x && anyAmount(in: $0.text) != nil }
                     .min(by: { $0.x < $1.x }).flatMap { anyAmount(in: $0.text) }
@@ -405,9 +431,20 @@ public enum CaptureParser {
         }
 
         // 2) 이름 — 두 줄로 꺾인 것은 붙이고(바로 아래 · 같은 왼쪽), 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
+        // 현금 · 비용 이름표만 있는 줄(`현금잔고(예수금)` — 금액은 아래 줄)도 자리를 잡아 둔다: 앞 종목의 금액 칸이 거기서
+        // 끝나고, 그 아래 금액은 현금 · 비용으로 읽는다(228번). 금액이 같은 줄에 있는 현금 줄은 위에서 이미 읽었다
+        enum Slot { case item, cash, fee }
         var names: [Line] = []
-        for line in body where isName(line) {
-            if let previous = names.last {
+        var slots: [Slot] = []
+        for line in body {
+            if line.x < 0.5, moneyWord(line.text),
+               line.text.range(of: #"\d,\d{3}"#, options: .regularExpression) == nil {
+                names.append(line)
+                slots.append(feeWords.contains { plain(line.text).contains($0) } ? .fee : .cash)
+                continue
+            }
+            guard isName(line) else { continue }
+            if let previous = names.last, slots.last == .item {
                 let gap = line.top - previous.bottom
                 if abs(line.x - previous.x) < 0.02, gap > 0, gap < previous.height * 0.9 {
                     names[names.count - 1] = Line(text: previous.text + " " + line.text, x: previous.x, top: previous.top,
@@ -421,6 +458,7 @@ public enum CaptureParser {
                 }
             }
             names.append(line)
+            slots.append(.item)
         }
 
         // 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
@@ -429,6 +467,14 @@ public enum CaptureParser {
             let low = name.top - name.height * 0.6
             // 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
             let high = index + 1 < names.count ? names[index + 1].top - names[index + 1].height * 0.6 : .infinity
+            if slots[index] != .item {
+                let band = body.filter { $0.top >= low && $0.top < high && $0 != name && $0.x > 0.25 }
+                    .sorted { ($0.top, $0.x) < ($1.top, $1.x) }
+                let value = band.lazy.compactMap { looseAmount(in: $0.text, signed: slots[index] == .fee) }.first
+                if slots[index] == .cash, cash == nil { cash = value }
+                if slots[index] == .fee, fee == nil { fee = value }
+                continue
+            }
             if let column {
                 let candidates = amountsPlaced
                     .filter { $0.box.top >= low && $0.box.top < high && column.contains($0.box) }
