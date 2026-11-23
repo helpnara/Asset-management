@@ -442,4 +442,31 @@ struct CaptureParserTests {
         #expect(!CaptureParser.isDollar("$"))
         #expect(!CaptureParser.isDollar("2,430,040원"))
     }
+
+    // 230번 — 배당금 줄을 종목으로 읽던 것. 숫자 · 계좌는 지어낸 것, 기댓값은 Tools/ocr-sim/parser.py 로 같은 줄을 돌려 확인했다.
+    // 종목 합 6,000,000 = 총액. `VEGA 미국배당다우존스` 는 이름에 배당이 들어 있어도 종목이다.
+    @Test("배당 이름표 줄 — 종목이 아니고 그 금액(같은 줄 · 아래 줄)은 앞 종목에도 안 붙는다, 이름에 배당이 든 종목은 그대로")
+    func dividendLines() {
+        let base = [line("가나증권 012345678901", 0.05, 0.06, h: 0.02, w: 0.40), line("6,000,000원", 0.05, 0.09, h: 0.04, w: 0.40),
+                    line("가나전자", 0.05, 0.30, h: 0.025, w: 0.40), line("1,000,000원", 0.70, 0.30, h: 0.025, w: 0.25),
+                    line("VEGA 미국배당다우존스", 0.05, 0.45, h: 0.025, w: 0.40), line("2,000,000원", 0.70, 0.45, h: 0.025, w: 0.25),
+                    line("마바바이오로직스", 0.05, 0.60, h: 0.025, w: 0.40), line("3,000,000원", 0.70, 0.60, h: 0.025, w: 0.25)]
+        let sameRow = base + [line("이번 달 배당금", 0.05, 0.75, h: 0.022, w: 0.30), line("12,345원", 0.70, 0.75, h: 0.030, w: 0.25)]
+        let below = base + [line("배당금 내역 ›", 0.05, 0.75, h: 0.022, w: 0.30), line("받을 배당금", 0.05, 0.80, h: 0.02, w: 0.25),
+                            line("8,800,000원", 0.70, 0.83, h: 0.035, w: 0.25)]
+        // 11-23 실제 화면(토스)의 꼴 — 아래 구역 `주문내역 | 이번 달 n건 >` · `판매수익` · `배당금 | 이번 달 ○원 >`
+        let section = base + [line("주문내역", 0.057, 0.70, h: 0.021, w: 0.142), line("이번 달 29건 >", 0.70, 0.70, h: 0.018, w: 0.246),
+                              line("판매수익", 0.057, 0.747, h: 0.019, w: 0.142), line("배당금", 0.057, 0.796, h: 0.019, w: 0.107),
+                              line("이번 달 5,000원 >", 0.66, 0.798, h: 0.021, w: 0.284)]
+        for lines in [sameRow, below, section] {
+            let result = CaptureParser.parse(lines)
+            #expect(result.items.map(\.name) == ["가나전자", "VEGA 미국배당다우존스", "마바바이오로직스"])
+            #expect(result.items.map(\.valueMinor) == [1_000_000, 2_000_000, 3_000_000])
+            #expect(result.isBalanced == true)
+        }
+        #expect(CaptureParser.dividendLine("예상 배당금(세전) 12,000원"))
+        #expect(CaptureParser.dividendLine("분배금 3,210원"))
+        #expect(!CaptureParser.dividendLine("VEGA 미국배당다우존스"))
+        #expect(!CaptureParser.dividendLine("배당 플래너"))
+    }
 }

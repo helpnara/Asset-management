@@ -120,6 +120,15 @@ public enum CaptureParser {
     /// 빈칸만 걷는다 — 괄호 안도 남긴다(`현금잔고(예수금)` 의 예수금, 228번). 현금 · 비용 줄 알아보기에 쓴다.
     static func plain(_ text: String) -> String { text.filter { !$0.isWhitespace } }
 
+    /// **배당 이름표 줄인가** (230번) — `배당금` · `이번 달 배당금 12,345원` · `배당금 내역 ›` · `예상 배당금(세전)`.
+    /// 종목이 아니고 그 금액은 평가금이 아니다. **이름표로만 된 줄**만 본다 — `미국배당다우존스` 같은 종목 이름에도 배당이 들어 있다.
+    static func dividendLine(_ text: String) -> Bool {
+        let head = text.replacingOccurrences(of: #"\([^)]*\)|[+\-−‐‑‒–—―﹣－]?[\d,.]+\s*(원|%)?"#, with: "",
+                                             options: .regularExpression)
+        return plain(head).range(of: #"^(이번달|이달|올해|받을|받은|예상|누적|지난달|월|연간)?(배당금?|분배금)(예정|예정금|내역|일정|캘린더|보기|합계)?[›>]?$"#,
+                                 options: .regularExpression) != nil
+    }
+
     /// 현금 · 비용 줄인가 — 종목이 아니라 총액이 품거나 뺀 돈.
     static func moneyWord(_ text: String) -> Bool {
         let squeezed = plain(text)
@@ -317,6 +326,7 @@ public enum CaptureParser {
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
         // 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지 — `현금잔고(예수금)`)
         if moneyWord(text) { return false }
+        if dividendLine(text) { return false }   // 배당 이름표 줄 (230번)
         // 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
         if text.count == 1, let scalar = text.unicodeScalars.first,
            (0xAC00...0xD7A3).contains(scalar.value) || (0x3131...0x318E).contains(scalar.value) { return false }
@@ -441,10 +451,16 @@ public enum CaptureParser {
         // 2) 이름 — 두 줄로 꺾인 것은 붙이고(바로 아래 · 같은 왼쪽), 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
         // 현금 · 비용 이름표만 있는 줄(`현금잔고(예수금)` — 금액은 아래 줄)도 자리를 잡아 둔다: 앞 종목의 금액 칸이 거기서
         // 끝나고, 그 아래 금액은 현금 · 비용으로 읽는다(228번). 금액이 같은 줄에 있는 현금 줄은 위에서 이미 읽었다
-        enum Slot { case item, cash, fee }
+        enum Slot { case item, cash, fee, skip }
         var names: [Line] = []
         var slots: [Slot] = []
         for line in body {
+            // 배당 이름표 줄 (230번) — 자리만 잡는다: 앞 종목의 금액 칸이 거기서 끝나고, 그 줄 · 아래 금액은 어디에도 안 쓴다
+            if line.x < 0.5, dividendLine(line.text) {
+                names.append(line)
+                slots.append(.skip)
+                continue
+            }
             if line.x < 0.5, moneyWord(line.text),
                line.text.range(of: #"\d,\d{3}"#, options: .regularExpression) == nil {
                 names.append(line)
@@ -476,6 +492,7 @@ public enum CaptureParser {
             let low = name.top - name.height * 0.6
             // 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
             let high = index + 1 < names.count ? names[index + 1].top - names[index + 1].height * 0.6 : .infinity
+            if slots[index] == .skip { continue }
             if slots[index] != .item {
                 let band = body.filter { $0.top >= low && $0.top < high && $0 != name && $0.x > 0.25 }
                     .sorted { ($0.top, $0.x) < ($1.top, $1.x) }

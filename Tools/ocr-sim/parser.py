@@ -27,6 +27,16 @@ def plain(text):
     return re.sub(r"\s", "", text)
 
 
+DIVIDEND = re.compile(r"^(이번달|이달|올해|받을|받은|예상|누적|지난달|월|연간)?(배당금?|분배금)(예정|예정금|내역|일정|캘린더|보기|합계)?[›>]?$")
+
+
+def dividend_line(text):
+    """배당 이름표 줄인가 (230번) — `배당금` · `이번 달 배당금 12,345원` · `배당금 내역 ›`. 종목이 아니고 그 금액은 평가금이
+    아니다. **이름표로만 된 줄**만 — `미국배당다우존스` 같은 종목 이름에도 배당이 들어 있다."""
+    head = re.sub(r"\([^)]*\)|[" + re.escape(SIGNS) + r"]?[\d,.]+\s*(원|%)?", "", text)
+    return bool(DIVIDEND.match(plain(head)))
+
+
 def money_word(text):
     """현금 · 비용 줄인가 — 종목이 아니라 총액이 품거나 뺀 돈."""
     return any(w in plain(text) for w in CASH_WORDS + FEE_WORDS)
@@ -147,6 +157,7 @@ def is_name(line):
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
     if money_word(t): return False   # 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지)
+    if dividend_line(t): return False   # 배당 이름표 줄 (230번)
     if re.fullmatch(r"[가-힣ㄱ-ㆎ]", t): return False                  # 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
     # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
@@ -234,6 +245,9 @@ def parse(lines, find_total=True):
         return l["x"] < 0.5 and money_word(l["text"]) and not re.search(r"\d,\d{3}", l["text"])
     names = []
     for l in body:
+        # 배당 이름표 줄 (230번) — 자리만 잡는다: 앞 종목의 금액 칸이 거기서 끝나고, 그 줄 · 아래 금액은 어디에도 안 쓴다
+        if l["x"] < 0.5 and dividend_line(l["text"]):
+            names.append(dict(l, kind="skip")); continue
         if money_label(l):
             names.append(dict(l, kind="fee" if any(w in plain(l["text"]) for w in FEE_WORDS) else "cash")); continue
         if not is_name(l): continue
@@ -254,6 +268,7 @@ def parse(lines, find_total=True):
         lo = n["top"] - n["height"] * 0.6
         # 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
         hi = names[i + 1]["top"] - names[i + 1]["height"] * 0.6 if i + 1 < len(names) else float("inf")
+        if n.get("kind") == "skip": continue
         if n.get("kind"):
             band = sorted([l for l in body if lo <= l["top"] < hi and l is not n and l["x"] > 0.25], key=lambda l: (l["top"], l["x"]))
             value = next((v for l in band if (v := loose_amount(l["text"], signed=n["kind"] == "fee")) is not None), None)
