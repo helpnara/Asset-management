@@ -202,7 +202,7 @@ struct CaptureBatchTests {
         #expect(groups.first?.result.isBalanced == true)
     }
 
-    @Test("검산 차이를 말로 — 못 고른 금액 · 모자람 · 넘침 · 여러 장 사이 시세 움직임")
+    @Test("검산 차이를 말로 — 못 고른 금액 · 수수료 · 소액 예치금 · 시세 움직임 · 모자람 · 넘침")
     func gapHints() {
         func result(_ total: Int?, _ values: [Int?]) -> CaptureParser.Result {
             .init(accountLine: nil, totalMinor: total,
@@ -214,9 +214,20 @@ struct CaptureBatchTests {
         #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, nil]), pages: 1) == .unread(1))
         #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000]), pages: 1) == .missing(2_000_000))
         #expect(CaptureBatch.gap(in: result(3_000_000, [2_000_000, 2_000_000]), pages: 1) == .extra(1_000_000))
-        // 0.3% = 9,000원 안 — 여러 장이면 시세, 한 장이면 그냥 모자람
-        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_991_000]), pages: 2) == .drift(9_000))
-        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_991_000]), pages: 1) == .missing(9_000))
-        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_990_999]), pages: 2) == .missing(9_001))
+        // 227번 — 합 6,000,000. 총액이 작고 0.7%(42,000) 안이면 수수료 · 세금, 넘으면 넘침
+        let six: [Int?] = [1_000_000, 2_000_000, 3_000_000]
+        #expect(CaptureBatch.gap(in: result(5_970_000, six), pages: 1) == .fees(30_000))
+        #expect(CaptureBatch.gap(in: result(5_959_000, six), pages: 1) == .fees(41_000))
+        #expect(CaptureBatch.gap(in: result(5_952_000, six), pages: 1) == .extra(48_000))
+        // 총액이 크고 10만 원 안이면 소액 예치금, 넘으면 모자람
+        #expect(CaptureBatch.gap(in: result(6_050_000, six), pages: 1) == .deposit(50_000))
+        #expect(CaptureBatch.gap(in: result(6_100_000, six), pages: 1) == .deposit(100_000))
+        #expect(CaptureBatch.gap(in: result(6_150_000, six), pages: 1) == .missing(150_000))
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_991_000]), pages: 2) == .deposit(9_000))
+        // 10만 원을 넘고 총액의 0.3% 안 — 여러 장이면 시세 움직임, 한 장이면 모자람
+        #expect(CaptureBatch.gap(in: result(50_000_000, [20_000_000, 29_860_000]), pages: 2) == .drift(140_000))
+        #expect(CaptureBatch.gap(in: result(50_000_000, [20_000_000, 29_860_000]), pages: 1) == .missing(140_000))
+        #expect(CaptureBatch.Gap.fees(1).isExplainable && CaptureBatch.Gap.deposit(1).isExplainable)
+        #expect(!CaptureBatch.Gap.drift(1).isExplainable && !CaptureBatch.Gap.missing(1).isExplainable)
     }
 }

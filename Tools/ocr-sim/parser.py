@@ -11,6 +11,8 @@ VALUE_LABELS = {"평가금액", "평가액", "평가금"}
 TOTAL_LABELS = {"평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가", "평가금액합계", "평가합계"}
 NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금", "출금", "가능금액"]
 CASH_WORDS = ["출금가능", "예수금", "주문가능현금"]
+# 총액에서 빠진 비용 — 화면 총액이 '팔면 받을 돈'(수수료 · 세금을 뺀 값)일 때 (227번)
+FEE_WORDS = ["수수료", "제세금", "매도비용", "예상비용", "제비용"]
 SIGNS = "+-−‐‑‒–—―﹣－"   # 텍스트 인식이 마이너스를 여러 줄표로 읽는다 (11-21 `–7,4xx,xxx` 가 부호 없는 금액이 됨)
 NUMBER = re.compile(r"[" + re.escape(SIGNS) + r"]?\d{1,3}(?:,\d{3})+(?:원)?")
 ACCOUNT = re.compile(r"\d{2,}-\d{2,}")
@@ -117,6 +119,7 @@ def is_name(line):
     if not re.search(r"[^\W\d_]", t): return False
     if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
+    if any(w in label(t) for w in CASH_WORDS + FEE_WORDS): return False   # 현금 · 비용 줄은 종목이 아니다 (227번)
     if re.fullmatch(r"[가-힣ㄱ-ㆎ]", t): return False                  # 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
     if re.search(r"\d", t) and not re.sub(r"[\d\s.,+\-−%()$주원좌개]", "", t): return False   # 0.123456주 · 652원
     # 숫자 + 글자 한 자 — 단위를 잘못 읽어도(3.123456수) 이름이 아니다. 소수거나 세 자리 이상일 때만(3M 같은 이름은 남긴다)
@@ -184,6 +187,18 @@ def parse(lines, find_total=True):
                            key=lambda m: m["x"])
             cash = unsigned(right[0]["text"]) if right else None
         if cash is not None: break
+    # 비용(수수료 · 제세금 · 예상매도비용) — 현금과 같은 자리에서, 부호(−)가 붙어 있어도 크기만
+    def any_amount(text):
+        return next((int(re.sub(r"\D", "", m.group(0))) for m in NUMBER.finditer(digits_fixed(text))), None)
+    fee = None
+    for l in rows:
+        if not any(w in label(l["text"]) for w in FEE_WORDS): continue
+        fee = any_amount(l["text"])
+        if fee is None:
+            right = sorted([m for m in rows if m is not l and same_row(m, l) and m["x"] > l["x"] and any_amount(m["text"]) is not None],
+                           key=lambda m: m["x"])
+            fee = any_amount(right[0]["text"]) if right else None
+        if fee is not None: break
 
     # 2) 이름 — 두 줄로 꺾인 것은 붙이고, 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
     names = []
@@ -233,7 +248,7 @@ def parse(lines, find_total=True):
     if total is not None and values and total < max(values):
         return parse(lines, find_total=False)
     # start = 본문이 시작되는 자리(머리 아래 끝) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번)
-    return dict(account=account, total=total, items=items, cash=cash, start=start)
+    return dict(account=account, total=total, items=items, cash=cash, fee=fee, start=start)
 
 
 def is_balanced(result):
@@ -243,13 +258,23 @@ def is_balanced(result):
     return abs(result["total"] - expected_sum(result)) <= len(result["items"])
 
 
-def expected_sum(result):
-    """총액과 견줄 합 — 화면 총액이 현금(출금가능 · 예수금)을 품었으면 그것까지."""
+def applied(result):
+    """총액이 품은 것 — (현금, 비용). 화면에 적힌 현금 · 비용을 더하고 빼서 총액과 맞는 조합이 있으면 그것 (227번)."""
     s = sum(i["value"] or 0 for i in result["items"])
-    cash = result.get("cash")
-    if cash is not None and result["total"] is not None and abs(result["total"] - s - cash) <= len(result["items"]):
-        return s + cash
-    return s
+    cash, fee, total = result.get("cash"), result.get("fee"), result["total"]
+    if total is None: return None, None
+    combos = ([(cash, None)] if cash is not None else []) + ([(None, fee)] if fee is not None else []) \
+        + ([(cash, fee)] if cash is not None and fee is not None else [])
+    for c, f in combos:
+        if abs(total - (s + (c or 0) - (f or 0))) <= len(result["items"]): return c, f
+    return None, None
+
+
+def expected_sum(result):
+    """총액과 견줄 합 — 화면 총액이 현금(출금가능 · 예수금)을 품었거나 비용(수수료 · 세금)을 뺐으면 그것까지."""
+    s = sum(i["value"] or 0 for i in result["items"])
+    c, f = applied(result)
+    return s + (c or 0) - (f or 0)
 
 
 # 이름 맞추기 — Swift `match(_:among:)` 와 같다

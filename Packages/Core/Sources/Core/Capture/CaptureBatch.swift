@@ -268,7 +268,8 @@ public enum CaptureBatch {
             var stitched = CaptureParser.Result(accountLine: read.accountLine ?? fallback.accountLine,
                                                 totalMinor: read.totalMinor ?? fallback.totalMinor,
                                                 items: read.items,
-                                                cashMinor: read.cashMinor ?? fallback.cashMinor)
+                                                cashMinor: read.cashMinor ?? fallback.cashMinor,
+                                                feeMinor: read.feeMinor ?? fallback.feeMinor)
             stitched.bodyTop = read.bodyTop
             // 이어 읽기가 검산을 못 맞추고 장마다 합친 것은 맞으면 그것을
             let result = fallback.isBalanced == true && stitched.isBalanced != true ? fallback : stitched
@@ -439,15 +440,36 @@ public enum CaptureBatch {
         case extra(Int)
         /// 여러 장 사이에 시세가 움직였을 만한 작은 차이(총액의 0.3% 안).
         case drift(Int)
+        /// 총액이 합보다 작고 0.7% 안 — 팔 때 수수료 · 세금을 뺀 총액으로 보인다(227번).
+        case fees(Int)
+        /// 총액이 합보다 크고 10만 원 안 — 종목이 아닌 소액 예치금으로 보인다(227번).
+        case deposit(Int)
+
+        /// **그럴듯한 작은 차이** — 앱은 그 계좌의 종목이 캡처에 모두 있을 때만 이것을 근사 통과로 채운다.
+        public var isExplainable: Bool {
+            switch self {
+            case .fees, .deposit: return true
+            case .unread, .missing, .extra, .drift: return false
+            }
+        }
     }
+
+    /// 수수료 · 세금으로 볼 비율 — 국내 매도세 약 0.2%(2026) · 해외 위탁 0.25~0.5% 를 넉넉히 덮는다(227번).
+    public static let feeRate = 0.007
+    /// 소액 예치금으로 볼 상한(원) — 11-23 사용자: *"소액 예치금 상한은 10만 원으로"*.
+    public static let depositCap = 100_000
 
     /// 검산이 맞거나 총액이 없으면 nil.
     public static func gap(in result: CaptureParser.Result, pages: Int) -> Gap? {
         guard let total = result.totalMinor else { return nil }
         let unread = result.items.filter { $0.valueMinor == nil }.count
         if unread > 0 { return .unread(unread) }
-        let difference = total - result.expectedSumMinor
+        let expected = result.expectedSumMinor
+        let difference = total - expected
         if abs(difference) <= result.items.count { return nil }
+        // 화면에 적힌 현금 · 비용으로도 안 맞을 때 — 그럴듯한 작은 차이부터
+        if difference < 0, Double(-difference) <= Double(expected) * feeRate { return .fees(-difference) }
+        if difference > 0, difference <= depositCap { return .deposit(difference) }
         if pages > 1, Double(abs(difference)) <= Double(total) * 0.003 { return .drift(abs(difference)) }
         return difference > 0 ? .missing(difference) : .extra(-difference)
     }
@@ -469,6 +491,7 @@ public enum CaptureBatch {
         return CaptureParser.Result(accountLine: results.lazy.compactMap(\.accountLine).first,
                                     totalMinor: results.lazy.compactMap(\.totalMinor).first,
                                     items: items,
-                                    cashMinor: results.lazy.compactMap(\.cashMinor).first)
+                                    cashMinor: results.lazy.compactMap(\.cashMinor).first,
+                                    feeMinor: results.lazy.compactMap(\.feeMinor).first)
     }
 }

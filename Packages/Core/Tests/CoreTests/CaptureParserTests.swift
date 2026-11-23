@@ -348,5 +348,38 @@ struct CaptureParserTests {
         #expect(result.isBalanced == true)
         #expect(CaptureParser.amounts(in: "250, 001원") == [250_001])
     }
-}
 
+    // 227번 — 총액이 팔면 받을 돈(수수료 · 세금을 뺀 값)이거나 예수금을 품은 화면. 숫자 · 계좌는 지어낸 것.
+    // 종목 합 6,000,000. 기댓값은 Tools/ocr-sim/parser.py 로 같은 줄을 돌려 확인했다.
+    @Test("비용 · 현금 줄 — 화면에 적힌 수수료는 빼고 예수금은 더해 검산하고, 그 줄은 종목이 아니다")
+    func feeAndCashLines() {
+        func page(_ total: String, _ extra: [CaptureParser.Line]) -> [CaptureParser.Line] {
+            [line("가나증권 012345678901", 0.05, 0.06, h: 0.02, w: 0.40), line(total, 0.05, 0.09, h: 0.04, w: 0.40)] + extra
+                + [line("가나전자", 0.05, 0.40, h: 0.025, w: 0.30), line("1,000,000원", 0.70, 0.40, h: 0.025, w: 0.25),
+                   line("다라화학", 0.05, 0.60, h: 0.025, w: 0.30), line("2,000,000원", 0.70, 0.60, h: 0.025, w: 0.25),
+                   line("마바바이오로직스", 0.05, 0.80, h: 0.025, w: 0.30), line("3,000,000원", 0.70, 0.80, h: 0.025, w: 0.25)]
+        }
+        let fee = [line("예상 매도수수료 · 제세금", 0.05, 0.16, h: 0.02, w: 0.40), line("-10,000원", 0.70, 0.16, h: 0.02, w: 0.25)]
+        let cash = [line("예수금", 0.05, 0.16, h: 0.02, w: 0.20), line("40,000원", 0.70, 0.16, h: 0.02, w: 0.25)]
+        let feeBelow = [line("예상 매도수수료 · 제세금", 0.05, 0.20, h: 0.02, w: 0.40), line("-10,000원", 0.70, 0.20, h: 0.02, w: 0.25)]
+
+        let withFee = CaptureParser.parse(page("5,990,000원", fee))
+        #expect(withFee.items.map(\.name) == ["가나전자", "다라화학", "마바바이오로직스"])
+        #expect(withFee.feeMinor == 10_000)
+        #expect(withFee.applied.feeMinor == 10_000 && withFee.applied.cashMinor == nil)
+        #expect(withFee.isBalanced == true)
+
+        let withCash = CaptureParser.parse(page("6,040,000원", cash))
+        #expect(withCash.cashMinor == 40_000)
+        #expect(withCash.isBalanced == true)
+
+        let both = CaptureParser.parse(page("6,030,000원", cash + feeBelow))
+        #expect(both.applied.cashMinor == 40_000 && both.applied.feeMinor == 10_000)
+        #expect(both.isBalanced == true)
+
+        // 화면에 비용 줄이 없으면 검산은 안 맞고, 차이로 짐작한다(CaptureBatch.gap)
+        let bare = CaptureParser.parse(page("5,970,000원", []))
+        #expect(bare.isBalanced == false)
+        #expect(CaptureBatch.gap(in: bare, pages: 1) == .fees(30_000))
+    }
+}

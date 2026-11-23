@@ -142,7 +142,12 @@ struct CaptureTestView: View {
                     Spacer(minLength: 8)
                     switch group.result.isBalanced {
                     case .some(true): StatusBadge(text: "검산 통과", foreground: .brand, background: .brandSoft)
-                    case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
+                    case .some(false) where CaptureBatch.gap(in: group.result, pages: group.pages.count)?.isExplainable == true:
+                        // 차이가 수수료 · 세금(0.7% 안) 또는 소액 예치금(10만 원 안)으로 보인다 — 점검에서는 종목이 모두 있으면 채운다(227번)
+                        StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
+                    case .some(false) where CaptureBatch.gap(in: page.result, pages: 1)?.isExplainable == true:
+                    StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
+                case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
                     case .none: StatusBadge(text: "총액 못 찾음")
                     }
                 }
@@ -229,13 +234,14 @@ struct CaptureTestView: View {
         }
     }
 
-    /// 화면 총액이 현금을 품었으면 ` · 현금 n`, 총액과 합이 다르면 ` · 차이 n원` — 해외 종목 환산 반올림(종목 수만큼 원)은 검산 통과로 본다.
+    /// 화면 총액이 현금을 품었으면 ` · 현금 n`, 비용을 뺐으면 ` · 비용 n`(227번), 총액과 합이 다르면 ` · 차이 n원` —
+    /// 해외 종목 환산 반올림(종목 수만큼 원)은 검산 통과로 본다.
     private func differenceText(_ result: CaptureParser.Result) -> String {
         guard let total = result.totalMinor else { return "" }
         var text = ""
-        if let cash = result.cashMinor, result.expectedSumMinor != result.sumMinor {
-            text += " · 현금 \(Won.grouped(cash))"
-        }
+        let applied = result.applied
+        if let cash = applied.cashMinor { text += " · 현금 \(Won.grouped(cash))" }
+        if let fee = applied.feeMinor { text += " · 비용 \(Won.grouped(fee))" }
         if total != result.expectedSumMinor {
             text += " · 차이 \(Won.grouped(abs(total - result.expectedSumMinor)))원"
         }
@@ -258,7 +264,8 @@ struct CaptureTestView: View {
         }
         var out = ["# 캡처 읽기 — \(page.number)번째 캡처 · \(badge)\(masked ? " · 숫자 가림" : "")",
                    "# 계좌 줄: \(hide(page.result.accountLine ?? "—"))",
-                   "# 계좌 총액: \(hide(page.result.totalMinor.map(String.init) ?? "—")) · 읽은 종목 \(page.result.items.count)개"]
+                   "# 계좌 총액: \(hide(page.result.totalMinor.map(String.init) ?? "—")) · 읽은 종목 \(page.result.items.count)개"
+                    + " · 현금 \(hide(page.result.cashMinor.map(String.init) ?? "—")) · 비용 \(hide(page.result.feeMinor.map(String.init) ?? "—"))"]
         for item in page.result.items {
             out.append("# 종목: \(hide(item.name)) = \(hide(item.valueMinor.map(String.init) ?? "금액 못 고름"))")
         }

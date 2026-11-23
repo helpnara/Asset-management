@@ -56,23 +56,37 @@ public enum CaptureParser {
         public let items: [Item]
         /// 화면의 현금(`출금가능금액` · `예수금`) — 있으면. 계좌 총액이 현금을 품은 화면의 검산에 쓴다.
         public var cashMinor: Int?
+        /// 화면의 비용(`수수료` · `제세금` · `예상매도비용`) — 있으면. 계좌 총액이 팔면 받을 돈(비용을 뺀 값)인 화면의 검산에 쓴다(227번).
+        public var feeMinor: Int?
         /// 본문이 시작되는 자리(머리 아래 끝, 없으면 −1) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번).
         var bodyTop: Double = -1
 
-        public init(accountLine: String?, totalMinor: Int?, items: [Item], cashMinor: Int? = nil) {
+        public init(accountLine: String?, totalMinor: Int?, items: [Item], cashMinor: Int? = nil, feeMinor: Int? = nil) {
             self.accountLine = accountLine
             self.totalMinor = totalMinor
             self.items = items
             self.cashMinor = cashMinor
+            self.feeMinor = feeMinor
         }
 
         public var sumMinor: Int { items.reduce(0) { $0 + ($1.valueMinor ?? 0) } }
-        /// 총액과 견줄 합 — 화면 총액이 현금을 품었으면(합 + 현금이 맞으면) 현금까지.
-        public var expectedSumMinor: Int {
-            if let cashMinor, let totalMinor, abs(totalMinor - sumMinor - cashMinor) <= items.count {
-                return sumMinor + cashMinor
+        /// **총액이 품은 것** — 화면에 적힌 현금은 더하고 비용은 빼서 총액과 맞는 조합(현금 · 비용 · 둘 다)이 있으면 그것.
+        /// 없으면 둘 다 nil — 합만으로 견준다.
+        public var applied: (cashMinor: Int?, feeMinor: Int?) {
+            guard let totalMinor else { return (nil, nil) }
+            var combos: [(Int?, Int?)] = []
+            if let cashMinor { combos.append((cashMinor, nil)) }
+            if let feeMinor { combos.append((nil, feeMinor)) }
+            if let cashMinor, let feeMinor { combos.append((cashMinor, feeMinor)) }
+            for (cash, fee) in combos where abs(totalMinor - (sumMinor + (cash ?? 0) - (fee ?? 0))) <= items.count {
+                return (cash, fee)
             }
-            return sumMinor
+            return (nil, nil)
+        }
+        /// 총액과 견줄 합 — 화면 총액이 현금을 품었거나 비용을 뺐으면 그것까지.
+        public var expectedSumMinor: Int {
+            let (cash, fee) = applied
+            return sumMinor + (cash ?? 0) - (fee ?? 0)
         }
         /// 총액이 없으면 nil — 검산할 수 없다. 해외 종목은 원화 환산 반올림으로 몇 원 다를 수 있어 종목 수만큼(원) 봐준다.
         public var isBalanced: Bool? {
@@ -91,6 +105,8 @@ public enum CaptureParser {
     static let notValuePrefixes = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금",
                                    "출금", "가능금액"]
     static let cashWords = ["출금가능", "예수금", "주문가능현금"]
+    /// 총액에서 빠진 비용 — 화면 총액이 '팔면 받을 돈'(수수료 · 세금을 뺀 값)일 때 (227번).
+    static let feeWords = ["수수료", "제세금", "매도비용", "예상비용", "제비용"]
     /// 부호 — 텍스트 인식이 마이너스를 여러 줄표로 읽는다(11-21 `–7,4xx,xxx` 가 부호 없는 금액이 되어 종목이 됨).
     static let signs = "+-−‐‑‒–—―﹣－"
     static let numberPattern = #"[+\-−‐‑‒–—―﹣－]?\d{1,3}(?:,\d{3})+(?:원)?"#
@@ -110,6 +126,15 @@ public enum CaptureParser {
             .replacingOccurrences(of: #"(?<=\d)B(?=[\d,원]|$)"#, with: "8", options: .regularExpression)
             // 쉼표 뒤 빈칸 — `250, 001원` 을 `250,001 원` 으로(빈칸을 뒤로 옮겨 길이는 그대로). 11-21 SPYM 을 놓친 일
             .replacingOccurrences(of: #"(\d),\s(\d{3})(?!\d)"#, with: "$1,$2 ", options: .regularExpression)
+    }
+
+    /// 첫 금액의 크기 — 부호(−)가 붙어 있어도. 비용 줄(`-12,345`)을 읽을 때.
+    static func anyAmount(in text: String) -> Int? {
+        guard let number = try? NSRegularExpression(pattern: numberPattern) else { return nil }
+        let fixed = digitsFixed(text)
+        let ns = fixed as NSString
+        return number.firstMatch(in: fixed, range: NSRange(location: 0, length: ns.length))
+            .flatMap { Int(ns.substring(with: $0.range).filter(\.isNumber)) }
     }
 
     /// 부호 없는 첫 금액 — 현금 줄처럼 앞말을 가리지 않고 읽을 때.
@@ -255,6 +280,9 @@ public enum CaptureParser {
         if text.range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
         if text.contains("****") || text.hasPrefix("총 ") || text.contains("평가손익") { return false }
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
+        // 현금 · 비용 줄은 종목이 아니다 (227번)
+        let plain = label(text)
+        if (cashWords + feeWords).contains(where: { plain.contains($0) }) { return false }
         // 한 글자 한글 · 낱자 — 가려진 글자 · 아이콘 조각(`트` · `ㅧ`)
         if text.count == 1, let scalar = text.unicodeScalars.first,
            (0xAC00...0xD7A3).contains(scalar.value) || (0x3131...0x318E).contains(scalar.value) { return false }
@@ -367,6 +395,14 @@ public enum CaptureParser {
                     .min(by: { $0.x < $1.x }).flatMap { unsignedAmount(in: $0.text) }
             if cash != nil { break }
         }
+        // 비용(수수료 · 제세금 · 예상매도비용) — 현금과 같은 자리에서, 부호가 붙어 있어도 크기만 (227번)
+        var fee: Int?
+        for line in rows where feeWords.contains(where: { label(line.text).contains($0) }) {
+            fee = anyAmount(in: line.text)
+                ?? rows.filter { $0 != line && sameRow($0, line) && $0.x > line.x && anyAmount(in: $0.text) != nil }
+                    .min(by: { $0.x < $1.x }).flatMap { anyAmount(in: $0.text) }
+            if fee != nil { break }
+        }
 
         // 2) 이름 — 두 줄로 꺾인 것은 붙이고(바로 아래 · 같은 왼쪽), 같은 줄에 겹친 것(아이콘 안 글자)은 큰 글씨 하나만
         var names: [Line] = []
@@ -424,7 +460,7 @@ public enum CaptureParser {
         if let value = total, let largest = items.compactMap(\.valueMinor).max(), value < largest {
             return parse(lines, findsTotal: false)
         }
-        var result = Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash)
+        var result = Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash, feeMinor: fee)
         result.bodyTop = start
         return result
     }

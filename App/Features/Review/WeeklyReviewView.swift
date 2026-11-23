@@ -446,22 +446,25 @@ struct WeeklyReviewView: View {
             }
             let pairs = group.pairs(in: account)
             let holdings = account.sortedHoldings
+            // 근사 통과(227번)까지 — 채울 수 있나 · 다녀간 줄로 세나
+            let canFill = group.canFill(in: account, queued: queued)
+            let passes = group.passes(in: account, queued: queued)
             for (index, item) in group.result.items.enumerated() {
                 guard let id = pairs[index], let holding = holdings.first(where: { $0.id == id }) else { continue }
                 // 증권사 이름이 앱 이름과 다르면 기억한다 — 다음 캡처부터 이 이름으로 먼저 맞춘다.
                 if !CaptureBatch.isSameName(item.name, holding.name), holding.captureName != item.name {
                     holding.captureName = item.name
                 }
-                guard group.canFill, let value = item.valueMinor, queued.contains(id) else { continue }
+                guard canFill, let value = item.valueMinor, queued.contains(id) else { continue }
                 if value != holding.valueMinor { write(holding, value) }
-                if group.result.isBalanced == true {
+                if passes {
                     ledger.captureMarks[id] = .checked
                     visited.insert(id)
                 } else {
                     ledger.captureMarks[id] = .unchecked
                 }
             }
-            if group.canFill {
+            if canFill {
                 for holding in holdings where queued.contains(holding.id) && !pairs.contains(holding.id)
                     && ledger.captureMarks[holding.id] == nil {
                     ledger.captureMarks[holding.id] = .missing

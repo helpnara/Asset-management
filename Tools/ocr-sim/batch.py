@@ -92,6 +92,7 @@ def covered(line, others):
 
 
 EDGE = 0.06   # 앞 장 아래 끝에서 이만큼 — 경계에 걸려 앞 장이 못 읽은 줄이 있을 수 있는 띠
+DEPOSIT_CAP = 100_000   # 소액 예치금으로 볼 상한 (227번, 11-23 사용자: "소액 예치금 상한은 10만 원으로")
 
 
 def stitch(pages, starts=None):
@@ -184,7 +185,7 @@ def merged(results):
                 continue
             seen[k] = len(items); items.append(it)
     first = lambda f: next((r[f] for r in results if r.get(f) is not None), None)
-    return dict(account=first("account"), total=first("total"), items=items, cash=first("cash"))
+    return dict(account=first("account"), total=first("total"), items=items, cash=first("cash"), fee=first("fee"))
 
 
 def closes(result):
@@ -264,7 +265,7 @@ def group(pages, accounts=()):
                   if n > 0 and is_head[p] and results[p]["account"] is not None and results[p]["total"] is not None}
         stitched = parse(stitch([pages[p] for p in ordered], starts))
         fallback = merged([results[p] for p in ordered])
-        for f in ("account", "total", "cash"):
+        for f in ("account", "total", "cash", "fee"):
             if stitched[f] is None: stitched[f] = fallback[f]
         # 이어 읽기가 검산을 못 맞추고 장마다 합친 것은 맞으면 그것을
         result = fallback if (closes(fallback) and not closes(stitched)) else stitched
@@ -295,8 +296,13 @@ def gap_hint(result, page_count):
     if result["total"] is None: return None
     unread = sum(1 for it in result["items"] if it["value"] is None)
     if unread: return ("unread", unread)
-    gap = result["total"] - expected_sum(result)
+    expected = expected_sum(result)
+    gap = result["total"] - expected
     if abs(gap) <= len(result["items"]): return None
+    # 그럴듯한 작은 차이 (227번) — 총액이 합보다 작고 0.7% 안: 팔 때 수수료 · 세금을 뺀 총액(국내 매도세 0.2% · 해외 위탁 0.25~0.5%).
+    # 총액이 합보다 크고 10만 원 안: 종목이 아닌 소액 예치금. 앱은 그 계좌의 종목이 캡처에 모두 있을 때만 근사 통과로 채운다
+    if gap < 0 and -gap <= expected * 0.007: return ("fees", -gap)
+    if 0 < gap <= DEPOSIT_CAP: return ("deposit", gap)
     # 장 사이에 시세가 움직였을 만한 작은 차이 — 총액의 0.3% 안, 여러 장일 때
     if page_count > 1 and abs(gap) <= result["total"] * 0.003: return ("drift", abs(gap))
     return ("missing", gap) if gap > 0 else ("extra", -gap)

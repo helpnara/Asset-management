@@ -46,7 +46,36 @@ struct CaptureFillGroup: Identifiable {
     /// 사람이 고른 짝(읽은 종목 순번 → 앱 종목, `.some(nil)` = 짝 없음으로 둠).
     var manual: [Int: UUID?] = [:]
 
-    var canFill: Bool { result.isBalanced != false || fillUnchecked }
+    /// 이 계좌의 이번 점검 종목 가운데 캡처에 짝이 없는 것 — 직접 적을 줄.
+    @MainActor
+    func missingHoldings(in account: Account?, queued: Set<UUID>) -> [Holding] {
+        guard let account else { return [] }
+        let paired = pairs(in: account)
+        return account.sortedHoldings.filter { queued.contains($0.id) && !paired.contains($0.id) }
+    }
+
+    /// **근사 통과** (227번) — 검산은 안 맞지만 차이가 수수료 · 세금(총액이 작고 0.7% 안) 또는 소액 예치금(총액이 크고
+    /// 10만 원 안)으로 보이고, **그 계좌의 이번 점검 종목이 캡처에 모두 있을 때**. 작은 종목 하나를 통째로 못 읽은 것이
+    /// 차이 뒤에 숨지 않게 — 채우는 값은 종목마다의 평가금액이라 차이가 저장 값을 틀리게 하지는 않는다.
+    @MainActor
+    func explainedGap(in account: Account?, queued: Set<UUID>) -> CaptureBatch.Gap? {
+        guard result.isBalanced == false, account != nil,
+              let gap = CaptureBatch.gap(in: result, pages: pages.count), gap.isExplainable,
+              missingHoldings(in: account, queued: queued).isEmpty else { return nil }
+        return gap
+    }
+
+    /// 검산 통과 또는 근사 통과 — 채운 줄을 다녀간 줄로 센다.
+    @MainActor
+    func passes(in account: Account?, queued: Set<UUID>) -> Bool {
+        result.isBalanced == true || explainedGap(in: account, queued: queued) != nil
+    }
+
+    /// 채울 수 있나 — 총액이 없거나(검산 못 함) 통과 · 근사 통과거나, 사람이 `그래도 채우기` 를 켰다.
+    @MainActor
+    func canFill(in account: Account?, queued: Set<UUID>) -> Bool {
+        result.isBalanced != false || fillUnchecked || explainedGap(in: account, queued: queued) != nil
+    }
 
     /// 읽은 종목마다 짝 — 저절로 맞춘 것 위에 사람이 고른 것. 사람이 고른 종목은 다른 줄의 저절로 짝에서 뺀다.
     @MainActor
@@ -161,7 +190,7 @@ struct CaptureFillSheet: View {
     /// 채울 줄 수 — 계좌를 골랐고, 채울 수 있고, 짝이 있고, 이번 점검에 있고, 금액을 읽은 것.
     private var fillCount: Int {
         draft.groups.reduce(0) { count, group in
-            guard group.canFill, let account = account(group.accountID) else { return count }
+            guard let account = account(group.accountID), group.canFill(in: account, queued: queued) else { return count }
             let pairs = group.pairs(in: account)
             return count + group.result.items.indices.filter { index in
                 guard let id = pairs[index] else { return false }
@@ -193,9 +222,11 @@ struct CaptureFillSheet: View {
     }
 
     @ViewBuilder
-    private func badge(_ result: CaptureParser.Result) -> some View {
-        switch result.isBalanced {
+    private func badge(_ group: CaptureFillGroup, account: Account?) -> some View {
+        switch group.result.isBalanced {
         case .some(true): StatusBadge(text: "검산 통과", foreground: .brand, background: .brandSoft)
+        case .some(false) where group.explainedGap(in: account, queued: queued) != nil:
+            StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
         case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
         case .none: StatusBadge(text: "총액 없음")
         }
@@ -204,9 +235,9 @@ struct CaptureFillSheet: View {
     private func totalsText(_ result: CaptureParser.Result) -> String {
         guard let total = result.totalMinor else { return "읽은 합 \(Won.grouped(result.sumMinor))" }
         var text = "계좌 총액 \(Won.grouped(total)) · 읽은 합 \(Won.grouped(result.sumMinor))"
-        if let cash = result.cashMinor, result.expectedSumMinor != result.sumMinor {
-            text += " · 현금 \(Won.grouped(cash))"
-        }
+        let applied = result.applied
+        if let cash = applied.cashMinor { text += " · 현금 \(Won.grouped(cash))" }
+        if let fee = applied.feeMinor { text += " · 비용 \(Won.grouped(fee))" }
         if total != result.expectedSumMinor {
             text += " · 차이 \(Won.grouped(abs(total - result.expectedSumMinor)))원"
         }
@@ -225,8 +256,24 @@ struct CaptureFillSheet: View {
             return "읽은 합이 계좌 총액보다 \(Won.grouped(amount))원 많습니다 — 같은 종목이 두 번 들어갔거나 다른 계좌 캡처가 섞였을 수 있습니다." + tail
         case .drift(let amount)?:
             return "읽은 합이 계좌 총액과 \(Won.grouped(amount))원 다릅니다 — 캡처 사이에 시세가 움직였을 수 있습니다. 장이 끝난 뒤 다시 찍으면 맞습니다." + tail
+        case .fees(let amount)?:
+            return "계좌 총액이 읽은 합보다 \(Won.grouped(amount))원 작아 수수료 · 세금을 뺀 총액으로 보이지만, 캡처에 없는 종목이 있습니다." + tail
+        case .deposit(let amount)?:
+            return "계좌 총액이 읽은 합보다 \(Won.grouped(amount))원 커서 소액 예치금으로 보이지만, 캡처에 없는 종목이 있습니다." + tail
         case nil:
             return "합이 계좌 총액과 달라 한 종목을 잘못 읽었을 수 있습니다." + tail
+        }
+    }
+
+    /// 근사 통과의 말 — 채운다는 것과 차이가 무엇으로 보이는지.
+    private func explainedText(_ gap: CaptureBatch.Gap) -> String {
+        switch gap {
+        case .fees(let amount):
+            return "계좌 총액이 읽은 합보다 \(Won.grouped(amount))원 작습니다 — 팔 때 수수료 · 세금을 뺀 총액으로 보입니다. 이 계좌의 종목이 캡처에 모두 있어 채웁니다."
+        case .deposit(let amount):
+            return "계좌 총액이 읽은 합보다 \(Won.grouped(amount))원 큽니다 — 종목이 아닌 소액 예치금으로 보입니다. 이 계좌의 종목이 캡처에 모두 있어 채웁니다."
+        default:
+            return ""
         }
     }
 
@@ -243,7 +290,7 @@ struct CaptureFillSheet: View {
                     .font(.scaled(14, weight: .bold))
                     .foregroundStyle(Color.ink)
                 Spacer()
-                badge(value.result)
+                badge(value, account: chosen)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 10)
@@ -271,6 +318,10 @@ struct CaptureFillSheet: View {
                             .foregroundStyle(Color.muted)
                     }
                     switch value.result.isBalanced {
+                    case .some(false) where value.explainedGap(in: chosen, queued: queued) != nil:
+                        Text(explainedText(value.explainedGap(in: chosen, queued: queued)!))
+                            .font(.scaled(11.5))
+                            .foregroundStyle(Color.muted)
                     case .some(false):
                         Text(gapText(value.result, pages: value.pages.count))
                             .font(.scaled(11.5))
@@ -294,7 +345,7 @@ struct CaptureFillSheet: View {
                     itemRow(item, index: index, pair: pairs[index], account: chosen, group: group)
                 }
 
-                if !missing.isEmpty, value.canFill {
+                if !missing.isEmpty, value.canFill(in: chosen, queued: queued) {
                     Rectangle().fill(Color.rule).frame(height: 1).padding(.leading, Card.inset)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("캡처에 없는 종목 \(missing.count)개 — 점검에서 직접 적습니다")
