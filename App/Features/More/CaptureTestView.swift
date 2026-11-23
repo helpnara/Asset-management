@@ -67,6 +67,7 @@ struct CaptureTestView: View {
                 }
                 if !pages.isEmpty {
                     summary
+                    if pages.count > 1 { groupsCard }
                     ForEach(pages) { page in pageCard(page) }
                 }
             }
@@ -113,6 +114,42 @@ struct CaptureTestView: View {
                 .foregroundStyle(Color.muted)
         }
         .padding(Card.inset)
+        .cardSurface()
+    }
+
+    /// **계좌별로 묶어 읽은 결과** (226번) — `캡처로 채우기` 와 같은 묶기 · 이어 읽기. 한 계좌가 여러 장이면 줄을 이어 붙여
+    /// 한 번에 다시 읽고 검산한다. 장마다의 결과(아래 카드)로는 합이 모자라도 여기서 맞으면 채우기도 맞는다.
+    private var groupsCard: some View {
+        let groups = CaptureBatch.group(pages.map(\.lines), accounts: [])
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("계좌별로 묶어 읽기 · \(groups.count)묶음")
+                .font(.scaled(13.5, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 12)
+            ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                Rectangle().fill(Color.rule).frame(height: 1).padding(.leading, Card.inset)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(group.pages.map { String(pages[$0].number) }.joined(separator: " · ") + "번째 캡처")
+                            .font(.scaled(12.5, weight: .medium))
+                            .foregroundStyle(Color.ink)
+                        Text("종목 \(group.result.items.count)개 · 계좌 총액 \(group.result.totalMinor.map { Won.grouped($0) } ?? "—")"
+                             + " · 읽은 합 \(Won.grouped(group.result.sumMinor))" + differenceText(group.result))
+                            .font(.figure(11.5))
+                            .foregroundStyle(Color.muted)
+                    }
+                    Spacer(minLength: 8)
+                    switch group.result.isBalanced {
+                    case .some(true): StatusBadge(text: "검산 통과", foreground: .brand, background: .brandSoft)
+                    case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
+                    case .none: StatusBadge(text: "총액 못 찾음")
+                    }
+                }
+                .padding(.horizontal, Card.inset)
+                .padding(.vertical, 11)
+            }
+        }
         .cardSurface()
     }
 

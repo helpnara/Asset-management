@@ -404,14 +404,15 @@ struct WeeklyReviewView: View {
     /// 고른 그림을 차례로 읽어 계좌별로 묶고 확인 시트를 연다. 그림은 읽고 나면 버린다 — 고른 표지도 비운다.
     private func readCaptures(_ items: [PhotosPickerItem]) async {
         isReadingCaptures = true
-        var pages: [CaptureParser.Result] = []
+        // 장마다 **글자 줄**을 모은다 — 한 계좌가 여러 장이면 줄을 이어 붙여 한 번에 다시 읽는다(226번, `CaptureBatch.group`)
+        var pages: [[CaptureParser.Line]] = []
         var numbers: [Int] = []
         var failed = 0
         for (offset, item) in items.enumerated() {
             do {
                 guard let data = try await item.loadTransferable(type: Data.self) else { failed += 1; continue }
                 let lines = try await CaptureReader.recognize(data)
-                pages.append(CaptureParser.parse(lines))
+                pages.append(lines)
                 numbers.append(offset)
             } catch {
                 failed += 1

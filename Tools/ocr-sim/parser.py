@@ -124,7 +124,7 @@ def is_name(line):
     return True
 
 
-def parse(lines):
+def parse(lines, find_total=True):
     rows = sorted(lines, key=lambda l: (l["top"], l["x"]))
     toks = sorted([t for l in rows for t in tokens(l)], key=lambda t: (t["top"], t["x"]))
     placed = [a for l in rows for a in placed_amounts(l)]
@@ -145,14 +145,14 @@ def parse(lines):
 
     # 1) 계좌 총액 — 표가 있으면 머리줄 위 `평가금액` 같은 이름표 오른쪽의 금액, 없으면 위쪽 30% 의 가장 큰 글씨
     total, total_line = None, None
-    if column:
+    if column and find_total:
         for u in toks:
             if u["top"] >= column["top"] or label(u["text"]) not in TOTAL_LABELS: continue
             right = [a for a in placed if same_row(a, u) and a["x"] >= u["x"] + u["width"] - 0.01]
             if right:
                 a = min(right, key=lambda a: a["x"])
                 total = with_tail(a["value"], a["line"], a["end"], a["x"] + a["width"], rows); break
-    if total is None:
+    if total is None and find_total:
         # 총액 자리 — 위쪽 30%, 또는 **첫 종목 줄 위까지**(그게 더 아래면). 토스처럼 맨 위에 계좌 탭 · 원화 · 달러 카드가
         # 있으면 총액이 37% 쯤에 온다(11-21). 첫 종목 줄 = 같은 줄 오른쪽에 금액이 있는 이름 줄.
         item_tops = [l["top"] for l in rows if is_name(l)
@@ -204,7 +204,8 @@ def parse(lines):
     items = []
     for i, n in enumerate(names):
         lo = n["top"] - n["height"] * 0.6
-        hi = names[i + 1]["top"] - names[i + 1]["height"] * 0.6 if i + 1 < len(names) else 1.0
+        # 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
+        hi = names[i + 1]["top"] - names[i + 1]["height"] * 0.6 if i + 1 < len(names) else float("inf")
         if column:
             def in_column(a):
                 nearest = min(column["block"], key=lambda u: abs(cx(u) - cx(a)))
@@ -226,10 +227,13 @@ def parse(lines):
             value = cands[0][1]
         items.append(dict(name=n["text"], value=value))
     # 총액이 가장 큰 종목보다 작을 수는 없다 — 잘못 읽은 총액으로 검산하지 않는다(총액 없음으로)
+    # 머리 없는 장(아래로 넘겨 찍은 장)에서 종목 금액을 총액으로 잡은 것이다 — 그 줄을 머리로 삼아 계좌 줄 · 본문 시작까지
+    # 틀렸으니(위쪽 종목이 빠지고 종목 이름이 계좌 줄이 된다, 226번) **총액 없이 처음부터 다시 읽는다**
     values = [i["value"] for i in items if i["value"] is not None]
     if total is not None and values and total < max(values):
-        total = None
-    return dict(account=account, total=total, items=items, cash=cash)
+        return parse(lines, find_total=False)
+    # start = 본문이 시작되는 자리(머리 아래 끝) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번)
+    return dict(account=account, total=total, items=items, cash=cash, start=start)
 
 
 def is_balanced(result):

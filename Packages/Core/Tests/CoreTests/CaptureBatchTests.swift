@@ -62,7 +62,9 @@ struct CaptureBatchTests {
 
     // 가나증권 계좌를 두 장(둘째 장은 아래로 넘겨 찍어 계좌 줄 · 총액 없음), 다른 계좌 한 장, 다시 머리 없는 한 장.
     // 첫 묶음 1,000,000 + 2,000,000 + 3,000,000 = 6,000,000 = 총액 (다라화학은 두 장에 겹쳐 찍힘 — 한 번만)
-    @Test("묶기 — 머리 없는 장은 앞 묶음에, 다른 계좌를 가리키면 따로, 겹친 종목은 하나만")
+    // 226번: 머리 없는 장은 '바로 앞 묶음' 이 아니라 증거(검산 · 종목 짝)로 붙는다. 넷째 장(가나전자 한 줄)은 바로 앞이
+    // 다른 계좌(아무개의 투자)지만 가나증권 계좌의 종목이고 거기 이미 있는 줄이라 가나증권으로 — 다시 찍힌 장이다.
+    @Test("묶기 — 머리 없는 장은 증거로(검산 · 짝), 겹친 종목은 하나만")
     func group() {
         let gana = CaptureBatch.AccountInfo(id: id(10), captureKey: "",
                                             holdings: [holding(1, "가나전자"), holding(2, "다라화학"), holding(3, "마바바이오로직스")])
@@ -77,12 +79,11 @@ struct CaptureBatchTests {
             CaptureParser.Result(accountLine: nil, totalMinor: nil, items: [item("가나전자", 1_000_000)]),
         ]
         let groups = CaptureBatch.group(pages, accounts: [gana, toss])
-        #expect(groups.map(\.pages) == [[0, 1], [2], [3]])
+        #expect(groups.map(\.pages) == [[0, 1, 3], [2]])
         #expect(groups[0].result.items.map(\.name) == ["가나전자", "다라화학", "마바바이오로직스"])
         #expect(groups[0].result.totalMinor == 6_000_000)
         #expect(groups[0].result.isBalanced == true)
         #expect(groups[1].result.isBalanced == true)
-        #expect(groups[2].result.isBalanced == nil)
         #expect(CaptureBatch.suggestAccount(for: groups[0].result, among: [gana, toss]) == id(10))
         #expect(CaptureBatch.suggestAccount(for: groups[1].result, among: [gana, toss]) == id(20))
     }
@@ -123,5 +124,99 @@ struct CaptureBatchTests {
                                                 items: [item("가나전자", 1_000_000)])
         #expect(CaptureBatch.suggestAccount(for: daughterPage, among: [son, daughter]) == id(30))
     }
-}
 
+    // MARK: - 여러 장 이어 읽기 (226번). 줄 · 숫자는 지어낸 것 — 기댓값은 Tools/ocr-sim/batch.py 로 같은 입력을 돌려 확인했다.
+
+    private func line(_ text: String, _ x: Double, _ top: Double, _ width: Double, _ height: Double) -> CaptureParser.Line {
+        .init(text: text, x: x, top: top, width: width, height: height)
+    }
+    /// 상태 막대 · 아래 탭 막대 — 장마다 같은 자리에 되풀이된다.
+    private var chrome: [CaptureParser.Line] {
+        [line("9:41", 0.07, 0.01, 0.08, 0.02), line("홈", 0.10, 0.95, 0.05, 0.02), line("관심", 0.60, 0.95, 0.08, 0.02)]
+    }
+    private func row(_ name: String, _ amount: String, _ top: Double) -> [CaptureParser.Line] {
+        [line(name, 0.05, top, 0.30, 0.025), line(amount, 0.70, top, 0.25, 0.025)]
+    }
+    private var ganaHead: [CaptureParser.Line] {
+        [line("가나증권 012345678901", 0.05, 0.06, 0.40, 0.02), line("6,000,000원", 0.05, 0.09, 0.40, 0.04)]
+    }
+    /// 첫 장 — 계좌 줄 · 총액 6,000,000 · 종목 셋(합 4,000,000 — 아래로 더 있다).
+    private var firstPage: [CaptureParser.Line] {
+        chrome + ganaHead + row("가나전자", "1,000,000원", 0.40) + row("다라화학", "2,000,000원", 0.60)
+            + row("마바바이오로직스", "1,000,000원", 0.80)
+    }
+    /// 아래로 0.4 넘겨 찍은 장 — 위 두 줄은 첫 장과 겹치고 새 종목 둘(1,500,000 + 500,000).
+    private var secondPage: [CaptureParser.Line] {
+        chrome + row("다라화학", "2,000,000원", 0.20) + row("마바바이오로직스", "1,000,000원", 0.40)
+            + row("사아금융지주", "1,500,000원", 0.60) + row("자차중공업", "500,000원", 0.80)
+    }
+    private let fiveItems = ["가나전자", "다라화학", "마바바이오로직스", "사아금융지주", "자차중공업"]
+
+    @Test("겹침 — 같은 글자 · 같은 가로 자리의 줄들로 세로 간격을 잰다, 되풀이 막대는 세지 않는다")
+    func shiftBetweenPages() {
+        let d = CaptureBatch.shift(firstPage, secondPage)
+        #expect(d.map { abs($0 - 0.4) < 1e-9 } == true)
+        #expect(CaptureBatch.shift(secondPage, firstPage) == nil)   // 거꾸로는 아래로 이어지지 않는다
+        // 다른 계좌에 같은 종목(다라화학)이 한 줄 있어도 겹친 띠 전체가 안 맞으면 겹침이 아니다
+        let other = chrome + [line("다른증권 098765432109", 0.05, 0.06, 0.40, 0.02), line("2,700,000원", 0.05, 0.09, 0.40, 0.04)]
+            + row("다라화학", "2,000,000원", 0.60) + row("누리엔터", "700,000원", 0.80)
+        #expect(CaptureBatch.shift(other, secondPage) == nil)
+    }
+
+    @Test("두 장 이어 읽기 — 첫 장만으론 합이 모자라고, 이으면 다섯 종목 · 검산 통과 (고른 차례가 거꾸로여도)")
+    func stitchTwoPages() {
+        let alone = CaptureParser.parse(firstPage)
+        #expect(alone.totalMinor == 6_000_000)
+        #expect(alone.isBalanced == false)
+        #expect(CaptureBatch.gap(in: alone, pages: 1) == .missing(2_000_000))
+        let second = CaptureParser.parse(secondPage)
+        #expect(second.accountLine == nil && second.totalMinor == nil)   // 머리 없는 장
+
+        for pages in [[firstPage, secondPage], [secondPage, firstPage]] {
+            let groups = CaptureBatch.group(pages, accounts: [])
+            #expect(groups.map(\.pages) == [[0, 1]])
+            #expect(groups.first?.result.items.map(\.name) == fiveItems)
+            #expect(groups.first?.result.items.map(\.valueMinor) == [1_000_000, 2_000_000, 1_000_000, 1_500_000, 500_000])
+            #expect(groups.first?.result.totalMinor == 6_000_000)
+            #expect(groups.first?.result.isBalanced == true)
+        }
+    }
+
+    @Test("섞어 고르기 — 사이에 다른 계좌 장이 끼어도(같은 종목이 있어도) 겹침 · 검산으로 제 계좌에")
+    func mixedAccounts() {
+        let other = chrome + [line("다른증권 098765432109", 0.05, 0.06, 0.40, 0.02), line("2,700,000원", 0.05, 0.09, 0.40, 0.04)]
+            + row("다라화학", "2,000,000원", 0.60) + row("누리엔터", "700,000원", 0.80)
+        let groups = CaptureBatch.group([firstPage, other, secondPage], accounts: [])
+        #expect(groups.map(\.pages) == [[0, 2], [1]])
+        #expect(groups[0].result.items.map(\.name) == fiveItems)
+        #expect(groups[0].result.isBalanced == true)
+        #expect(groups[1].result.items.map(\.name) == ["다라화학", "누리엔터"])
+        #expect(groups[1].result.isBalanced == true)
+    }
+
+    @Test("머리가 붙어 다니는 앱 — 장마다 계좌 줄 · 총액이 되풀이돼도 한 계좌, 머리는 한 번만")
+    func stickyHead() {
+        let groups = CaptureBatch.group([firstPage, secondPage + ganaHead], accounts: [])
+        #expect(groups.map(\.pages) == [[0, 1]])
+        #expect(groups.first?.result.items.map(\.name) == fiveItems)
+        #expect(groups.first?.result.isBalanced == true)
+    }
+
+    @Test("검산 차이를 말로 — 못 고른 금액 · 모자람 · 넘침 · 여러 장 사이 시세 움직임")
+    func gapHints() {
+        func result(_ total: Int?, _ values: [Int?]) -> CaptureParser.Result {
+            .init(accountLine: nil, totalMinor: total,
+                  items: values.enumerated().map { .init(name: "종목\($0.offset)", valueMinor: $0.element) })
+        }
+        #expect(CaptureBatch.gap(in: result(nil, [1_000]), pages: 1) == nil)
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 2_000_000]), pages: 2) == nil)
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 2_000_001]), pages: 2) == nil)   // 종목 수(2)원까지는 맞음
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, nil]), pages: 1) == .unread(1))
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000]), pages: 1) == .missing(2_000_000))
+        #expect(CaptureBatch.gap(in: result(3_000_000, [2_000_000, 2_000_000]), pages: 1) == .extra(1_000_000))
+        // 0.3% = 9,000원 안 — 여러 장이면 시세, 한 장이면 그냥 모자람
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_991_000]), pages: 2) == .drift(9_000))
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_991_000]), pages: 1) == .missing(9_000))
+        #expect(CaptureBatch.gap(in: result(3_000_000, [1_000_000, 1_990_999]), pages: 2) == .missing(9_001))
+    }
+}

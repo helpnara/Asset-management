@@ -213,6 +213,23 @@ struct CaptureFillSheet: View {
         return text
     }
 
+    /// **검산이 안 맞을 때 무엇일 법한가** (226번) — 차이의 모양으로 짐작해 알려 준다. 어느 경우든 이 계좌는 채우지 않는다.
+    private func gapText(_ result: CaptureParser.Result, pages: Int) -> String {
+        let tail = " 그래서 이 계좌는 채우지 않습니다."
+        switch CaptureBatch.gap(in: result, pages: pages) {
+        case .unread(let count)?:
+            return "금액을 못 읽은 종목이 \(count)개 있습니다." + tail
+        case .missing(let amount)?:
+            return "읽은 합이 계좌 총액보다 \(Won.grouped(amount))원 모자랍니다 — 아래로 넘긴 캡처가 빠졌거나 한 종목을 잘못 읽었을 수 있습니다." + tail
+        case .extra(let amount)?:
+            return "읽은 합이 계좌 총액보다 \(Won.grouped(amount))원 많습니다 — 같은 종목이 두 번 들어갔거나 다른 계좌 캡처가 섞였을 수 있습니다." + tail
+        case .drift(let amount)?:
+            return "읽은 합이 계좌 총액과 \(Won.grouped(amount))원 다릅니다 — 캡처 사이에 시세가 움직였을 수 있습니다. 장이 끝난 뒤 다시 찍으면 맞습니다." + tail
+        case nil:
+            return "합이 계좌 총액과 달라 한 종목을 잘못 읽었을 수 있습니다." + tail
+        }
+    }
+
     private func groupCard(_ group: Binding<CaptureFillGroup>) -> some View {
         let value = group.wrappedValue
         let chosen = account(value.accountID)
@@ -248,9 +265,14 @@ struct CaptureFillSheet: View {
                     Text(totalsText(value.result))
                         .font(.figure(12))
                         .foregroundStyle(Color.muted)
+                    if value.pages.count > 1 {
+                        Text("캡처 \(value.pages.count)장을 이어 읽었습니다 — 겹친 종목은 한 번만 셉니다.")
+                            .font(.scaled(11.5))
+                            .foregroundStyle(Color.muted)
+                    }
                     switch value.result.isBalanced {
                     case .some(false):
-                        Text("합이 계좌 총액과 달라 한 종목을 잘못 읽었을 수 있습니다. 그래서 이 계좌는 채우지 않습니다.")
+                        Text(gapText(value.result, pages: value.pages.count))
                             .font(.scaled(11.5))
                             .foregroundStyle(Color.caution)
                         Toggle("그래도 채우기", isOn: group.fillUnchecked)

@@ -56,6 +56,8 @@ public enum CaptureParser {
         public let items: [Item]
         /// 화면의 현금(`출금가능금액` · `예수금`) — 있으면. 계좌 총액이 현금을 품은 화면의 검산에 쓴다.
         public var cashMinor: Int?
+        /// 본문이 시작되는 자리(머리 아래 끝, 없으면 −1) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번).
+        var bodyTop: Double = -1
 
         public init(accountLine: String?, totalMinor: Int?, items: [Item], cashMinor: Int? = nil) {
             self.accountLine = accountLine
@@ -285,6 +287,10 @@ public enum CaptureParser {
     }
 
     public static func parse(_ lines: [Line]) -> Result {
+        parse(lines, findsTotal: true)
+    }
+
+    static func parse(_ lines: [Line], findsTotal: Bool) -> Result {
         let rows = lines.sorted { ($0.top, $0.x) < ($1.top, $1.x) }
         let tokens = rows.flatMap(words).sorted { ($0.top, $0.x) < ($1.top, $1.x) }
         let amountsPlaced = rows.flatMap(placed)
@@ -312,7 +318,8 @@ public enum CaptureParser {
         // 1) 계좌 총액 — 표가 있으면 머리줄 위 `평가금액` 같은 이름표 오른쪽의 금액, 없으면 위쪽 30% 의 가장 큰 글씨
         var total: Int?
         var totalLine: Line?
-        if let column {
+        // 다시 읽을 때(`findsTotal` 거짓)는 두 길 모두 끈다 — 표의 이름표 총액도 틀렸을 수 있고, 켜 두면 끝없이 다시 읽는다
+        if let column, findsTotal {
             for token in tokens where token.top < column.top && totalLabels.contains(label(token.text)) {
                 let right = amountsPlaced.filter { sameRow($0.box, token) && $0.box.x >= token.x + token.width - 0.01 }
                 if let nearest = right.min(by: { $0.box.x < $1.box.x }) {
@@ -322,7 +329,7 @@ public enum CaptureParser {
                 }
             }
         }
-        if total == nil {
+        if total == nil, findsTotal {
             // 총액 자리 — 위쪽 30%, 또는 **첫 종목 줄 위까지**(그게 더 아래면). 토스처럼 맨 위에 계좌 탭 · 원화 · 달러 카드가
             // 있으면 총액이 37% 쯤에 온다(11-21). 첫 종목 줄 = 같은 줄 오른쪽에 금액이 있는 이름 줄.
             let itemTops = rows.filter { line in
@@ -384,7 +391,8 @@ public enum CaptureParser {
         var items: [Item] = []
         for (index, name) in names.enumerated() {
             let low = name.top - name.height * 0.6
-            let high = index + 1 < names.count ? names[index + 1].top - names[index + 1].height * 0.6 : 1.0
+            // 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
+            let high = index + 1 < names.count ? names[index + 1].top - names[index + 1].height * 0.6 : .infinity
             if let column {
                 let candidates = amountsPlaced
                     .filter { $0.box.top >= low && $0.box.top < high && column.contains($0.box) }
@@ -410,11 +418,15 @@ public enum CaptureParser {
                 items.append(Item(name: name.text, valueMinor: candidates.first?.value))
             }
         }
-        // 총액이 가장 큰 종목보다 작을 수는 없다 — 잘못 읽은 총액으로 검산하지 않는다(총액 없음으로)
+        // 총액이 가장 큰 종목보다 작을 수는 없다 — 머리 없는 장(아래로 넘겨 찍은 장)에서 종목 금액을 총액으로 잡은 것이다.
+        // 그 줄을 머리로 삼아 계좌 줄 · 본문 시작까지 틀렸으니(위쪽 종목이 빠지고 종목 이름이 계좌 줄이 된다, 226번)
+        // **총액 없이 처음부터 다시 읽는다**
         if let value = total, let largest = items.compactMap(\.valueMinor).max(), value < largest {
-            total = nil
+            return parse(lines, findsTotal: false)
         }
-        return Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash)
+        var result = Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash)
+        result.bodyTop = start
+        return result
     }
 
     // MARK: - 이름 맞추기
