@@ -145,9 +145,7 @@ struct CaptureTestView: View {
                     case .some(false) where CaptureBatch.gap(in: group.result, pages: group.pages.count)?.isExplainable == true:
                         // 차이가 수수료 · 세금(0.7% 안) 또는 소액 예치금(10만 원 안)으로 보인다 — 점검에서는 종목이 모두 있으면 채운다(227번)
                         StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
-                    case .some(false) where CaptureBatch.gap(in: page.result, pages: 1)?.isExplainable == true:
-                    StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
-                case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
+                    case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
                     case .none: StatusBadge(text: "총액 못 찾음")
                     }
                 }
@@ -167,6 +165,8 @@ struct CaptureTestView: View {
                 Spacer()
                 switch page.result.isBalanced {
                 case .some(true): StatusBadge(text: "검산 통과", foreground: .brand, background: .brandSoft)
+                case .some(false) where CaptureBatch.gap(in: page.result, pages: 1)?.isExplainable == true:
+                    StatusBadge(text: "근사 통과", foreground: .brand, background: .brandSoft)
                 case .some(false): StatusBadge(text: "확인 필요", foreground: .caution, background: .goldSoft)
                 case .none: StatusBadge(text: "총액 못 찾음")
                 }
