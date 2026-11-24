@@ -291,8 +291,9 @@ def parse(lines, find_total=True):
             if not cands:
                 # 오른쪽에 금액이 하나도 없으면 — 이름 **바로 아래 같은 왼쪽 자리에 금액만 있는 줄** (231번, 비중 도넛 화면:
                 # `VOO` / `54,xxx,xxx원` 왼쪽에 쌓이고 오른쪽은 `42.8%`). 수량 · 매입 줄은 금액만 있는 줄이 아니라 안 걸린다
+                # 글씨가 이름보다 훨씬 크면(1.3배 넘게) 묶음 소계다 — `Alpha` / `587,601원` (토스 표 보기, 231번 검토 중 찾음)
                 stacked = [l for l in band if l["x"] <= 0.25 and abs(l["x"] - n["x"]) < 0.03 and l["top"] > n["top"]
-                           and AMOUNT_ONLY.match(digits_fixed(l["text"]).strip())]
+                           and l["height"] <= n["height"] * 1.3 and AMOUNT_ONLY.match(digits_fixed(l["text"]).strip())]
                 cands = [(l, v) for l in stacked[:1] for v in amounts(l["text"])]
             if not cands:
                 # 원화 금액이 하나도 없고 달러 금액만 있는 종목 (229번) — 증권사 앱이 `$` 로 보이는 화면. 앱은 원화로만 적고

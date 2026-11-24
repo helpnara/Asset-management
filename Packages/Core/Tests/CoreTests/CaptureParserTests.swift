@@ -487,5 +487,13 @@ struct CaptureParserTests {
         #expect(result.items.map(\.name) == ["가나전자", "다라화학", "VEGA 200"])
         #expect(result.items.map(\.valueMinor) == [5_000_000, 3_000_000, 2_000_000])
         #expect(result.isBalanced == true)
+
+        // 묶음 머리(`Alpha` 아래 큰 글씨 소계)는 종목이 아니다 — 소계 글씨가 이름보다 1.3배 넘게 크다(토스 표 보기)
+        let grouped = CaptureParser.parse([
+            line("Alpha", 0.057, 0.30, h: 0.014, w: 0.08), line("1,000,000원", 0.057, 0.325, h: 0.022, w: 0.2),
+            line("-7.6%", 0.28, 0.328, h: 0.015, w: 0.08),
+            line("가나전자", 0.057, 0.40, h: 0.016, w: 0.15), line("1,000,000원", 0.76, 0.40, h: 0.016, w: 0.17),
+        ])
+        #expect(grouped.items.map(\.name) == ["가나전자"])
     }
 }

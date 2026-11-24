@@ -520,8 +520,9 @@ public enum CaptureParser {
                 if candidates.isEmpty {
                     // 오른쪽에 금액이 하나도 없으면 — 이름 **바로 아래 같은 왼쪽 자리에 금액만 있는 줄** (231번, 비중 도넛 화면:
                     // `VOO` / `54,xxx,xxx원` 이 왼쪽에 쌓이고 오른쪽은 `42.8%`). 수량 · 매입 줄은 금액만 있는 줄이 아니라 안 걸린다
+                    // 글씨가 이름보다 훨씬 크면(1.3배 넘게) 묶음 소계다 — `Alpha` / `587,601원` (토스 표 보기, 231번 검토 중 찾음)
                     let stacked = band.filter { line in
-                        line.x <= 0.25 && abs(line.x - name.x) < 0.03 && line.top > name.top
+                        line.x <= 0.25 && abs(line.x - name.x) < 0.03 && line.top > name.top && line.height <= name.height * 1.3
                             && digitsFixed(line.text).trimmingCharacters(in: .whitespaces)
                                 .range(of: #"^\d{1,3}(?:,\d{3})+\s?원?$"#, options: .regularExpression) != nil
                     }
