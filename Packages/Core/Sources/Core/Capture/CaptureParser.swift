@@ -517,6 +517,16 @@ public enum CaptureParser {
                 var candidates: [(line: Line, value: Int)] = band.flatMap { line in
                     line.x > 0.25 && !otherLabelLeft(line) ? lineValues(line, rows: rows).map { (line, $0) } : []
                 }
+                if candidates.isEmpty {
+                    // 오른쪽에 금액이 하나도 없으면 — 이름 **바로 아래 같은 왼쪽 자리에 금액만 있는 줄** (231번, 비중 도넛 화면:
+                    // `VOO` / `54,xxx,xxx원` 이 왼쪽에 쌓이고 오른쪽은 `42.8%`). 수량 · 매입 줄은 금액만 있는 줄이 아니라 안 걸린다
+                    let stacked = band.filter { line in
+                        line.x <= 0.25 && abs(line.x - name.x) < 0.03 && line.top > name.top
+                            && digitsFixed(line.text).trimmingCharacters(in: .whitespaces)
+                                .range(of: #"^\d{1,3}(?:,\d{3})+\s?원?$"#, options: .regularExpression) != nil
+                    }
+                    candidates = stacked.prefix(1).flatMap { line in amounts(in: line.text).map { (line: line, value: $0) } }
+                }
                 guard !candidates.isEmpty else {
                     // 원화 금액이 하나도 없고 달러 금액만 있는 종목 (229번) — 증권사 앱이 `$` 로 보이는 화면. 앱은 원화로만 적고
                     // 환율을 가져오지 않으므로(ADR-0005) 읽지 않고, `원` 으로 바꿔 찍어 달라고 알린다

@@ -469,4 +469,23 @@ struct CaptureParserTests {
         #expect(!CaptureParser.dividendLine("VEGA 미국배당다우존스"))
         #expect(!CaptureParser.dividendLine("배당 플래너"))
     }
+
+    // 231번 — 11-23 실제 화면(비중 도넛)의 배치. 이름 · 숫자는 지어낸 것. 금액이 이름 바로 아래 왼쪽, 오른쪽은 비율뿐.
+    // 기댓값은 Tools/ocr-sim/parser.py 로 같은 줄을 돌려 확인했다.
+    @Test("이름 아래 왼쪽 금액 — 오른쪽에 금액이 없으면 이름 바로 아래 같은 자리의 금액만 있는 줄을 읽는다")
+    func stackedLeftAmounts() {
+        var lines = [line("20:45", 0.10, 0.033, h: 0.019, w: 0.14), line("총 금액", 0.057, 0.164, h: 0.013, w: 0.082),
+                     line("10,000,000원", 0.056, 0.186, h: 0.043, w: 0.452)]
+        for (name, amount, percent, top) in [("가나전자", "5,000,000원", "50.0%", 0.48), ("다라화학", "3,000,000원", "30.0%", 0.54),
+                                             ("VEGA 200", "2,000,000원", "20.0%", 0.60)] {
+            lines += [line(name, 0.161, top, h: 0.017, w: 0.13), line(percent, 0.82, top + 0.009, h: 0.02, w: 0.12),
+                      line(amount, 0.160, top + 0.025, h: 0.017, w: 0.19)]
+        }
+        lines += [line("국내주식 해외주식", 0.41, 0.911, h: 0.02, w: 0.306), line("전체", 0.293, 0.913, h: 0.018, w: 0.069)]
+        let result = CaptureParser.parse(lines)
+        #expect(result.totalMinor == 10_000_000)
+        #expect(result.items.map(\.name) == ["가나전자", "다라화학", "VEGA 200"])
+        #expect(result.items.map(\.valueMinor) == [5_000_000, 3_000_000, 2_000_000])
+        #expect(result.isBalanced == true)
+    }
 }

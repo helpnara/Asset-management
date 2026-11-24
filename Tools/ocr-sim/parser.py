@@ -43,6 +43,7 @@ def money_word(text):
 
 
 # 달러로 적힌 평가금 — `$3,303.22`. `0.93 USD` 같은 현재가 줄은 세지 않는다(g1 — 평가금은 원화, 현재가만 달러)
+AMOUNT_ONLY = re.compile(r"^\d{1,3}(?:,\d{3})+\s?원?$")   # 금액만 있는 줄 (231번)
 DOLLAR = re.compile(r"^(?:US)?\$\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?$")
 
 
@@ -287,6 +288,12 @@ def parse(lines, find_total=True):
             def other_label_left(l):
                 return any(same_row(m, l) and m["x"] < l["x"] and label(m["text"]) in LABELS - VALUE_LABELS for m in rows)
             cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in line_values(l, rows)]
+            if not cands:
+                # 오른쪽에 금액이 하나도 없으면 — 이름 **바로 아래 같은 왼쪽 자리에 금액만 있는 줄** (231번, 비중 도넛 화면:
+                # `VOO` / `54,xxx,xxx원` 왼쪽에 쌓이고 오른쪽은 `42.8%`). 수량 · 매입 줄은 금액만 있는 줄이 아니라 안 걸린다
+                stacked = [l for l in band if l["x"] <= 0.25 and abs(l["x"] - n["x"]) < 0.03 and l["top"] > n["top"]
+                           and AMOUNT_ONLY.match(digits_fixed(l["text"]).strip())]
+                cands = [(l, v) for l in stacked[:1] for v in amounts(l["text"])]
             if not cands:
                 # 원화 금액이 하나도 없고 달러 금액만 있는 종목 (229번) — 증권사 앱이 `$` 로 보이는 화면. 앱은 원화로만 적고
                 # 환율을 가져오지 않으므로(ADR-0005) 읽지 않고, `원` 으로 바꿔 찍어 달라고 알린다(현재가만 달러인 화면은 세지 않는다)
