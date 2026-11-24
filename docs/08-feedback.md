@@ -8953,3 +8953,5 @@ Swift 시험 `tossWithTabs`(두 경우를 지어낸 숫자로). 가상 캡처 18
 
 **1.0.22** 에 231 과 함께.
 
+**CI 370** 통과 → **TestFlight 166 실패(11-24 21:24)** — 아카이브에서 `maximum number of certificates`(코드 문제 아님, [06](06-testflight.md) "인증서가 꽉 찼습니다"). 오래된 Apple Development 인증서 Revoke 를 사용자에게 부탁했다.
+
