@@ -12,6 +12,8 @@ TOTAL_LABELS = {"평가금액", "평가액", "평가금", "총평가금액", "�
 # 계좌 총액 이름표 — `자산 43,491 원` 처럼 총액 옆에 붙는 말. 종목 이름이 아니다 (228번)
 ASSET_WORDS = {"자산", "총자산", "순자산", "추정자산", "예탁자산", "총예탁자산", "추정예탁자산", "평가자산", "총평가자산"}
 LABELS |= ASSET_WORDS
+# 표 보기의 열 이름표 — `종목명 · 총 수익 · 1주 평균 금액 · 총 금액` (토스 표 보기, 232번). 종목 이름이 아니다
+LABELS |= {"총수익", "1주평균금액", "평균금액", "총금액"}
 TOTAL_LABELS |= ASSET_WORDS
 NOT_VALUE_PREFIXES = ["매입", "원금", "손익", "평균", "단가", "현재가", "매수", "평단", "담보", "환율", "예수금", "출금", "가능금액"]
 CASH_WORDS = ["출금가능", "예수금", "주문가능현금"]
@@ -43,6 +45,7 @@ def money_word(text):
 
 
 # 달러로 적힌 평가금 — `$3,303.22`. `0.93 USD` 같은 현재가 줄은 세지 않는다(g1 — 평가금은 원화, 현재가만 달러)
+LEADING_AMOUNT = re.compile(r"^\d{1,3}(?:,\d{3})+\s?원?(?:\s|$)")   # 금액으로 시작하는 줄 — 묶음 소계 (232번)
 AMOUNT_ONLY = re.compile(r"^\d{1,3}(?:,\d{3})+\s?원?$")   # 금액만 있는 줄 (231번)
 DOLLAR = re.compile(r"^(?:US)?\$\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?$")
 
@@ -110,6 +113,12 @@ def tokens(line):
     return [dict(text=m.group(0), x=line["x"] + line["width"] * m.start() / n, top=line["top"],
                  width=line["width"] * (m.end() - m.start()) / n, height=line["height"])
             for m in re.finditer(r"\S+", line["text"])]
+
+
+def right_edge(line, value):
+    """그 금액의 오른쪽 끝 — 한 줄에 금액이 여럿이면 글자 자리로 어림한다 (232번 열 맞추기)."""
+    spans = [a for a in placed_amounts(line) if a["value"] == value]
+    return spans[0]["x"] + spans[0]["width"] if spans else line["x"] + line["width"]
 
 
 def placed_amounts(line):
@@ -265,6 +274,8 @@ def parse(lines, find_total=True):
 
     # 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
     items, dollars = [], 0
+    pools = []       # 종목마다 후보 금액 [(오른쪽 끝, 위, 값)] — 검산이 안 맞으면 같은 열로 다시 고른다 (232번)
+    subtotals = []   # 묶음 소계 — `Alpha` / `587,601원` (232번)
     for i, n in enumerate(names):
         lo = n["top"] - n["height"] * 0.6
         # 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
@@ -283,8 +294,15 @@ def parse(lines, find_total=True):
             cands = sorted([a for a in placed if lo <= a["top"] < hi and in_column(a)], key=lambda a: a["top"])
             if not cands: continue
             value = cands[column["rank"]]["value"] if len(cands) > column["rank"] else None
+            pools.append(None)
         else:
             band = [l for l in body if lo <= l["top"] < hi and l is not n]
+            # 묶음 소계 (232번) — 이름 바로 아래 같은 왼쪽 자리의 **훨씬 큰 글씨** 금액(`Alpha` / `587,601원 -7.6%`).
+            # 종목이 아니다(오른쪽에 다음 종목의 올라간 칸이 걸려 있어도). 계좌 총액이 화면에 없으면 소계의 합으로 검산한다
+            big = [l for l in band if l["x"] <= 0.25 and abs(l["x"] - n["x"]) < 0.03 and n["top"] < l["top"] < bottom(n) + n["height"] * 2
+                   and l["height"] > n["height"] * 1.3 and LEADING_AMOUNT.match(digits_fixed(l["text"]).strip()) and amounts(l["text"])]
+            if big:
+                subtotals.append(amounts(big[0]["text"])[0]); continue
             def other_label_left(l):
                 return any(same_row(m, l) and m["x"] < l["x"] and label(m["text"]) in LABELS - VALUE_LABELS for m in rows)
             cands = [(l, v) for l in band if l["x"] > 0.25 and not other_label_left(l) for v in line_values(l, rows)]
@@ -306,6 +324,7 @@ def parse(lines, find_total=True):
             else:
                 cands.sort(key=lambda lv: (-lv[0]["height"], -lv[1]))
             value = cands[0][1]
+            pools.append([(right_edge(l, v), l["top"], v) for l, v in cands if l["x"] > 0.25])
         items.append(dict(name=n["text"], value=value))
     # 총액이 가장 큰 종목보다 작을 수는 없다 — 잘못 읽은 총액으로 검산하지 않는다(총액 없음으로)
     # 머리 없는 장(아래로 넘겨 찍은 장)에서 종목 금액을 총액으로 잡은 것이다 — 그 줄을 머리로 삼아 계좌 줄 · 본문 시작까지
@@ -313,6 +332,32 @@ def parse(lines, find_total=True):
     values = [i["value"] for i in items if i["value"] is not None]
     if total is not None and values and total < max(values):
         return parse(lines, find_total=False)
+    # 계좌 총액이 화면에 없고 묶음 소계가 있으면 그 합 (232번)
+    if total is None and subtotals and items and len(subtotals) <= len(items):
+        total = sum(subtotals)
+    # **검산이 답을 고른다** (232번) — 고른 값으로 합이 안 맞으면, 종목마다 같은 열(오른쪽 끝이 맞는 칸)의 후보로 다시 고른다.
+    # 합이 총액과 맞는 열이 딱 하나면 그 열이다(1주 평균 금액이 총 금액보다 큰 1주 미만 보유 · 열 이름표를 모르는 표)
+    if total is not None and items and all(p for p in pools) and len(pools) == len(items):
+        def balanced(vals):
+            return bool(is_balanced(dict(total=total, cash=cash, fee=fee,
+                                         items=[dict(name=it["name"], value=v) for it, v in zip(items, vals)])))
+        if not balanced([it["value"] for it in items]):
+            edges = sorted({round(e, 3) for pool in pools for e, _, _ in pool})
+            columns = []
+            for e in edges:
+                if not columns or e - columns[-1][-1] > 0.02: columns.append([e])
+                else: columns[-1].append(e)
+            found = set()
+            for col in columns:
+                center = sum(col) / len(col)
+                vals = []
+                for pool in pools:
+                    inside = sorted([(t, v) for e, t, v in pool if abs(e - center) <= 0.02 + (col[-1] - col[0]) / 2])
+                    if not inside: break
+                    vals.append(inside[0][1])
+                if len(vals) == len(items) and balanced(vals): found.add(tuple(vals))
+            if len(found) == 1:
+                for it, v in zip(items, found.pop()): it["value"] = v
     # start = 본문이 시작되는 자리(머리 아래 끝) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번)
     return dict(account=account, total=total, items=items, cash=cash, fee=fee, start=start, dollars=dollars)
 

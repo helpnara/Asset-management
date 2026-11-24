@@ -100,7 +100,9 @@ public enum CaptureParser {
 
     static let labels: Set<String> = Set<String>(["평가금액", "평가액", "평가금", "매입금액", "매입가", "매입단가", "수익률", "손익률", "투자원금",
                                       "종목명", "잔고", "체결", "손익", "평가손익", "보유", "보유수량", "주문", "주문가능", "현재가",
-                                      "평균단가", "평단가", "수량", "매도가능"]).union(assetWords)
+                                      "평균단가", "평단가", "수량", "매도가능",
+                                      // 표 보기의 열 이름표 — `종목명 · 총 수익 · 1주 평균 금액 · 총 금액` (토스 표 보기, 232번)
+                                      "총수익", "1주평균금액", "평균금액", "총금액"]).union(assetWords)
     static let valueLabels: Set<String> = ["평가금액", "평가액", "평가금"]
     static let totalLabels: Set<String> = Set<String>(["평가금액", "평가액", "평가금", "총평가금액", "총평가액", "총평가",
                                                        "평가금액합계", "평가합계"]).union(assetWords)
@@ -259,6 +261,11 @@ public enum CaptureParser {
         /// 읽어 낸 줄과 그 줄에서 금액이 끝나는 자리 — 총액의 떨어진 끝 세 자리를 붙일 때 쓴다(`withTail`).
         let line: Line
         let end: Int
+    }
+
+    /// 그 금액의 오른쪽 끝 — 한 줄에 금액이 여럿이면 글자 자리로 어림한다 (232번 열 맞추기).
+    static func rightEdge(_ line: Line, value: Int) -> Double {
+        placed(line).first { $0.value == value }.map { $0.box.x + $0.box.width } ?? line.x + line.width
     }
 
     static func placed(_ line: Line) -> [Placed] {
@@ -488,6 +495,10 @@ public enum CaptureParser {
         // 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
         var items: [Item] = []
         var dollars = 0
+        /// 종목마다 후보 금액(오른쪽 끝 · 위 · 값) — 검산이 안 맞으면 같은 열로 다시 고른다(232번). 표 열로 고른 종목은 nil.
+        var pools: [[(edge: Double, top: Double, value: Int)]?] = []
+        /// 묶음 소계 — `Alpha` / `587,601원` (232번).
+        var subtotals: [Int] = []
         for (index, name) in names.enumerated() {
             let low = name.top - name.height * 0.6
             // 마지막 이름은 끝까지 — 이어 붙인 여러 장(226번)은 1 을 넘는다
@@ -506,10 +517,22 @@ public enum CaptureParser {
                     .filter { $0.box.top >= low && $0.box.top < high && column.contains($0.box) }
                     .sorted { $0.box.top < $1.box.top }
                 guard !candidates.isEmpty else { continue }
+                pools.append(nil)
                 items.append(Item(name: name.text,
                                   valueMinor: candidates.count > column.rank ? candidates[column.rank].value : nil))
             } else {
                 let band = body.filter { $0.top >= low && $0.top < high && $0 != name }
+                // 묶음 소계 (232번) — 이름 바로 아래 같은 왼쪽 자리의 **훨씬 큰 글씨** 금액(`Alpha` / `587,601원 -7.6%`).
+                // 종목이 아니다(오른쪽에 다음 종목의 올라간 칸이 걸려 있어도). 계좌 총액이 화면에 없으면 소계의 합으로 검산한다
+                if let big = band.first(where: { line in
+                    line.x <= 0.25 && abs(line.x - name.x) < 0.03 && line.top > name.top
+                        && line.top < name.bottom + name.height * 2 && line.height > name.height * 1.3
+                        && digitsFixed(line.text).trimmingCharacters(in: .whitespaces)
+                            .range(of: #"^\d{1,3}(?:,\d{3})+\s?원?(?:\s|$)"#, options: .regularExpression) != nil
+                }), let subtotal = amounts(in: big.text).first {
+                    subtotals.append(subtotal)
+                    continue
+                }
                 // 같은 줄 왼쪽에 평가금액이 아닌 이름표(`현재가(장마감)` · `매입금액` …)가 있으면 그 줄의 금액은 아니다
                 func otherLabelLeft(_ line: Line) -> Bool {
                     rows.contains { sameRow($0, line) && $0.x < line.x && labels.subtracting(valueLabels).contains(label($0.text)) }
@@ -539,6 +562,8 @@ public enum CaptureParser {
                 } else {
                     candidates.sort { ($0.line.height, $0.value) > ($1.line.height, $1.value) }
                 }
+                pools.append(candidates.filter { $0.line.x > 0.25 }
+                    .map { (edge: rightEdge($0.line, value: $0.value), top: $0.line.top, value: $0.value) })
                 items.append(Item(name: name.text, valueMinor: candidates.first?.value))
             }
         }
@@ -547,6 +572,43 @@ public enum CaptureParser {
         // **총액 없이 처음부터 다시 읽는다**
         if let value = total, let largest = items.compactMap(\.valueMinor).max(), value < largest {
             return parse(lines, findsTotal: false)
+        }
+        // 계좌 총액이 화면에 없고 묶음 소계가 있으면 그 합 (232번)
+        if total == nil, !subtotals.isEmpty, !items.isEmpty, subtotals.count <= items.count {
+            total = subtotals.reduce(0, +)
+        }
+        // **검산이 답을 고른다** (232번) — 고른 값으로 합이 안 맞으면, 종목마다 같은 열(오른쪽 끝이 맞는 칸)의 후보로 다시 고른다.
+        // 합이 총액과 맞는 열이 딱 하나면 그 열이다(1주 평균 금액이 총 금액보다 큰 1주 미만 보유 · 열 이름표를 모르는 표)
+        if let total, !items.isEmpty, pools.count == items.count {
+            let generic = pools.compactMap { $0 }
+            func balanced(_ values: [Int?]) -> Bool {
+                Result(accountLine: nil, totalMinor: total,
+                       items: zip(items, values).map { Item(name: $0.name, valueMinor: $1) },
+                       cashMinor: cash, feeMinor: fee).isBalanced == true
+            }
+            if generic.count == items.count, generic.allSatisfy({ !$0.isEmpty }), !balanced(items.map(\.valueMinor)) {
+                // 오른쪽 끝을 0.02 안으로 모아 열을 만든다
+                var columns: [[Double]] = []
+                for edge in Set(generic.flatMap { $0.map { ($0.edge * 1000).rounded() / 1000 } }).sorted() {
+                    if let last = columns.last?.last, edge - last <= 0.02 {
+                        columns[columns.count - 1].append(edge)
+                    } else {
+                        columns.append([edge])
+                    }
+                }
+                var found: Set<[Int]> = []
+                for column in columns {
+                    let center = column.reduce(0, +) / Double(column.count)
+                    let reach = 0.02 + (column[column.count - 1] - column[0]) / 2
+                    let values = generic.compactMap { pool in
+                        pool.filter { abs($0.edge - center) <= reach }.min { $0.top < $1.top }?.value
+                    }
+                    if values.count == items.count, balanced(values) { found.insert(values) }
+                }
+                if found.count == 1, let values = found.first {
+                    items = zip(items, values).map { Item(name: $0.name, valueMinor: $1) }
+                }
+            }
         }
         var result = Result(accountLine: accountLine, totalMinor: total, items: items, cashMinor: cash, feeMinor: fee)
         result.bodyTop = start
