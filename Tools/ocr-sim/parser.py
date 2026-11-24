@@ -64,6 +64,14 @@ def label(text):
     return re.sub(r"\([^)]*\)|%|\s", "", text)
 
 
+def is_label(text):
+    """이름표 줄인가 — 끝에 붙은 한 글자 조각까지 봐준다(`종목명 7` · `총 금액 C` · `1주 평균 금액 〈` — 정렬 화살표를
+    텍스트 인식이 글자로 읽는다, 232번 실제 화면)."""
+    if label(text) in LABELS: return True
+    m = re.match(r"^(.*\S)\s+\S$", text.strip())
+    return bool(m) and label(m.group(1)) in LABELS
+
+
 def digits_fixed(text):
     """숫자 사이에 낀 닮은 글자를 숫자로 — 텍스트 인식이 굵은 1 을 l · I 로, 0 을 O 로 읽을 때. 길이는 그대로."""
     text = re.sub(r"(?<=[\d,])[lI|](?=[\d,원]|$)", "1", text)
@@ -162,9 +170,9 @@ def line_values(line, rows):
 
 def is_name(line):
     t = line["text"].strip()
-    if line["x"] >= 0.5 or label(t) in LABELS: return False
+    if line["x"] >= 0.5 or is_label(t): return False
     if not re.search(r"[^\W\d_]", t): return False
-    if re.search(r"\d,\d{3}", t): return False                       # 매입 … · 투자원금 … · 수량 줄
+    if re.search(r"\d,\d{3}", digits_fixed(t)): return False          # 매입 … · 투자원금 … · 수량 줄 (`현재가 390, 000원` 도)
     if "****" in t or t.startswith("총 ") or "평가손익" in t or ACCOUNT.search(t): return False
     if money_word(t): return False   # 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지)
     if dividend_line(t): return False   # 배당 이름표 줄 (230번)
@@ -264,9 +272,11 @@ def parse(lines, find_total=True):
         if names and not names[-1].get("kind"):
             p = names[-1]
             gap = l["top"] - bottom(p)
-            if abs(l["x"] - p["x"]) < 0.02 and 0 < gap < p["height"] * 0.9:
+            # 줄 사이는 **바로 위 조각**의 글씨 높이로 잰다 — 붙인 덩어리의 높이로 재면 붙일수록 커져 화면 전체가 한 이름이 된다
+            # (232번 실제 화면: 다섯 종목이 한 이름이 되어 소계와 같은 값으로 검산을 통과했다)
+            if abs(l["x"] - p["x"]) < 0.02 and 0 < gap < p.get("frag", p["height"]) * 0.9:
                 names[-1] = dict(text=p["text"] + " " + l["text"], x=p["x"], top=p["top"],
-                                 width=max(p["width"], l["width"]), height=bottom(l) - p["top"]); continue
+                                 width=max(p["width"], l["width"]), height=bottom(l) - p["top"], frag=l["height"]); continue
             if same_row(l, p):
                 if l["height"] > p["height"]: names[-1] = dict(l)
                 continue
@@ -332,6 +342,10 @@ def parse(lines, find_total=True):
     values = [i["value"] for i in items if i["value"] is not None]
     if total is not None and values and total < max(values):
         return parse(lines, find_total=False)
+    # 묶음 소계가 본문에 있으면 머리에서 잡은 총액은 **첫 묶음의 소계**다(토스 표 보기 — 계좌 총액이 화면에 없다).
+    # 총액 없이 처음부터 다시 읽어 소계를 모두 모은다 (232번 실제 화면)
+    if find_total and subtotals:
+        return parse(lines, find_total=False)
     # 계좌 총액이 화면에 없고 묶음 소계가 있으면 그 합 (232번)
     if total is None and subtotals and items and len(subtotals) <= len(items):
         total = sum(subtotals)
@@ -347,7 +361,7 @@ def parse(lines, find_total=True):
             for e in edges:
                 if not columns or e - columns[-1][-1] > 0.02: columns.append([e])
                 else: columns[-1].append(e)
-            found = set()
+            found, near = set(), []
             for col in columns:
                 center = sum(col) / len(col)
                 vals = []
@@ -355,9 +369,19 @@ def parse(lines, find_total=True):
                     inside = sorted([(t, v) for e, t, v in pool if abs(e - center) <= 0.02 + (col[-1] - col[0]) / 2])
                     if not inside: break
                     vals.append(inside[0][1])
-                if len(vals) == len(items) and balanced(vals): found.add(tuple(vals))
+                if len(vals) != len(items): continue
+                if balanced(vals): found.add(tuple(vals))
+                if (abs(total - sum(vals)), tuple(vals)) not in near: near.append((abs(total - sum(vals)), tuple(vals)))
             if len(found) == 1:
                 for it, v in zip(items, found.pop()): it["value"] = v
+            elif not found and near:
+                # 딱 맞는 열이 없으면 **거의 맞는 열 하나** — 소계가 수수료 · 환산 반올림만큼(총액의 0.3% 안) 다르고, 다른 열은
+                # 그 열보다 열 배 넘게 어긋날 때만(토스 표 보기 Alpha 소계가 종목 합과 몇십 원 달랐다). 차이는 검산 칸이 그대로 보여 준다
+                near.sort()
+                best, vals = near[0]
+                limit = total * 0.003
+                if best <= limit and all(g > max(best * 10, limit) for g, _ in near[1:]):
+                    for it, v in zip(items, vals): it["value"] = v
     # start = 본문이 시작되는 자리(머리 아래 끝) — 여러 장을 이을 때 둘째 장부터의 머리를 버리는 데 쓴다(226번)
     return dict(account=account, total=total, items=items, cash=cash, fee=fee, start=start, dollars=dollars)
 

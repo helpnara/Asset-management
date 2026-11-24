@@ -165,6 +165,16 @@ public enum CaptureParser {
         return out
     }
 
+    /// 이름표 줄인가 — 끝에 붙은 한 글자 조각까지 봐준다(`종목명 7` · `총 금액 C` · `1주 평균 금액 〈` — 정렬 화살표를
+    /// 텍스트 인식이 글자로 읽는다, 232번 실제 화면).
+    static func isLabel(_ text: String) -> Bool {
+        if labels.contains(label(text)) { return true }
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard let range = trimmed.range(of: #"\s+\S$"#, options: .regularExpression) else { return false }
+        let head = String(trimmed[..<range.lowerBound])
+        return !head.isEmpty && labels.contains(label(head))
+    }
+
     /// 숫자 사이에 낀 닮은 글자를 숫자로 — 텍스트 인식이 굵은 1 을 l · I 로, 0 을 O 로 읽을 때. **길이는 그대로**(자리 어림이 안 어긋난다).
     static func digitsFixed(_ text: String) -> String {
         text.replacingOccurrences(of: #"(?<=[\d,])[lI|](?=[\d,원]|$)"#, with: "1", options: .regularExpression)
@@ -325,10 +335,10 @@ public enum CaptureParser {
 
     static func isName(_ line: Line) -> Bool {
         let text = line.text.trimmingCharacters(in: .whitespaces)
-        guard line.x < 0.5, !labels.contains(label(text)) else { return false }
+        guard line.x < 0.5, !isLabel(text) else { return false }
         guard text.unicodeScalars.contains(where: { CharacterSet.letters.contains($0) }) else { return false }
-        // 숫자 묶음(1,234)이 든 줄은 이름이 아니다 — 매입 … · 투자원금 … · 수량 줄
-        if text.range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
+        // 숫자 묶음(1,234)이 든 줄은 이름이 아니다 — 매입 … · 투자원금 … · 수량 줄 (쉼표 뒤 빈칸 `현재가 390, 000원` 도)
+        if digitsFixed(text).range(of: #"\d,\d{3}"#, options: .regularExpression) != nil { return false }
         if text.contains("****") || text.hasPrefix("총 ") || text.contains("평가손익") { return false }
         if text.range(of: #"\d{2,}-\d{2,}"#, options: .regularExpression) != nil { return false }   // 계좌 번호 줄
         // 현금 · 비용 줄은 종목이 아니다 (227번 · 228번 괄호 안까지 — `현금잔고(예수금)`)
@@ -461,6 +471,9 @@ public enum CaptureParser {
         enum Slot { case item, cash, fee, skip }
         var names: [Line] = []
         var slots: [Slot] = []
+        // 꺾인 이름의 줄 사이는 **바로 위 조각**의 글씨 높이로 잰다 — 붙인 덩어리의 높이로 재면 붙일수록 커져 화면 전체가
+        // 한 이름이 된다(232번 실제 화면: 다섯 종목이 한 이름이 되어 소계와 같은 값으로 검산을 통과했다)
+        var fragmentHeight = 0.0
         for line in body {
             // 배당 이름표 줄 (230번) — 자리만 잡는다: 앞 종목의 금액 칸이 거기서 끝나고, 그 줄 · 아래 금액은 어디에도 안 쓴다
             if line.x < 0.5, dividendLine(line.text) {
@@ -477,19 +490,24 @@ public enum CaptureParser {
             guard isName(line) else { continue }
             if let previous = names.last, slots.last == .item {
                 let gap = line.top - previous.bottom
-                if abs(line.x - previous.x) < 0.02, gap > 0, gap < previous.height * 0.9 {
+                if abs(line.x - previous.x) < 0.02, gap > 0, gap < fragmentHeight * 0.9 {
                     names[names.count - 1] = Line(text: previous.text + " " + line.text, x: previous.x, top: previous.top,
                                                   width: max(previous.width, line.width),
                                                   height: line.bottom - previous.top)
+                    fragmentHeight = line.height
                     continue
                 }
                 if sameRow(line, previous) {
-                    if line.height > previous.height { names[names.count - 1] = line }
+                    if line.height > previous.height {
+                        names[names.count - 1] = line
+                        fragmentHeight = line.height
+                    }
                     continue
                 }
             }
             names.append(line)
             slots.append(.item)
+            fragmentHeight = line.height
         }
 
         // 3) 이름마다 평가금액. 금액이 하나도 없는 이름(메뉴 · 탭 · 묶음 머리)은 종목이 아니다
@@ -573,6 +591,11 @@ public enum CaptureParser {
         if let value = total, let largest = items.compactMap(\.valueMinor).max(), value < largest {
             return parse(lines, findsTotal: false)
         }
+        // 묶음 소계가 본문에 있으면 머리에서 잡은 총액은 **첫 묶음의 소계**다(토스 표 보기 — 계좌 총액이 화면에 없다).
+        // 총액 없이 처음부터 다시 읽어 소계를 모두 모은다 (232번 실제 화면)
+        if findsTotal, !subtotals.isEmpty {
+            return parse(lines, findsTotal: false)
+        }
         // 계좌 총액이 화면에 없고 묶음 소계가 있으면 그 합 (232번)
         if total == nil, !subtotals.isEmpty, !items.isEmpty, subtotals.count <= items.count {
             total = subtotals.reduce(0, +)
@@ -597,16 +620,31 @@ public enum CaptureParser {
                     }
                 }
                 var found: Set<[Int]> = []
+                var near: [(gap: Int, values: [Int])] = []
                 for column in columns {
                     let center = column.reduce(0, +) / Double(column.count)
                     let reach = 0.02 + (column[column.count - 1] - column[0]) / 2
                     let values = generic.compactMap { pool in
                         pool.filter { abs($0.edge - center) <= reach }.min { $0.top < $1.top }?.value
                     }
-                    if values.count == items.count, balanced(values) { found.insert(values) }
+                    guard values.count == items.count else { continue }
+                    if balanced(values) { found.insert(values) }
+                    if !near.contains(where: { $0.values == values }) {
+                        near.append((gap: abs(total - values.reduce(0, +)), values: values))
+                    }
                 }
                 if found.count == 1, let values = found.first {
                     items = zip(items, values).map { Item(name: $0.name, valueMinor: $1) }
+                } else if found.isEmpty, !near.isEmpty {
+                    // 딱 맞는 열이 없으면 **거의 맞는 열 하나** — 소계가 수수료 · 환산 반올림만큼(총액의 0.3% 안) 다르고, 다른 열은
+                    // 그 열보다 열 배 넘게 어긋날 때만(토스 표 보기 Alpha 소계가 종목 합과 몇십 원 달랐다). 차이는 검산 칸이 그대로 보여 준다
+                    near.sort { $0.gap != $1.gap ? $0.gap < $1.gap : $0.values.lexicographicallyPrecedes($1.values) }
+                    let best = near[0]
+                    let limit = Double(total) * 0.003
+                    if Double(best.gap) <= limit,
+                       near.dropFirst().allSatisfy({ Double($0.gap) > max(Double(best.gap) * 10, limit) }) {
+                        items = zip(items, best.values).map { Item(name: $0.name, valueMinor: $1) }
+                    }
                 }
             }
         }
