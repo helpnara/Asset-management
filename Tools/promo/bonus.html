@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>느린 부자 쇼츠 — 해마다 성과급 1천만원</title>
+<!--
+  느린 부자 유튜브 쇼츠 26편 (2026-11-25). 1080×1920 세로, 31.5초, 소리 없음.
+  일정표(People_mgmt docs/promo-youtube-stats.md)의 12-03(목) 06:30 칸 — 원래 후보 "부부 국민연금 월 200만원, 6억짜리 자산?" 은
+  18편(국민연금 월 100만원 = 3억)과 같은 셈이라 되풀이가 되어, 12-06 후보였던 성과급 편을 당겨 왔다(사용자 11-25).
+  숫자는 일반 셈(파이썬 대조, 11-25) · 성과급을 받자마자(연초) 넣고 연 5% 해마다 복리 · 세금 · 물가 빼기 전:
+    10년 1억 3,207만 · 20년 3억 4,719만 · 30년 6억 9,761만 = 넣은 돈 3억 + 불어난 돈 3억 9,761만
+    불어난 돈이 넣은 돈을 넘는 해: 25년째(5억 113만 = 2억 5,000만 + 2억 5,113만)
+    ※ 12월 후보 표의 "해 끝에 넣음 → 6억 9,761만" 은 틀렸다 — 해 끝에 넣으면 6억 6,439만. 그래서 "받자마자 넣는다면" 으로 적는다.
+  앱과 잇는 자리: 앱에는 해마다 되풀이하는 목돈 칸이 없다(목돈 이벤트는 한 번짜리 · CashEventEditView).
+    그래서 1천만원 ÷ 12 = 월 83만원으로 나눠 시뮬레이션 탭 → `매월 적립` 손잡이(10만원 단위 · 값을 누르면 숫자로 넣기 · SimulationView.knobCard)에 더해 본다.
+    35세 · 지금 5천만원 · 매달 100만원 · 30년 뒤 2056년 은퇴 · 연 5% 월복리: 100만 → 10억 5,565만 · 183만 → 17억 4,642만 · 차이 6억 9,077만
+    맨 위 `YYYY년 예상` · 큰 숫자 · `계획보다 … 많다`(headline · deltaText · Won.abbreviated) · 범례 `| 은퇴 YYYY  목표 9.0억`(Won.compact).
+    손잡이는 계획을 바꾸지 않는다. 금액은 예시 가정의 셈 — 앱 화면은 문구 그대로 다시 그렸다.
+-->
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 500; src: url("fonts/Pretendard-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+
+  :root {
+    --ink: #0B1017;
+    --muted: #5E6A75;
+    --surface: #F4F7F8;
+    --forest: #173D2E;
+    --forest-2: #1F5640;
+    --gold: #F2C94C;
+    --gain: #2E7D5B;
+    --dad: #1F5A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--surface); }
+  body { font-family: "Pretendard", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  #bg-dark { background: radial-gradient(1200px 900px at 50% 30%, var(--forest-2), var(--forest) 70%); }
+  #bg-light { background: var(--surface); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
+
+  .center { position: absolute; left: 0; right: 0; text-align: center; }
+
+  /* 물음 */
+  .q1 { top: 640px; font-size: 84px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .q2 { top: 770px; font-size: 96px; font-weight: 800; color: var(--gold); letter-spacing: -2px; }
+  .q3 { top: 960px; font-size: 40px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 앱 장면 — 위에 글, 아래에 화면 창 */
+  .title { position: absolute; left: 70px; right: 70px; top: 130px; font-size: 76px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12; }
+  .sub { position: absolute; left: 70px; right: 70px; top: 240px; font-size: 40px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .window { position: absolute; left: 70px; top: 360px; width: 940px; height: 1300px; border-radius: 48px; overflow: hidden;
+            background: #fff; box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .window img { position: absolute; left: 0; width: 940px; display: block; transform-origin: 50% 50%; }
+
+  .ring { position: absolute; border: 7px solid var(--gold); border-radius: 22px; box-shadow: 0 0 0 9999px rgba(11,16,23,0); }
+  .tag { position: absolute; padding: 12px 22px; border-radius: 18px; background: var(--forest); color: var(--gold);
+         font-size: 34px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 30px rgba(11,16,23,.25); }
+
+  .card { position: absolute; padding: 34px 44px; border-radius: 34px; background: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.28); }
+
+  .chip { position: absolute; left: 140px; right: 140px; height: 140px; border-radius: 40px; background: rgba(255,255,255,.08);
+          border: 2px solid rgba(255,255,255,.18); color: #fff; font-size: 52px; font-weight: 800; display: flex; align-items: center; padding-left: 60px; }
+  .chip .x { width: 70px; height: 70px; border-radius: 35px; background: var(--gold); color: var(--forest); display: flex; align-items: center;
+             justify-content: center; font-size: 42px; font-weight: 800; margin-right: 40px; }
+
+  .icon { position: absolute; width: 320px; height: 320px; left: 380px; top: 420px; border-radius: 72px;
+          box-shadow: 0 30px 80px rgba(0,0,0,.35); overflow: hidden; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .brand { top: 800px; font-size: 104px; font-weight: 800; color: #fff; letter-spacing: -2px; }
+  .brand b { color: var(--gold); font-weight: 800; }
+  .tagline { top: 950px; font-size: 44px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .cta-pill { display: inline-block; padding: 30px 56px; border-radius: 60px; background: #fff; color: var(--ink); font-size: 48px; font-weight: 800; }
+  .fine { font-size: 26px; font-weight: 500; color: rgba(255,255,255,.55); }
+
+  /* 셈 줄 */
+  .calc { position: absolute; left: 70px; right: 70px; top: 400px; padding: 50px 56px; border-radius: 40px; background: #fff;
+          box-shadow: 0 26px 70px rgba(11,16,23,.14); }
+  .ln { display: flex; justify-content: space-between; align-items: baseline; font-size: 50px; font-weight: 700; padding: 14px 0;
+        font-variant-numeric: tabular-nums; }
+  .ln .l { color: var(--muted); }
+  .ln.sum { border-top: 4px solid #E3E8EB; margin-top: 12px; padding-top: 30px; }
+  .ln.sum .r { font-size: 110px; font-weight: 800; color: var(--forest-2); letter-spacing: -2px; }
+  .pills { position: absolute; left: 70px; right: 70px; top: 1120px; display: flex; flex-direction: column; gap: 22px; }
+  .pill { display: flex; justify-content: space-between; padding: 30px 46px; border-radius: 30px; background: #fff;
+          box-shadow: 0 16px 40px rgba(11,16,23,.10); font-size: 48px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .pill .r { color: var(--forest-2); }
+  .pill.hi { background: #FFF4CF; border: 4px solid var(--gold); }
+
+  .row { position: absolute; left: 70px; right: 70px; padding: 40px 50px; border-radius: 36px; background: #fff;
+         box-shadow: 0 26px 70px rgba(11,16,23,.16); }
+  .row .k { font-size: 40px; font-weight: 700; color: var(--muted); line-height: 1.35; }
+  .row .v { margin-top: 8px; font-size: 92px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+  .row.big { background: #FFF4CF; border: 5px solid var(--gold); }
+  .row.big .v { color: var(--gain); }
+  .row.warn .v { color: #9A2B2B; }
+
+  .path { position: absolute; left: 70px; right: 70px; top: 1300px; padding: 40px 48px; border-radius: 34px; background: var(--forest);
+          color: #fff; box-shadow: 0 26px 70px rgba(11,16,23,.25); }
+  .path .k { font-size: 34px; font-weight: 700; color: rgba(255,255,255,.7); }
+  .path .v { margin-top: 12px; font-size: 44px; font-weight: 800; line-height: 1.35; }
+  .path .v b { color: var(--gold); }
+
+  .msg1 { top: 700px; font-size: 76px; font-weight: 800; color: rgba(255,255,255,.9); letter-spacing: -1.5px; }
+  .msg2 { top: 830px; font-size: 84px; font-weight: 800; color: var(--gold); letter-spacing: -1.5px; }
+  .msg3 { top: 1010px; font-size: 42px; font-weight: 500; color: rgba(255,255,255,.75); }
+
+  /* 그린 앱 화면 — 계획 탭의 자산군별 기대수익률 (PlanView.swift 문구 · 기본값 그대로) */
+  .ios { position: absolute; left: 70px; right: 70px; top: 380px; padding: 40px 0 34px; border-radius: 48px; background: #F2F2F7;
+         box-shadow: 0 40px 90px rgba(11,16,23,.22); }
+  .ios .nav { text-align: center; font-size: 40px; font-weight: 800; margin-bottom: 26px; }
+  .ios .hd { margin: 0 64px 14px; font-size: 32px; font-weight: 700; color: #6B6B70; }
+  .ios .grp { margin: 0 34px; border-radius: 30px; background: #fff; overflow: hidden; }
+  .ios .it { position: relative; display: flex; justify-content: space-between; align-items: center; height: 116px; padding: 0 34px;
+             font-size: 38px; font-weight: 500; }
+  .ios .it + .it::before { content: ""; position: absolute; left: 34px; right: 0; top: 0; border-top: 2px solid #E5E5EA; }
+  .ios .it .val { display: flex; align-items: center; gap: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ios .step { display: flex; width: 170px; height: 60px; border-radius: 16px; background: #EEEEF0; font-size: 40px; font-weight: 500;
+               color: #3A3A3C; }
+  .ios .step span { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .ios .step span + span { border-left: 2px solid #D8D8DC; }
+  .bars { position: absolute; left: 70px; right: 70px; top: 1060px; display: flex; flex-direction: column; gap: 46px; }
+  .bar .k { font-size: 38px; font-weight: 700; color: var(--muted); margin-bottom: 14px; }
+  .bar .track { height: 96px; border-radius: 24px; background: #E3E8EB; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 24px; transform-origin: left center; }
+  .ios .ft { margin: 16px 64px 0; font-size: 28px; font-weight: 500; color: #6B6B70; line-height: 1.4; }
+
+  .seg2 { display:flex; width:300px; height:64px; border-radius:16px; background:#EEEEF0; padding:4px; font-size:34px; font-weight:600; }
+  .seg2 span { flex:1; display:flex; align-items:center; justify-content:center; border-radius:12px; color:#3A3A3C; }
+  .seg2 span.on { background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.12); color:#0B1017; font-weight:800; }
+  .chipd { padding:10px 22px; border-radius:14px; background:#EEEEF0; font-size:34px; font-weight:600; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-dark" class="layer"></div>
+  <div id="bg-light" class="layer">
+    <div class="blob" style="width:700px;height:700px;left:-220px;top:-200px;background:#CFE8D6"></div>
+    <div class="blob" style="width:600px;height:600px;right:-240px;top:1100px;background:#FBE9B5"></div>
+  </div>
+
+  <div id="s-hook" class="layer">
+    <div class="center q1" id="q1">해마다 성과급 1천만원,</div>
+    <div class="center q2" id="q2">30년 뒤 7억?</div>
+    <div class="center q3" id="q3">다 쓰면 0원 · 받자마자 넣는다면</div>
+  </div>
+
+  <div id="s-years" class="layer">
+    <div class="title" id="years-title">받자마자 넣고 굴리면</div>
+    <div class="sub" id="years-sub">연 5% · 해마다 복리 · 세금 · 물가 빼기 전</div>
+    <div class="row" id="y0" style="top:400px"><div class="k">10년 뒤</div><div class="v">1억 3,207만원</div></div>
+    <div class="row" id="y1" style="top:720px"><div class="k">20년 뒤</div><div class="v">3억 4,719만원</div></div>
+    <div class="row big" id="y2" style="top:1040px"><div class="k">30년 뒤</div><div class="v">6억 9,761만원</div></div>
+  </div>
+
+  <div id="s-split" class="layer">
+    <div class="title" id="split-title">7억 가운데 내가 넣은 돈</div>
+    <div class="sub" id="split-sub">1천만원 × 30번</div>
+    <div class="calc" id="calc">
+      <div class="ln" id="l0"><span class="l">넣은 돈</span><span>3억원</span></div>
+      <div class="ln" id="l1"><span class="l">굴러 불어난 돈</span><span>3억 9,761만원</span></div>
+      <div class="ln" id="l2" style="visibility:hidden"><span class="l">.</span><span>.</span></div>
+      <div class="ln sum" id="l3"><span class="l">30년 뒤</span><span class="r">7.0억</span></div>
+    </div>
+    <div class="path" id="split-note" style="top:1150px">
+      <div class="k">25년째부터</div>
+      <div class="v">불어난 돈이 <b>넣은 돈보다 많아집니다</b><br>뒤로 갈수록 시간이 더 일합니다</div>
+    </div>
+  </div>
+
+  <div id="s-app" class="layer">
+    <div class="title" id="app-title">앱에서는 월로 나눠 보기</div>
+    <div class="sub" id="app-sub">1천만원 ÷ 12 = 매달 83만원 더</div>
+    <div class="ios" id="app-win">
+      <div class="nav">시뮬레이션</div>
+      <div class="grp" style="padding:34px 40px 36px">
+        <div style="font-size:32px;font-weight:500;color:#6B6B70" id="app-hy">2056년 예상</div>
+        <div style="margin-top:14px;font-size:84px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums" id="app-amt">10억 5,565만원</div>
+        <div id="app-delta" style="margin-top:10px;font-size:40px;font-weight:700;color:var(--gain);font-variant-numeric:tabular-nums">계획보다 6억 9,077만원 많다</div>
+      </div>
+      <div style="height:30px"></div>
+      <div class="grp" style="padding:20px 40px">
+        <div style="display:flex;justify-content:space-between;font-size:32px;color:#6B6B70;padding:14px 0"><span id="app-leg">| 은퇴 2056</span><span>목표 9.0억</span></div>
+      </div>
+      <div style="height:30px"></div>
+      <div class="grp" style="padding:26px 40px 40px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:36px;color:#6B6B70"><span>매월 적립</span><b style="color:#0B1017;font-size:44px" id="app-mon">100만원</b></div>
+        <div class="track" style="margin:24px 0 40px;height:14px;border-radius:7px;background:#E5E5EA;position:relative"><div id="app-fill" style="width:20%;height:100%;border-radius:7px;background:#1F5640"></div><div id="app-knob" style="position:absolute;left:calc(20% - 40px);top:-23px;width:80px;height:60px;border-radius:30px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.2)"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:36px;color:#6B6B70"><span>은퇴 연도</span><b style="color:#0B1017;font-size:44px">2056년</b></div>
+        <div style="margin:24px 0 6px;height:14px;border-radius:7px;background:#E5E5EA;position:relative"><div style="width:62%;height:100%;border-radius:7px;background:#1F5640"></div><div style="position:absolute;left:calc(62% - 40px);top:-23px;width:80px;height:60px;border-radius:30px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.2)"></div></div>
+      </div>
+      <div class="ring" id="app-r1" style="left:20px;top:122px;width:900px;height:300px"></div>
+    </div>
+    <div class="path" id="app-path" style="top:1330px">
+      <div class="k">시뮬레이션 탭</div>
+      <div class="v"><b>매월 적립</b> 값을 눌러 숫자로 넣으면<br>맨 위 <b>예상 금액</b>이 바로 바뀝니다 — 계획은 그대로</div>
+    </div>
+  </div>
+
+  <div id="s-msg" class="layer">
+    <div class="center msg1" id="m1">다 아끼라는 말이 아닙니다</div>
+    <div class="center msg2" id="m2">넣으면 얼마인지 알고 쓰기</div>
+    <div class="center msg3" id="m3">한 해 한 번의 선택이 30년을 만듭니다</div>
+  </div>
+
+  <div id="s-cta" class="layer">
+    <div class="icon" id="cta-icon"><img src="../../App/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt=""></div>
+    <div class="center brand" id="cta-name">느린 <b>부자</b></div>
+    <div class="center tagline" id="cta-tag">느리게, 그래도 꾸준히</div>
+    <div class="center" id="cta-store" style="top:1100px"><span class="cta-pill">App Store 에서 ‘느린 부자’</span></div>
+    <div class="center" id="cta-free" style="top:1270px;font-size:38px;font-weight:500;color:rgba(255,255,255,.8)">무료 · iPhone · iPad · 서버 · 광고 · 회원가입 없음</div>
+    <div class="center fine" id="cta-fine" style="top:1400px">성과급 해마다 1천만원 · 연 5% · 세금 · 물가 빼기 전 단순 셈<br>앱 화면은 35세 · 5천만원 · 매달 100만원 · 월복리 가정 · 예시 숫자로 그렸습니다<br>투자에는 손실이 날 수 있습니다 · 투자 조언이 아닙니다</div>
+  </div>
+</div>
+
+<script>
+const T = {
+  hook:  [0.0, 3.4],
+  years: [3.4, 9.4],
+  split: [9.4, 15.0],
+  app:   [15.0, 22.8],
+  msg:   [22.8, 26.6],
+  cta:   [26.6, 31.5],
+};
+const DURATION = 31.5;
+// ── 도움 함수 (9편과 같다) ─────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id);
+
+const IN = 0.3, OUT = 0.25;
+function sceneAlpha(t, [a, b]) {
+  if (t < a || t > b) return 0;
+  return Math.min(prog(t, a, a + IN), 1 - prog(t, b - OUT, b));
+}
+function rise(el, t, at, dur = 0.5, dy = 50) {
+  const p = easeOut(prog(t, at, at + dur));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function pop(el, t, at, dur = 0.45) {
+  const p = prog(t, at, at + dur);
+  el.style.opacity = clamp(p * 2);
+  el.style.transform = `scale(${0.6 + 0.4 * back(p)})`;
+}
+function ring(el, t, at, stay = 1.4) {
+  const p = prog(t, at, at + 0.35);
+  const out = prog(t, at + stay, at + stay + 0.3);
+  el.style.opacity = clamp(p * 2) * (1 - out);
+  el.style.transform = `scale(${1.12 - 0.12 * easeOut(p)})`;
+}
+function tag(el, t, at, stay = 1.4) {
+  el.style.opacity = prog(t, at + 0.15, at + 0.5) * (1 - prog(t, at + stay, at + stay + 0.3));
+}
+function show(el, a) { el.style.opacity = a; el.style.visibility = a > 0.001 ? "visible" : "hidden"; }
+
+/** 앱 화면 장면 하나 — 제목 · 부제가 오르고 창이 아래서 올라온다. */
+function screenScene(t, key, prefix) {
+  const [a] = T[key];
+  rise($(`${prefix}-title`), t, a + 0.05);
+  rise($(`${prefix}-sub`), t, a + 0.25, 0.5, 30);
+  const winIn = easeOut(prog(t, a, a + 0.6));
+  $(`${prefix}-win`).style.transform = `translateY(${(1 - winIn) * 300}px)`;
+  return a;
+}
+
+// ── 한 장 그리기 ─────────────────────────────────────────────
+function rows3(t, key, ids) {
+  const a = T[key][0];
+  rise($(`${key}-title`), t, a + 0.05);
+  rise($(`${key}-sub`), t, a + 0.25, 0.5, 30);
+  rise($(ids[0]), t, a + 0.6, 0.5, 60);
+  rise($(ids[1]), t, a + 1.5, 0.5, 60);
+  pop($(ids[2]), t, a + 2.5, 0.55);
+}
+function render(t) {
+  const darkA = t < (T.hook[1] + T.years[0]) / 2 + 0.2
+    ? 1 - prog(t, T.hook[1] - OUT, T.hook[1] + 0.1)
+    : prog(t, T.msg[0] - OUT, T.msg[0] + 0.1);
+  show($("bg-dark"), 1);
+  show($("bg-light"), 1 - darkA);
+  const hookA = t <= T.hook[1] ? 1 - prog(t, T.hook[1] - OUT, T.hook[1]) : 0;
+  show($("s-hook"), hookA);
+
+  const yA = sceneAlpha(t, T.years);
+  show($("s-years"), yA);
+  if (yA) rows3(t, "years", ["y0", "y1", "y2"]);
+
+  const sA = sceneAlpha(t, T.split);
+  show($("s-split"), sA);
+  if (sA) {
+    const a = T.split[0];
+    rise($("split-title"), t, a + 0.05);
+    rise($("split-sub"), t, a + 0.25, 0.5, 30);
+    rise($("calc"), t, a + 0.4, 0.5, 60);
+    [0, 1, 2].forEach(i => rise($(`l${i}`), t, a + 0.7 + i * 0.6, 0.4, 20));
+    pop($("l3"), t, a + 2.6, 0.55);
+    rise($("split-note"), t, a + 3.2, 0.5, 40);
+  }
+
+  const aA = sceneAlpha(t, T.app);
+  show($("s-app"), aA);
+  if (aA) {
+    const a = screenScene(t, "app", "app");
+    // 매월 적립 손잡이: 100만 → 183만 (0.6~1.6초) — 바뀐 값은 브랜드 색(SimulationView.slider), 그 뒤 위 카드에 고리
+    const k = easeInOut(prog(t, a + 0.6, a + 1.6));
+    const pct = 20 + 16.6 * k;
+    $("app-fill").style.width = pct + "%";
+    $("app-knob").style.left = `calc(${pct}% - 40px)`;
+    const mon = 100 + Math.round(83 * k);
+    $("app-mon").textContent = mon + "만원";
+    $("app-mon").style.color = mon === 100 ? "#0B1017" : "#1F5640";
+    const moved = k >= 1;
+    $("app-amt").textContent = moved ? "17억 4,642만원" : "10억 5,565만원";
+    const d = $("app-delta");
+    d.textContent = moved ? "계획보다 6억 9,077만원 많다" : "계획 그대로입니다. 아래 손잡이를 돌려 보세요.";
+    d.style.color = moved ? "var(--gain)" : "#8E8E93";
+    d.style.fontSize = moved ? "40px" : "30px";
+    d.style.fontWeight = moved ? "700" : "500";
+    ring($("app-r1"), t, a + 1.8, 5.4);
+    rise($("app-path"), t, a + 2.4, 0.5, 60);
+  }
+
+  const gA = sceneAlpha(t, T.msg);
+  show($("s-msg"), gA);
+  if (gA) { const a = T.msg[0]; rise($("m1"), t, a + 0.1); pop($("m2"), t, a + 0.6, 0.5); rise($("m3"), t, a + 1.4, 0.5, 30); }
+
+  const cA = sceneAlpha(t, [T.cta[0], DURATION + 1]);
+  show($("s-cta"), cA);
+  if (cA) {
+    const a = T.cta[0];
+    pop($("cta-icon"), t, a + 0.05, 0.6);
+    rise($("cta-name"), t, a + 0.45);
+    rise($("cta-tag"), t, a + 0.85, 0.5, 30);
+    pop($("cta-store"), t, a + 1.3, 0.5);
+    rise($("cta-free"), t, a + 1.7, 0.5, 20);
+    rise($("cta-fine"), t, a + 2.0, 0.5, 10);
+  }
+}
+window.DURATION = DURATION;
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(img => img.decode().catch(() => {}))]);
+
+if (!location.search.includes("frames")) {
+  window.ready.then(() => {
+    const start = performance.now();
+    const tick = now => { render(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+</script>
+</body>
+</html>
