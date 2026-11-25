@@ -14,10 +14,10 @@
 | | 상태 | 원본 |
 |---|---|---|
 | App Store | **1.0.22 = 빌드 168 — 11-24 심사 제출 → 승인 · 공개** (자동 출시). 1.0.21(빌드 165)은 심사 취소 | [15](15-app-store-submission-sheet.md) 맨 위 |
-| TestFlight | 마지막 빌드 **168** (11-24 22:08) — **2027-02-22 만료**. 그 전에 새 빌드가 하나 있어야 가족 폰 앱이 계속 열린다 | [05](05-roadmap.md) 출시 일정 `TestFlight 빌드 만료` |
+| TestFlight | 마지막 빌드 **169** = 1.0.23 (11-25 14:20, 새 계정 첫 빌드 · 기능 변경 없음 · 부모 폰 설치) — **2027-02-23 만료**. 그 전에 새 빌드가 하나 있어야 가족 폰 앱이 계속 열린다 | [05](05-roadmap.md) 출시 일정 `TestFlight 빌드 만료` |
 | 데이터 모델 | **3판**(`Account.captureKey` · `Holding.captureName`). CloudKit Production 반영 끝(11-21) — 할 일 없음 | [18](18-stage5-foundation.md) · `Tools/coredata/migration-baselines.txt` 맨 위 `31d84f1` |
 | 열린 확인 | **아이 폰 확인** — `더보기` 맨 아래 `버전` 이 `1.0.22 (168)` · `현황판` 맨 위 가족 총자산이 부모 폰과 같음(1.0.20 확인 기록이 없어 함께) | [08](08-feedback.md) 맨 아래 |
-| 다음 피드백 번호 | **233** (캡처 예외는 계속 모은다) · 다음 판 **1.0.23** · `project.yml` 의 `MARKETING_VERSION` 은 아직 `1.0.22` — 다음 착수 때 올린다 | [08](08-feedback.md) |
+| 다음 피드백 번호 | **233** (캡처 예외는 계속 모은다) · 다음 판 **1.0.23** · `project.yml` 의 `MARKETING_VERSION` 은 `1.0.23` (11-25 올림) | [08](08-feedback.md) |
 | 작업 브랜치 | `claude/iphone-asset-management-design-7aafjc` (기본 브랜치가 아니다 — 모든 작업 · CI · 배포가 이 브랜치) | |
 | CI | 마지막 CI 371 전부 초록(11-24) | GitHub Actions `iOS 빌드 · 테스트 · 스크린샷` |
 
@@ -25,11 +25,11 @@
 
 | ☐ | 무엇 | 어떻게 |
 |---|---|---|
-| ☐ | **GitHub 연결** | 새 계정의 claude.ai → 설정 → 커넥터(Connectors) 에서 GitHub 를 연결한다. 저장소 `helpnara/Asset-management` 에 **Claude GitHub 앱**이 이미 설치돼 있으니, 같은 GitHub 사용자(`helpnara`)로 연결하면 그대로 쓸 수 있다. **다른 GitHub 사용자로 연결하면** 저장소 주인이 `Settings → Collaborators` 에서 그 사용자를 **Write** 로 초대해야 푸시 · 워크플로 실행이 된다 |
-| ☐ | **Claude Code 웹 세션 열기** | claude.ai/code 에서 저장소 `helpnara/Asset-management` 를 고르고 세션을 연다. 기본 네트워크 설정으로 충분하다(시세 · 환율을 안 가져오는 앱이라 밖으로 나갈 곳이 없다. `download.swift.org` 가 막혀 있는 것은 정상 — 컴파일은 CI 가 한다) |
-| ☐ | **첫 메시지** | 아래 상자를 그대로 붙여 넣는다 |
-| ☐ | **예약 알림 다시 걸기** | §4 의 셋 — 첫 세션에서 Claude 에게 "§4 예약 알림을 걸어줘" 라고 하면 된다 |
-| ☐ | (확인) 빌드가 도는지 | 첫 착수 때 `testflight.yml` 을 돌려 보면 끝. 시크릿은 저장소에 붙어 있어 계정과 상관없다(§5) |
+| ✅ 11-25 | **GitHub 연결** | 새 계정의 claude.ai → 설정 → 커넥터(Connectors) 에서 GitHub 를 연결한다. 저장소 `helpnara/Asset-management` 에 **Claude GitHub 앱**이 이미 설치돼 있으니, 같은 GitHub 사용자(`helpnara`)로 연결하면 그대로 쓸 수 있다. **다른 GitHub 사용자로 연결하면** 저장소 주인이 `Settings → Collaborators` 에서 그 사용자를 **Write** 로 초대해야 푸시 · 워크플로 실행이 된다 |
+| ✅ 11-25 | **Claude Code 웹 세션 열기** | claude.ai/code 에서 저장소 `helpnara/Asset-management` 를 고르고 세션을 연다. 기본 네트워크 설정으로 충분하다(시세 · 환율을 안 가져오는 앱이라 밖으로 나갈 곳이 없다. `download.swift.org` 가 막혀 있는 것은 정상 — 컴파일은 CI 가 한다) |
+| ✅ 11-25 | **첫 메시지** | 아래 상자를 그대로 붙여 넣는다 |
+| ✅ 11-25 (12-01 · 12-21 · 01-11 걸림) | **예약 알림 다시 걸기** | §4 의 셋 — 첫 세션에서 Claude 에게 "§4 예약 알림을 걸어줘" 라고 하면 된다 |
+| ✅ 11-25 (CI 372 · TestFlight 169 성공) | (확인) 빌드가 도는지 | 첫 착수 때 `testflight.yml` 을 돌려 보면 끝. 시크릿은 저장소에 붙어 있어 계정과 상관없다(§5) |
 
 ```
 이 저장소는 iOS 앱 '느린 부자'다. 다른 Claude 계정에서 넘겨받아 이어서 관리한다.
